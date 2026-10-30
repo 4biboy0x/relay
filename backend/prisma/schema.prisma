@@ -29,8 +29,19 @@ model User {
   refreshTokens RefreshToken[]
   conversations ConversationMember[]
   sentMessages  Message[]
+  realtimeDemos RealtimeDemo[]
 
   @@index([createdAt])
+}
+
+model RealtimeDemo {
+  id        String   @id @default(cuid())
+  ownerId   String
+  value     String   @db.VarChar(240)
+  createdAt DateTime @default(now())
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, createdAt(sort: Desc)])
 }
 
 model Post {

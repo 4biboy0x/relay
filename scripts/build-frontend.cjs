@@ -9,11 +9,13 @@ const sourceFile = fs.readdirSync(root)
   .find((file) => path.basename(file).startsWith("Relay") && file.endsWith(".html"));
 const stagingHtml = path.join(stagingDir, "index.html");
 const outputHtml = path.join(root, "dist", "index.html");
+const outputDemoHtml = path.join(root, "dist", "realtime-demo.html");
 const apiUrl = process.env.VITE_API_URL;
 
 if (!sourceFile) throw new Error("Relay frontend HTML file was not found");
 fs.rmSync(stagingDir, { recursive: true, force: true });
 fs.mkdirSync(stagingDir, { recursive: true });
+fs.copyFileSync(path.join(__dirname, "realtime-demo-client.js"), path.join(stagingDir, "realtime-demo-client.js"));
 let html = fs.readFileSync(sourceFile, "utf8");
 if (apiUrl) {
   const escapedApiUrl = apiUrl.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
@@ -31,6 +33,7 @@ const result = spawnSync(process.execPath, [viteCli, "build", "--config", "vite.
 });
 if (result.status === 0) {
   fs.writeFileSync(outputHtml, html);
+  fs.copyFileSync(path.join(root, "realtime-demo.html"), outputDemoHtml);
   fs.rmSync(path.join(root, "dist", ".vite-src"), { recursive: true, force: true });
 }
 fs.rmSync(stagingDir, { recursive: true, force: true });

@@ -1,11 +1,24 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import multer from "multer";
 import type { RequestHandler } from "express";
 import { HttpError } from "./http";
 
 export const uploadDirectory = path.resolve(process.cwd(), "uploads");
+export const objectStorageBucket = process.env.NEON_OBJECT_STORAGE_BUCKET || "assets";
+const objectStorageEndpoint = process.env.AWS_ENDPOINT_URL_S3;
+const objectStorageEnabled = Boolean(
+  objectStorageEndpoint && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY,
+);
+const objectStorage = objectStorageEnabled
+  ? new S3Client({
+      endpoint: objectStorageEndpoint,
+      region: process.env.AWS_REGION || "us-east-1",
+      forcePathStyle: true,
+    })
+  : null;
 
 const storage = multer.memoryStorage();
 const acceptedMimeTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -58,10 +71,36 @@ export const audioUpload: RequestHandler = (req, res, next) => {
 };
 
 export const saveUpload = async (file: Express.Multer.File, extension: string): Promise<string> => {
-  await mkdir(uploadDirectory, { recursive: true });
   const filename = `${randomUUID()}${extension}`;
-  await writeFile(path.join(uploadDirectory, filename), file.buffer, { flag: "wx" });
+  if (objectStorage) {
+    await objectStorage.send(new PutObjectCommand({
+      Bucket: objectStorageBucket,
+      Key: filename,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+      CacheControl: "public, max-age=31536000, immutable",
+    }));
+  } else {
+    await mkdir(uploadDirectory, { recursive: true });
+    await writeFile(path.join(uploadDirectory, filename), file.buffer, { flag: "wx" });
+  }
   return `/uploads/${filename}`;
+};
+
+export const readStoredUpload = async (filename: string): Promise<{
+  body: NodeJS.ReadableStream;
+  contentType?: string;
+} | null> => {
+  if (!objectStorage) return null;
+  const result = await objectStorage.send(new GetObjectCommand({
+    Bucket: objectStorageBucket,
+    Key: filename,
+  }));
+  if (!result.Body || !("pipe" in result.Body)) return null;
+  return {
+    body: result.Body,
+    contentType: result.ContentType,
+  };
 };
 
 export const saveAudio = async (file: Express.Multer.File): Promise<string> => {
@@ -88,8 +127,5 @@ export const saveAudio = async (file: Express.Multer.File): Promise<string> => {
 export const saveImage = async (file: Express.Multer.File): Promise<string> => {
   const extension = extensionFor(file);
   if (!extension) throw new HttpError(400, "The uploaded file is not a supported image");
-  await mkdir(uploadDirectory, { recursive: true });
-  const filename = `${randomUUID()}${extension}`;
-  await writeFile(path.join(uploadDirectory, filename), file.buffer, { flag: "wx" });
-  return `/uploads/${filename}`;
+  return saveUpload(file, extension);
 };

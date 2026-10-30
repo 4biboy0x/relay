@@ -3,15 +3,16 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import bcrypt from "bcryptjs";
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { NotificationType, Prisma, type InteractionType, type NotificationType as NotificationTypeValue } from "@prisma/client";
 import { z } from "zod";
 import { authRequired, createAccessToken, hashPassword, hashRefreshToken, issueRefreshToken, verifyPassword } from "./auth";
 import { config } from "./config";
 import { prisma } from "./db";
+import { getNeonRealtime } from "./neon-realtime";
 import { asyncRoute, errorHandler, HttpError } from "./http";
 import { emitToAuthenticated, emitToConversation, emitToPost, emitToUser } from "./realtime";
-import { audioUpload, imageUpload, saveAudio, saveImage, uploadDirectory } from "./uploads";
+import { audioUpload, imageUpload, readStoredUpload, saveAudio, saveImage, uploadDirectory } from "./uploads";
 import {
   loginSchema,
   messageSchema,
@@ -60,6 +61,21 @@ app.use("/uploads", express.static(uploadDirectory, {
   maxAge: "1d",
   immutable: true,
   setHeaders: (res) => res.setHeader("Cross-Origin-Resource-Policy", "cross-origin"),
+}));
+app.get("/uploads/:filename", asyncRoute(async (req, res) => {
+  const filename = req.params.filename;
+  if (typeof filename !== "string"
+    || !/^[0-9a-f-]+\.(?:jpg|jpeg|png|webp|gif|webm|ogg|m4a|mp3|wav|aac|flac|opus)$/i.test(filename)) {
+    res.sendStatus(404);
+    return;
+  }
+  const stored = await readStoredUpload(filename);
+  if (!stored) {
+    res.sendStatus(404);
+    return;
+  }
+  if (stored.contentType) res.type(stored.contentType);
+  stored.body.pipe(res);
 }));
 const localhostAddresses = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
 app.use("/api/auth", rateLimit({
@@ -310,6 +326,34 @@ api.post("/auth/login", asyncRoute(async (req, res) => {
   res.cookie(refreshCookie, refreshToken, refreshCookieOptions);
   const { passwordHash: _passwordHash, ...safeUser } = user;
   res.json({ user: safeUser, accessToken: createAccessToken(user.id) });
+}));
+
+api.get("/realtime-demo/live", authRequired, asyncRoute(async (req, res) => {
+  const { rawSql } = await import("@neon/realtime/server");
+  const query = rawSql<{
+    id: string;
+    value: string;
+    createdAt: Date;
+  }>(
+    `SELECT "id", "value", "createdAt"
+     FROM "RealtimeDemo"
+     WHERE "ownerId" = $1
+     ORDER BY "createdAt" DESC, "id" DESC
+     LIMIT 20`,
+    [req.userId!],
+  );
+  res.json(await (await getNeonRealtime()).seal({ query }));
+}));
+
+api.post("/realtime-demo", authRequired, asyncRoute(async (req, res) => {
+  const input = z.object({ value: z.string().trim().min(1).max(240) }).parse(req.body);
+  const [created] = await prisma.$queryRaw<Array<{ txid: string }>>(Prisma.sql`
+    INSERT INTO "RealtimeDemo" ("id", "ownerId", "value", "createdAt")
+    VALUES (${randomUUID()}, ${req.userId!}, ${input.value}, CURRENT_TIMESTAMP)
+    RETURNING pg_current_xact_id()::text AS "txid"
+  `);
+  if (!created) throw new HttpError(500, "Could not create realtime demo row");
+  res.status(201).json({ kind: "committed", txid: created.txid });
 }));
 
 api.post("/auth/refresh", asyncRoute(async (req, res) => {

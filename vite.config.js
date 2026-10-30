@@ -6,7 +6,13 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     rollupOptions: {
-      input: ".vite-src/index.html",
+      input: {
+        app: ".vite-src/index.html",
+        realtimeDemo: ".vite-src/realtime-demo-client.js",
+      },
+      output: {
+        entryFileNames: "assets/[name].js",
+      },
     },
   },
 });

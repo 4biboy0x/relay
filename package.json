@@ -9,5 +9,10 @@
   },
   "devDependencies": {
     "vite": "^6.3.5"
+  },
+  "dependencies": {
+    "@neon/config": "^1.9.6",
+    "@neon/env": "^1.6.6",
+    "@neon/realtime": "^0.1.2"
   }
 }

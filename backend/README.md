@@ -20,6 +20,14 @@ Relay is a Node.js 20+ / TypeScript API using Express, PostgreSQL, Prisma, Zod, 
 
 For production, build the TypeScript app with `npm run build`, generate the Prisma client during the build, and apply committed migrations with `npm run db:deploy`. A production deployment also needs TLS, a managed PostgreSQL instance, backups, monitoring, and shared Socket.IO pub/sub when running multiple API instances.
 
+## Neon Realtime demo
+
+The authenticated `GET /api/realtime-demo/live` endpoint seals a query scoped to the current user. `POST /api/realtime-demo` inserts a row and returns its transaction ID. The standalone client is available at `/realtime-demo.html`; sign in with a Relay account and add a row to see it arrive through the live subscription.
+
+Set `NEON_REALTIME_URL` and `NEON_REALTIME_SECRET` on the API. The frontend build needs `VITE_NEON_REALTIME_URL` and `VITE_API_URL`. Keep the Realtime secret server-side. The migration `20261031100000_realtime_demo` creates the demo table and should be applied with `npm run db:deploy`.
+
+To run the end-to-end subscriber smoke test, start the API on port `3100` (`PORT=3100 npm run start`), then run `npm run test:realtime`. It creates a temporary account, waits for a live subscription, inserts a row, confirms the transaction through Realtime, and deletes the account.
+
 ## Local UI smoke test
 
 1. On Home, open the emoji picker and composer options. Each card should align directly below its trigger without changing the composer or feed position.

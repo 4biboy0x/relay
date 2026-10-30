@@ -5,3 +5,5 @@ dist/
 backend/dist/
 backend/uploads/*
 !backend/uploads/.gitkeep
+.neon
+.env.local
