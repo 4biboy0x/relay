@@ -75,6 +75,7 @@ app.get("/uploads/:filename", asyncRoute(async (req, res) => {
     res.sendStatus(404);
     return;
   }
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
   if (stored.contentType) res.type(stored.contentType);
   stored.body.pipe(res);
 }));
