@@ -13,6 +13,15 @@ const outputDemoHtml = path.join(root, "dist", "realtime-demo.html");
 const apiUrl = process.env.VITE_API_URL;
 
 if (!sourceFile) throw new Error("Relay frontend HTML file was not found");
+if (process.env.NETLIFY === "true" && !apiUrl) {
+  throw new Error("Set VITE_API_URL in Netlify to the deployed API base URL, including /api");
+}
+if (apiUrl) {
+  const parsedApiUrl = new URL(apiUrl);
+  if (!["http:", "https:"].includes(parsedApiUrl.protocol) || !parsedApiUrl.pathname.replace(/\/+$/, "").endsWith("/api")) {
+    throw new Error("VITE_API_URL must be an http(s) URL ending in /api");
+  }
+}
 fs.rmSync(stagingDir, { recursive: true, force: true });
 fs.mkdirSync(stagingDir, { recursive: true });
 fs.copyFileSync(path.join(__dirname, "realtime-demo-client.js"), path.join(stagingDir, "realtime-demo-client.js"));
@@ -34,6 +43,7 @@ const result = spawnSync(process.execPath, [viteCli, "build", "--config", "vite.
 if (result.status === 0) {
   fs.writeFileSync(outputHtml, html);
   fs.copyFileSync(path.join(root, "realtime-demo.html"), outputDemoHtml);
+  fs.cpSync(path.join(root, "assets"), path.join(root, "dist", "assets"), { recursive: true });
   fs.rmSync(path.join(root, "dist", ".vite-src"), { recursive: true, force: true });
 }
 fs.rmSync(stagingDir, { recursive: true, force: true });
