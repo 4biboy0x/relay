@@ -7941,17 +7941,37 @@
         if (value >= 1e6) return `${(value / 1e6).toFixed(value >= 10e6 ? 0 : 1).replace(".0", "")}M`;
         return fmt(value);
       };
-      const syncActionCount = (element, count) => {
+      const animateActionCount = (element, count) => {
+        const previousCount = Number(element.dataset.countValue);
+        element.dataset.countValue = String(count);
+        if (!Number.isFinite(previousCount)
+          || previousCount === count
+          || matchMedia("(prefers-reduced-motion: reduce)").matches
+          || typeof element.animate !== "function") return;
+        element.getAnimations().forEach((animation) => animation.cancel());
+        const direction = count > previousCount ? 1 : -1;
+        element.animate(
+          [
+            { opacity: 0.35, transform: `translateY(${direction * 55}%) scale(0.92)` },
+            { opacity: 1, transform: "translateY(0) scale(1)" },
+          ],
+          { duration: 280, easing: "cubic-bezier(0.2, 0.7, 0.2, 1)" },
+        );
+      };
+      const syncActionCount = (element, count, { alwaysVisible = false } = {}) => {
         if (!element) return;
-        element.textContent = homeActionCount(count);
-        element.hidden = count <= 0;
+        const value = Math.max(0, Number(count) || 0);
+        animateActionCount(element, value);
+        element.textContent = homeActionCount(value);
+        element.hidden = !alwaysVisible && value <= 0;
         const action = element.closest(".act");
-        const labels = { comment: "Reply", repost: "Repost", like: "Like" };
+        const labels = { comment: "Reply", repost: "Repost", like: "Like", views: "Views" };
         if (action && labels[action.dataset.a]) {
-          const suffix = action.dataset.a === "like" ? (count === 1 ? "like" : "likes")
-            : action.dataset.a === "comment" ? (count === 1 ? "reply" : "replies")
-            : (count === 1 ? "repost" : "reposts");
-          action.setAttribute("aria-label", `${labels[action.dataset.a]}, ${count} ${suffix}`);
+          const suffix = action.dataset.a === "like" ? (value === 1 ? "like" : "likes")
+            : action.dataset.a === "comment" ? (value === 1 ? "reply" : "replies")
+            : action.dataset.a === "views" ? (value === 1 ? "view" : "views")
+            : (value === 1 ? "repost" : "reposts");
+          action.setAttribute("aria-label", `${labels[action.dataset.a]}, ${value} ${suffix}`);
         }
       };
       const homePostMedia = (p) => {
@@ -8060,10 +8080,10 @@ ${avatarMarkup(p.author, "sm")}
 ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class="i" aria-hidden="true"><use href="#pin" /></svg><span>${esc(getCompactLocationLabel(p.location))}</span></div>` : ""}<p class="reply-copy">${renderPostText(p.x, searchTerm)}</p>${homePostMedia(p)}
 <div class="acts post-actions" role="group" aria-label="Reply actions">
 <div class="post-actions-primary">
-<button class="act" data-a="comment" aria-label="Reply, ${p.c || 0} ${(p.c || 0) === 1 ? "reply" : "replies"}">${ic("msg")}<span data-count="replies"${p.c ? "" : " hidden"}>${homeActionCount(p.c)}</span></button>
-<div class="repost-wrap"><button class="act" data-a="repost" aria-pressed="${!!p.rep}" aria-label="Repost, ${p.r || 0} ${(p.r || 0) === 1 ? "repost" : "reposts"}">${ic("repeat")}<span data-count="reposts"${p.r ? "" : " hidden"}>${homeActionCount(p.r)}</span></button><div class="repost-menu" role="menu" hidden><button type="button" role="menuitem" data-repost-action="repost">Repost</button><button type="button" role="menuitem" data-repost-action="quote">Quote</button></div></div>
-<button class="act" data-a="like" aria-pressed="${!!p.liked}" aria-label="Like, ${p.l || 0} ${(p.l || 0) === 1 ? "like" : "likes"}">${ic("heart")}<span data-count="likes"${p.l ? "" : " hidden"}>${homeActionCount(p.l)}</span></button>
-<button class="act" data-a="views" aria-label="Views, ${p.views || 0}">${ic("views")}<span data-count="views">${homeActionCount(p.views)}</span></button>
+<button class="act" data-a="comment" aria-label="Reply, ${p.c || 0} ${(p.c || 0) === 1 ? "reply" : "replies"}">${ic("msg")}<span data-count="replies" data-count-value="${Number(p.c) || 0}"${p.c ? "" : " hidden"}>${homeActionCount(p.c)}</span></button>
+<div class="repost-wrap"><button class="act" data-a="repost" aria-pressed="${!!p.rep}" aria-label="Repost, ${p.r || 0} ${(p.r || 0) === 1 ? "repost" : "reposts"}">${ic("repeat")}<span data-count="reposts" data-count-value="${Number(p.r) || 0}"${p.r ? "" : " hidden"}>${homeActionCount(p.r)}</span></button><div class="repost-menu" role="menu" hidden><button type="button" role="menuitem" data-repost-action="repost">Repost</button><button type="button" role="menuitem" data-repost-action="quote">Quote</button></div></div>
+<button class="act" data-a="like" aria-pressed="${!!p.liked}" aria-label="Like, ${p.l || 0} ${(p.l || 0) === 1 ? "like" : "likes"}">${ic("heart")}<span data-count="likes" data-count-value="${Number(p.l) || 0}"${p.l ? "" : " hidden"}>${homeActionCount(p.l)}</span></button>
+<button class="act" data-a="views" aria-label="Views, ${p.views || 0}">${ic("views")}<span data-count="views" data-count-value="${Number(p.views) || 0}">${homeActionCount(p.views)}</span></button>
 </div>
 <div class="post-actions-right"><button class="act" data-a="bookmark" aria-label="Bookmark">${ic("bookmark")}</button><button class="act" data-a="share" aria-label="Share">${ic("share")}</button></div></div>
 </div></article>`;
@@ -8073,10 +8093,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
 ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class="i" aria-hidden="true"><use href="#pin" /></svg><span>${esc(getCompactLocationLabel(p.location))}</span></div>` : ""}<p class="p-text">${renderPostText(p.x, searchTerm)}</p>${homePostMedia(p)}
 <div class="acts post-actions" role="group" aria-label="Post actions">
 <div class="post-actions-primary">
-<button class="act" data-a="comment" aria-label="Reply, ${p.c || 0} ${(p.c || 0) === 1 ? "reply" : "replies"}">${ic("msg")}<span data-count="replies"${p.c ? "" : " hidden"}>${homeActionCount(p.c)}</span></button>
-<div class="repost-wrap"><button class="act" data-a="repost" aria-pressed="${!!p.rep}" aria-label="Repost, ${p.r || 0} ${(p.r || 0) === 1 ? "repost" : "reposts"}">${ic("repeat")}<span data-count="reposts"${p.r ? "" : " hidden"}>${homeActionCount(p.r)}</span></button><div class="repost-menu" role="menu" hidden><button type="button" role="menuitem" data-repost-action="repost">Repost</button><button type="button" role="menuitem" data-repost-action="quote">Quote</button></div></div>
-<button class="act" data-a="like" aria-pressed="${!!p.liked}" aria-label="Like, ${p.l || 0} ${(p.l || 0) === 1 ? "like" : "likes"}">${ic("heart")}<span data-count="likes"${p.l ? "" : " hidden"}>${homeActionCount(p.l)}</span></button>
-<button class="act" data-a="views" aria-label="Views, ${p.views || 0}">${ic("views")}<span data-count="views">${homeActionCount(p.views)}</span></button>
+<button class="act" data-a="comment" aria-label="Reply, ${p.c || 0} ${(p.c || 0) === 1 ? "reply" : "replies"}">${ic("msg")}<span data-count="replies" data-count-value="${Number(p.c) || 0}"${p.c ? "" : " hidden"}>${homeActionCount(p.c)}</span></button>
+<div class="repost-wrap"><button class="act" data-a="repost" aria-pressed="${!!p.rep}" aria-label="Repost, ${p.r || 0} ${(p.r || 0) === 1 ? "repost" : "reposts"}">${ic("repeat")}<span data-count="reposts" data-count-value="${Number(p.r) || 0}"${p.r ? "" : " hidden"}>${homeActionCount(p.r)}</span></button><div class="repost-menu" role="menu" hidden><button type="button" role="menuitem" data-repost-action="repost">Repost</button><button type="button" role="menuitem" data-repost-action="quote">Quote</button></div></div>
+<button class="act" data-a="like" aria-pressed="${!!p.liked}" aria-label="Like, ${p.l || 0} ${(p.l || 0) === 1 ? "like" : "likes"}">${ic("heart")}<span data-count="likes" data-count-value="${Number(p.l) || 0}"${p.l ? "" : " hidden"}>${homeActionCount(p.l)}</span></button>
+<button class="act" data-a="views" aria-label="Views, ${p.views || 0}">${ic("views")}<span data-count="views" data-count-value="${Number(p.views) || 0}">${homeActionCount(p.views)}</span></button>
 </div>
 <div class="post-actions-right"><button class="act" data-a="bookmark" aria-label="Bookmark">${ic("bookmark")}</button><button class="act" data-a="share" aria-label="Share">${ic("share")}</button></div></div>
 </div></article>`;
@@ -8133,9 +8153,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $$(`.post[data-id="${CSS.escape(postId)}"]`).forEach((element) => {
           const counter = $(`[data-count="views"]`, element);
           if (!counter) return;
-          counter.textContent = homeActionCount(count);
-          counter.hidden = false;
-          counter.closest(".act")?.setAttribute("aria-label", `Views, ${count}`);
+          syncActionCount(counter, count, { alwaysVisible: true });
         });
       }
       async function recordPostView(postId) {
