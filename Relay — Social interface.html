@@ -8512,7 +8512,7 @@
         if (p.replyToId) {
           const parent = p.replyTo;
           return `<article class="post reply-card" data-id="${esc(p.id)}" data-reply-to="${esc(p.replyToId)}" tabindex="0">
-${presenceAvatarMarkup(p.author, "sm")}
+${avatarMarkup(p.author, "sm")}
 <div class="p-body">
 <div class="reply-context">Replying to ${parent ? profileLink(parent.author, `@${parent.author.handle}`) : "a post that is no longer available"}</div>
 <div class="p-head"><b>${profileLink(p.author, p.n)}</b><span class="m">@${esc(p.u)} · ${p.t}</span>${postMenu}</div>
@@ -8527,7 +8527,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
 <div class="post-actions-right"><button class="act" data-a="bookmark" aria-label="Bookmark">${ic("bookmark")}</button><button class="act" data-a="share" aria-label="Share">${ic("share")}</button></div></div>
 </div></article>`;
         }
-        return `<article class="post" data-id="${esc(p.id)}" tabindex="0"><button class="profile-avatar-link" type="button" data-profile-id="${esc(p.author.id)}" aria-label="View @${esc(p.u)} profile">${presenceAvatarMarkup(p.author)}</button><div class="p-body">
+        return `<article class="post" data-id="${esc(p.id)}" tabindex="0"><button class="profile-avatar-link" type="button" data-profile-id="${esc(p.author.id)}" aria-label="View @${esc(p.u)} profile">${avatarMarkup(p.author)}</button><div class="p-body">
 <div class="p-head"><b>${profileLink(p.author, p.n)}</b><span class="m">@${esc(p.u)} · ${p.t}</span>${postMenu}</div>
 ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class="i" aria-hidden="true"><use href="#pin" /></svg><span>${esc(getCompactLocationLabel(p.location))}</span></div>` : ""}<p class="p-text">${renderPostText(p.x, searchTerm)}</p>${homePostMedia(p)}
 <div class="acts post-actions" role="group" aria-label="Post actions">
