@@ -8082,6 +8082,10 @@
       let reelUploadRequest = null;
       let reelUploadCancellation = false;
       let reelUploadCreatedId = "";
+      let reelUploadSession = null;
+      let reelUploadPromise = null;
+      let reelUploadGeneration = 0;
+      let reelUploadCommitted = false;
       let reelUploadFile = null;
       let reelUploadMetadataReady = false;
       let reelUploadBusy = false;
@@ -10677,9 +10681,24 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function selectReelFile(file) {
         if (!file) return;
+        if (reelUploadBusy || reelUploadCommitted) return;
+        const generation = ++reelUploadGeneration;
+        reelUploadCancellation = false;
+        const previousReelId = reelUploadCreatedId;
+        reelUploadRequest?.abort();
+        reelUploadRequest = null;
+        reelUploadSession = null;
+        reelUploadPromise = null;
+        reelUploadCreatedId = "";
+        reelUploadCommitted = false;
         reelUploadFile = null;
         reelUploadMetadataReady = false;
+        $("#reelUploadProgressWrap").hidden = true;
         updateReelUploadButton();
+        if (previousReelId) {
+          api(`/reels/${encodeURIComponent(previousReelId)}`, { method: "DELETE" })
+            .catch((error) => console.error("Could not discard the previous Reel upload.", error));
+        }
         const mime = resolveReelMime(file);
         if (!mime) {
           setReelUploadStatus("Choose an MP4, MOV, or WebM video.", "error");
@@ -10718,13 +10737,22 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             return;
           }
           reelUploadMetadataReady = true;
-          setReelUploadStatus("Video ready to upload.");
           updateReelUploadButton();
+          $("#reelUploadProgressWrap").hidden = false;
+          $("#reelUploadProgress").value = 0;
+          $("#reelUploadProgressLabel").textContent = "Uploading video · 0%";
+          setReelUploadStatus("Uploading in the background while you write your caption…");
+          startReelPreupload(file, generation);
         };
         preview.onerror = () => {
           preview.onerror = null;
           reelUploadFile = null;
           reelUploadMetadataReady = false;
+          reelUploadSession = null;
+          reelUploadPromise = null;
+          reelUploadCreatedId = "";
+          reelUploadCommitted = false;
+          reelUploadGeneration += 1;
           setReelUploadStatus("Could not preview this video. Choose another file.", "error");
           updateReelUploadButton();
         };
@@ -10733,9 +10761,15 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function showReelCreateDialog() {
         if (!requireAuth()) return;
         if (!reelUploadBusy) {
+          reelUploadGeneration += 1;
+          reelUploadCancellation = false;
           $("#reelCreateForm").reset();
           reelUploadFile = null;
           reelUploadMetadataReady = false;
+          reelUploadSession = null;
+          reelUploadPromise = null;
+          reelUploadCreatedId = "";
+          reelUploadCommitted = false;
           $("#reelUploadPreview").removeAttribute("src");
           $("#reelUploadPreview").hidden = true;
           $("#reelUploadPlaceholder").hidden = false;
@@ -10749,6 +10783,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function closeReelCreateDialog() {
         if (reelUploadBusy) cancelReelUpload();
+        else if (reelUploadRequest || reelUploadPromise || (reelUploadCreatedId && !reelUploadCommitted)) cancelReelUpload();
         if ($("#reelCreateDialog").open) $("#reelCreateDialog").close();
       }
       function uploadRequest(url, method, body, headers = {}, authenticated = false) {
@@ -10976,55 +11011,87 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           updateReelUploadButton();
         }
       }
+      async function uploadSelectedReel(file, generation) {
+        let session = reelUploadSession;
+        if (!session) {
+          const created = await api("/reels/uploads", {
+            method: "POST",
+            body: JSON.stringify({
+              caption: null,
+              mime: resolveReelMime(file),
+              sizeBytes: file.size,
+            }),
+          });
+          if (generation !== reelUploadGeneration || reelUploadCancellation) {
+            await api(`/reels/${encodeURIComponent(created.id)}`, { method: "DELETE" });
+            throw new DOMException("Upload canceled", "AbortError");
+          }
+          reelUploadCreatedId = created.id;
+          reelUploadSession = created;
+          session = created;
+        }
+        if (generation !== reelUploadGeneration || reelUploadCancellation) {
+          throw new DOMException("Upload canceled", "AbortError");
+        }
+        if (session.upload.method === "PUT") {
+          await uploadRequest(session.upload.url, "PUT", file, session.upload.headers || {});
+        } else {
+          const form = new FormData();
+          form.append("reelId", session.id);
+          form.append("file", file, file.name);
+          await uploadRequest(new URL(session.upload.url, API_BASE).href, "POST", form, {}, true);
+        }
+        if (generation !== reelUploadGeneration || reelUploadCancellation) {
+          throw new DOMException("Upload canceled", "AbortError");
+        }
+        $("#reelUploadProgress").value = 100;
+        $("#reelUploadProgressLabel").textContent = "Video uploaded · Ready to share";
+        setReelUploadStatus("Video uploaded. Add a caption and share when you’re ready.");
+        return session;
+      }
+      function startReelPreupload(file, generation) {
+        if (reelUploadPromise) return reelUploadPromise;
+        const promise = uploadSelectedReel(file, generation);
+        reelUploadPromise = promise;
+        void promise.catch((error) => {
+          if (generation !== reelUploadGeneration || error.name === "AbortError") return;
+          reelUploadPromise = null;
+          setReelUploadStatus(error.message || "The video upload was interrupted. Try again.", "error");
+        });
+        return promise;
+      }
       async function uploadReel(event) {
         event.preventDefault();
         if (!requireAuth() || reelUploadBusy || !reelUploadFile || !reelUploadMetadataReady) return;
         reelUploadBusy = true;
         reelUploadCancellation = false;
-        reelUploadCreatedId = "";
+        const generation = reelUploadGeneration;
         updateReelUploadButton();
         $("#reelUploadProgressWrap").hidden = false;
-        $("#reelUploadProgress").value = 0;
-        $("#reelUploadProgressLabel").textContent = "Preparing upload";
-        setReelUploadStatus("Preparing your Reel…");
+        if (!reelUploadRequest && !reelUploadSession) {
+          $("#reelUploadProgress").value = 0;
+          $("#reelUploadProgressLabel").textContent = "Preparing upload";
+          setReelUploadStatus("Preparing your Reel…");
+        }
         try {
           const file = reelUploadFile;
-          const mime = resolveReelMime(file);
-          const created = await api("/reels/uploads", {
-            method: "POST",
-            body: JSON.stringify({
-              caption: $("#reelCaption").value.trim() || null,
-              mime,
-              sizeBytes: file.size,
-            }),
-          });
-          reelUploadCreatedId = created.id;
+          const session = reelUploadPromise
+            ? await reelUploadPromise
+            : await startReelPreupload(file, generation);
           if (reelUploadCancellation) {
-            await api(`/reels/${encodeURIComponent(created.id)}`, { method: "DELETE" });
-            return;
-          }
-          setReelUploadStatus("Uploading your video…");
-          if (created.upload.method === "PUT") {
-            await uploadRequest(created.upload.url, "PUT", file, created.upload.headers || {});
-          } else {
-            const form = new FormData();
-            form.append("reelId", created.id);
-            form.append("file", file, file.name);
-            await uploadRequest(new URL(created.upload.url, API_BASE).href, "POST", form, {}, true);
-          }
-          if (reelUploadCancellation) {
-            await api(`/reels/${encodeURIComponent(created.id)}`, { method: "DELETE" });
+            await api(`/reels/${encodeURIComponent(session.id)}`, { method: "DELETE" });
             return;
           }
           setReelUploadStatus("Video uploaded. Starting processing…");
-          await api(`/reels/${encodeURIComponent(created.id)}/complete`, {
+          await api(`/reels/${encodeURIComponent(session.id)}/complete`, {
             method: "POST",
-            body: JSON.stringify({}),
+            body: JSON.stringify({ caption: $("#reelCaption").value.trim() || null }),
           });
-          const ready = await waitForReelProcessing(created.id);
+          reelUploadCommitted = true;
+          const ready = await waitForReelProcessing(session.id);
           if (!ready || reelUploadCancellation) return;
           if (ready.timedOut) return;
-          await finishReelUpload(created.id);
+          await finishReelUpload(session.id);
         } catch (error) {
           if (error.name === "AbortError" && reelUploadCancellation) return;
           setReelUploadStatus(error.message || "Could not upload this Reel.", "error");
@@ -11037,8 +11104,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
       }
       function cancelReelUpload() {
-        if (!reelUploadBusy || reelUploadCancellation) return;
+        if (reelUploadCancellation) return;
+        if (!reelUploadBusy && !reelUploadRequest && !reelUploadPromise
+          && (!reelUploadCreatedId || reelUploadCommitted)) return;
         reelUploadCancellation = true;
+        reelUploadGeneration += 1;
         const reelId = reelUploadCreatedId;
         if (reelId) stopReelStatusPoller(reelId, null);
         reelUploadRequest?.abort();
@@ -11146,7 +11216,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }));
         dropzone.addEventListener("drop", (event) => selectReelFile(event.dataTransfer?.files?.[0]));
         $("#reelCreateDialog").addEventListener("cancel", () => {
-          if (reelUploadBusy) cancelReelUpload();
+          if (reelUploadBusy || reelUploadRequest || reelUploadPromise
+            || (reelUploadCreatedId && !reelUploadCommitted)) cancelReelUpload();
         });
         $("#reelCreateDialog").addEventListener("close", () => {
           if (reelUploadCreatedId) stopReelStatusPoller(reelUploadCreatedId, null);

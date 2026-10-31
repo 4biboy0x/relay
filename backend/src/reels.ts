@@ -80,6 +80,7 @@ const uploadSchema = z.object({
   sizeBytes: z.number().int().positive().max(config.REEL_MAX_UPLOAD_BYTES),
 });
 const captionSchema = z.object({ caption: z.string().max(280).nullable() });
+const completeSchema = captionSchema.partial();
 const commentSchema = z.object({
   body: z.string().trim().min(1).max(280),
   replyToId: z.string().cuid().optional(),
@@ -455,6 +456,7 @@ router.post("/local-upload", authRequired, writeLimiter, localUploadOnly, reelMu
 
 router.post("/:id/complete", authRequired, writeLimiter, asyncRoute(async (req, res) => {
   const reelId = reelIdFrom(req.params.id);
+  const input = completeSchema.parse(req.body ?? {});
   const reel = await prisma.reel.findFirst({
     where: { id: reelId, authorId: viewerIdFrom(req), deletedAt: null },
     select: { id: true, originalKey: true, sizeBytes: true, status: true },
@@ -489,7 +491,10 @@ router.post("/:id/complete", authRequired, writeLimiter, asyncRoute(async (req, 
   const result = await prisma.$transaction(async (tx) => {
     const updated = await tx.reel.updateMany({
       where: { id: reel.id, status: ReelStatus.UPLOADING },
-      data: { status: ReelStatus.PROCESSING },
+      data: {
+        status: ReelStatus.PROCESSING,
+        ...(input.caption !== undefined ? { caption: input.caption } : {}),
+      },
     });
     if (updated.count !== 1) return false;
     await tx.processingJob.create({
