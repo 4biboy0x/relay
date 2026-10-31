@@ -4082,16 +4082,16 @@
         margin: 2px 8px;
         padding: 11px 12px;
         border: 0;
-        border-radius: 12px;
+        border-radius: 14px;
         text-align: left;
         background: transparent;
         transition: background-color 160ms ease;
       }
-      .conversation-item:hover {
-        background: transparent;
+      .conversation-item:hover:not([aria-current="true"]) {
+        background: color-mix(in srgb, var(--text) 2.5%, var(--surface));
       }
       .conversation-item[aria-current="true"] {
-        background: transparent;
+        background: color-mix(in srgb, var(--text) 6%, var(--surface));
       }
       .conversation-item:focus {
         outline: none;
