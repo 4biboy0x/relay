@@ -12,9 +12,13 @@
     <script>
       (() => {
         try {
-          const theme = sessionStorage.getItem("relay_theme");
+          const theme = localStorage.getItem("relay_theme")
+            || sessionStorage.getItem("relay_theme");
           if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
-        } catch {}
+          if (theme === "light" || theme === "dark") localStorage.setItem("relay_theme", theme);
+        } catch (error) {
+          console.warn("Unable to restore the saved theme preference.", error);
+        }
       })();
     </script>
     <style>
@@ -115,6 +119,25 @@
         scrollbar-gutter: stable;
         scrollbar-width: thin;
         scrollbar-color: var(--border) transparent;
+      }
+      html.theme-transition,
+      html.theme-transition body,
+      html.theme-transition body *,
+      html.theme-transition body *::before,
+      html.theme-transition body *::after {
+        transition-property: color, background-color, border-color, outline-color, box-shadow, fill, stroke, text-decoration-color;
+        transition-duration: 260ms;
+        transition-timing-function: cubic-bezier(.2, .7, .2, 1);
+        transition-delay: 0ms;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html.theme-transition,
+        html.theme-transition body,
+        html.theme-transition body *,
+        html.theme-transition body *::before,
+        html.theme-transition body *::after {
+          transition-duration: 0.01ms;
+        }
       }
       * {
         scrollbar-width: thin;
@@ -360,9 +383,11 @@
         border-radius: 9px;
         background: var(--surface-2);
       }
-      .media-preview-visual .giphy-embed-frame {
+      .media-preview-visual img {
+        display: block;
         width: 100%;
         height: 100%;
+        object-fit: cover;
       }
       .btn-sm {
         height: 30px;
@@ -730,12 +755,6 @@
       .av.has-image {
         background: var(--bg);
       }
-      #replyComposerMediaEmbed {
-        width: 42px;
-        height: 42px;
-        flex: none;
-        border-radius: 8px;
-      }
       .av.av-default {
         color: var(--text-2);
         background: var(--surface-2);
@@ -990,6 +1009,8 @@
         overflow-y: auto;
       }
       .location-result-skeleton {
+        position: relative;
+        overflow: hidden;
         height: 36px;
         border-radius: 7px;
         background: var(--surface-2);
@@ -1330,10 +1351,11 @@
       .emoji-skeleton::after {
         position: absolute;
         inset: 0;
-        background: rgba(255,255,255,.22);
+        background: linear-gradient(105deg, transparent 22%, rgba(255,255,255,.13) 50%, transparent 78%);
         content: "";
         transform: translateX(-120%);
-        animation: relay-skeleton-shimmer 1.2s ease-in-out infinite;
+        opacity: 0;
+        animation: relay-skeleton-shimmer 2s ease-in-out infinite;
       }
       .emoji-picker .emoji-results.is-switching {
         animation: emoji-category-switch 260ms cubic-bezier(.2, .8, .2, 1);
@@ -1513,15 +1535,15 @@
         pointer-events: none;
       }
       .gif-picker-dialog {
-        width: min(560px, calc(100vw - 28px));
+        width: min(540px, calc(100vw - 28px));
         max-width: none;
         height: fit-content;
         max-height: min(720px, calc(100dvh - 32px));
         box-sizing: border-box;
-        padding: 18px;
+        padding: 16px;
         overflow: hidden;
         border: 1px solid var(--border);
-        border-radius: 20px;
+        border-radius: 18px;
         color: var(--text);
         background: var(--surface);
         box-shadow: 0 24px 80px rgba(0, 0, 0, .24);
@@ -1538,13 +1560,13 @@
         display: flex;
         flex: none;
         align-items: center;
-        gap: 12px;
-        margin-bottom: 14px;
+        gap: 10px;
+        margin-bottom: 10px;
       }
       .gif-picker-heading h2 {
         flex: 1;
         margin: 0;
-        font-size: 18px;
+        font-size: 17px;
       }
       .gif-picker-close {
         width: 34px;
@@ -1571,15 +1593,15 @@
         display: flex;
         flex: none;
         gap: 8px;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
       }
       .gif-picker-search input {
         min-width: 0;
         flex: 1;
-        height: 42px;
+        height: 40px;
         padding: 0 12px;
         border: 1px solid var(--border);
-        border-radius: 12px;
+        border-radius: 10px;
         color: var(--text);
         background: var(--surface);
         font: inherit;
@@ -1587,8 +1609,8 @@
       .gif-picker-search .btn { flex: none; }
       .gif-picker-status {
         flex: none;
-        min-height: 22px;
-        margin: 0 0 8px;
+        min-height: 18px;
+        margin: 0 0 6px;
         color: var(--text-2);
         font-size: 13px;
       }
@@ -1601,7 +1623,7 @@
         overflow-y: auto;
         overscroll-behavior: contain;
         scrollbar-gutter: stable;
-        padding: 2px;
+        padding: 0;
       }
       .gif-picker-results-scroll::-webkit-scrollbar { width: 8px; }
       .gif-picker-results-scroll::-webkit-scrollbar-thumb {
@@ -1622,15 +1644,15 @@
         aspect-ratio: 4 / 3;
         padding: 0;
         overflow: hidden;
-        border: 1px solid var(--border);
-        border-radius: 10px;
+        border: 0;
+        border-radius: 11px;
         background: var(--surface-2);
         cursor: pointer;
-        transition: border-color 140ms ease, box-shadow 140ms ease;
+        transition: box-shadow 140ms ease, transform 140ms ease;
       }
       .gif-picker-result:hover {
-        border-color: var(--accent);
         box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+        transform: translateY(-1px);
       }
       .gif-picker-result:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       .gif-picker-result img {
@@ -1644,10 +1666,15 @@
         align-items: center;
         justify-content: flex-end;
         flex: none;
-        min-height: 30px;
-        margin-top: 10px;
+        min-height: 24px;
+        margin-top: 8px;
       }
-      .gif-picker-attribution img { width: 112px; height: auto; }
+      .gif-picker-attribution img {
+        width: 112px;
+        height: auto;
+        border-radius: 2px;
+        background: #000;
+      }
       .gif-picker-attribution .giphy-white,
       [data-theme="dark"] .gif-picker-attribution .giphy-black { display: none; }
       [data-theme="dark"] .gif-picker-attribution .giphy-white { display: block; }
@@ -1676,13 +1703,13 @@
       .profile-crop-heading {
         display: flex;
         align-items: center;
-        gap: 12px;
-        margin-bottom: 16px;
+        gap: 8px;
+        margin-bottom: 12px;
       }
       .profile-crop-heading h2 {
         flex: 1;
         margin: 0;
-        font-size: 18px;
+        font-size: 16px;
       }
       .profile-crop-close,
       .profile-crop-save {
@@ -1708,12 +1735,6 @@
         stroke-linejoin: round;
         stroke-width: 2;
       }
-      .profile-crop-instructions {
-        margin: 0 0 14px;
-        color: var(--text-2);
-        font-size: 13px;
-        text-align: center;
-      }
       .profile-crop-stage {
         position: relative;
         width: min(280px, 72vw);
@@ -1737,6 +1758,7 @@
         position: absolute;
         top: 50%;
         left: 50%;
+        transform: translate(-50%, -50%);
         max-width: none;
         pointer-events: none;
         user-select: none;
@@ -1747,13 +1769,14 @@
         inset: 0;
         pointer-events: none;
         background: rgba(0, 0, 0, .48);
-        -webkit-mask: radial-gradient(circle, transparent 0 49.4%, #000 50%);
-        mask: radial-gradient(circle, transparent 0 49.4%, #000 50%);
+        -webkit-mask: radial-gradient(circle closest-side at center, transparent 0 98.5%, #000 100%);
+        mask: radial-gradient(circle closest-side at center, transparent 0 98.5%, #000 100%);
       }
       .profile-crop-ring {
         position: absolute;
         z-index: 2;
         inset: 0;
+        box-sizing: border-box;
         border: 2px solid rgba(255, 255, 255, .92);
         border-radius: 50%;
         pointer-events: none;
@@ -1796,6 +1819,8 @@
       }
       .gif-picker-result { position: relative; }
       .gif-picker-skeleton {
+        position: relative;
+        overflow: hidden;
         display: block;
         aspect-ratio: 4 / 3;
         border: 1px solid var(--border);
@@ -1809,10 +1834,11 @@
       #profileBody.is-loading .cover::after {
         position: absolute;
         inset: 0;
-        background: rgba(255,255,255,.22);
+        background: linear-gradient(105deg, transparent 22%, rgba(255,255,255,.13) 50%, transparent 78%);
         content: "";
         transform: translateX(-120%);
-        animation: relay-skeleton-shimmer 1.2s ease-in-out infinite;
+        opacity: 0;
+        animation: relay-skeleton-shimmer 2s ease-in-out infinite;
         pointer-events: none;
       }
       #profileBody.is-loading :is(#profileAvatar, #profileName, #profileHandle, #profileBio, #followingCount, #followerCount) {
@@ -1840,10 +1866,11 @@
       #profileBody.is-loading :is(#profileAvatar, #profileName, #profileHandle, #profileBio, #followingCount, #followerCount)::after {
         position: absolute;
         inset: 0;
-        background: rgba(255,255,255,.22);
+        background: linear-gradient(105deg, transparent 22%, rgba(255,255,255,.13) 50%, transparent 78%);
         content: "";
         transform: translateX(-120%);
-        animation: relay-skeleton-shimmer 1.2s ease-in-out infinite;
+        opacity: 0;
+        animation: relay-skeleton-shimmer 2s ease-in-out infinite;
         pointer-events: none;
       }
       #profileBody.is-loading #profileAvatar::after { border-radius: inherit; }
@@ -1852,26 +1879,6 @@
         #profileBody.is-loading :is(#profileAvatar, #profileName, #profileHandle, #profileBio, #followingCount, #followerCount)::after {
           animation: none;
         }
-      }
-      .giphy-embed-frame {
-        display: block;
-        width: 100%;
-        height: 100%;
-        border: 0;
-        background: var(--surface-2);
-      }
-      .media-grid > .gif-media-embed {
-        display: block;
-        aspect-ratio: 4 / 3;
-        min-height: 200px;
-        overflow: hidden;
-      }
-      .message-gif-media {
-        width: min(340px, 100%);
-        aspect-ratio: 4 / 3;
-        overflow: hidden;
-        border-radius: 12px;
-        background: var(--surface-2);
       }
       @media (prefers-reduced-motion: reduce) {
         .post.is-deleting {
@@ -1986,6 +1993,7 @@
         background: var(--surface-2);
       }
       .thread-reply-form {
+        position: relative;
         display: grid;
         grid-template-columns: 40px minmax(0, 1fr);
         gap: 0 8px;
@@ -2038,10 +2046,11 @@
       }
       .thread-reply-action {
         display: grid;
-        width: 30px;
-        height: 30px;
+        width: 36px;
+        height: 36px;
+        flex: none;
         place-items: center;
-        border-radius: 50%;
+        border-radius: 8px;
         color: var(--accent);
       }
       .thread-reply-action:hover {
@@ -2053,37 +2062,52 @@
         opacity: 0.7;
       }
       .thread-reply-action svg {
-        width: 17px;
-        height: 17px;
+        width: 19px;
+        height: 19px;
         fill: none;
         stroke: currentColor;
         stroke-linecap: round;
         stroke-linejoin: round;
         stroke-width: 1.8;
       }
+      .thread-reply-action[data-reply-action="gif"] {
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+      }
       .thread-reply-gif-icon {
-        width: 21px !important;
-        height: 21px !important;
-        fill: currentColor !important;
-        stroke: none !important;
+        display: none;
       }
       .thread-reply-media-preview {
         grid-column: 2;
         display: flex;
-        width: min(100%, 144px);
-        align-items: flex-start;
+        width: min(100%, 320px);
+        align-items: center;
         gap: 8px;
-        margin: 4px 0 8px;
-      }
-      .thread-reply-media-preview iframe {
-        display: block;
-        width: min(96px, calc(100% - 32px));
-        aspect-ratio: 4 / 3;
-        height: auto;
-        flex: none;
-        border: 0;
-        border-radius: 8px;
+        margin: 8px 0 0;
+        padding: 8px;
+        box-sizing: border-box;
+        border: 1px solid var(--border);
+        border-radius: 12px;
         background: var(--surface-2);
+      }
+      .thread-reply-media-preview[hidden] { display: none; }
+      .thread-reply-media-preview img {
+        display: block;
+        width: 72px;
+        aspect-ratio: 4 / 3;
+        flex: none;
+        object-fit: cover;
+        border-radius: 9px;
+        background: var(--surface-2);
+      }
+      .thread-reply-media-status {
+        min-width: 0;
+        overflow: hidden;
+        color: var(--text-2);
+        font-size: 12px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .thread-reply-media-remove {
         display: grid;
@@ -2099,6 +2123,7 @@
         color: var(--text);
         background: var(--surface-2);
       }
+      .thread-reply-location { grid-column: 2; margin-top: 8px; }
       .thread-reply-form > .thread-reply-toolbar .btn-primary {
         margin-left: auto;
         height: 32px;
@@ -2108,6 +2133,10 @@
         border-radius: 999px;
         font-size: 14px;
         font-weight: 600;
+      }
+      .thread-reply-toolbar .count {
+        flex: none;
+        font-size: 12px;
       }
       .thread-reply-toolbar .btn-primary:disabled {
         opacity: 0.45;
@@ -3230,6 +3259,7 @@
         stroke-width: 2;
       }
       .reply-composer-form {
+        position: relative;
         display: flex !important;
         width: 100% !important;
         min-height: 0;
@@ -3245,6 +3275,7 @@
         column-gap: 12px;
         padding: 8px 22px 0;
       }
+      .reply-composer-location { margin: 8px 22px 0 74px; }
       .reply-composer-thread::before {
         position: absolute;
         z-index: 0;
@@ -3358,15 +3389,6 @@
         border: 1px solid var(--border);
         border-radius: 9px;
         object-fit: contain;
-        background: var(--surface);
-      }
-      .reply-composer-media #replyComposerMediaEmbed {
-        width: min(72px, 24vw);
-        aspect-ratio: 4 / 3;
-        height: auto;
-        flex: none;
-        border: 1px solid var(--border);
-        border-radius: 9px;
         background: var(--surface);
       }
       .reply-composer-media .dismiss-btn {
@@ -3484,6 +3506,7 @@
           margin-right: 14px;
           margin-left: 60px;
         }
+        .reply-composer-location { margin-right: 14px; margin-left: 60px; }
         .reply-composer-footer {
           gap: 4px;
           padding: 8px 10px 10px;
@@ -4254,6 +4277,11 @@
         display: block;
         border-radius: 14px;
         background: var(--surface-2);
+      }
+      .message-media-static {
+        cursor: default;
+        pointer-events: none;
+        user-select: none;
       }
       .message-media-button {
         display: block;
@@ -5143,7 +5171,6 @@
           flex: 1;
           min-height: 48px;
         }
-        }
         .post,
         .composer,
         .prof,
@@ -5378,13 +5405,17 @@
       .relay-skeleton-shimmer::after {
         position: absolute;
         inset: 0;
-        background: rgba(255,255,255,.22);
+        background: linear-gradient(105deg, transparent 22%, rgba(255,255,255,.13) 50%, transparent 78%);
         content: "";
         transform: translateX(-120%);
-        animation: relay-skeleton-shimmer 1.2s ease-in-out infinite;
+        opacity: 0;
+        animation: relay-skeleton-shimmer 2s ease-in-out infinite;
       }
       @keyframes relay-skeleton-shimmer {
-        60%, 100% { transform: translateX(120%); }
+        0% { transform: translateX(-120%); opacity: 0; }
+        14% { opacity: .7; }
+        76% { opacity: .7; }
+        100% { transform: translateX(120%); opacity: 0; }
       }
       @media (prefers-reduced-motion: reduce) {
         .relay-skeleton-shimmer::after,
@@ -5708,7 +5739,6 @@
               <div class="media-preview" id="mediaPreview" hidden>
                 <div class="media-preview-visual">
                   <img id="mediaPreviewImage" alt="Selected image preview" />
-                  <iframe class="giphy-embed-frame" id="mediaPreviewEmbed" title="Selected GIPHY GIF" loading="lazy" allowfullscreen hidden></iframe>
                 </div>
                 <div class="grow"><b id="mediaPreviewName">Image ready</b><small id="mediaUploadStatus">Ready to attach</small></div>
                 <button class="dismiss-btn" id="removeMedia" type="button" aria-label="Remove attached image">
@@ -6056,12 +6086,11 @@
     </dialog>
     <dialog class="profile-crop-dialog" id="profileCropDialog" aria-labelledby="profileCropTitle">
       <header class="profile-crop-heading">
-        <h2 id="profileCropTitle">Adjust profile photo</h2>
-        <button class="profile-crop-close" id="profileCropClose" type="button" aria-label="Cancel crop">
+        <h2 id="profileCropTitle">Crop profile photo</h2>
+        <button class="profile-crop-close" id="profileCropClose" type="button" aria-label="Close crop dialog">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>
         </button>
       </header>
-      <p class="profile-crop-instructions">Drag to reposition, then adjust the zoom.</p>
       <div class="profile-crop-stage" id="profileCropStage" role="application" tabindex="0" aria-label="Drag the image to adjust the circular crop">
         <div class="profile-crop-image-clip">
           <img class="profile-crop-image" id="profileCropImage" alt="Profile photo crop preview" draggable="false">
@@ -6076,7 +6105,6 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 4.5 4.5M7.8 10.8h6" /></svg>
       </label>
       <footer class="profile-crop-footer">
-        <button class="btn btn-line btn-sm" id="profileCropCancel" type="button">Cancel</button>
         <button class="profile-crop-save" id="profileCropSave" type="button" aria-label="Save cropped profile photo" title="Save cropped profile photo">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4.5 4.5L19 7" /></svg>
         </button>
@@ -6153,9 +6181,15 @@
             <label class="sr" for="replyComposerText">Your reply</label>
             <textarea id="replyComposerText" maxlength="280" required placeholder="Post your reply"></textarea>
           </div>
+          <div class="composer-location reply-composer-location" id="replyComposerLocationChip" hidden>
+            <svg class="i" aria-hidden="true"><use href="#pin" /></svg>
+            <span id="replyComposerLocationLabel"></span>
+            <button class="dismiss-btn" type="button" data-reply-remove-location aria-label="Remove location">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>
+            </button>
+          </div>
           <div class="reply-composer-media" id="replyComposerMedia" hidden>
             <img id="replyComposerMediaImage" alt="Selected image preview">
-            <iframe class="giphy-embed-frame" id="replyComposerMediaEmbed" title="Selected GIPHY GIF" loading="lazy" allowfullscreen hidden></iframe>
             <span class="reply-composer-media-status" id="replyComposerMediaStatus">Uploading image…</span>
             <button class="dismiss-btn" id="removeReplyComposerMedia" type="button" aria-label="Remove attached image">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>
@@ -6171,14 +6205,11 @@
               <button class="reply-composer-attach" id="replyComposerGifButton" type="button" aria-label="Choose a GIF" title="Choose a GIF" aria-haspopup="dialog" aria-controls="gifPickerDialog" aria-expanded="false">
                 <svg class="reply-composer-gif-icon" aria-hidden="true" viewBox="0 0 24 24"><text x="2" y="17" font-size="12" font-weight="700">GIF</text></svg>
               </button>
-              <button class="reply-composer-attach" type="button" aria-label="Polls are not available for replies yet" title="Polls are not available for replies yet" disabled>
-                <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 19V5M4 19h17M8 15v-4M13 15V7M18 15V4" /></svg>
-              </button>
-              <button class="reply-composer-attach" type="button" aria-label="Emoji picker is not available for replies yet" title="Emoji picker is not available for replies yet" disabled>
+              <button class="reply-composer-attach" id="replyComposerEmojiButton" type="button" aria-label="Add emoji" aria-expanded="false">
                 <svg aria-hidden="true" viewBox="0 0 24 24"><use href="#smile" /></svg>
               </button>
-              <button class="reply-composer-attach" type="button" aria-label="Scheduling replies is not available yet" title="Scheduling replies is not available yet" disabled>
-                <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 10h18" /></svg>
+              <button class="reply-composer-attach" id="replyComposerLocationButton" type="button" aria-label="Add location" aria-expanded="false" aria-haspopup="dialog" aria-pressed="false">
+                <svg aria-hidden="true" viewBox="0 0 24 24"><use href="#pin" /></svg>
               </button>
             </div>
             <div class="reply-composer-submit-group">
@@ -6252,9 +6283,12 @@
       let editingPostId = null;
       let replyComposerTargetId = null;
       let replyComposerMediaUrl = "";
+      let replyComposerLocation = "";
       let replyComposerPreviewUrl = "";
       let replyComposerUploadPromise = null;
       let replyComposerUploadGeneration = 0;
+      let replyLocationTarget = null;
+      const threadReplyMediaStates = new WeakMap();
       let composerDraftBeforeEdit = null;
       let posts = [];
       let people = [];
@@ -6352,8 +6386,6 @@
           return false;
         }
       };
-      const giphyEmbedMarkup = (url, className = "giphy-embed-frame") =>
-        `<iframe class="${className}" src="${esc(url)}" title="GIF shared via GIPHY" loading="lazy" sandbox="allow-scripts allow-same-origin allow-presentation" allow="autoplay; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
       const validGiphyMediaUrl = (value) => {
         try {
           const url = new URL(value);
@@ -6362,6 +6394,34 @@
           return false;
         }
       };
+      const isGiphyDirectGifUrl = (value) => {
+        try {
+          const url = new URL(value);
+          return validGiphyMediaUrl(value) && url.hostname !== "giphy.com" && /\.gif$/i.test(url.pathname);
+        } catch {
+          return false;
+        }
+      };
+      const normalizeGiphyGifUrl = (value) => {
+        if (isGiphyEmbedUrl(value)) {
+          const id = new URL(value).pathname.split("/").pop();
+          return `https://media.giphy.com/media/${id}/giphy.gif`;
+        }
+        return isGiphyDirectGifUrl(value) ? value : "";
+      };
+      const isGifMediaUrl = (value) => {
+        try {
+          return Boolean(normalizeGiphyGifUrl(value)) || /\.gif$/i.test(new URL(value, window.location.href).pathname);
+        } catch {
+          return false;
+        }
+      };
+      const giphyGifUrl = (gif) => [
+        gif?.images?.original?.url,
+        gif?.images?.downsized_large?.url,
+        gif?.images?.downsized?.url,
+        gif?.images?.fixed_width?.url,
+      ].find(isGiphyDirectGifUrl) || "";
       const defaultAvatarSvg = `<svg class="relay-avatar-mark" viewBox="0 0 40 40" focusable="false"><use href="#default-avatar" /></svg>`;
       const setAvatar = (element, user, size = "") => {
         element.innerHTML = user?.avatarUrl
@@ -6567,8 +6627,6 @@
         $(".composer .box").classList.remove("has-media");
         $("#mediaPreviewImage").removeAttribute("src");
         $("#mediaPreviewImage").hidden = false;
-        $("#mediaPreviewEmbed").removeAttribute("src");
-        $("#mediaPreviewEmbed").hidden = true;
         $("#attachImage").setAttribute("aria-pressed", "false");
         $("#postFileInput").value = "";
         updatePostButton();
@@ -6580,18 +6638,15 @@
         $("#mediaPreview").hidden = !composerMediaUrl;
         $(".composer .box").classList.toggle("has-media", Boolean(composerMediaUrl));
         if (composerMediaUrl) {
-          const gif = isGiphyEmbedUrl(composerMediaUrl);
-          $("#mediaPreviewImage").hidden = gif;
-          $("#mediaPreviewEmbed").hidden = !gif;
-          if (gif) $("#mediaPreviewEmbed").src = composerMediaUrl;
-          else $("#mediaPreviewImage").src = mediaHref(composerMediaUrl);
+          const gifUrl = normalizeGiphyGifUrl(composerMediaUrl);
+          const gif = Boolean(gifUrl);
+          $("#mediaPreviewImage").hidden = false;
+          $("#mediaPreviewImage").src = gifUrl || mediaHref(composerMediaUrl);
           $("#mediaPreviewName").textContent = gif ? "GIF ready" : "Attached image";
-          $("#mediaUploadStatus").textContent = gif ? "Powered by GIPHY" : "Ready to attach";
+          $("#mediaUploadStatus").textContent = "Ready to attach";
         } else {
           $("#mediaPreviewImage").removeAttribute("src");
           $("#mediaPreviewImage").hidden = false;
-          $("#mediaPreviewEmbed").removeAttribute("src");
-          $("#mediaPreviewEmbed").hidden = true;
         }
       }
       function clearComposerLocation() {
@@ -6612,6 +6667,56 @@
         const compact = parts.length <= 2 ? parts.join(", ") : `${parts[0]}, ${parts[parts.length - 1]}`;
         if (compact.length <= 80) return compact;
         return compact.split(/\s+/).slice(-2).join(" ").slice(0, 80);
+      }
+      function replyLocationValue(target) {
+        return target.kind === "modal" ? replyComposerLocation : target.form.dataset.location || "";
+      }
+      function setReplyLocation(location, target = replyLocationTarget) {
+        if (!target) return;
+        const compactLocation = getCompactLocationLabel(location);
+        const chip = target.kind === "modal"
+          ? $("#replyComposerLocationChip")
+          : $("[data-thread-reply-location-chip]", target.form);
+        const label = target.kind === "modal"
+          ? $("#replyComposerLocationLabel")
+          : $("[data-thread-reply-location-label]", target.form);
+        const button = target.kind === "modal"
+          ? $("#replyComposerLocationButton")
+          : $("[data-thread-reply-location]", target.form);
+        if (target.kind === "modal") replyComposerLocation = compactLocation;
+        else target.form.dataset.location = compactLocation;
+        label.textContent = compactLocation;
+        label.title = location;
+        chip.setAttribute("aria-label", `Location: ${location}`);
+        chip.hidden = false;
+        button.setAttribute("aria-pressed", "true");
+        if (target.kind === "thread") updateThreadReplyFormState(target.form);
+      }
+      function clearReplyLocation(target) {
+        if (!target) return;
+        const chip = target.kind === "modal"
+          ? $("#replyComposerLocationChip")
+          : $("[data-thread-reply-location-chip]", target.form);
+        const label = target.kind === "modal"
+          ? $("#replyComposerLocationLabel")
+          : $("[data-thread-reply-location-label]", target.form);
+        const button = target.kind === "modal"
+          ? $("#replyComposerLocationButton")
+          : $("[data-thread-reply-location]", target.form);
+        if (target.kind === "modal") replyComposerLocation = "";
+        else delete target.form.dataset.location;
+        chip.hidden = true;
+        label.textContent = "";
+        button.setAttribute("aria-pressed", "false");
+        if (target.kind === "thread") updateThreadReplyFormState(target.form);
+      }
+      function applyLocationSelection(location) {
+        if (replyLocationTarget) setReplyLocation(location);
+        else setComposerLocation(location);
+        const trigger = activeComposerPopover?.popover === $("#locationPopover")
+          ? activeComposerPopover.trigger
+          : $("#addLocation");
+        closeComposerPopover($("#locationPopover"), trigger);
       }
       function setComposerLocation(location) {
         const compactLocation = getCompactLocationLabel(location);
@@ -6801,11 +6906,17 @@
         if (closeTimer) clearTimeout(closeTimer);
         popover.classList.add("is-closing");
         popover.hidden = true;
-        trigger.setAttribute("aria-expanded", "false");
+        trigger?.setAttribute("aria-expanded", "false");
         if (activeComposerPopover?.popover === popover) activeComposerPopover = null;
+        if (popover === $("#locationPopover")) replyLocationTarget = null;
         composerPopoverCloseTimers.set(popover, setTimeout(() => {
           popover.classList.remove("is-closing");
           composerPopoverCloseTimers.delete(popover);
+          const home = composerPopoverHomes.get(popover);
+          if (home && popover.parentElement !== home) home.append(popover);
+          if (popover === $("#locationPopover")) {
+            popover.setAttribute("aria-label", "Add a location to your post");
+          }
         }, 130));
       }
       function closePostMenus() {
@@ -6817,13 +6928,32 @@
           wrap?.querySelector("[data-post-menu-toggle]")?.setAttribute("aria-expanded", "false");
         });
       }
+      const composerPopoverHomes = new Map(
+        ["#emojiPicker", "#locationPopover"].map((selector) => {
+          const popover = $(selector);
+          return [popover, popover.parentElement];
+        }),
+      );
+      function restoreComposerPopoverHome(popover) {
+        const home = composerPopoverHomes.get(popover);
+        if (home && popover.parentElement !== home) home.append(popover);
+      }
       function toggleComposerPopover(popover, trigger) {
-        const open = popover.hidden;
+        const open = popover.hidden
+          || activeComposerPopover?.popover !== popover
+          || activeComposerPopover?.trigger !== trigger;
+        if (activeComposerPopover
+          && (activeComposerPopover.popover !== popover || activeComposerPopover.trigger !== trigger)) {
+          closeComposerPopover(activeComposerPopover.popover, activeComposerPopover.trigger);
+        }
         [
           [$("#emojiPicker"), $("#emojiToggle")],
           [$("#locationPopover"), $("#addLocation")],
         ].forEach(([otherPopover, otherTrigger]) => {
-          if (otherPopover !== popover) closeComposerPopover(otherPopover, otherTrigger);
+          if (otherPopover !== popover && !otherPopover.hidden
+            && activeComposerPopover?.popover !== otherPopover) {
+            closeComposerPopover(otherPopover, otherTrigger);
+          }
         });
         if (!open) {
           closeComposerPopover(popover, trigger);
@@ -6869,8 +6999,6 @@
         }
         clearComposerMedia();
         const generation = composerUploadGeneration;
-        $("#mediaPreviewEmbed").removeAttribute("src");
-        $("#mediaPreviewEmbed").hidden = true;
         $("#mediaPreviewImage").hidden = false;
         composerPreviewUrl = showLocalPreview(file, $("#mediaPreviewImage"));
         $("#mediaPreview").hidden = false;
@@ -6977,23 +7105,23 @@
       }
       async function selectGiphyGif(id) {
         const gif = giphyResultsById.get(id);
-        if (!gif || !isGiphyEmbedUrl(gif.embed_url)) {
-          $("#gifPickerStatus").textContent = "This GIF cannot be embedded. Choose another result.";
+        const gifUrl = giphyGifUrl(gif);
+        if (!gifUrl) {
+          $("#gifPickerStatus").textContent = "This GIF is unavailable as a direct image. Choose another result.";
           return;
         }
         if (gifPickerTarget === "post") {
           clearComposerMedia();
-          setComposerMedia(gif.embed_url);
+          setComposerMedia(gifUrl);
           $("#mediaPreviewName").textContent = typeof gif.title === "string" && gif.title.trim() ? gif.title.trim() : "GIF ready";
           updatePostButton();
         } else if (gifPickerTarget === "reply") {
           clearReplyComposerMedia();
-          replyComposerMediaUrl = gif.embed_url;
-          $("#replyComposerMediaImage").hidden = true;
-          $("#replyComposerMediaEmbed").hidden = false;
-          $("#replyComposerMediaEmbed").src = gif.embed_url;
+          replyComposerMediaUrl = gifUrl;
+          $("#replyComposerMediaImage").hidden = false;
+          $("#replyComposerMediaImage").src = gifUrl;
           $("#replyComposerMedia").hidden = false;
-          $("#replyComposerMediaStatus").textContent = "Powered by GIPHY";
+          $("#replyComposerMediaStatus").textContent = "GIF ready";
           updateReplyComposerState();
         } else if (gifPickerTarget === "thread-reply") {
           const form = gifPickerOpener?.closest("[data-thread-reply]");
@@ -7001,10 +7129,7 @@
             $("#gifPickerStatus").textContent = "This reply is no longer available.";
             return;
           }
-          const preview = $("[data-thread-reply-media]", form);
-          form.dataset.mediaUrl = gif.embed_url;
-          $("iframe", preview).src = gif.embed_url;
-          preview.hidden = false;
+          setThreadReplyMedia(form, gifUrl);
         } else if (gifPickerTarget === "message") {
           if (!activeConversation) {
             $("#gifPickerStatus").textContent = "Choose a conversation before sending a GIF.";
@@ -7014,7 +7139,7 @@
           sendButton.disabled = true;
           $("#gifPickerStatus").textContent = "Sending GIF…";
           try {
-            await sendMessageAttachment({ mediaUrl: gif.embed_url });
+            await sendMessageAttachment({ mediaUrl: gifUrl });
             sendButton.disabled = false;
           } catch (error) {
             sendButton.disabled = false;
@@ -7078,22 +7203,32 @@
         $("#profileCropDialog").showModal();
         requestAnimationFrame(syncProfileCropPreview);
       }
-      function syncProfileCropPreview() {
+      function profileCropGeometry() {
         const image = $("#profileCropImage");
         const stage = $("#profileCropStage");
-        if (!image.naturalWidth || !image.naturalHeight || !stage.clientWidth) return;
         const stageSize = stage.clientWidth;
-        const coverScale = Math.max(stageSize / image.naturalWidth, stageSize / image.naturalHeight);
-        const imageWidth = image.naturalWidth * coverScale * profileCropZoom;
-        const imageHeight = image.naturalHeight * coverScale * profileCropZoom;
-        const maxX = Math.max(0, (imageWidth - stageSize) / 2);
-        const maxY = Math.max(0, (imageHeight - stageSize) / 2);
-        profileCropOffset = {
-          x: Math.max(-maxX, Math.min(maxX, profileCropOffset.x)),
-          y: Math.max(-maxY, Math.min(maxY, profileCropOffset.y)),
+        if (!image.naturalWidth || !image.naturalHeight || !stageSize) return null;
+        const scale = Math.max(stageSize / image.naturalWidth, stageSize / image.naturalHeight) * profileCropZoom;
+        const width = image.naturalWidth * scale;
+        const height = image.naturalHeight * scale;
+        return {
+          stageSize,
+          width,
+          height,
+          maxX: Math.max(0, (width - stageSize) / 2),
+          maxY: Math.max(0, (height - stageSize) / 2),
         };
-        image.style.width = `${imageWidth}px`;
-        image.style.height = `${imageHeight}px`;
+      }
+      function syncProfileCropPreview() {
+        const image = $("#profileCropImage");
+        const geometry = profileCropGeometry();
+        if (!geometry) return;
+        profileCropOffset = {
+          x: Math.max(-geometry.maxX, Math.min(geometry.maxX, profileCropOffset.x)),
+          y: Math.max(-geometry.maxY, Math.min(geometry.maxY, profileCropOffset.y)),
+        };
+        image.style.width = `${geometry.width}px`;
+        image.style.height = `${geometry.height}px`;
         image.style.left = `calc(50% + ${profileCropOffset.x}px)`;
         image.style.top = `calc(50% + ${profileCropOffset.y}px)`;
       }
@@ -7109,8 +7244,8 @@
       async function saveProfileCrop() {
         const input = profileCropInput;
         const image = $("#profileCropImage");
-        const stage = $("#profileCropStage");
-        if (!input || !image.naturalWidth || !stage.clientWidth) return;
+        const geometry = profileCropGeometry();
+        if (!input || !geometry) return;
         const saveButton = $("#profileCropSave");
         saveButton.disabled = true;
         try {
@@ -7120,10 +7255,9 @@
           canvas.height = size;
           const context = canvas.getContext("2d");
           if (!context) throw new Error("Could not prepare the cropped profile photo.");
-          const stageSize = stage.clientWidth;
-          const scale = size / stageSize;
-          const drawWidth = image.naturalWidth * Math.max(stageSize / image.naturalWidth, stageSize / image.naturalHeight) * profileCropZoom * scale;
-          const drawHeight = image.naturalHeight * Math.max(stageSize / image.naturalWidth, stageSize / image.naturalHeight) * profileCropZoom * scale;
+          const scale = size / geometry.stageSize;
+          const drawWidth = geometry.width * scale;
+          const drawHeight = geometry.height * scale;
           context.drawImage(
             image,
             (size - drawWidth) / 2 + profileCropOffset.x * scale,
@@ -7439,17 +7573,12 @@
         const media = p.mediaUrls?.length ? p.mediaUrls : (p.m ? [p.m] : []);
         if (!media.length) return "";
         if (media.length === 1) {
-          const url = mediaHref(media[0]);
-          if (isGiphyEmbedUrl(url)) {
-            return `<div class="media-grid" data-count="1" style="aspect-ratio:auto"><div class="media-item gif-media-embed">${giphyEmbedMarkup(url)}</div></div>`;
-          }
+          const url = normalizeGiphyGifUrl(mediaHref(media[0])) || mediaHref(media[0]);
           return `<div class="media-grid" data-count="1" style="aspect-ratio:auto"><button class="media-item" type="button" data-lightbox-image="${esc(url)}" aria-label="Open image"><img src="${esc(url)}" alt="${esc(p.mediaAlt || "")}" width="1200" height="675" loading="lazy" decoding="async"></button>${p.mediaAlt ? `<button class="post-media-alt" type="button" data-alt-text="${esc(p.mediaAlt)}" aria-label="Show image description">${ic("image")}<span>ALT</span></button>` : ""}</div>`;
         }
         const images = media.slice(0, 4).map((url, index) => {
-          const href = mediaHref(url);
-          return isGiphyEmbedUrl(href)
-            ? `<div class="media-item gif-media-embed">${giphyEmbedMarkup(href)}</div>`
-            : `<button class="media-item" type="button" data-lightbox-image="${esc(href)}" data-lightbox-index="${index}" aria-label="Open image ${index + 1}"><img src="${esc(href)}" alt="${esc(p.mediaAlt || "")}" width="1200" height="675" loading="lazy" decoding="async"></button>`;
+          const href = normalizeGiphyGifUrl(mediaHref(url)) || mediaHref(url);
+          return `<button class="media-item" type="button" data-lightbox-image="${esc(href)}" data-lightbox-index="${index}" aria-label="Open image ${index + 1}"><img src="${esc(href)}" alt="${esc(p.mediaAlt || "")}" width="1200" height="675" loading="lazy" decoding="async"></button>`;
         });
         return `<div class="media-grid" data-count="${Math.min(media.length, 4)}">${images.join("")}${p.mediaAlt ? `<button class="post-media-alt" type="button" data-alt-text="${esc(p.mediaAlt)}" aria-label="Show image description">${ic("image")}<span>ALT</span></button>` : ""}</div>`;
       };
@@ -7909,7 +8038,42 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           threadParentId = result.replyToId || null;
           threadFocusParentId = threadParentId;
           threadAncestorsExhausted = !threadParentId;
-          $("#threadContent").innerHTML = `<div class="thread-chain"><div class="thread-ancestors" data-thread-ancestors></div>${threadPost(result, true)}</div><form class="thread-reply-form" data-thread-reply data-reply-to="${esc(result.id)}">${avatarMarkup(currentUser, "sm")}<input aria-label="Write your reply" placeholder="Post your reply" maxlength="280" required><div class="thread-reply-media-preview" data-thread-reply-media hidden><iframe title="Selected GIPHY GIF" loading="lazy" allowfullscreen></iframe><button class="thread-reply-media-remove" type="button" data-thread-reply-remove-gif aria-label="Remove GIF">×</button></div><div class="thread-reply-toolbar"><div class="thread-reply-actions" role="group" aria-label="Reply attachments"><button class="thread-reply-action" type="button" aria-label="Attach image" disabled>${ic("image")}</button><button class="thread-reply-action" type="button" data-thread-reply-gif aria-label="Choose a GIF" title="Choose a GIF" aria-haspopup="dialog" aria-controls="gifPickerDialog" aria-expanded="false"><svg class="thread-reply-gif-icon" aria-hidden="true" viewBox="0 0 24 24"><text x="2" y="17" font-size="12" font-weight="700">GIF</text></svg></button><button class="thread-reply-action" type="button" aria-label="Emoji picker is not available for replies yet" title="Emoji picker is not available for replies yet" disabled>${ic("smile")}</button><button class="thread-reply-action" type="button" aria-label="Location is not available for replies yet" title="Location is not available for replies yet" disabled>${ic("pin")}</button></div><button class="btn btn-primary" type="submit" disabled>Reply</button></div></form><div id="threadReplies" hidden></div>`;
+          $("#threadContent").innerHTML = `<div class="thread-chain"><div class="thread-ancestors" data-thread-ancestors></div>${threadPost(result, true)}</div>
+            <form class="thread-reply-form" data-thread-reply data-reply-to="${esc(result.id)}">
+              ${avatarMarkup(currentUser, "sm")}
+              <input aria-label="Write your reply" placeholder="Post your reply" maxlength="280" required>
+              <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-thread-reply-image-input hidden>
+              <div class="composer-location thread-reply-location" data-thread-reply-location-chip hidden>
+                <svg class="i" aria-hidden="true"><use href="#pin" /></svg>
+                <span data-thread-reply-location-label></span>
+                <button class="dismiss-btn" type="button" data-thread-reply-remove-location aria-label="Remove location">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>
+                </button>
+              </div>
+              <div class="thread-reply-media-preview" data-thread-reply-media hidden>
+                <img alt="Reply attachment preview" loading="lazy">
+                <span class="thread-reply-media-status" data-thread-reply-media-status></span>
+                <button class="thread-reply-media-remove" type="button" data-thread-reply-remove-media aria-label="Remove attachment">×</button>
+              </div>
+              <div class="thread-reply-toolbar">
+                <div class="thread-reply-actions" role="group" aria-label="Reply attachments">
+                  <button class="thread-reply-action" type="button" data-thread-reply-image aria-label="Attach image">
+                    ${ic("image")}
+                  </button>
+                  <button class="thread-reply-action" type="button" data-thread-reply-gif aria-label="Choose a GIF" title="Choose a GIF" aria-haspopup="dialog" aria-controls="gifPickerDialog" aria-expanded="false">GIF</button>
+                  <button class="thread-reply-action" type="button" data-thread-reply-emoji aria-label="Add emoji" aria-expanded="false">
+                    ${ic("smile")}
+                  </button>
+                  <button class="thread-reply-action" type="button" data-thread-reply-location aria-label="Add location" aria-expanded="false" aria-haspopup="dialog" aria-pressed="false">
+                    ${ic("pin")}
+                  </button>
+                </div>
+                <span class="count" data-reply-count aria-live="polite" hidden>280</span>
+                <button class="btn btn-primary" type="submit" disabled>Reply</button>
+              </div>
+            </form>
+            <div id="threadReplies" hidden></div>`;
+          updateThreadReplyFormState($("[data-thread-reply]", $("#threadContent")));
           $("#threadContent").dataset.rootReplyCount = String(totalReplies);
           threadScrollArmed = true;
           resetThreadScrollPositions();
@@ -8984,17 +9148,22 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function messageMarkup(message) {
         const mine = message.senderId === currentUser?.id;
-        const mediaUrl = message.mediaUrl ? mediaHref(message.mediaUrl) : "";
+        const body = String(message.body || "");
+        const bodyGifUrl = !message.mediaUrl && isGifMediaUrl(body.trim()) ? body.trim() : "";
+        const mediaUrl = message.mediaUrl ? mediaHref(message.mediaUrl) : bodyGifUrl ? mediaHref(bodyGifUrl) : "";
+        const imageUrl = normalizeGiphyGifUrl(mediaUrl) || mediaUrl;
+        const isGif = Boolean(imageUrl && isGifMediaUrl(imageUrl));
+        const bodyIsGifUrl = isGif && isGifMediaUrl(body.trim());
         const image = mediaUrl
-          ? isGiphyEmbedUrl(mediaUrl)
-            ? `<div class="message-gif-media">${giphyEmbedMarkup(mediaUrl)}</div>`
-            : `<button class="message-media-button" type="button" data-lightbox-image="${esc(mediaUrl)}" aria-label="Open shared image"><img class="message-media" src="${esc(mediaUrl)}" alt="Shared image" loading="lazy" /></button>`
+          ? isGif
+            ? `<img class="message-media message-media-static" src="${esc(imageUrl)}" alt="Shared GIF" loading="lazy" />`
+            : `<button class="message-media-button" type="button" data-lightbox-image="${esc(imageUrl)}" aria-label="Open shared image"><img class="message-media" src="${esc(imageUrl)}" alt="Shared image" loading="lazy" /></button>`
           : "";
         const wave = Array.from({ length: 28 }, (_, index) => `<i></i>`).join("");
         const audio = message.audioUrl ? `<div class="relay-voice" data-voice-url="${esc(mediaHref(message.audioUrl))}"><button class="relay-voice-play" type="button" aria-label="Play voice message">${relayVoicePlayIcon()}</button><div class="relay-waveform" aria-hidden="true">${wave}</div><span class="relay-voice-duration">0:00</span><audio preload="metadata" src="${esc(mediaHref(message.audioUrl))}" hidden></audio></div>` : "";
         const stickers = { heart: "❤️", wave: "👋", laugh: "😂", party: "🎉", fire: "🔥", thumbsup: "👍", sparkles: "✨", relax: "😊" };
         const sticker = message.stickerId && stickers[message.stickerId] ? `<span class="message-sticker" aria-label="Sticker">${stickers[message.stickerId]}</span>` : "";
-        const text = message.body ? `<span>${esc(message.body)}</span>` : "";
+        const text = body && !bodyIsGifUrl ? `<span>${esc(body)}</span>` : "";
         const mediaOnly = Boolean((image || audio) && !text && !sticker);
         const stickerOnly = Boolean(sticker && !image && !audio && !text);
         const imageOnly = Boolean(image && !audio && !text && !sticker);
@@ -9481,7 +9650,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               ? `${senderCharacters.slice(0, 17).join("").trimEnd()}…`
               : sender;
             const body = message.body?.trim()
-              || (message.mediaUrl ? (isGiphyEmbedUrl(mediaHref(message.mediaUrl)) ? "GIF" : "Photo") : message.audioUrl ? "Voice message" : message.stickerId ? "Sticker" : "");
+              || (message.mediaUrl ? (normalizeGiphyGifUrl(mediaHref(message.mediaUrl)) ? "GIF" : "Photo") : message.audioUrl ? "Voice message" : message.stickerId ? "Sticker" : "");
             const previewText = body
               ? `${esc(shortSender)}: ${highlightMessage ? emphasizeConversationMatch(body, searchQuery) : esc(body)}`
               : esc(shortSender);
@@ -9778,6 +9947,93 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       let replyComposerPreviousOverflow = "";
       let replyComposerPreviousAppInert = false;
       const appRoot = $(".app");
+      function updateThreadReplyFormState(form) {
+        const input = $("input[aria-label='Write your reply']", form);
+        const remaining = 280 - input.value.length;
+        const count = $("[data-reply-count]", form);
+        const upload = threadReplyMediaStates.get(form)?.uploadPromise;
+        const hasContent = Boolean(input.value.trim() || form.dataset.mediaUrl || form.dataset.location);
+        count.textContent = String(remaining);
+        count.className = `count${remaining < 0 ? " over" : remaining < 20 ? " warn" : ""}`;
+        count.hidden = remaining === 280;
+        $("button[type=submit]", form).disabled = !input.value.trim() || remaining < 0 || Boolean(upload);
+        form.classList.toggle("has-content", hasContent);
+        $("[data-thread-reply-image]", form).disabled = Boolean(upload);
+        $("[data-thread-reply-gif]", form).disabled = Boolean(upload);
+        $("[data-thread-reply-image]", form).setAttribute("aria-pressed", String(Boolean(form.dataset.mediaUrl || threadReplyMediaStates.get(form)?.previewUrl)));
+      }
+      function threadReplyMediaState(form) {
+        let state = threadReplyMediaStates.get(form);
+        if (!state) {
+          state = { generation: 0, previewUrl: "", uploadPromise: null };
+          threadReplyMediaStates.set(form, state);
+        }
+        return state;
+      }
+      function clearThreadReplyMedia(form) {
+        const state = threadReplyMediaState(form);
+        state.generation += 1;
+        state.uploadPromise = null;
+        if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
+        state.previewUrl = "";
+        delete form.dataset.mediaUrl;
+        const preview = $("[data-thread-reply-media]", form);
+        $("img", preview).removeAttribute("src");
+        $("[data-thread-reply-media-status]", preview).textContent = "";
+        preview.hidden = true;
+        $("[data-thread-reply-image-input]", form).value = "";
+        updateThreadReplyFormState(form);
+      }
+      function setThreadReplyMedia(form, url, label = "GIF ready") {
+        clearThreadReplyMedia(form);
+        form.dataset.mediaUrl = url;
+        const preview = $("[data-thread-reply-media]", form);
+        $("img", preview).src = mediaHref(url);
+        $("[data-thread-reply-media-status]", preview).textContent = label;
+        preview.hidden = false;
+        updateThreadReplyFormState(form);
+      }
+      function selectThreadReplyImage(file, form) {
+        if (!validImageFile(file)) {
+          toast("Choose a JPEG, PNG, WebP, or GIF image under 5 MB.");
+          $("[data-thread-reply-image-input]", form).value = "";
+          return;
+        }
+        clearThreadReplyMedia(form);
+        const state = threadReplyMediaState(form);
+        const generation = ++state.generation;
+        const image = $("img", $("[data-thread-reply-media]", form));
+        state.previewUrl = showLocalPreview(file, image);
+        $("[data-thread-reply-media-status]", form).textContent = "Uploading image…";
+        $("[data-thread-reply-media]", form).hidden = false;
+        state.uploadPromise = uploadMedia(file, "post").then((result) => {
+          if (state.generation !== generation) return;
+          form.dataset.mediaUrl = result.url;
+          if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
+          state.previewUrl = "";
+          image.src = mediaHref(result.url);
+          $("[data-thread-reply-media-status]", form).textContent = file.name;
+        }).catch((error) => {
+          if (state.generation !== generation) return;
+          clearThreadReplyMedia(form);
+          toast(error.message || "Could not upload this image.");
+        }).finally(() => {
+          if (state.generation === generation) {
+            state.uploadPromise = null;
+            updateThreadReplyFormState(form);
+          }
+        });
+        updateThreadReplyFormState(form);
+      }
+      function restoreReplyComposerPopovers(form) {
+        [$("#emojiPicker"), $("#locationPopover")].forEach((popover) => {
+          if (activeComposerPopover?.popover === popover && form.contains(activeComposerPopover.trigger)) {
+            closeComposerPopover(popover, activeComposerPopover.trigger);
+          }
+          restoreComposerPopoverHome(popover);
+        });
+        if (replyLocationTarget?.form === form) replyLocationTarget = null;
+      }
       function updateReplyComposerState() {
         const remaining = 280 - $("#replyComposerText").value.length;
         const count = $("#replyComposerCount");
@@ -9786,6 +10042,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#submitReplyComposer").disabled = !$("#replyComposerText").value.trim() || Boolean(replyComposerUploadPromise);
         $("#replyComposerAttachImage").disabled = Boolean(replyComposerUploadPromise);
         $("#replyComposerGifButton").disabled = Boolean(replyComposerUploadPromise);
+        $("#replyComposerAttachImage").setAttribute("aria-pressed", String(Boolean(replyComposerMediaUrl || replyComposerPreviewUrl)));
       }
       function clearReplyComposerMedia() {
         replyComposerUploadGeneration += 1;
@@ -9795,8 +10052,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         replyComposerPreviewUrl = "";
         $("#replyComposerMediaImage").removeAttribute("src");
         $("#replyComposerMediaImage").hidden = false;
-        $("#replyComposerMediaEmbed").removeAttribute("src");
-        $("#replyComposerMediaEmbed").hidden = true;
         $("#replyComposerMedia").hidden = true;
         $("#replyComposerMediaStatus").textContent = "";
         $("#replyComposerImageInput").value = "";
@@ -9811,7 +10066,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         clearReplyComposerMedia();
         const generation = ++replyComposerUploadGeneration;
         replyComposerPreviewUrl = showLocalPreview(file, $("#replyComposerMediaImage"));
-        $("#replyComposerMediaEmbed").hidden = true;
         $("#replyComposerMediaImage").hidden = false;
         $("#replyComposerMedia").hidden = false;
         $("#replyComposerMediaStatus").textContent = "Uploading image…";
@@ -9856,6 +10110,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#replyComposerAvatar").innerHTML = avatarMarkup(currentUser, "sm");
         clearReplyComposerMedia();
         $("#replyComposerText").value = "";
+        clearReplyLocation({ kind: "modal", form: replyComposerForm });
         $("#replyComposerError").textContent = "";
         updateReplyComposerState();
         if (!replyComposerIsOpen) {
@@ -9876,8 +10131,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         document.body.style.overflow = replyComposerPreviousOverflow;
         appRoot.inert = replyComposerPreviousAppInert;
         replyComposerTargetId = null;
+        restoreReplyComposerPopovers(replyComposerForm);
         replyComposerForm.reset();
         clearReplyComposerMedia();
+        clearReplyLocation({ kind: "modal", form: replyComposerForm });
         $("#replyComposerError").textContent = "";
         if (replyComposerReturnFocus?.isConnected) replyComposerReturnFocus.focus({ preventScroll: true });
         replyComposerReturnFocus = null;
@@ -9899,7 +10156,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         setComposerMedia(data.mediaUrl || "");
         clearComposerLocation();
         if (data.location) setComposerLocation(data.location);
-        closeComposerPopover($("#locationPopover"), $("#addLocation"));
+        closeComposerPopover($("#locationPopover"), activeComposerPopover?.popover === $("#locationPopover")
+          ? activeComposerPopover.trigger
+          : $("#addLocation"));
         $("#composer").inert = false;
         $("#composer").removeAttribute("aria-hidden");
         $("#postEditorMount").append($("#composer"));
@@ -10026,15 +10285,39 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#settingsPasswordSubmit").disabled = !(current && password.length >= 10 && confirm === password);
       }
       function openSettingsDialog() { go("settings"); }
-      function applyTheme(theme) {
+      let themeTransitionTimer = null;
+      const animateThemeChange = (update) => {
         const root = document.documentElement;
-        if (theme === "system") delete root.dataset.theme;
-        else root.dataset.theme = theme;
+        root.classList.add("theme-transition");
+        void root.offsetWidth;
+        update();
+        clearTimeout(themeTransitionTimer);
+        themeTransitionTimer = setTimeout(() => {
+          root.classList.remove("theme-transition");
+          themeTransitionTimer = null;
+        }, 300);
+      };
+      function applyTheme(theme) {
+        if (!["system", "light", "dark"].includes(theme)) {
+          throw new Error("Choose a valid appearance setting.");
+        }
+        const root = document.documentElement;
+        animateThemeChange(() => {
+          if (theme === "system") delete root.dataset.theme;
+          else root.dataset.theme = theme;
+        });
         try {
-          if (theme === "system") sessionStorage.removeItem("relay_theme");
-          else sessionStorage.setItem("relay_theme", theme);
-        } catch {}
+          if (theme === "system") localStorage.removeItem("relay_theme");
+          else localStorage.setItem("relay_theme", theme);
+          sessionStorage.removeItem("relay_theme");
+        } catch (error) {
+          console.warn("Unable to save the theme preference.", error);
+        }
       }
+      const deviceThemePreference = matchMedia("(prefers-color-scheme: dark)");
+      deviceThemePreference.addEventListener("change", () => {
+        if (!document.documentElement.dataset.theme) animateThemeChange(() => {});
+      });
       function setAuthMode(createAccount) {
         registering = createAccount;
         $("#authError").textContent = "";
@@ -10222,8 +10505,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           closeReplyComposer();
           return;
         }
-        if (e.target.closest("#replyComposerAttachImage")) {
-          $("#replyComposerImageInput").click();
+        const replyImageTrigger = e.target.closest("#replyComposerAttachImage, [data-thread-reply-image]");
+        if (replyImageTrigger) {
+          const form = replyImageTrigger.closest("#replyComposerForm, [data-thread-reply]");
+          const input = form.id === "replyComposerForm"
+            ? $("#replyComposerImageInput")
+            : $("[data-thread-reply-image-input]", form);
+          input.click();
           return;
         }
         if (e.target.closest("#removeReplyComposerMedia")) {
@@ -10234,6 +10522,25 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           $("#gifPickerDialog").close();
           return;
         }
+        const replyEmojiTrigger = e.target.closest("#replyComposerEmojiButton, [data-thread-reply-emoji]");
+        if (replyEmojiTrigger) {
+          openReplyEmojiPicker(replyEmojiTrigger);
+          return;
+        }
+        const replyLocationTrigger = e.target.closest("#replyComposerLocationButton, [data-thread-reply-location]");
+        if (replyLocationTrigger) {
+          openReplyLocationPicker(replyLocationTrigger);
+          return;
+        }
+        const removeReplyLocation = e.target.closest("[data-reply-remove-location], [data-thread-reply-remove-location]");
+        if (removeReplyLocation) {
+          const form = removeReplyLocation.closest("#replyComposerForm, [data-thread-reply]");
+          clearReplyLocation({
+            kind: form.id === "replyComposerForm" ? "modal" : "thread",
+            form,
+          });
+          return;
+        }
         const gifTrigger = e.target.closest("#gifButton, #replyComposerGifButton, #messageGifButton, [data-thread-reply-gif]");
         if (gifTrigger) {
           const target = gifTrigger.matches("[data-thread-reply-gif]") ? "thread-reply"
@@ -10242,13 +10549,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           openGifPicker(target, gifTrigger);
           return;
         }
-        const removeThreadReplyGif = e.target.closest("[data-thread-reply-remove-gif]");
-        if (removeThreadReplyGif) {
-          const form = removeThreadReplyGif.closest("[data-thread-reply]");
-          delete form.dataset.mediaUrl;
-          const preview = $("[data-thread-reply-media]", form);
-          $("iframe", preview).removeAttribute("src");
-          preview.hidden = true;
+        const removeThreadReplyMedia = e.target.closest("[data-thread-reply-remove-media]");
+        if (removeThreadReplyMedia) {
+          clearThreadReplyMedia(removeThreadReplyMedia.closest("[data-thread-reply]"));
           return;
         }
         const gifResult = e.target.closest("[data-giphy-id]");
@@ -10331,7 +10634,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (!e.target.closest("[data-choice-control]")) {
           $$(".choice-menu:not([hidden])").forEach((menu) => toggleChoiceMenu(menu.closest("[data-choice-control]").querySelector(".choice-trigger"), false));
         }
-        if (!e.target.matches("[data-emoji-category]") && !e.target.closest("#emojiPicker, #emojiToggle")) {
+        if (!e.target.matches("[data-emoji-category]") && !e.target.closest("#emojiPicker, #emojiToggle, #messageStickerButton, #replyComposerEmojiButton, [data-thread-reply-emoji]")) {
           closeComposerPopover($("#emojiPicker"), activeComposerPopover?.popover === $("#emojiPicker")
             ? activeComposerPopover.trigger
             : $("#emojiToggle"));
@@ -10340,8 +10643,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           $("#messageStickerPicker").hidden = true;
           $("#messageStickerButton").setAttribute("aria-expanded", "false");
         }
-        if (!e.target.closest("#locationPopover, #addLocation")) {
-          closeComposerPopover($("#locationPopover"), $("#addLocation"));
+        if (!e.target.closest("#locationPopover, #addLocation, #replyComposerLocationButton, [data-thread-reply-location]")) {
+          closeComposerPopover($("#locationPopover"), activeComposerPopover?.popover === $("#locationPopover")
+            ? activeComposerPopover.trigger
+            : $("#addLocation"));
         }
         if (!e.target.closest(".post-menu-wrap")) closePostMenus();
         const nv = e.target.closest("[data-view]");
@@ -10527,6 +10832,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           return;
         }
         if (e.target.closest("#addLocation")) {
+          replyLocationTarget = null;
+          restoreComposerPopoverHome($("#locationPopover"));
+          $("#locationPopover").setAttribute("aria-label", "Add a location to your post");
           toggleComposerPopover($("#locationPopover"), $("#addLocation"));
           if (!$("#locationPopover").hidden) {
             $("#locationInput").focus({ preventScroll: true });
@@ -10536,8 +10844,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         const locationResult = e.target.closest("[data-location]");
         if (locationResult && locationResult.closest("#locationResults")) {
-          setComposerLocation(locationResult.dataset.shortLocation || locationResult.dataset.location);
-          closeComposerPopover($("#locationPopover"), $("#addLocation"));
+          applyLocationSelection(locationResult.dataset.shortLocation || locationResult.dataset.location);
           return;
         }
         if (e.target.closest("#saveLocation")) {
@@ -10547,8 +10854,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             toast("Enter a place name to attach.");
             return;
           }
-          setComposerLocation(value);
-          closeComposerPopover($("#locationPopover"), $("#addLocation"));
+          applyLocationSelection(value);
           return;
         }
         if (e.target.closest("#removeLocation")) {
@@ -10557,7 +10863,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         const emoji = e.target.closest("[data-emoji]");
         if (emoji) {
-          insertAtCaret(emojiInsertTarget === "message" ? $("#messageInput") : $("#ct"), emoji.dataset.emoji);
+          insertAtCaret(emojiInsertTarget, emoji.dataset.emoji);
           return;
         }
         if (e.target.closest('[aria-label="Attach image"]')) {
@@ -10811,6 +11117,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 body,
                 replyToId: targetId,
                 mediaUrl: replyComposerMediaUrl || undefined,
+                location: replyComposerLocation || undefined,
               }),
             });
             receiveLiveComment(reply);
@@ -10869,33 +11176,35 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           e.preventDefault();
           if (!requireAuth()) return;
           const form = e.target;
-          const input = $("input", form);
+          const input = $("input[aria-label='Write your reply']", form);
           const body = input.value.trim();
           if (!body) return;
           const submit = $("button[type=submit]", form);
+          const mediaState = threadReplyMediaState(form);
+          const imageUpload = mediaState.uploadPromise;
           setPendingButton(submit, true);
           try {
+            if (imageUpload) await imageUpload;
             const reply = await api("/posts", {
               method: "POST",
               body: JSON.stringify({
                 body,
                 replyToId: form.dataset.replyTo,
                 mediaUrl: form.dataset.mediaUrl || undefined,
+                location: form.dataset.location || undefined,
               }),
             });
             input.value = "";
-            delete form.dataset.mediaUrl;
-            const preview = $("[data-thread-reply-media]", form);
-            $("iframe", preview).removeAttribute("src");
-            preview.hidden = true;
-            form.classList.remove("has-content");
+            clearThreadReplyMedia(form);
+            clearReplyLocation({ kind: "thread", form });
+            restoreReplyComposerPopovers(form);
             receiveLiveComment(reply);
             renderTrending().catch((error) => console.error("Could not refresh trending topics", error));
           } catch (error) {
             toast(error.message);
           } finally {
             setPendingButton(submit, false);
-            submit.disabled = !input.value.trim();
+            updateThreadReplyFormState(form);
           }
           return;
         }
@@ -11087,6 +11396,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (file) selectReplyComposerImage(file);
           return;
         }
+        if (e.target.matches("[data-thread-reply-image-input]")) {
+          const form = e.target.closest("[data-thread-reply]");
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (file && form) selectThreadReplyImage(file, form);
+          return;
+        }
         if (e.target.id === "messageImageInput") {
           const file = e.target.files?.[0];
           e.target.value = "";
@@ -11165,7 +11481,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       });
       $("#profileCropSave").addEventListener("click", saveProfileCrop);
       $("#profileCropClose").addEventListener("click", () => $("#profileCropDialog").close());
-      $("#profileCropCancel").addEventListener("click", () => $("#profileCropDialog").close());
       $("#profileCropDialog").addEventListener("close", resetProfileCrop);
       $("#profileCropDialog").addEventListener("click", (event) => {
         if (event.target === $("#profileCropDialog")) $("#profileCropDialog").close();
@@ -11288,12 +11603,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         pb = $("#pb");
       document.addEventListener("input", (event) => {
         if (isAutocompleteInput(event.target)) refreshAutocomplete(event.target);
-        const replyInput = event.target.closest?.("[data-thread-reply] input");
+        const replyInput = event.target.closest?.("[data-thread-reply] input[aria-label='Write your reply']");
         if (replyInput) {
           const form = replyInput.form;
-          const hasContent = Boolean(replyInput.value.trim());
-          form.querySelector('button[type="submit"]').disabled = !hasContent;
-          form.classList.toggle("has-content", hasContent);
+          updateThreadReplyFormState(form);
         }
       });
       document.addEventListener("click", (event) => {
@@ -11382,11 +11695,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       let emojiRecords = fallbackEmojiChoices.map((emoji) => ({ emoji, name: emoji, category: "smileys and people" }));
       let selectedEmojiCategory = "smileys and people";
       let emojiCategoryInteraction = false;
-      let emojiInsertTarget = "post";
-      const emojiPickerHome = $("#emojiPicker").parentElement;
+      let emojiInsertTarget = $("#ct");
       function restoreEmojiPickerHome() {
-        if ($("#emojiPicker").parentElement !== emojiPickerHome) emojiPickerHome.append($("#emojiPicker"));
-        emojiInsertTarget = "post";
+        restoreComposerPopoverHome($("#emojiPicker"));
+        emojiInsertTarget = $("#ct");
       }
       function openMessageEmojiPicker() {
         const picker = $("#emojiPicker");
@@ -11394,8 +11706,40 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (picker.parentElement !== $("#messageStickerButton").closest(".chat-panel")) {
           $("#messageStickerButton").closest(".chat-panel").append(picker);
         }
-        emojiInsertTarget = "message";
+        emojiInsertTarget = $("#messageInput");
         toggleComposerPopover(picker, trigger);
+      }
+      function openReplyEmojiPicker(trigger) {
+        const form = trigger.closest("#replyComposerForm, [data-thread-reply]");
+        if (!form) return;
+        const picker = $("#emojiPicker");
+        if (picker.parentElement !== form) form.append(picker);
+        emojiInsertTarget = form.id === "replyComposerForm"
+          ? $("#replyComposerText")
+          : $("input[aria-label='Write your reply']", form);
+        toggleComposerPopover(picker, trigger);
+      }
+      function openReplyLocationPicker(trigger) {
+        const form = trigger.closest("#replyComposerForm, [data-thread-reply]");
+        if (!form) return;
+        replyLocationTarget = {
+          kind: form.id === "replyComposerForm" ? "modal" : "thread",
+          form,
+        };
+        const popover = $("#locationPopover");
+        if (popover.parentElement !== form) form.append(popover);
+        $("#locationInput").value = replyLocationValue(replyLocationTarget);
+        $("#locationResults").replaceChildren();
+        $("#locationResults").hidden = true;
+        $("#locationStatus").hidden = true;
+        popover.setAttribute("aria-label", "Add a location to your reply");
+        toggleComposerPopover(popover, trigger);
+        if (!popover.hidden) {
+          $("#locationInput").focus({ preventScroll: true });
+          $("#locationInput").select();
+        } else {
+          replyLocationTarget = null;
+        }
       }
       function emojiCategoryLabel(category) {
         return category.replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -11643,8 +11987,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           d = r.dataset.theme
             ? r.dataset.theme === "dark"
             : matchMedia("(prefers-color-scheme:dark)").matches;
-        r.dataset.theme = d ? "light" : "dark";
-        try { sessionStorage.setItem("relay_theme", r.dataset.theme); } catch {}
+        applyTheme(d ? "light" : "dark");
       });
       $("#exploreSearch").addEventListener("input", () => {
         clearTimeout(exploreTimer);
