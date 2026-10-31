@@ -11,6 +11,7 @@ const stagingHtml = path.join(stagingDir, "index.html");
 const outputHtml = path.join(root, "dist", "index.html");
 const outputDemoHtml = path.join(root, "dist", "realtime-demo.html");
 const apiUrl = process.env.VITE_API_URL;
+const giphyApiKey = process.env.VITE_GIPHY_API_KEY || "";
 
 if (!sourceFile) throw new Error("Relay frontend HTML file was not found");
 if (process.env.NETLIFY === "true" && !apiUrl) {
@@ -33,6 +34,16 @@ if (apiUrl) {
     `<meta name="relay-api-base" content="${escapedApiUrl}" />`,
   );
 }
+const escapedGiphyApiKey = giphyApiKey.replace(/[&"<>]/g, (character) => ({
+  "&": "&amp;",
+  '"': "&quot;",
+  "<": "&lt;",
+  ">": "&gt;",
+})[character]);
+html = html.replace(
+  '<meta name="relay-giphy-api-key" content="" />',
+  `<meta name="relay-giphy-api-key" content="${escapedGiphyApiKey}" />`,
+);
 fs.writeFileSync(stagingHtml, "<!doctype html><html><head><title>Relay</title></head><body></body></html>");
 
 const viteCli = path.join(root, "node_modules", "vite", "bin", "vite.js");

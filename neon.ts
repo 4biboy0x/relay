@@ -12,7 +12,11 @@ export default defineConfig({
   },
   preview: {
     realtime: {
-      allowedOrigins: ["http://localhost:4173", "http://localhost:5173"],
+      allowedOrigins: [
+        "http://localhost:4173",
+        "http://localhost:5173",
+        "https://wrelay.netlify.app",
+      ],
     },
   },
   // Branch policy: per-branch tuning

@@ -61,6 +61,20 @@ export const initializeRealtime = (server: HttpServer): Server => {
       if (exists) await socket.join(`post:${parsed.data}`);
     });
 
+    socket.on("posts:join", async (postIds: unknown) => {
+      const parsed = z.array(z.string().cuid()).max(100).safeParse(postIds);
+      if (!parsed.success || parsed.data.length === 0) return;
+      const ids = [...new Set(parsed.data)];
+      const posts = await prisma.post.findMany({
+        where: { id: { in: ids }, deletedAt: null },
+        select: { id: true },
+      }).catch((error: unknown) => {
+        console.error("Could not verify post rooms", error);
+        return [];
+      });
+      await Promise.all(posts.map(({ id }) => socket.join(`post:${id}`)));
+    });
+
     socket.on("conversation:join", async (conversationId: unknown, ack?: unknown) => {
       const acknowledge = typeof ack === "function" ? ack as (result: { ok: boolean }) => void : () => {};
       const parsed = z.string().cuid().safeParse(conversationId);

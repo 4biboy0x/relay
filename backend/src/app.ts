@@ -45,10 +45,11 @@ async function withNotificationFollowState<T extends { actor: { id: string } }>(
 }
 const dummyPasswordHash = bcrypt.hash("relay-invalid-login", 12);
 const refreshCookie = "relay_refresh";
+const isProduction = process.env.NODE_ENV === "production";
 const refreshCookieOptions = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "strict" as const,
+  secure: isProduction,
+  sameSite: isProduction ? "none" as const : "strict" as const,
   path: "/api/auth",
   maxAge: 30 * 24 * 60 * 60 * 1000,
 };
@@ -274,6 +275,135 @@ const userCursorWhere = (cursor: Cursor | undefined): Prisma.UserWhereInput =>
         ],
       }
     : {};
+
+type TrendingItem = { term: string; postCount: number; uniqueUsers: number };
+let trendingCache: { items: TrendingItem[]; expiresAt: number } | null = null;
+let trendingRefresh: Promise<TrendingItem[]> | null = null;
+
+const loadTrendingItems = async (): Promise<TrendingItem[]> => {
+  const since = new Date(Date.now() - 48 * 60 * 60 * 1000);
+  return prisma.$queryRaw<TrendingItem[]>(Prisma.sql`
+    WITH recent_posts AS (
+      SELECT p."id", p."authorId", p."body", p."createdAt", p."replyCount"
+      FROM "Post" AS p
+      WHERE p."createdAt" >= ${since}
+        AND p."deletedAt" IS NULL
+    ),
+    tokens AS (
+      SELECT
+        p."id" AS "postId",
+        p."authorId",
+        split.token,
+        split.ordinal
+      FROM recent_posts AS p
+      CROSS JOIN LATERAL regexp_split_to_table(
+        regexp_replace(LOWER(p."body"), '[^[:alnum:]#_]+', ' ', 'g'),
+        '\\s+'
+      ) WITH ORDINALITY AS split(token, ordinal)
+      WHERE split.token <> ''
+    ),
+    stop_words(word) AS (
+      VALUES
+        ('about'), ('after'), ('again'), ('also'), ('and'), ('are'), ('because'),
+        ('been'), ('before'), ('being'), ('but'), ('can'), ('could'), ('did'),
+        ('does'), ('doing'), ('for'), ('from'), ('get'), ('got'), ('had'),
+        ('has'), ('have'), ('here'), ('how'), ('into'), ('its'), ('just'),
+        ('more'), ('most'), ('not'), ('now'), ('our'), ('out'), ('over'),
+        ('really'), ('she'), ('should'), ('some'), ('such'), ('than'), ('that'),
+        ('the'), ('their'), ('them'), ('then'), ('there'), ('these'), ('they'),
+        ('this'), ('those'), ('through'), ('too'), ('under'), ('use'), ('very'),
+        ('was'), ('were'), ('what'), ('when'), ('where'), ('which'), ('who'),
+        ('will'), ('with'), ('would'), ('you'), ('your')
+    ),
+    candidate_terms AS (
+      SELECT DISTINCT t."postId", t."authorId", t.token AS term
+      FROM tokens AS t
+      WHERE t.token ~ '^[[:alnum:]_]{3,}$'
+        AND NOT EXISTS (SELECT 1 FROM stop_words AS s WHERE s.word = t.token)
+      UNION
+      SELECT DISTINCT first."postId", first."authorId",
+        first.token || ' ' || second.token AS term
+      FROM tokens AS first
+      JOIN tokens AS second
+        ON second."postId" = first."postId"
+        AND second.ordinal = first.ordinal + 1
+      WHERE first.token ~ '^[[:alnum:]_]{3,}$'
+        AND second.token ~ '^[[:alnum:]_]{3,}$'
+        AND NOT EXISTS (SELECT 1 FROM stop_words AS s WHERE s.word = first.token)
+        AND NOT EXISTS (SELECT 1 FROM stop_words AS s WHERE s.word = second.token)
+      UNION
+      SELECT DISTINCT p."id", p."authorId", '#' || LOWER(h."tag") AS term
+      FROM recent_posts AS p
+      JOIN "PostHashtag" AS ph ON ph."postId" = p."id"
+      JOIN "Hashtag" AS h ON h."id" = ph."hashtagId"
+    ),
+    term_post_metrics AS (
+      SELECT
+        candidate.term,
+        recent."id" AS "postId",
+        recent."authorId",
+        recent."createdAt",
+        recent."replyCount",
+        COUNT(interaction.id) FILTER (WHERE interaction."type" = 'LIKE')::int AS likes,
+        COUNT(interaction.id) FILTER (WHERE interaction."type" = 'REPOST')::int AS reposts
+      FROM candidate_terms AS candidate
+      JOIN recent_posts AS recent ON recent."id" = candidate."postId"
+      LEFT JOIN "Interaction" AS interaction
+        ON interaction."postId" = recent."id"
+        AND interaction."createdAt" >= ${since}
+      GROUP BY
+        candidate.term,
+        recent."id",
+        recent."authorId",
+        recent."createdAt",
+        recent."replyCount"
+    ),
+    ranked_terms AS (
+      SELECT
+        metrics.term,
+        SUM(
+          (
+            1
+            + metrics.likes * 1.5
+            + metrics.reposts * 3
+            + metrics."replyCount" * 2
+          )
+          * EXP(
+            -GREATEST(
+              0,
+              EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - metrics."createdAt"))
+            ) / 21600.0
+          )
+        ) AS score,
+        COUNT(*)::int AS "postCount",
+        COUNT(DISTINCT metrics."authorId")::int AS "uniqueUsers"
+      FROM term_post_metrics AS metrics
+      GROUP BY term
+      HAVING COUNT(*) >= 25 AND COUNT(DISTINCT metrics."authorId") >= 8
+    )
+    SELECT term, "postCount", "uniqueUsers"
+    FROM ranked_terms
+    ORDER BY score DESC, "uniqueUsers" DESC, "postCount" DESC, term ASC
+    LIMIT 30
+  `);
+};
+
+const getTrendingItems = (): Promise<TrendingItem[]> => {
+  if (trendingCache && trendingCache.expiresAt > Date.now()) {
+    return Promise.resolve(trendingCache.items);
+  }
+  if (!trendingRefresh) {
+    trendingRefresh = loadTrendingItems()
+      .then((items) => {
+        trendingCache = { items, expiresAt: Date.now() + 60_000 };
+        return items;
+      })
+      .finally(() => {
+        trendingRefresh = null;
+      });
+  }
+  return trendingRefresh;
+};
 
 const listPosts = async (
   viewerId: string,
@@ -1021,115 +1151,7 @@ api.get("/explore", authRequired, asyncRoute(async (req, res) => {
 }));
 
 api.get("/trending", authRequired, asyncRoute(async (_req, res) => {
-  const since = new Date(Date.now() - 48 * 60 * 60 * 1000);
-  const items = await prisma.$queryRaw<Array<{
-    term: string;
-    postCount: number;
-    uniqueUsers: number;
-  }>>(Prisma.sql`
-    WITH recent_posts AS (
-      SELECT p."id", p."authorId", p."body", p."createdAt", p."replyCount"
-      FROM "Post" AS p
-      WHERE p."createdAt" >= ${since}
-        AND p."deletedAt" IS NULL
-    ),
-    tokens AS (
-      SELECT
-        p."id" AS "postId",
-        p."authorId",
-        split.token,
-        split.ordinal
-      FROM recent_posts AS p
-      CROSS JOIN LATERAL regexp_split_to_table(
-        regexp_replace(LOWER(p."body"), '[^[:alnum:]#_]+', ' ', 'g'),
-        '\\s+'
-      ) WITH ORDINALITY AS split(token, ordinal)
-      WHERE split.token <> ''
-    ),
-    stop_words(word) AS (
-      VALUES
-        ('about'), ('after'), ('again'), ('also'), ('and'), ('are'), ('because'),
-        ('been'), ('before'), ('being'), ('but'), ('can'), ('could'), ('did'),
-        ('does'), ('doing'), ('for'), ('from'), ('get'), ('got'), ('had'),
-        ('has'), ('have'), ('here'), ('how'), ('into'), ('its'), ('just'),
-        ('more'), ('most'), ('not'), ('now'), ('our'), ('out'), ('over'),
-        ('really'), ('she'), ('should'), ('some'), ('such'), ('than'), ('that'),
-        ('the'), ('their'), ('them'), ('then'), ('there'), ('these'), ('they'),
-        ('this'), ('those'), ('through'), ('too'), ('under'), ('use'), ('very'),
-        ('was'), ('were'), ('what'), ('when'), ('where'), ('which'), ('who'),
-        ('will'), ('with'), ('would'), ('you'), ('your')
-    ),
-    candidate_terms AS (
-      SELECT DISTINCT t."postId", t."authorId", t.token AS term
-      FROM tokens AS t
-      WHERE t.token ~ '^[[:alnum:]_]{3,}$'
-        AND NOT EXISTS (SELECT 1 FROM stop_words AS s WHERE s.word = t.token)
-      UNION
-      SELECT DISTINCT first."postId", first."authorId",
-        first.token || ' ' || second.token AS term
-      FROM tokens AS first
-      JOIN tokens AS second
-        ON second."postId" = first."postId"
-        AND second.ordinal = first.ordinal + 1
-      WHERE first.token ~ '^[[:alnum:]_]{3,}$'
-        AND second.token ~ '^[[:alnum:]_]{3,}$'
-        AND NOT EXISTS (SELECT 1 FROM stop_words AS s WHERE s.word = first.token)
-        AND NOT EXISTS (SELECT 1 FROM stop_words AS s WHERE s.word = second.token)
-      UNION
-      SELECT DISTINCT p."id", p."authorId", '#' || LOWER(h."tag") AS term
-      FROM recent_posts AS p
-      JOIN "PostHashtag" AS ph ON ph."postId" = p."id"
-      JOIN "Hashtag" AS h ON h."id" = ph."hashtagId"
-    ),
-    term_post_metrics AS (
-      SELECT
-        candidate.term,
-        recent."id" AS "postId",
-        recent."authorId",
-        recent."createdAt",
-        recent."replyCount",
-        COUNT(interaction.id) FILTER (WHERE interaction."type" = 'LIKE')::int AS likes,
-        COUNT(interaction.id) FILTER (WHERE interaction."type" = 'REPOST')::int AS reposts
-      FROM candidate_terms AS candidate
-      JOIN recent_posts AS recent ON recent."id" = candidate."postId"
-      LEFT JOIN "Interaction" AS interaction
-        ON interaction."postId" = recent."id"
-        AND interaction."createdAt" >= ${since}
-      GROUP BY
-        candidate.term,
-        recent."id",
-        recent."authorId",
-        recent."createdAt",
-        recent."replyCount"
-    ),
-    ranked_terms AS (
-      SELECT
-        metrics.term,
-        SUM(
-          (
-            1
-            + metrics.likes * 1.5
-            + metrics.reposts * 3
-            + metrics."replyCount" * 2
-          )
-          * EXP(
-            -GREATEST(
-              0,
-              EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - metrics."createdAt"))
-            ) / 21600.0
-          )
-        ) AS score,
-        COUNT(*)::int AS "postCount",
-        COUNT(DISTINCT metrics."authorId")::int AS "uniqueUsers"
-      FROM term_post_metrics AS metrics
-      GROUP BY term
-      HAVING COUNT(*) >= 25 AND COUNT(DISTINCT metrics."authorId") >= 8
-    )
-    SELECT term, "postCount", "uniqueUsers"
-    FROM ranked_terms
-    ORDER BY score DESC, "uniqueUsers" DESC, "postCount" DESC, term ASC
-    LIMIT 30
-  `);
+  const items = await getTrendingItems();
   res.json({
     items: items.map((item) => ({
       tag: item.term,
