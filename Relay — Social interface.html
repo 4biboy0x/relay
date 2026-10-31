@@ -8075,6 +8075,8 @@
       let reelUploadFile = null;
       let reelUploadMetadataReady = false;
       let reelUploadBusy = false;
+      const reelStatusPollers = new Map();
+      let activeReelStatusSession = null;
       let reelCommentsReelId = "";
       let reelCommentsCursor = null;
       let reelCommentReplyToId = "";
@@ -10793,18 +10795,182 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           xhr.send(body);
         });
       }
-      async function waitForReelProcessing(reelId) {
-        for (let attempt = 0; attempt < 30; attempt += 1) {
-          await new Promise((resolve) => setTimeout(resolve, Math.min(10_000, 1500 + attempt * 500)));
-          if (reelUploadCancellation) return null;
-          $("#reelUploadProgressLabel").textContent = "Processing video…";
-          const status = await api(`/reels/${encodeURIComponent(reelId)}/status`);
-          if (status.status === "READY") return status;
-          if (status.status === "FAILED" || status.status === "REMOVED") {
-            throw new Error(status.processingError || "Relay could not process this video.");
-          }
+      function stopReelStatusPoller(reelId, outcome, error, paused = false) {
+        const poller = reelStatusPollers.get(reelId);
+        const session = poller?.session || activeReelStatusSession;
+        if (!session || session.reelId !== reelId) return;
+        if (poller) {
+          clearTimeout(poller.timer);
+          poller.controller?.abort();
+          reelStatusPollers.delete(reelId);
         }
-        throw new Error("Processing is taking longer than expected. You can check your profile’s Reels tab shortly.");
+        if (paused) {
+          session.paused = true;
+          session.controller = null;
+          return;
+        }
+        if (session.settled) return;
+        session.settled = true;
+        clearTimeout(session.timeoutTimer);
+        if (activeReelStatusSession === session) activeReelStatusSession = null;
+        if (error) session.reject(error);
+        else session.resolve(outcome);
+      }
+      function showReelStatusTimeout(reelId) {
+        const label = $("#reelUploadProgressLabel");
+        label.textContent = "Taking longer than usual";
+        const retry = document.createElement("button");
+        retry.className = "btn btn-line";
+        retry.type = "button";
+        retry.dataset.reelStatusRetry = reelId;
+        retry.textContent = "Retry";
+        label.after(retry);
+      }
+      function startReelStatusPoller(session) {
+        const { reelId } = session;
+        const existing = reelStatusPollers.get(reelId);
+        if (existing) return existing.promise;
+        if (session.settled || session.paused || document.hidden || reelUploadCancellation) return session.promise;
+        const poller = {
+          session,
+          promise: session.promise,
+          timer: null,
+          controller: null,
+          attempt: 0,
+        };
+        reelStatusPollers.set(reelId, poller);
+        const schedule = () => {
+          if (session.settled || session.paused || reelUploadCancellation) return;
+          if (Date.now() >= session.deadline) {
+            stopReelStatusPoller(reelId, { timedOut: true });
+            showReelStatusTimeout(reelId);
+            return;
+          }
+          const delays = [1000, 1000, 2000, 2000, 3000];
+          const base = socket ? 5000 : delays[Math.min(poller.attempt, delays.length - 1)];
+          const delay = Math.round(base * (0.9 + Math.random() * 0.2));
+          poller.timer = setTimeout(async () => {
+            if (session.settled || session.paused || reelUploadCancellation || document.hidden) return;
+            const controller = new AbortController();
+            poller.controller = controller;
+            session.controller = controller;
+            poller.attempt += 1;
+            $("#reelUploadProgressLabel").textContent = "Processing video…";
+            try {
+              const headers = new Headers();
+              if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
+              if (session.etag) headers.set("If-None-Match", session.etag);
+              const response = await fetch(`${API_BASE}/reels/${encodeURIComponent(reelId)}/status`, {
+                headers,
+                credentials: "include",
+                signal: controller.signal,
+              });
+              if (session.settled || session.paused || controller.signal.aborted) return;
+              if (response.status >= 400 && response.status < 500) {
+                let message = `Could not check Reel status (${response.status}).`;
+                try {
+                  const body = await response.json();
+                  message = body.error || message;
+                } catch {}
+                stopReelStatusPoller(reelId, null, new Error(message));
+                return;
+              }
+              if (response.status >= 500) throw new Error(`Status check failed (${response.status}).`);
+              if (response.status !== 304) {
+                session.etag = response.headers.get("ETag") || "";
+                session.lastStatus = await response.json();
+              }
+              session.networkRetries = 0;
+              const status = session.lastStatus;
+              if (status.status === "READY") {
+                stopReelStatusPoller(reelId, status);
+                return;
+              }
+              if (status.status === "FAILED" || status.status === "REMOVED") {
+                stopReelStatusPoller(reelId, null, new Error(status.processingError || "Relay could not process this video."));
+                return;
+              }
+            } catch (error) {
+              if (session.settled || session.paused || controller.signal.aborted) return;
+              session.networkRetries += 1;
+              if (session.networkRetries > 3) {
+                stopReelStatusPoller(reelId, null, new Error(error.message || "Could not check Reel processing status."));
+                return;
+              }
+            } finally {
+              if (poller.controller === controller) {
+                poller.controller = null;
+                session.controller = null;
+              }
+            }
+            schedule();
+          }, delay);
+        };
+        schedule();
+        return poller.promise;
+      }
+      function waitForReelProcessing(reelId) {
+        const existing = reelStatusPollers.get(reelId);
+        if (existing) return existing.promise;
+        if (activeReelStatusSession?.reelId === reelId && !activeReelStatusSession.settled) {
+          activeReelStatusSession.paused = false;
+          return startReelStatusPoller(activeReelStatusSession);
+        }
+        const session = {
+          reelId,
+          promise: null,
+          resolve: null,
+          reject: null,
+          settled: false,
+          paused: false,
+          deadline: Date.now() + 3 * 60_000,
+          timeoutTimer: null,
+          networkRetries: 0,
+          etag: "",
+          lastStatus: null,
+        };
+        session.promise = new Promise((resolve, reject) => {
+          session.resolve = resolve;
+          session.reject = reject;
+        });
+        activeReelStatusSession = session;
+        session.timeoutTimer = setTimeout(() => {
+          stopReelStatusPoller(reelId, { timedOut: true });
+          showReelStatusTimeout(reelId);
+        }, 3 * 60_000);
+        return startReelStatusPoller(session);
+      }
+      async function finishReelUpload(reelId) {
+        $("#reelUploadProgress").value = 100;
+        $("#reelUploadProgressLabel").textContent = "Ready";
+        $("#reelUploadProgressLabel").nextElementSibling?.remove();
+        $("#reelCreateDialog").close();
+        toast("Your Reel is ready");
+        if (!$("#v-reels").hidden) {
+          reelFeedScrollTop = 0;
+          await renderReels(false);
+        }
+        if (!$("#v-profile").hidden && profileTab === "Reels" && (!viewedProfileId || viewedProfileId === currentUser.id)) {
+          await renderProfile("Reels");
+        }
+      }
+      async function retryReelStatus(reelId) {
+        if (reelUploadBusy || !reelId || reelId !== reelUploadCreatedId) return;
+        $("#reelUploadProgressLabel").nextElementSibling?.remove();
+        reelUploadBusy = true;
+        updateReelUploadButton();
+        setReelUploadStatus("");
+        try {
+          const status = await waitForReelProcessing(reelId);
+          if (status?.timedOut || !status || reelUploadCancellation) return;
+          await finishReelUpload(reelId);
+        } catch (error) {
+          setReelUploadStatus(error.message || "Could not check Reel processing status.", "error");
+        } finally {
+          reelUploadBusy = false;
+          reelUploadCancellation = false;
+          updateReelUploadButton();
+        }
       }
       async function uploadReel(event) {
         event.preventDefault();
@@ -10853,17 +11019,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           });
           const ready = await waitForReelProcessing(created.id);
           if (!ready || reelUploadCancellation) return;
-          $("#reelUploadProgress").value = 100;
-          $("#reelUploadProgressLabel").textContent = "Ready";
-          $("#reelCreateDialog").close();
-          toast("Your Reel is ready");
-          if (!$("#v-reels").hidden) {
-            reelFeedScrollTop = 0;
-            await renderReels(false);
-          }
-          if (!$("#v-profile").hidden && profileTab === "Reels" && (!viewedProfileId || viewedProfileId === currentUser.id)) {
-            await renderProfile("Reels");
-          }
+          if (ready.timedOut) return;
+          await finishReelUpload(created.id);
         } catch (error) {
           if (error.name === "AbortError" && reelUploadCancellation) return;
           setReelUploadStatus(error.message || "Could not upload this Reel.", "error");
@@ -10879,6 +11036,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (!reelUploadBusy || reelUploadCancellation) return;
         reelUploadCancellation = true;
         const reelId = reelUploadCreatedId;
+        if (reelId) stopReelStatusPoller(reelId, null);
         reelUploadRequest?.abort();
         setReelUploadStatus("Canceling upload…");
         if (reelId) {
@@ -10957,6 +11115,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#reelChooseVideo").addEventListener("click", () => $("#reelFileInput").click());
         $("#reelFileInput").addEventListener("change", (event) => selectReelFile(event.target.files?.[0]));
         $("#reelCreateForm").addEventListener("submit", uploadReel);
+        $("#reelUploadProgressWrap").addEventListener("click", (event) => {
+          const retry = event.target.closest("[data-reel-status-retry]");
+          if (retry) retryReelStatus(retry.dataset.reelStatusRetry);
+        });
         $("#reelCaption").addEventListener("input", (event) => {
           $("#reelCaptionCount").textContent = `${event.target.value.length} / 280`;
         });
@@ -10974,6 +11136,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (reelUploadBusy) cancelReelUpload();
         });
         $("#reelCreateDialog").addEventListener("close", () => {
+          if (reelUploadCreatedId) stopReelStatusPoller(reelUploadCreatedId, null);
           if (reelUploadPreviewUrl) URL.revokeObjectURL(reelUploadPreviewUrl);
           reelUploadPreviewUrl = "";
           if (!reelUploadBusy) {
@@ -11036,9 +11199,16 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         window.addEventListener("offline", updateReelConnectionState);
         document.addEventListener("visibilitychange", () => {
           if (document.hidden) {
+            if (activeReelStatusSession) {
+              stopReelStatusPoller(activeReelStatusSession.reelId, null, null, true);
+            }
             $$(".reel-video").forEach((video) => video.pause());
-          } else if (!$("#v-reels").hidden && shouldAutoplayReels()) {
-            syncReelPlayback();
+          } else {
+            if (activeReelStatusSession && $("#reelCreateDialog").open && !reelUploadCancellation) {
+              activeReelStatusSession.paused = false;
+              startReelStatusPoller(activeReelStatusSession);
+            }
+            if (!$("#v-reels").hidden && shouldAutoplayReels()) syncReelPlayback();
           }
         });
         reelReducedMotion.addEventListener("change", syncReelPlayback);
@@ -12137,6 +12307,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         return Math.max(0, Number(element.dataset.unreadCount) || 0);
       }
       function receiveNotification(item) {
+        if (activeReelStatusSession?.reelId === item.reelId) {
+          if (item.type === "REEL_READY") {
+            stopReelStatusPoller(item.reelId, { status: "READY" });
+          } else if (item.type === "REEL_FAILED") {
+            stopReelStatusPoller(item.reelId, null, new Error("Relay could not process this video."));
+          }
+        }
         if (seenNotificationIds.has(item.id)) return;
         seenNotificationIds.add(item.id);
         const badge = $("#nbadge");

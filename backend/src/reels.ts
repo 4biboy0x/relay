@@ -116,6 +116,14 @@ const viewLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+const statusLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId ?? ipKeyGenerator(req.ip ?? "unknown"),
+});
+const observedReelStatuses = new Map<string, ReelStatus>();
 
 const multipartUpload = multer({
   storage: multer.memoryStorage(),
@@ -497,14 +505,38 @@ router.post("/:id/complete", authRequired, writeLimiter, asyncRoute(async (req, 
   res.status(202).json({ id: reel.id, status: ReelStatus.PROCESSING });
 }));
 
-router.get("/:id/status", authRequired, asyncRoute(async (req, res) => {
+router.get("/:id/status", authRequired, statusLimiter, asyncRoute(async (req, res) => {
   const reelId = reelIdFrom(req.params.id);
   const reel = await prisma.reel.findFirst({
     where: { id: reelId, authorId: viewerIdFrom(req) },
     select: { id: true, status: true, processingError: true, durationMs: true },
   });
   if (!reel) throw new HttpError(404, "Reel not found");
-  res.json(reel);
+  const previousStatus = observedReelStatuses.get(reelId);
+  if (previousStatus && previousStatus !== reel.status) {
+    console.info(`Reel ${reelId} status transition: ${previousStatus.toLowerCase()} -> ${reel.status.toLowerCase()}`);
+  } else if (!previousStatus && reel.status === ReelStatus.PROCESSING) {
+    console.info(`Reel ${reelId} status transition: uploading -> processing`);
+  }
+  observedReelStatuses.delete(reelId);
+  observedReelStatuses.set(reelId, reel.status);
+  if (observedReelStatuses.size > 10_000) {
+    const oldestReelId = observedReelStatuses.keys().next().value;
+    if (oldestReelId) observedReelStatuses.delete(oldestReelId);
+  }
+  const body = {
+    id: reel.id,
+    status: reel.status,
+    processingError: reel.processingError,
+    durationMs: reel.durationMs,
+  };
+  const etag = `"${createHash("sha256").update(JSON.stringify(body)).digest("hex").slice(0, 24)}"`;
+  res.set({ "Cache-Control": "no-store", ETag: etag });
+  if (req.fresh) {
+    res.status(304).end();
+    return;
+  }
+  res.json(body);
 }));
 
 router.get("/:id/media/:kind", asyncRoute(async (req, res) => {
