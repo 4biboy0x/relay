@@ -210,7 +210,7 @@
       }
       .app {
         display: grid;
-        grid-template-columns: clamp(232px, 16vw, 252px) minmax(520px, 600px) clamp(280px, 20vw, 310px);
+        grid-template-columns: clamp(232px, 16vw, 252px) minmax(520px, 1fr) minmax(0px, clamp(280px, 20vw, 310px));
         justify-content: center;
         gap: 0 clamp(18px, 1.8vw, 24px);
         width: 100%;
@@ -218,6 +218,14 @@
         margin: 0 auto;
         padding: 0 clamp(16px, 1.8vw, 28px);
         box-sizing: border-box;
+        transition: grid-template-columns 320ms cubic-bezier(.22, .61, .36, 1);
+      }
+      .app > aside[aria-label="Suggestions"] {
+        transition:
+          opacity 220ms ease,
+          transform 320ms cubic-bezier(.22, .61, .36, 1),
+          padding 320ms cubic-bezier(.22, .61, .36, 1),
+          visibility 0s;
       }
       .app.messages-active main {
         height: 100dvh;
@@ -250,6 +258,43 @@
       }
       .app.messages-active #v-messages > .top {
         flex: none;
+      }
+      @media (min-width: 1101px) {
+        .app.messages-active {
+          grid-template-columns: clamp(232px, 16vw, 252px) minmax(520px, 1fr) minmax(0px, 0px);
+        }
+        .app > main {
+          width: min(600px, 100%);
+          justify-self: center;
+          transition: width 320ms cubic-bezier(.22, .61, .36, 1);
+        }
+        .app.messages-active > main {
+          width: 100%;
+          justify-self: stretch;
+        }
+        .app.messages-active > aside[aria-label="Suggestions"] {
+          transition:
+            opacity 220ms ease,
+            transform 320ms cubic-bezier(.22, .61, .36, 1),
+            padding 320ms cubic-bezier(.22, .61, .36, 1),
+            visibility 0s linear 320ms;
+          min-width: 0;
+          min-height: 0;
+          padding-block: 0;
+          overflow: hidden;
+          opacity: 0;
+          transform: translateX(14px) scale(.985);
+          transform-origin: right center;
+          visibility: hidden;
+          pointer-events: none;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .app,
+        .app > main,
+        .app > aside[aria-label="Suggestions"] {
+          transition: none;
+        }
       }
       /* nav */
       .nav {
@@ -973,19 +1018,22 @@
       }
       .location-popover label {
         display: block;
+        margin: 0 0 3px;
         font-weight: 600;
       }
       .location-popover p {
-        margin: 4px 0 10px;
+        margin: 0 0 9px;
         color: var(--text-2);
         font-size: 12px;
         line-height: 1.4;
       }
       .location-entry {
         display: flex;
+        align-items: center;
         gap: 8px;
       }
       .location-entry input {
+        flex: 1;
         width: 100%;
         min-width: 0;
         height: 34px;
@@ -996,6 +1044,10 @@
         background: var(--surface);
         font: inherit;
         font-size: 13px;
+      }
+      .location-entry .btn {
+        min-width: 58px;
+        flex: none;
       }
       .location-entry input:focus {
         outline: none;
@@ -1073,11 +1125,25 @@
         width: min(300px, calc(100vw - 16px));
         padding: 8px;
       }
+      .composer-popover.is-reply-modal-popover {
+        position: fixed;
+        z-index: 10000;
+        max-width: calc(100vw - 16px);
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
       .emoji-picker {
         overflow: hidden;
         border-radius: 14px;
         transform-origin: 50% 100%;
         will-change: opacity, transform;
+      }
+      .emoji-picker.is-reply-modal-popover {
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+      .emoji-picker.is-reply-modal-popover .emoji-results {
+        max-height: min(260px, 32dvh);
       }
       .chat-panel > #emojiPicker {
         width: min(250px, calc(100vw - 24px));
@@ -6817,6 +6883,24 @@
       function positionComposerPopover(popover, trigger) {
         if (popover.hidden) return;
         const bounds = trigger.getBoundingClientRect();
+        if (popover.classList.contains("is-reply-modal-popover")) {
+          if (bounds.bottom <= 0 || bounds.top >= window.innerHeight) {
+            closeComposerPopover(popover, trigger);
+            return;
+          }
+          const preferredWidth = Number(popover.dataset.preferredWidth) || popover.offsetWidth;
+          const width = Math.min(preferredWidth, window.innerWidth - 16);
+          const left = Math.max(8, Math.min(bounds.left, window.innerWidth - width - 8));
+          const measuredHeight = popover.offsetHeight || 240;
+          const below = window.innerHeight - bounds.bottom - 8;
+          const above = bounds.top - 8;
+          const openBelow = below >= Math.min(measuredHeight, 240) || below >= above;
+          popover.style.left = `${left}px`;
+          popover.style.width = `${width}px`;
+          popover.style.top = `${openBelow ? bounds.bottom + 4 : Math.max(8, bounds.top - measuredHeight - 4)}px`;
+          popover.style.maxHeight = `${Math.max(80, openBelow ? below - 4 : above)}px`;
+          return;
+        }
         const container = popover.offsetParent;
         if (!container) return;
         const containerBounds = container.getBoundingClientRect();
@@ -6914,6 +6998,7 @@
           composerPopoverCloseTimers.delete(popover);
           const home = composerPopoverHomes.get(popover);
           if (home && popover.parentElement !== home) home.append(popover);
+          popover.classList.remove("is-reply-modal-popover");
           if (popover === $("#locationPopover")) {
             popover.setAttribute("aria-label", "Add a location to your post");
           }
@@ -11713,7 +11798,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const form = trigger.closest("#replyComposerForm, [data-thread-reply]");
         if (!form) return;
         const picker = $("#emojiPicker");
-        if (picker.parentElement !== form) form.append(picker);
+        const isModal = form.id === "replyComposerForm";
+        const host = isModal ? replyComposerOverlay : form;
+        picker.classList.toggle("is-reply-modal-popover", isModal);
+        if (picker.parentElement !== host) host.append(picker);
         emojiInsertTarget = form.id === "replyComposerForm"
           ? $("#replyComposerText")
           : $("input[aria-label='Write your reply']", form);
@@ -11727,7 +11815,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           form,
         };
         const popover = $("#locationPopover");
-        if (popover.parentElement !== form) form.append(popover);
+        const isModal = form.id === "replyComposerForm";
+        const host = isModal ? replyComposerOverlay : form;
+        popover.classList.toggle("is-reply-modal-popover", isModal);
+        if (popover.parentElement !== host) host.append(popover);
         $("#locationInput").value = replyLocationValue(replyLocationTarget);
         $("#locationResults").replaceChildren();
         $("#locationResults").hidden = true;
