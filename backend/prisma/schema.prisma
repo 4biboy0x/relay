@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
 }
 
@@ -10,24 +10,30 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  handle        String         @unique @db.VarChar(30)
-  email         String         @unique @db.VarChar(254)
+  id            String               @id @default(cuid())
+  handle        String               @unique @db.VarChar(30)
+  email         String               @unique @db.VarChar(254)
   passwordHash  String
-  displayName   String         @db.VarChar(60)
-  bio           String         @default("") @db.VarChar(280)
+  displayName   String               @db.VarChar(60)
+  bio           String               @default("") @db.VarChar(280)
   avatarUrl     String?
   bannerUrl     String?
-  isOnline      Boolean        @default(false)
+  isOnline      Boolean              @default(false)
   lastSeen      DateTime?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  followers     Follow[]       @relation("Followers")
-  following     Follow[]       @relation("Following")
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  followers     Follow[]             @relation("Followers")
+  following     Follow[]             @relation("Following")
   interactions  Interaction[]
-  sentNotifs    Notification[] @relation("NotificationActor")
-  notifications Notification[] @relation("NotificationRecipient")
+  sentNotifs    Notification[]       @relation("NotificationActor")
+  notifications Notification[]       @relation("NotificationRecipient")
   postViews     PostView[]
+  reels         Reel[]
+  reelLikes     ReelLike[]
+  reelReposts   ReelRepost[]
+  reelBookmarks ReelBookmark[]
+  reelComments  ReelComment[]
+  reelReports   ReelReport[]
   posts         Post[]
   refreshTokens RefreshToken[]
   conversations ConversationMember[]
@@ -85,6 +91,132 @@ model PostView {
   @@index([postId, createdAt(sort: Desc)])
 }
 
+model Reel {
+  id              String         @id @default(uuid()) @db.Uuid
+  authorId        String
+  caption         String?        @db.VarChar(280)
+  status          ReelStatus     @default(UPLOADING)
+  originalKey     String
+  videoKey        String?
+  posterKey       String?
+  durationMs      Int?
+  width           Int?
+  height          Int?
+  sizeBytes       BigInt
+  mime            String         @db.VarChar(100)
+  likeCount       Int            @default(0)
+  commentCount    Int            @default(0)
+  repostCount     Int            @default(0)
+  shareCount      Int            @default(0)
+  viewCount       Int            @default(0)
+  createdAt       DateTime       @default(now())
+  publishedAt     DateTime?
+  deletedAt       DateTime?
+  processingError String?
+  author          User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes           ReelLike[]
+  reposts         ReelRepost[]
+  bookmarks       ReelBookmark[]
+  views           ReelView[]
+  comments        ReelComment[]
+  reports         ReelReport[]
+  notifications   Notification[] @relation("NotificationReel")
+
+  // The SQL migration adds these as partial indexes; Prisma 6.19 cannot model the predicate.
+  @@index([status, publishedAt(sort: Desc), id(sort: Desc)])
+  @@index([authorId, publishedAt(sort: Desc), id(sort: Desc)])
+}
+
+model ReelLike {
+  userId    String
+  reelId    String   @db.Uuid
+  createdAt DateTime @default(now())
+  reel      Reel     @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, reelId])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model ReelBookmark {
+  userId    String
+  reelId    String   @db.Uuid
+  createdAt DateTime @default(now())
+  reel      Reel     @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, reelId])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model ReelRepost {
+  userId    String
+  reelId    String   @db.Uuid
+  createdAt DateTime @default(now())
+  reel      Reel     @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, reelId])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model ReelView {
+  reelId    String   @db.Uuid
+  viewerKey String   @db.VarChar(128)
+  day       DateTime @db.Date
+  createdAt DateTime @default(now())
+  reel      Reel     @relation(fields: [reelId], references: [id], onDelete: Cascade)
+
+  @@id([reelId, viewerKey, day])
+  @@index([reelId, createdAt])
+}
+
+model ReelComment {
+  id        String        @id @default(cuid())
+  reelId    String        @db.Uuid
+  authorId  String
+  replyToId String?
+  body      String        @db.VarChar(280)
+  createdAt DateTime      @default(now())
+  deletedAt DateTime?
+  reel      Reel          @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  replyTo   ReelComment?  @relation("ReelCommentReplies", fields: [replyToId], references: [id], onDelete: Cascade)
+  replies   ReelComment[] @relation("ReelCommentReplies")
+
+  @@index([reelId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([replyToId, createdAt(sort: Desc)])
+}
+
+model ReelReport {
+  id         String           @id @default(cuid())
+  reelId     String           @db.Uuid
+  reporterId String
+  reason     ReelReportReason
+  details    String?          @db.VarChar(1000)
+  status     ReelReportStatus @default(PENDING)
+  createdAt  DateTime         @default(now())
+  reel       Reel             @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  reporter   User             @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([reelId, reporterId])
+  @@index([status, createdAt])
+}
+
+model ProcessingJob {
+  id        String              @id @default(cuid())
+  type      ProcessingJobType
+  payload   Json
+  status    ProcessingJobStatus @default(PENDING)
+  attempts  Int                 @default(0)
+  runAt     DateTime            @default(now())
+  lockedAt  DateTime?
+  lastError String?
+  createdAt DateTime            @default(now())
+
+  @@index([status, runAt])
+}
+
 model Interaction {
   id        String          @id @default(cuid())
   userId    String
@@ -115,11 +247,13 @@ model Notification {
   recipientId String
   actorId     String
   postId      String?
+  reelId      String?          @db.Uuid
   type        NotificationType
   readAt      DateTime?
   createdAt   DateTime         @default(now())
   actor       User             @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
   post        Post?            @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reel        Reel?            @relation("NotificationReel", fields: [reelId], references: [id], onDelete: Cascade)
   recipient   User             @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
 
   @@index([recipientId, createdAt(sort: Desc), id(sort: Desc)])
@@ -208,4 +342,45 @@ enum NotificationType {
   REPOST
   REPLY
   MENTION
+  REEL_LIKE
+  REEL_COMMENT
+  REEL_REPOST
+  REEL_READY
+  REEL_FAILED
+}
+
+enum ReelStatus {
+  UPLOADING
+  PROCESSING
+  READY
+  FAILED
+  REMOVED
+}
+
+enum ReelReportReason {
+  SPAM
+  HARASSMENT
+  VIOLENCE
+  SEXUAL_CONTENT
+  MISINFORMATION
+  COPYRIGHT
+  OTHER
+}
+
+enum ReelReportStatus {
+  PENDING
+  REVIEWED
+  DISMISSED
+  ACTIONED
+}
+
+enum ProcessingJobType {
+  PROCESS_REEL
+}
+
+enum ProcessingJobStatus {
+  PENDING
+  RUNNING
+  FAILED
+  COMPLETED
 }

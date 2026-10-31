@@ -19,6 +19,7 @@ secrets/
 
 # User uploads and logs
 uploads/
+private-reels/
 *.log
 npm-debug.log*
 yarn-debug.log*

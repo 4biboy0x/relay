@@ -1,6 +1,9 @@
 import "dotenv/config";
 import { InteractionType, PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, statSync, writeFileSync } from "node:fs";
+import path from "node:path";
 
 const prisma = new PrismaClient();
 const password = process.env.RELAY_SEED_PASSWORD;
@@ -137,6 +140,93 @@ const additionalUsers = additionalProfiles.map(([handle, displayName, bio], inde
 }));
 
 const users = [...initialUsers, ...additionalUsers];
+
+const demoReels = [
+  { id: "00000000-0000-4000-8000-000000000001", author: "amine_dev", caption: "A tiny loop from the walk back home." },
+  { id: "00000000-0000-4000-8000-000000000002", author: "sarah_ui", caption: "The light was too good not to stop for." },
+  { id: "00000000-0000-4000-8000-000000000003", author: "khalil_sec", caption: "A quiet minute between tasks." },
+  { id: "00000000-0000-4000-8000-000000000004", author: "amine_dev", caption: "A little color for the timeline." },
+  { id: "00000000-0000-4000-8000-000000000005", author: "sarah_ui", caption: "Weekend scenes, no agenda." },
+  { id: "00000000-0000-4000-8000-000000000006", author: "khalil_sec", caption: "Found a nice rhythm in the city." },
+  { id: "00000000-0000-4000-8000-000000000007", author: "amine_dev", caption: "One more small thing worth keeping." },
+  { id: "00000000-0000-4000-8000-000000000008", author: "sarah_ui", caption: "A moment from this afternoon." },
+] as const;
+
+type DemoReelAsset = (typeof demoReels)[number] & {
+  originalKey: string;
+  videoKey: string | null;
+  posterKey: string;
+  sizeBytes: bigint;
+};
+
+function prepareDemoReelAssets(): DemoReelAsset[] {
+  const directory = path.resolve(process.env.REEL_STORAGE_DIR || path.join(process.cwd(), "private-reels"), "demo");
+  mkdirSync(directory, { recursive: true });
+
+  return demoReels.map((reel, index) => {
+    const number = String(index + 1).padStart(2, "0");
+    const videoName = `reel-${number}.mp4`;
+    const posterName = `reel-${number}.jpg`;
+    const videoPath = path.join(directory, videoName);
+    const posterPath = path.join(directory, posterName);
+    const ffmpeg = process.env.FFMPEG_PATH || "ffmpeg";
+    const video = spawnSync(ffmpeg, [
+      "-y",
+      "-f", "lavfi",
+      "-i", "testsrc2=size=360x640:rate=30:duration=5",
+      "-vf", `hue=h=${index * 37}:s=0.8`,
+      "-an",
+      "-c:v", "libx264",
+      "-preset", "ultrafast",
+      "-crf", "30",
+      "-pix_fmt", "yuv420p",
+      "-movflags", "+faststart",
+      videoPath,
+    ], { encoding: "utf8", stdio: ["ignore", "ignore", "pipe"] });
+
+    if (!video.error && video.status === 0) {
+      const poster = spawnSync(ffmpeg, [
+        "-y",
+        "-ss", "0.5",
+        "-i", videoPath,
+        "-frames:v", "1",
+        "-q:v", "3",
+        posterPath,
+      ], { encoding: "utf8", stdio: ["ignore", "ignore", "pipe"] });
+
+      if (!poster.error && poster.status === 0) {
+        return {
+          ...reel,
+          originalKey: `demo/${videoName}`,
+          videoKey: `demo/${videoName}`,
+          posterKey: `demo/${posterName}`,
+          sizeBytes: BigInt(statSync(videoPath).size),
+        };
+      }
+
+      console.warn(`Could not create poster for demo reel ${reel.id}; using an SVG poster.`);
+    } else {
+      const reason = video.error?.message || video.stderr?.trim() || "ffmpeg exited unsuccessfully";
+      console.warn(`Could not create demo video ${reel.id} (${reason}); using a poster-only placeholder.`);
+    }
+
+    const fallbackName = `reel-${number}.svg`;
+    writeFileSync(path.join(directory, fallbackName), [
+      `<svg xmlns="http://www.w3.org/2000/svg" width="360" height="640" viewBox="0 0 360 640">`,
+      `<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#6c5ce7"/><stop offset="1" stop-color="#1f9f92"/></linearGradient></defs>`,
+      `<path fill="url(#bg)" d="M0 0h360v640H0z"/><circle cx="180" cy="320" r="52" fill="#ffffff" fill-opacity=".92"/>`,
+      `<path d="m169 291 45 29-45 29z" fill="#6c5ce7"/></svg>`,
+    ].join(""), "utf8");
+
+    return {
+      ...reel,
+      originalKey: `demo/${fallbackName}`,
+      videoKey: null,
+      posterKey: `demo/${fallbackName}`,
+      sizeBytes: BigInt(statSync(path.join(directory, fallbackName)).size),
+    };
+  });
+}
 
 type SeedPost = {
   id: number;
@@ -309,6 +399,7 @@ async function seed(): Promise<void> {
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
+  const demoReelAssets = prepareDemoReelAssets();
 
   await prisma.$transaction(async (tx) => {
     const umx0x = await tx.user.findUnique({
@@ -329,6 +420,82 @@ async function seed(): Promise<void> {
         select: { id: true },
       });
       userIds.set(user.handle, saved.id);
+    }
+
+    for (const [index, reel] of demoReelAssets.entries()) {
+      const authorId = userIds.get(reel.author);
+      if (!authorId) throw new Error(`Missing seeded reel author: ${reel.author}`);
+
+      await tx.reel.upsert({
+        where: { id: reel.id },
+        create: {
+          id: reel.id,
+          authorId,
+          caption: reel.caption,
+          status: "READY",
+          originalKey: reel.originalKey,
+          videoKey: reel.videoKey,
+          posterKey: reel.posterKey,
+          durationMs: 5000,
+          width: 360,
+          height: 640,
+          sizeBytes: reel.sizeBytes,
+          mime: "video/mp4",
+          likeCount: 2,
+          commentCount: 1,
+          repostCount: 1,
+          createdAt: new Date(Date.now() - index * 3_600_000),
+          publishedAt: new Date(Date.now() - index * 3_600_000),
+        },
+        update: {
+          authorId,
+          caption: reel.caption,
+          status: "READY",
+          originalKey: reel.originalKey,
+          videoKey: reel.videoKey,
+          posterKey: reel.posterKey,
+          sizeBytes: reel.sizeBytes,
+          processingError: null,
+        },
+      });
+
+      const authorIndex = users.findIndex((user) => user.handle === reel.author);
+      for (const offset of [1, 2]) {
+        const liker = users[(authorIndex + offset) % users.length]!;
+        await tx.reelLike.upsert({
+          where: { userId_reelId: { userId: userIds.get(liker.handle)!, reelId: reel.id } },
+          create: { userId: userIds.get(liker.handle)!, reelId: reel.id },
+          update: {},
+        });
+      }
+
+      const reposter = users[(authorIndex + 3) % users.length]!;
+      await tx.reelRepost.upsert({
+        where: { userId_reelId: { userId: userIds.get(reposter.handle)!, reelId: reel.id } },
+        create: { userId: userIds.get(reposter.handle)!, reelId: reel.id },
+        update: {},
+      });
+
+      await tx.reelComment.upsert({
+        where: { id: seedId(500 + index) },
+        create: {
+          id: seedId(500 + index),
+          reelId: reel.id,
+          authorId: userIds.get(users[(authorIndex + 4) % users.length]!.handle)!,
+          body: ["This is such a good little moment.", "The colors here are lovely.", "Adding this to my loop list."][index % 3]!,
+        },
+        update: { reelId: reel.id },
+      });
+
+      const [likeCount, repostCount, commentCount] = await Promise.all([
+        tx.reelLike.count({ where: { reelId: reel.id } }),
+        tx.reelRepost.count({ where: { reelId: reel.id } }),
+        tx.reelComment.count({ where: { reelId: reel.id, deletedAt: null } }),
+      ]);
+      await tx.reel.update({
+        where: { id: reel.id },
+        data: { likeCount, repostCount, commentCount },
+      });
     }
 
     for (const post of posts) {
@@ -420,7 +587,7 @@ async function seed(): Promise<void> {
     }
   });
 
-  console.log(`Seeded ${users.length} accounts, ${posts.length} posts, and follow relationships with @umx0x.`);
+  console.log(`Seeded ${users.length} accounts, ${posts.length} posts, ${demoReelAssets.length} demo reels, and follow relationships with @umx0x.`);
 }
 
 seed()
