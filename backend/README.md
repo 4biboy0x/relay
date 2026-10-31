@@ -24,7 +24,7 @@ For production, build the TypeScript app with `npm run build`, generate the Pris
 
 The Reels API requires the `20261101120000_reels` and `20261101130000_reel_storage_cleanup` migrations. Apply them with `npm run db:migrate` locally or `npm run db:deploy` in production; the migrations are additive and have matching `down.sql` rollback scripts. The checked-in migration has not been applied automatically.
 
-Run the API and the processing worker as separate processes. Start the API with `npm run dev`, then run `npm run reel-worker` from another backend terminal. The worker requires `ffmpeg` and `ffprobe` on `PATH`; it claims queued jobs from PostgreSQL, retries failures up to three times, publishes processed videos, and cleans up expired uploads and deleted media. Keep the worker running for uploads to finish processing.
+The API starts the Reel processing worker loop in the same process, in development and production. `npm run reel-worker` remains available for deployments that intentionally run a dedicated worker instead; do not run both worker modes unless needed, as they will compete for the same queue. The worker requires `ffmpeg` and `ffprobe` on `PATH` (or `FFMPEG_PATH` / `FFPROBE_PATH`); it claims queued jobs from PostgreSQL, retries failures up to three times, publishes processed videos, and cleans up expired uploads and deleted media.
 
 Reels accept MP4, MOV, or WebM uploads up to 100 MB, 60 seconds, and 4096 pixels per dimension. The worker validates the container and metadata, rejects location metadata, transcodes video to H.264/AAC MP4, creates a JPEG preview, and strips embedded metadata. This is format validation and transcoding, not malware scanning.
 

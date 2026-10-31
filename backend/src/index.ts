@@ -14,8 +14,8 @@ server.listen(config.PORT, () => {
 
 let shuttingDown = false;
 void checkReelMediaTools().then(() => {
-  if (process.env.NODE_ENV === "production" || shuttingDown) return;
-  console.info("Reel worker loop running in the API process (development mode)");
+  if (shuttingDown) return;
+  console.info("Reel worker loop running in the API process");
   return runReelWorker({ checkMediaTools: false });
 }).catch((error: unknown) => {
   console.error("Reel worker stopped unexpectedly:", error);
