@@ -1362,6 +1362,7 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
 api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (req, res) => {
   const rawQuery = z.string().trim().min(1).max(100).parse(req.query.q);
   const limit = z.coerce.number().int().min(1).max(50).default(50).parse(req.query.limit);
+  const offset = z.coerce.number().int().min(0).max(100000).default(0).parse(req.query.offset);
   const requestedConversationId = z.string().cuid().optional().parse(req.query.conversationId);
   const searchMode = z.enum(["all", "conversations", "messages"]).default("all").parse(req.query.mode);
   const normalizedQuery = rawQuery.normalize("NFKC").toLowerCase();
@@ -1415,12 +1416,32 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
     `)
     : [];
   const messageCount = messageCountRows[0]?.count ?? 0;
+  const searchedMessages = searchMode === "messages"
+    ? await prisma.$queryRaw<Array<{ id: string; conversationId: string }>>(Prisma.sql`
+      SELECT message."id", message."conversationId"
+      FROM "Message" AS message
+      JOIN "ConversationMember" AS viewer
+        ON viewer."conversationId" = message."conversationId"
+        AND viewer."userId" = ${req.userId!}
+      WHERE ${Prisma.join(terms.map((term) => Prisma.sql`
+        message."body" ILIKE ${`%${term}%`} ESCAPE '\\'
+      `), " AND ")}
+      ${requestedConversationId
+        ? Prisma.sql`AND message."conversationId" = ${requestedConversationId}`
+        : Prisma.empty}
+      ORDER BY message."createdAt" ASC, message."id" ASC
+      LIMIT ${limit}
+      OFFSET ${offset}
+    `)
+    : [];
   const termConditions = searchMode === "messages"
     ? [matchingAllMessageTerms]
     : terms.map((term) => searchMode === "conversations"
       ? matchingParticipant(term)
       : Prisma.sql`(${matchingMessage(term)} OR ${matchingParticipant(term)})`);
-  const rankedConversations = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+  const rankedConversations = searchMode === "messages"
+    ? []
+    : await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
     SELECT conversation."id"
     FROM "Conversation" AS conversation
     JOIN "ConversationMember" AS viewer
@@ -1439,34 +1460,36 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
       conversation."id" DESC
     LIMIT ${limit}
   `);
-  if (!rankedConversations.length) {
+  const matchingMessages = searchMode === "messages"
+    ? searchedMessages
+    : searchMode === "conversations" || !rankedConversations.length
+      ? []
+      : await prisma.$queryRaw<Array<{ id: string; conversationId: string }>>(Prisma.sql`
+        WITH ranked_messages AS (
+          SELECT
+            message."id",
+            message."conversationId",
+            ROW_NUMBER() OVER (
+              PARTITION BY message."conversationId"
+              ORDER BY message."createdAt" ASC, message."id" ASC
+            ) AS message_rank
+          FROM "Message" AS message
+          WHERE message."conversationId" IN (${Prisma.join(rankedConversations.map(({ id }) => id))})
+            AND ${Prisma.join(terms.map((term) => Prisma.sql`
+              message."body" ILIKE ${`%${term}%`} ESCAPE '\\'
+            `), " AND ")}
+        )
+        SELECT "id", "conversationId"
+        FROM ranked_messages
+        WHERE message_rank = 1
+      `);
+  const conversationIds = searchMode === "messages"
+    ? [...new Set(matchingMessages.map(({ conversationId }) => conversationId))]
+    : rankedConversations.map(({ id }) => id);
+  if (!conversationIds.length) {
     res.json({ items: [], count: messageCount });
     return;
   }
-  const conversationIds = rankedConversations.map(({ id }) => id);
-  const matchingMessages = searchMode === "conversations"
-    ? []
-    : await prisma.$queryRaw<Array<{ id: string; conversationId: string }>>(Prisma.sql`
-    WITH ranked_messages AS (
-      SELECT
-        message."id",
-        message."conversationId",
-        ROW_NUMBER() OVER (
-          PARTITION BY message."conversationId"
-          ORDER BY
-            message."createdAt" ASC,
-            message."id" ASC
-        ) AS message_rank
-      FROM "Message" AS message
-      WHERE message."conversationId" IN (${Prisma.join(conversationIds)})
-        AND ${Prisma.join(terms.map((term) => Prisma.sql`
-          message."body" ILIKE ${`%${term}%`} ESCAPE '\\'
-        `), " AND ")}
-    )
-    SELECT "id", "conversationId"
-    FROM ranked_messages
-    WHERE message_rank = 1
-    `);
   const matchedMessageIds = matchingMessages.map(({ id }) => id);
   const matchedMessages = matchedMessageIds.length
     ? await prisma.message.findMany({
@@ -1505,19 +1528,31 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
   `);
   const unread = new Map(unreadRows.map((row) => [row.conversationId, row.unreadCount]));
   const rowsById = new Map(rows.map((row) => [row.id, row]));
+  const serializeConversation = (id: string, matchedMessageId?: string) => {
+    const row = rowsById.get(id);
+    if (!row) return null;
+    return {
+      id: row.id,
+      updatedAt: row.updatedAt,
+      members: row.members.map(({ user }) => user),
+      lastMessage: row.messages[0] ?? null,
+      matchedMessage: matchedMessageId === undefined
+        ? matchedMessageByConversation.get(row.id) ?? null
+        : matchedMessagesById.get(matchedMessageId) ?? null,
+      unreadCount: unread.get(row.id) ?? 0,
+    };
+  };
   res.json({
     count: messageCount,
-    items: rankedConversations.flatMap(({ id }) => {
-      const row = rowsById.get(id);
-      return row ? [{
-        id: row.id,
-        updatedAt: row.updatedAt,
-        members: row.members.map(({ user }) => user),
-        lastMessage: row.messages[0] ?? null,
-        matchedMessage: matchedMessageByConversation.get(row.id) ?? null,
-        unreadCount: unread.get(row.id) ?? 0,
-      }] : [];
-    }),
+    items: searchMode === "messages"
+      ? matchingMessages.flatMap(({ conversationId, id }) => {
+        const item = serializeConversation(conversationId, id);
+        return item ? [item] : [];
+      })
+      : rankedConversations.flatMap(({ id }) => {
+        const item = serializeConversation(id);
+        return item ? [item] : [];
+      }),
   });
 }));
 

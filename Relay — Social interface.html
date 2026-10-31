@@ -3925,6 +3925,19 @@
       .conversation-search-results[hidden] {
         display: none;
       }
+      .message-search-load-more {
+        align-self: center;
+        margin: 8px 0 14px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        color: var(--text-2);
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .message-search-load-more:disabled {
+        cursor: wait;
+        opacity: 0.65;
+      }
       .explore-message-search {
         margin-top: 12px;
         border-top: 1px solid var(--border);
@@ -4513,7 +4526,8 @@
         width: 260px;
         max-width: 100%;
         height: auto;
-        object-fit: cover;
+        aspect-ratio: 4 / 3;
+        object-fit: contain;
         display: block;
         border-radius: 14px;
         background: var(--surface-2);
@@ -4525,8 +4539,9 @@
       }
       .message-media-button {
         display: block;
-        width: fit-content;
+        width: 260px;
         max-width: 100%;
+        aspect-ratio: 4 / 3;
         padding: 0;
         border: 0;
         border-radius: 14px;
@@ -6575,6 +6590,10 @@
       let conversationSearchTimer = null;
       let conversationSearchGeneration = 0;
       let conversationSearchMode = "conversations";
+      let messageSearchQuery = "";
+      let messageSearchOffset = 0;
+      let messageSearchCount = 0;
+      let messageSearchLoading = false;
       let pendingMessageNavigation = null;
       let conversationSelectionGeneration = 0;
       let loadingOlderMessages = false;
@@ -7737,8 +7756,9 @@
       const showDelayedSkeleton = (element, kind, delay = 150) => {
         const requestToken = {};
         delayedSkeletons.set(element, requestToken);
+        const hasExistingContent = element.childElementCount > 0;
         let timer = setTimeout(() => {
-          if (delayedSkeletons.get(element) === requestToken && !element.dataset.loaded) {
+          if (delayedSkeletons.get(element) === requestToken && !element.dataset.loaded && !hasExistingContent) {
             element.innerHTML = skeletonListMarkup(kind, 5, skeletonLabels[kind] || "content");
           }
         }, delay);
@@ -9496,8 +9516,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const bodyIsGifUrl = isGif && isGifMediaUrl(body.trim());
         const image = mediaUrl
           ? isGif
-            ? `<img class="message-media message-media-static" src="${esc(imageUrl)}" alt="Shared GIF" loading="lazy" />`
-            : `<button class="message-media-button" type="button" data-lightbox-image="${esc(imageUrl)}" aria-label="Open shared image"><img class="message-media" src="${esc(imageUrl)}" alt="Shared image" loading="lazy" /></button>`
+            ? `<img class="message-media message-media-static" src="${esc(imageUrl)}" alt="Shared GIF" width="260" height="195" loading="lazy" decoding="async" />`
+            : `<button class="message-media-button" type="button" data-lightbox-image="${esc(imageUrl)}" aria-label="Open shared image"><img class="message-media" src="${esc(imageUrl)}" alt="Shared image" width="260" height="195" loading="lazy" decoding="async" /></button>`
           : "";
         const wave = Array.from({ length: 28 }, (_, index) => `<i></i>`).join("");
         const audio = message.audioUrl ? `<div class="relay-voice" data-voice-url="${esc(mediaHref(message.audioUrl))}"><button class="relay-voice-play" type="button" aria-label="Play voice message">${relayVoicePlayIcon()}</button><div class="relay-waveform" aria-hidden="true">${wave}</div><span class="relay-voice-duration">0:00</span><audio preload="metadata" src="${esc(mediaHref(message.audioUrl))}" hidden></audio></div>` : "";
@@ -9983,19 +10003,21 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           .normalize("NFKC")
           .toLowerCase();
       }
-      function renderConversationItems(items, searchQuery = "", searchMode = "all") {
+      function renderConversationItems(items, searchQuery = "", searchMode = "all", append = false) {
         const normalizedQuery = searchQuery.normalize("NFKC").toLowerCase();
         const queryTerms = normalizedConversationQuery(searchQuery);
         const resultList = searchMode === "messages" ? $("#messageSearchResults") : $("#conversationList");
         if (!items.length) {
-          resultList.innerHTML = emptyState(
-            searchQuery ? (searchMode === "messages" ? "No matching messages." : "No matching conversations.") : "No conversations yet.",
-            searchQuery ? "Try a different search or filter." : "Start a new conversation to get things going.",
-            true,
-          );
+          if (!append) {
+            resultList.innerHTML = emptyState(
+              searchQuery ? (searchMode === "messages" ? "No matching messages." : "No matching conversations.") : "No conversations yet.",
+              searchQuery ? "Try a different search or filter." : "Start a new conversation to get things going.",
+              true,
+            );
+          }
           return;
         }
-        resultList.innerHTML = items.map((item) => {
+        const markup = items.map((item, index) => {
           const other = item.members.find((member) => member.id !== currentUser?.id);
           const current = item.id === activeConversation?.id;
           const search = `${conversationSearchText(item)} ${normalizedQuery}`;
@@ -10034,8 +10056,50 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const unreadLabel = unreadCount > 99 ? "+99" : unreadCount > 9 ? "+9" : fmt(unreadCount);
           const searchMessageId = searchQuery && searchMode !== "conversations" ? item.matchedMessage?.id || "" : "";
           const searchMessageCandidate = Boolean(searchQuery && searchMode === "all" && !searchMessageId && matchingLastMessage);
-          return `<button class="conversation-item${searchMode === "messages" ? " message-search-result" : ""}" type="button" style="--conversation-index:${items.indexOf(item)}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}">${avatarMarkup(other, "sm")}<span class="grow"><b>${esc(other?.displayName || "Relay user")}</b><small>${preview}</small></span>${unreadCount ? `<span class="unread-count" aria-label="${unreadCount} unread messages">${unreadLabel}</span>` : ""}</button>`;
+          return `<button class="conversation-item${searchMode === "messages" ? " message-search-result" : ""}" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}">${avatarMarkup(other, "sm")}<span class="grow"><b>${esc(other?.displayName || "Relay user")}</b><small>${preview}</small></span>${unreadCount ? `<span class="unread-count" aria-label="${unreadCount} unread messages">${unreadLabel}</span>` : ""}</button>`;
         }).join("");
+        if (append) resultList.insertAdjacentHTML("beforeend", markup);
+        else resultList.innerHTML = markup;
+      }
+      function updateMessageSearchLoadMore() {
+        const list = $("#messageSearchResults");
+        list.querySelector(".message-search-load-more")?.remove();
+        if (messageSearchLoading) {
+          list.insertAdjacentHTML("beforeend", `<button class="message-search-load-more" type="button" disabled aria-live="polite">Loading more messages…</button>`);
+        } else if (messageSearchOffset < messageSearchCount) {
+          list.insertAdjacentHTML("beforeend", `<button class="message-search-load-more" type="button">Load more messages</button>`);
+        }
+      }
+      async function loadMoreMessageSearchResults() {
+        const query = messageSearchQuery;
+        const generation = conversationSearchGeneration;
+        if (!query || messageSearchLoading || messageSearchOffset >= messageSearchCount) return;
+        messageSearchLoading = true;
+        updateMessageSearchLoadMore();
+        try {
+          const params = new URLSearchParams({
+            q: query,
+            limit: "50",
+            offset: String(messageSearchOffset),
+            mode: "messages",
+          });
+          const result = await api(`/conversations/search?${params}`);
+          if (generation !== conversationSearchGeneration
+            || $("#conversationSearch").value.trim().replace(/\s+/g, " ") !== query) return;
+          conversations = [...new Map([...conversations, ...result.items].map((item) => [item.id, item])).values()];
+          messageSearchOffset += result.items.length;
+          messageSearchCount = result.count || 0;
+          renderConversationItems(result.items, query, "messages", true);
+        } catch (error) {
+          if (generation === conversationSearchGeneration) {
+            toast(`Could not load more matching messages: ${error.message}`);
+          }
+        } finally {
+          if (generation === conversationSearchGeneration) {
+            messageSearchLoading = false;
+            updateMessageSearchLoadMore();
+          }
+        }
       }
       function animateConversationListEntrance() {
         const list = $("#conversationList");
@@ -10075,6 +10139,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         clearTimeout(conversationSearchTimer);
         const query = $("#conversationSearch").value.trim().replace(/\s+/g, " ");
         const generation = ++conversationSearchGeneration;
+        messageSearchQuery = query;
+        messageSearchOffset = 0;
+        messageSearchCount = 0;
+        messageSearchLoading = false;
         if (!query) {
           $("#conversationSearchTabs").hidden = true;
           $("#messageSearchResults").hidden = true;
@@ -10089,6 +10157,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#conversationSearchEmpty").hidden = true;
         $("#conversationList").innerHTML = skeletonListMarkup("message", 3, "conversation search results");
         $("#messageSearchResults").innerHTML = skeletonListMarkup("message", 3, "message search results");
+        $("#messageSearchResults").scrollTop = 0;
         setConversationSearchMode(conversationSearchMode);
         conversationSearchTimer = setTimeout(async () => {
           try {
@@ -10106,7 +10175,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             ].map((item) => [item.id, item])).values()];
             renderConversationItems(conversationResult.items, query, "conversations");
             renderConversationItems(messageResult.items, query, "messages");
+            messageSearchOffset = messageResult.items.length;
+            messageSearchCount = messageResult.count || 0;
             $("#messageSearchTab").textContent = `Messages (${fmt(messageResult.count || 0)})`;
+            updateMessageSearchLoadMore();
             setConversationSearchMode(conversationSearchMode);
           } catch (error) {
             if (generation !== conversationSearchGeneration) return;
@@ -10179,6 +10251,36 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (location.hash !== route) location.hash = route;
         }
         return loadConversation(conversation, targetMessageId);
+      }
+      function resetActiveConversation() {
+        sendTyping(false);
+        conversationSelectionGeneration += 1;
+        activeConversationLoadGeneration += 1;
+        activeConversation = null;
+        activeConversationCursor = null;
+        loadingOlderMessages = false;
+        clearTypingUsers();
+        try {
+          sessionStorage.removeItem("relay_active_conversation");
+        } catch (error) {
+          console.warn("Could not clear the active conversation preference.", error);
+        }
+        $("#messagesLayout").classList.remove("has-conversation");
+        $("#chatName").textContent = "Select a conversation";
+        $("#chatSubtitle").textContent = "";
+        $("#chatSubtitle").hidden = true;
+        setAvatar($("#chatAvatar"), null, "sm");
+        $("#chatProfileLink").disabled = true;
+        $("#chatProfileLink").removeAttribute("data-profile-id");
+        $("#chatProfileLink").setAttribute("aria-label", "Conversation profile unavailable");
+        $("#chatLog").innerHTML = `${conversationStartMarkup()}<div class="typing-status" id="typingStatus" aria-live="polite"></div>`;
+        $("#messageInput").disabled = true;
+        $("#messageInput").value = "";
+        syncMessageComposer();
+        $("#sendMessage").disabled = true;
+        ["#messageImageButton", "#messageGifButton", "#messageStickerButton", "#messageAudioButton"]
+          .forEach((selector) => $(selector).disabled = true);
+        $$(".conversation-item").forEach((item) => item.setAttribute("aria-current", "false"));
       }
       function navigateToSearchedMessage(conversation, messageId) {
         closeGlobalSearchDropdown();
@@ -10872,8 +10974,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function go(v, updateRoute = true, preserveProfile = false) {
         if (!requireAuth()) return;
-        if (v === "messages" && !$("#v-messages").hidden) return;
-        if (v !== "messages") {
+        if (v === "messages") {
+          resetActiveConversation();
+        } else {
           pendingMessageNavigation = null;
           conversationSelectionGeneration += 1;
         }
@@ -10911,12 +11014,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 await openConversation(conversation, false, pending.messageId);
                 return;
               }
-              let savedConversationId = "";
-              try {
-                savedConversationId = sessionStorage.getItem("relay_active_conversation") || "";
-              } catch {}
-              const savedConversation = conversations.find((item) => item.id === savedConversationId);
-              if (savedConversation && !activeConversation) await openConversation(savedConversation, false);
             }
             if (v === "home") {
               setComposerVisibility(feedTab === "for-you");
@@ -10969,7 +11066,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (view === "explore" && ["trending", "people", "latest"].includes(requestedExploreTab)) {
           selectExploreTab(requestedExploreTab);
         }
-        if (!$(`#v-${view}`).hidden && !(view === "profile" && viewedProfileId === null)) {
+        const sameProfileRoute = view !== "profile"
+          || !viewedProfileId
+          || viewedProfileId === currentUser?.id;
+        if (!$(`#v-${view}`).hidden && sameProfileRoute) {
+          if (view === "messages" && activeConversation
+            && routeParams.get("conversation") !== activeConversation.id) {
+            resetActiveConversation();
+          }
           if (view === "explore" && exploreTab !== previousExploreTab) {
             transitionContent(transitionTargetsForView("explore"), () => renderExplore($("#exploreSearch").value.trim()));
           }
@@ -11170,7 +11274,22 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         if (!e.target.closest(".post-menu-wrap")) closePostMenus();
         const nv = e.target.closest("[data-view]");
-        if (nv) { go(nv.dataset.view); return; }
+        if (nv) {
+          const targetView = nv.dataset.view;
+          const currentView = $("[data-v]:not([hidden])")?.id?.replace(/^v-/, "");
+          const sameProfile = targetView !== "profile"
+            || !viewedProfileId
+            || viewedProfileId === currentUser?.id;
+          if (targetView === currentView && sameProfile) {
+            if (targetView === "messages" && activeConversation) {
+              resetActiveConversation();
+              if (location.hash !== "#/messages") location.hash = "#/messages";
+            }
+            return;
+          }
+          go(targetView);
+          return;
+        }
         const exploreTabLink = e.target.closest("[data-explore-tab-link]");
         if (exploreTabLink) {
           selectExploreTab(exploreTabLink.dataset.exploreTabLink);
@@ -11419,6 +11538,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           setConversationSearchMode(searchModeButton.dataset.conversationSearchMode);
           return;
         }
+        if (e.target.closest(".message-search-load-more")) {
+          loadMoreMessageSearchResults();
+          return;
+        }
         const conversationButton = e.target.closest("[data-conversation]");
         if (conversationButton) {
           const conversation = conversations.find((item) => item.id === conversationButton.dataset.conversation);
@@ -11451,30 +11574,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           return;
         }
         if (e.target.closest("#messagesBack")) {
-          conversationSelectionGeneration += 1;
           if (location.hash !== "#/messages") location.hash = "#/messages";
           document.activeElement?.blur();
           transitionContent($("#chatLog"), async () => {
-            sendTyping(false);
-            try {
-              sessionStorage.removeItem("relay_active_conversation");
-            } catch {}
-            activeConversationLoadGeneration += 1;
-            activeConversation = null;
-            activeConversationCursor = null;
-            loadingOlderMessages = false;
-            $("#messagesLayout").classList.remove("has-conversation");
-            $("#chatName").textContent = "Select a conversation";
-            $("#chatSubtitle").textContent = "";
-            $("#chatSubtitle").hidden = true;
-            setAvatar($("#chatAvatar"), null, "sm");
-            $("#chatProfileLink").disabled = true;
-            $("#chatProfileLink").removeAttribute("data-profile-id");
-            $("#chatProfileLink").setAttribute("aria-label", "Conversation profile unavailable");
-            $("#chatLog").innerHTML = `${conversationStartMarkup()}<div class="typing-status" id="typingStatus" aria-live="polite"></div>`;
-            $("#messageInput").disabled = true;
-            $("#sendMessage").disabled = true;
-            ["#messageImageButton", "#messageGifButton", "#messageStickerButton", "#messageAudioButton"].forEach((selector) => $(selector).disabled = true);
+            resetActiveConversation();
             await renderConversations();
             animateConversationListEntrance();
           });
@@ -12436,6 +12539,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
       });
       $("#conversationSearch").addEventListener("input", searchConversations);
+      $("#messageSearchResults").addEventListener("scroll", () => {
+        const list = $("#messageSearchResults");
+        if (list.scrollHeight - list.scrollTop - list.clientHeight < 120) {
+          loadMoreMessageSearchResults();
+        }
+      }, { passive: true });
       $("#chatLog").addEventListener("scroll", () => {
         if ($("#chatLog").scrollTop <= 24) loadOlderMessages();
       }, { passive: true });
