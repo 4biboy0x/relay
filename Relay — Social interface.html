@@ -6942,6 +6942,7 @@
           socket.on("post:new", receiveLivePost);
           socket.on("post:updated", receivePostUpdated);
           socket.on("post:like-count", ({ postId, likes }) => updatePostLikeCount(postId, likes));
+          socket.on("post:view-count", ({ postId, views }) => syncPostViewCount(postId, views));
           socket.on("post:interaction", receivePostInteraction);
           socket.on("post:deleted", receivePostDeleted);
           socket.on("post:reply-count", receiveReplyCount);
@@ -7712,7 +7713,7 @@
         m: item.mediaUrl,
         mediaUrls: Array.isArray(item.mediaUrls) ? item.mediaUrls.filter(Boolean) : (Array.isArray(item.images) ? item.images.filter(Boolean) : (item.mediaUrl ? [item.mediaUrl] : [])),
         mediaAlt: item.mediaAlt || item.altText || "",
-        views: item.counts?.views || item.views || 0,
+        views: Number(item.counts?.views ?? item.views ?? 0),
         location: item.location || null,
         author: item.author,
         l: item.counts.likes,
@@ -8055,7 +8056,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
 <button class="act" data-a="comment" aria-label="Reply, ${p.c || 0} ${(p.c || 0) === 1 ? "reply" : "replies"}">${ic("msg")}<span data-count="replies"${p.c ? "" : " hidden"}>${homeActionCount(p.c)}</span></button>
 <div class="repost-wrap"><button class="act" data-a="repost" aria-pressed="${!!p.rep}" aria-label="Repost, ${p.r || 0} ${(p.r || 0) === 1 ? "repost" : "reposts"}">${ic("repeat")}<span data-count="reposts"${p.r ? "" : " hidden"}>${homeActionCount(p.r)}</span></button><div class="repost-menu" role="menu" hidden><button type="button" role="menuitem" data-repost-action="repost">Repost</button><button type="button" role="menuitem" data-repost-action="quote">Quote</button></div></div>
 <button class="act" data-a="like" aria-pressed="${!!p.liked}" aria-label="Like, ${p.l || 0} ${(p.l || 0) === 1 ? "like" : "likes"}">${ic("heart")}<span data-count="likes"${p.l ? "" : " hidden"}>${homeActionCount(p.l)}</span></button>
-<button class="act" data-a="views" aria-label="Views, ${p.views || 0}">${ic("views")}<span data-count="views"${p.views ? "" : " hidden"}>${homeActionCount(p.views)}</span></button>
+<button class="act" data-a="views" aria-label="Views, ${p.views || 0}">${ic("views")}<span data-count="views">${homeActionCount(p.views)}</span></button>
 </div>
 <div class="post-actions-right"><button class="act" data-a="bookmark" aria-label="Bookmark">${ic("bookmark")}</button><button class="act" data-a="share" aria-label="Share">${ic("share")}</button></div></div>
 </div></article>`;
@@ -8068,11 +8069,144 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
 <button class="act" data-a="comment" aria-label="Reply, ${p.c || 0} ${(p.c || 0) === 1 ? "reply" : "replies"}">${ic("msg")}<span data-count="replies"${p.c ? "" : " hidden"}>${homeActionCount(p.c)}</span></button>
 <div class="repost-wrap"><button class="act" data-a="repost" aria-pressed="${!!p.rep}" aria-label="Repost, ${p.r || 0} ${(p.r || 0) === 1 ? "repost" : "reposts"}">${ic("repeat")}<span data-count="reposts"${p.r ? "" : " hidden"}>${homeActionCount(p.r)}</span></button><div class="repost-menu" role="menu" hidden><button type="button" role="menuitem" data-repost-action="repost">Repost</button><button type="button" role="menuitem" data-repost-action="quote">Quote</button></div></div>
 <button class="act" data-a="like" aria-pressed="${!!p.liked}" aria-label="Like, ${p.l || 0} ${(p.l || 0) === 1 ? "like" : "likes"}">${ic("heart")}<span data-count="likes"${p.l ? "" : " hidden"}>${homeActionCount(p.l)}</span></button>
-<button class="act" data-a="views" aria-label="Views, ${p.views || 0}">${ic("views")}<span data-count="views"${p.views ? "" : " hidden"}>${homeActionCount(p.views)}</span></button>
+<button class="act" data-a="views" aria-label="Views, ${p.views || 0}">${ic("views")}<span data-count="views">${homeActionCount(p.views)}</span></button>
 </div>
 <div class="post-actions-right"><button class="act" data-a="bookmark" aria-label="Bookmark">${ic("bookmark")}</button><button class="act" data-a="share" aria-label="Share">${ic("share")}</button></div></div>
 </div></article>`;
       };
+      const postViewTimers = new WeakMap();
+      const observedPostCards = new WeakSet();
+      const pendingPostViews = new Set();
+      const recordedPostViews = new Map();
+      let postViewSessionId = null;
+      function getPostViewSessionId() {
+        if (postViewSessionId) return postViewSessionId;
+        try {
+          postViewSessionId = sessionStorage.getItem("relay_post_view_session");
+          if (!postViewSessionId) {
+            postViewSessionId = crypto.randomUUID();
+            sessionStorage.setItem("relay_post_view_session", postViewSessionId);
+          }
+          return postViewSessionId;
+        } catch (error) {
+          postViewSessionId = null;
+          console.error("Could not initialize post view session tracking", error);
+          return null;
+        }
+      }
+      function getRecordedPostViews(storageKey) {
+        if (recordedPostViews.has(storageKey)) return recordedPostViews.get(storageKey);
+        try {
+          const storedIds = JSON.parse(sessionStorage.getItem(storageKey) || "[]");
+          const ids = new Set(Array.isArray(storedIds) ? storedIds.filter((id) => typeof id === "string") : []);
+          recordedPostViews.set(storageKey, ids);
+          return ids;
+        } catch (error) {
+          console.error("Could not read post view deduplication state", error);
+          return null;
+        }
+      }
+      function syncPostViewCount(postId, views) {
+        const countValue = Number(views);
+        if (!postId || !Number.isFinite(countValue) || countValue < 0) return;
+        const count = Math.floor(countValue);
+        const record = posts.find((item) => item.id === postId);
+        if (record) record.views = count;
+        viewMemoryCache.forEach((items, view) => {
+          if (!Array.isArray(items)) return;
+          let changed = false;
+          items.forEach((item) => {
+            if (item.id !== postId) return;
+            item.counts = { ...(item.counts || {}), views: count };
+            item.views = count;
+            changed = true;
+          });
+          if (changed) writeViewCache(view, items);
+        });
+        $$(`.post[data-id="${CSS.escape(postId)}"]`).forEach((element) => {
+          const counter = $(`[data-count="views"]`, element);
+          if (!counter) return;
+          counter.textContent = homeActionCount(count);
+          counter.hidden = false;
+          counter.closest(".act")?.setAttribute("aria-label", `Views, ${count}`);
+        });
+      }
+      async function recordPostView(postId) {
+        if (!postId || !currentUser || !accessToken) return;
+        const sessionId = getPostViewSessionId();
+        if (!sessionId) return;
+        const storageKey = `relay_post_views:${currentUser.id}:${sessionId}`;
+        const viewedIds = getRecordedPostViews(storageKey);
+        if (!viewedIds || viewedIds.has(postId)) return;
+        const pendingKey = `${storageKey}:${postId}`;
+        if (pendingPostViews.has(pendingKey)) return;
+        pendingPostViews.add(pendingKey);
+        try {
+          const result = await api(`/posts/${encodeURIComponent(postId)}/view`, {
+            method: "POST",
+            body: JSON.stringify({ sessionId }),
+          });
+          viewedIds.add(postId);
+          try {
+            sessionStorage.setItem(storageKey, JSON.stringify([...viewedIds]));
+          } catch (error) {
+            console.error("Could not persist post view deduplication state", error);
+          }
+          syncPostViewCount(postId, result.views);
+        } catch (error) {
+          console.error(`Could not record a view for post ${postId}`, error);
+        } finally {
+          pendingPostViews.delete(pendingKey);
+        }
+      }
+      const postViewObserver = typeof IntersectionObserver === "function"
+        ? new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+              const card = entry.target;
+              if (!entry.isIntersecting || entry.intersectionRatio < 0.5) {
+                clearTimeout(postViewTimers.get(card));
+                postViewTimers.delete(card);
+                return;
+              }
+              if (postViewTimers.has(card)) return;
+              const timer = setTimeout(() => {
+                postViewTimers.delete(card);
+                if (!card.isConnected || document.visibilityState !== "visible") return;
+                recordPostView(card.dataset.id);
+              }, 1500);
+              postViewTimers.set(card, timer);
+            });
+          }, { threshold: [0, 0.5, 1] })
+        : null;
+      function observePostViewCards(root = document) {
+        if (!postViewObserver) return;
+        const cards = [];
+        if (root instanceof Element && root.matches(".post[data-id]")) cards.push(root);
+        if (root.querySelectorAll) cards.push(...root.querySelectorAll(".post[data-id]"));
+        cards.forEach((card) => {
+          if (observedPostCards.has(card)) return;
+          observedPostCards.add(card);
+          postViewObserver.observe(card);
+        });
+      }
+      if (postViewObserver) {
+        observePostViewCards();
+        const postViewMutationObserver = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+              if (node instanceof Element) observePostViewCards(node);
+            });
+          });
+        });
+        postViewMutationObserver.observe(document.body, { childList: true, subtree: true });
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState !== "visible") return;
+          $$(".post[data-id]").forEach((card) => {
+            postViewObserver.unobserve(card);
+            postViewObserver.observe(card);
+          });
+        });
+      }
       const explorePostCards = (html) =>
         html.replace(/(<span[^>]*data-count="(?:replies|reposts|likes)"[^>]*)>0<\/span>/g, '$1 hidden></span>');
       async function renderFeed(append = false) {

@@ -25,6 +25,7 @@ model User {
   interactions  Interaction[]
   sentNotifs    Notification[] @relation("NotificationActor")
   notifications Notification[] @relation("NotificationRecipient")
+  postViews     PostView[]
   posts         Post[]
   refreshTokens RefreshToken[]
   conversations ConversationMember[]
@@ -57,14 +58,29 @@ model Post {
   deletedAt     DateTime?
   interactions  Interaction[]
   notifications Notification[]
+  viewRecords   PostView[]
   author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
   replyTo       Post?          @relation("PostReplies", fields: [replyToId], references: [id], onDelete: Cascade)
   replies       Post[]         @relation("PostReplies")
   hashtags      PostHashtag[]
+  views         Int            @default(0)
 
   @@index([createdAt(sort: Desc), id(sort: Desc)])
   @@index([authorId, createdAt(sort: Desc), id(sort: Desc)])
   @@index([replyToId, createdAt(sort: Desc)])
+}
+
+model PostView {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  sessionId String   @db.Uuid
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId, sessionId])
+  @@index([postId, createdAt(sort: Desc)])
 }
 
 model Interaction {

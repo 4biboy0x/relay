@@ -193,6 +193,7 @@ const postResponse = (post: PostRecord, counts: InteractionCounts = { likes: 0, 
   author: post.author,
   counts: {
     replies: post.replyCount,
+    views: post.views,
     ...counts,
   },
   viewer: {
@@ -882,6 +883,35 @@ api.get("/posts/:postId", authRequired, asyncRoute(async (req, res) => {
   if (!post) throw new HttpError(404, "Post not found");
   const counts = await interactionCounts([post.id]);
   res.json(postResponse(post, counts.get(post.id)));
+}));
+
+api.post("/posts/:postId/view", authRequired, asyncRoute(async (req, res) => {
+  const postId = z.string().cuid().parse(req.params.postId);
+  const { sessionId } = z.object({ sessionId: z.string().uuid() }).parse(req.body);
+  const result = await prisma.$transaction(async (tx) => {
+    const post = await tx.post.findFirst({
+      where: { id: postId, deletedAt: null },
+      select: { id: true, views: true },
+    });
+    if (!post) throw new HttpError(404, "Post not found");
+    const inserted = await tx.postView.createMany({
+      data: { userId: req.userId!, postId, sessionId },
+      skipDuplicates: true,
+    });
+    const views = inserted.count
+      ? (await tx.post.update({
+          where: { id: postId },
+          data: { views: { increment: 1 } },
+          select: { views: true },
+        })).views
+      : (await tx.post.findUniqueOrThrow({
+          where: { id: postId },
+          select: { views: true },
+        })).views;
+    return { views, recorded: inserted.count > 0 };
+  });
+  if (result.recorded) emitToAuthenticated("post:view-count", { postId, views: result.views });
+  res.json(result);
 }));
 
 api.get("/posts/:postId/replies", authRequired, asyncRoute(async (req, res) => {

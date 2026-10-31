@@ -59,6 +59,7 @@ All endpoints except registration and login require `Authorization: Bearer <acce
 | GET | `/api/search?q=...&limit=10&cursor=...` | Search post text, handles, display names, and hashtags |
 | POST | `/api/posts` | Create a post or reply (`location` is an optional user-entered label, up to 80 characters) |
 | GET, PATCH, DELETE | `/api/posts/:postId` | Read, edit, or soft-delete a post; PATCH can update or clear `location` |
+| POST | `/api/posts/:postId/view` | Record one authenticated view per user, post, and browser session; requires `{ "sessionId": "<UUID>" }` |
 | GET | `/api/posts/:postId/replies?limit=20&cursor=...` | Cursor-paginated replies for a thread |
 | GET | `/api/posts/:postId/thread?limit=20&cursor=...` | Bounded parent chain, selected post, and cursor-paginated direct replies |
 | PUT, DELETE | `/api/posts/:postId/like` | Like or unlike |
@@ -76,18 +77,21 @@ All endpoints except registration and login require `Authorization: Bearer <acce
 
 Post creation accepts `{ "body": "...", "mediaUrl": "/uploads/<filename>", "location": "Brooklyn, NY", "replyToId": "..." }`; optional fields may be omitted. Replies are stored by `replyToId`, counted atomically on their parent, and appear in profile Replies—not as standalone feed, Explore, search, or profile Posts entries. Reply cards include a safe parent preview and use a distinct presentation. Hashtags in the post body are normalized and linked transactionally. Valid `@handles` in posts and replies create persistent mention notifications for matching users, and mention handles link to their public profile. Thread reply counters increment with the reply write and decrement when an authored reply is soft-deleted. The feed uses an explainable newest-first order; the `following` tab limits candidates to followed accounts plus the viewer. Pagination uses descending `(createdAt, id)` keysets, not offsets. Feed pages return `items` and `nextCursor`; pass the cursor unchanged to fetch the next page.
 
+Post and reply cards record a view after at least 50% visibility for 1.5 seconds. The client reuses a session UUID and deduplicates recorded post IDs in `sessionStorage`; the API's unique `(userId, postId, sessionId)` constraint makes retries idempotent. Apply the `20261031170000_post_views` migration before deploying the endpoint.
+
 Uploads are authenticated, limited to 5 MB per file, restricted to JPEG/PNG/WebP/GIF, and checked against the file signature before being served from `/uploads/`. Local disk storage is for development and single-instance deployments; production should use private object storage/CDN with image decoding, malware scanning, lifecycle cleanup, and a shared media service.
 
 ## Socket.IO
 
 The client loads Socket.IO from the API origin and authenticates with the short-lived access token in the handshake `auth.token` field. The server verifies JWT signature, issuer, audience, expiry, and account existence, then joins the connection to its private `user:<id>` room. Connections are disconnected at token expiry; Socket.IO reconnects and the browser refreshes the session when needed.
 
-Events sent to authenticated clients include `notification:new`, `profile:updated`, `post:new` (an ID-only event for new root posts), `user:suggestion:new` (a public profile projection after registration), `post:like-count`, `post:interaction` (global like/repost count and viewer-state synchronization, including unlikes and unreposts), `post:deleted`, `post:reply-count`, `post:comment:new`, and `message:new`. Mentions are matched to existing handles and notifications are committed with their post or reply; repeated mentions in an edited post do not create duplicate notifications. Clients may request `post:join` for public post engagement rooms and `conversation:join` only for conversations where they are a member. `typing:start` and `typing:stop` are accepted only after the socket has joined that authorized conversation room; updates contain the sender's public handle and display name. Direct message delivery is persisted before emitting; unread counts are derived from each membership's `lastReadAt`.
+Events sent to authenticated clients include `notification:new`, `profile:updated`, `post:new` (an ID-only event for new root posts), `user:suggestion:new` (a public profile projection after registration), `post:like-count`, `post:view-count`, `post:interaction` (global like/repost count and viewer-state synchronization, including unlikes and unreposts), `post:deleted`, `post:reply-count`, `post:comment:new`, and `message:new`. Mentions are matched to existing handles and notifications are committed with their post or reply; repeated mentions in an edited post do not create duplicate notifications. Clients may request `post:join` for public post engagement rooms and `conversation:join` only for conversations where they are a member. `typing:start` and `typing:stop` are accepted only after the socket has joined that authorized conversation room; updates contain the sender's public handle and display name. Direct message delivery is persisted before emitting; unread counts are derived from each membership's `lastReadAt`.
 
 ## Data model
 
 - `User`: normalized account/profile data and password hash.
-- `Post`: authored content, optional media URL, reply parent, atomic reply count, timestamps, and soft-delete timestamp.
+- `Post`: authored content, optional media URL, reply parent, atomic reply and view counts, timestamps, and soft-delete timestamp.
+- `PostView`: one idempotent view record per user, post, and browser session.
 - `Hashtag` / `PostHashtag`: normalized hashtag catalog and relational post links.
 - `Interaction`: unique user/post/type rows for likes and reposts.
 - `Follow`: unique directed follower/followed relationship.
