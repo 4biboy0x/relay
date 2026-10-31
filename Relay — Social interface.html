@@ -6680,6 +6680,7 @@
       let profileCursor = null;
       let profileTab = "Posts";
       let viewedProfileId = null;
+      let profileRenderGeneration = 0;
       let profileReturnView = "directory";
       let threadPostId = null;
       let threadReturnView = "home";
@@ -8125,22 +8126,30 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const owner = !viewedProfileId || viewedProfileId === currentUser.id;
         const targetId = owner ? currentUser.id : viewedProfileId;
         if (!owner && t === "Likes") t = "Posts";
+        const generation = ++profileRenderGeneration;
+        const headerNeedsLoad = $("#profileBody").dataset.profileUserId !== targetId;
         let finishSkeleton;
         let removeAppendSkeleton;
         if (!append) {
           profileCursor = null;
           profileTab = t;
-          $$("[data-pt]").forEach((button) => {
-            button.hidden = !owner && button.dataset.pt === "Likes";
-            button.setAttribute("aria-selected", button.dataset.pt === t ? "true" : "false");
-          });
-          $("#profileBack").hidden = owner;
-          $("#profileEdit").hidden = !owner;
-          $("#editProfileAvatar").hidden = !owner;
-          $("#editProfileBanner").hidden = !owner;
-          $("#profileFollow").hidden = owner;
-          $("#profileBody").classList.add("is-loading");
-          $("#profileBody").setAttribute("aria-busy", "true");
+          $$("[data-pt]").forEach((button) =>
+            button.setAttribute("aria-selected", button.dataset.pt === t ? "true" : "false"),
+          );
+          if (headerNeedsLoad) {
+            $$("[data-pt]").forEach((button) => {
+              button.hidden = !owner && button.dataset.pt === "Likes";
+            });
+            $("#profileBack").hidden = owner;
+            $("#profileEdit").hidden = !owner;
+            $("#editProfileAvatar").hidden = !owner;
+            $("#editProfileBanner").hidden = !owner;
+            $("#profileFollow").hidden = owner;
+          }
+          if (headerNeedsLoad) {
+            $("#profileBody").classList.add("is-loading");
+            $("#profileBody").setAttribute("aria-busy", "true");
+          }
           $("#pf").innerHTML = "";
           delete $("#pf").dataset.loaded;
           finishSkeleton = showDelayedSkeleton($("#pf"), "post");
@@ -8153,45 +8162,57 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           let profile;
           let result;
           if (owner) {
-            [profile, result] = await Promise.all([
-              api(`/users/${encodeURIComponent(currentUser.handle)}`),
-              api(`/users/${encodeURIComponent(currentUser.handle)}/posts?${query}`),
-            ]);
+            if (headerNeedsLoad) {
+              [profile, result] = await Promise.all([
+                api(`/users/${encodeURIComponent(currentUser.handle)}`),
+                api(`/users/${encodeURIComponent(currentUser.handle)}/posts?${query}`),
+              ]);
+            } else {
+              result = await api(`/users/${encodeURIComponent(currentUser.handle)}/posts?${query}`);
+            }
           } else {
+            if (!headerNeedsLoad) query.set("feedOnly", "true");
             const response = await api(`/users/${encodeURIComponent(targetId)}/profile?${query}`);
             profile = response.user;
             result = response.posts;
           }
-          $("#profileName").textContent = profile.displayName;
-          $("#profilePageTitle").textContent = profile.displayName;
-          $("#profileHandle").textContent = `@${profile.handle}`;
-          $("#profileBio").textContent = profile.bio || "";
-          setAvatar($("#profileAvatar"), profile, "lg");
-          const banner = $("#profileBanner");
-          banner.hidden = !profile.bannerUrl;
-          if (profile.bannerUrl) banner.src = mediaHref(profile.bannerUrl);
-          $("#followingCount").textContent = fmt(profile.counts?.following ?? 0);
-          $("#followerCount").textContent = fmt(profile.counts?.followers ?? profile.followerCount ?? 0);
-          renderFollowButton($("#profileFollow"), {
-            id: targetId,
-            viewerFollows: !!profile.viewerFollows,
-          });
+          if (generation !== profileRenderGeneration || targetId !== (viewedProfileId || currentUser.id)) return;
+          if (headerNeedsLoad && profile) {
+            $("#profileName").textContent = profile.displayName;
+            $("#profilePageTitle").textContent = profile.displayName;
+            $("#profileHandle").textContent = `@${profile.handle}`;
+            $("#profileBio").textContent = profile.bio || "";
+            setAvatar($("#profileAvatar"), profile, "lg");
+            const banner = $("#profileBanner");
+            banner.hidden = !profile.bannerUrl;
+            if (profile.bannerUrl) banner.src = mediaHref(profile.bannerUrl);
+            $("#followingCount").textContent = fmt(profile.counts?.following ?? 0);
+            $("#followerCount").textContent = fmt(profile.counts?.followers ?? profile.followerCount ?? 0);
+            renderFollowButton($("#profileFollow"), {
+              id: targetId,
+              viewerFollows: !!profile.viewerFollows,
+            });
+            $("#profileBody").dataset.profileUserId = targetId;
+            $("#profileBody").classList.remove("is-loading");
+            $("#profileBody").removeAttribute("aria-busy");
+          }
           const items = result.items.map(normalizePost);
           removeAppendSkeleton?.();
           $("#pf").innerHTML = append
             ? $("#pf").innerHTML + items.map(post).join("")
             : items.map(post).join("") || emptyState(`No ${t.toLowerCase()} yet.`, "Posts from this profile will appear here.");
           finishSkeleton?.();
-          $("#profileBody").classList.remove("is-loading");
-          $("#profileBody").removeAttribute("aria-busy");
           joinVisiblePostRooms();
           profileCursor = result.nextCursor;
           $("#profileMore").hidden = !profileCursor;
         } catch (error) {
           finishSkeleton?.();
           removeAppendSkeleton?.();
-          $("#profileBody").classList.remove("is-loading");
-          $("#profileBody").removeAttribute("aria-busy");
+          if (generation !== profileRenderGeneration) return;
+          if (headerNeedsLoad) {
+            $("#profileBody").classList.remove("is-loading");
+            $("#profileBody").removeAttribute("aria-busy");
+          }
           renderError($("#pf"), error);
         }
       }

@@ -764,6 +764,23 @@ api.get("/users/:id/profile", authRequired, asyncRoute(async (req, res) => {
   const userId = z.string().cuid().parse(req.params.id);
   const page = pageSchema.parse(req.query);
   const tab = z.enum(["Posts", "Replies", "Media"]).default("Posts").parse(req.query.tab);
+  const feedOnly = req.query.feedOnly === "true";
+  if (feedOnly) {
+    const profile = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+    if (!profile) throw new HttpError(404, "User not found");
+    const where: Prisma.PostWhereInput = { authorId: profile.id };
+    if (tab === "Replies") {
+      where.replyToId = { not: null };
+    } else {
+      where.replyToId = null;
+      if (tab === "Media") where.mediaUrl = { not: null };
+    }
+    res.json({ posts: await listPosts(req.userId!, page, where) });
+    return;
+  }
   const profile = await prisma.user.findUnique({
     where: { id: userId },
     select: {
