@@ -6666,6 +6666,7 @@
         color: var(--text);
         box-shadow: 0 24px 80px rgba(9,9,11,.24);
       }
+      .reel-create-dialog { width: min(100% - 32px, 640px); max-width: 640px; }
       .reel-create-dialog::backdrop,
       .reel-comments-dialog::backdrop,
       .reel-actions-dialog::backdrop,
@@ -6683,33 +6684,31 @@
       .reel-dialog-header h2 { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -.02em; }
       .reel-dialog-header p { margin: 5px 0 0; color: var(--text-2); font-size: 12px; line-height: 1.4; }
       .reel-dialog-header .icon-btn { width: 34px; height: 34px; flex: none; }
-      .reel-create-dialog form { max-height: calc(88dvh - 68px); overflow-y: auto; }
+      .reel-create-dialog form { display: flex; max-height: calc(88dvh - 68px); flex-direction: column; overflow-y: auto; }
       .reel-upload-layout { display: grid; grid-template-columns: minmax(150px, 220px) minmax(0, 1fr); gap: 20px; padding: 20px; }
       .reel-upload-preview {
         position: relative;
         display: grid;
-        min-height: 250px;
-        max-height: 360px;
+        width: 220px;
+        min-height: 0;
         aspect-ratio: 9 / 16;
         place-items: center;
         overflow: hidden;
         border: 1px dashed var(--border);
         border-radius: 14px;
         background: var(--surface-2);
+        cursor: pointer;
       }
       .reel-upload-preview.is-dragging { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface-2)); }
+      .reel-upload-preview:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
       .reel-upload-preview video { width: 100%; height: 100%; object-fit: contain; background: #08090b; }
       .reel-upload-placeholder { display: grid; justify-items: center; gap: 10px; padding: 20px 12px; color: var(--text-2); text-align: center; }
       .reel-upload-placeholder .i { width: 20px; height: 20px; color: var(--accent); }
       .profile-tabs [data-pt="Reels"] { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
       .profile-tabs [data-pt="Reels"] .reels-symbol { width: 18px; height: 18px; }
       .reel-upload-placeholder strong { color: var(--text); font-size: 14px; }
-      .reel-upload-placeholder span { font-size: 11px; line-height: 1.45; }
+      .reel-upload-placeholder span { color: var(--text-2); font-size: 11px; line-height: 1.45; }
       .reel-upload-fields { display: flex; min-width: 0; flex-direction: column; align-items: stretch; }
-      .reel-upload-fields > .btn { align-self: flex-start; }
-      .reel-upload-file { margin: 9px 0 0; overflow-wrap: anywhere; color: var(--text); font-size: 12px; font-weight: 600; }
-      .reel-upload-hint { margin: 6px 0 16px; color: var(--text-2); font-size: 12px; line-height: 1.45; }
-      .reel-caption-label,
       .reel-report-field { display: grid; gap: 7px; color: var(--text); font-size: 13px; font-weight: 600; }
       .reel-upload-fields textarea,
       .reel-report-field textarea,
@@ -6727,15 +6726,19 @@
         line-height: 1.45;
         resize: vertical;
       }
-      .reel-upload-fields textarea { min-height: 92px; margin-top: 7px; }
-      .reel-caption-meta { display: flex; justify-content: space-between; gap: 8px; margin-top: 6px; color: var(--text-3); font-size: 11px; }
+      .reel-upload-fields textarea { min-height: 72px; }
+      .reel-caption-meta { display: block; margin-top: 6px; color: var(--text-3); font-size: 11px; text-align: right; }
+      .reel-caption-meta[hidden] { display: none; }
       .reel-upload-status { min-height: 20px; margin-top: 10px; color: var(--text-2); font-size: 12px; }
       .reel-upload-status[data-state="error"],
       .reel-report-error { color: var(--danger, #c43b52); }
       .reel-upload-progress { display: grid; gap: 6px; margin: 2px 0 8px; color: var(--text-2); font-size: 11px; }
       .reel-upload-progress progress { width: 100%; height: 6px; accent-color: var(--accent); }
       .reel-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: auto; padding-top: 10px; }
+      .reel-create-dialog .reel-dialog-actions { padding: 0 20px 20px; }
       .reel-dialog-actions .btn { min-height: 38px; }
+      .reel-create-dialog .reel-dialog-actions #reelCancelUpload { border: 0; background: transparent; color: var(--text-2); }
+      .reel-create-dialog .reel-dialog-actions #reelCancelUpload:hover { background: transparent; color: var(--text); }
       .reel-comments-dialog { width: min(100% - 24px, 460px); }
       .reel-comment-list { max-height: min(55dvh, 500px); min-height: 100px; overflow-y: auto; padding: 8px 18px; overscroll-behavior: contain; }
       .reel-comment {
@@ -6826,7 +6829,8 @@
         .reel-feed::-webkit-scrollbar { display: none; }
         .reel-skeleton { width: 100%; height: 100%; margin: 0; border-radius: 0; }
         .reel-upload-layout { grid-template-columns: 1fr; gap: 14px; padding: 16px; }
-        .reel-upload-preview { width: min(200px, 52vw); min-height: 220px; max-height: 280px; justify-self: center; }
+        .reel-upload-preview { width: min(220px, 52vw); justify-self: center; }
+        .reel-create-dialog .reel-dialog-actions { padding: 0 16px 16px; }
         .reel-create-dialog { max-height: min(92dvh, 780px); }
         .reel-create-dialog form { max-height: calc(92dvh - 68px); }
       }
@@ -7646,39 +7650,35 @@
     </dialog>
     <dialog class="reel-create-dialog" id="reelCreateDialog" aria-labelledby="reelCreateTitle">
       <header class="reel-dialog-header">
-        <div><h2 id="reelCreateTitle">Create a Reel</h2><p>Share a vertical video up to 60 seconds.</p></div>
+        <h2 id="reelCreateTitle">Create a Reel</h2>
         <button class="icon-btn" type="button" data-reel-dialog-close aria-label="Close Create Reel">
           <svg class="i" aria-hidden="true"><use href="#close" /></svg>
         </button>
       </header>
       <form id="reelCreateForm">
         <div class="reel-upload-layout">
-          <div class="reel-upload-preview">
+          <div class="reel-upload-preview" role="button" tabindex="0" aria-label="Choose a video">
             <video id="reelUploadPreview" controls playsinline muted hidden></video>
             <div class="reel-upload-placeholder" id="reelUploadPlaceholder">
               <svg class="i reels-symbol" aria-hidden="true"><use href="#reels" /></svg>
               <strong>Choose a video</strong>
-              <span>MP4, MOV, or WebM · up to 100 MB</span>
+              <span>MP4, MOV, WebM · up to 60 s · 100 MB</span>
             </div>
           </div>
           <div class="reel-upload-fields">
             <input id="reelFileInput" type="file" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm" hidden>
-            <button class="btn btn-line" id="reelChooseVideo" type="button">Choose video</button>
-            <p class="reel-upload-file" id="reelUploadFileName" aria-live="polite">No video selected</p>
-            <p class="reel-upload-hint" id="reelUploadHint">Use a clear, original video. Maximum duration: 60 seconds.</p>
-            <label class="reel-caption-label" for="reelCaption">Caption</label>
-            <textarea id="reelCaption" maxlength="280" rows="4" placeholder="Add a caption…" aria-describedby="reelCaptionCount"></textarea>
-            <div class="reel-caption-meta"><span>Visible to everyone</span><span id="reelCaptionCount">0 / 280</span></div>
+            <textarea id="reelCaption" maxlength="280" rows="2" placeholder="Write a caption..." aria-label="Caption"></textarea>
+            <span class="reel-caption-meta" id="reelCaptionCount" hidden aria-live="polite">0 / 280</span>
             <div class="reel-upload-status" id="reelUploadStatus" role="status" aria-live="polite"></div>
             <div class="reel-upload-progress" id="reelUploadProgressWrap" hidden>
               <progress id="reelUploadProgress" max="100" value="0">0%</progress>
               <span id="reelUploadProgressLabel">Preparing upload</span>
             </div>
-            <div class="reel-dialog-actions">
-              <button class="btn btn-line" id="reelCancelUpload" type="button" data-reel-dialog-close>Cancel</button>
-              <button class="btn btn-primary" id="reelSubmitUpload" type="submit" disabled>Upload Reel</button>
-            </div>
           </div>
+        </div>
+        <div class="reel-dialog-actions">
+          <button class="btn" id="reelCancelUpload" type="button" data-reel-dialog-close>Cancel</button>
+          <button class="btn btn-primary" id="reelSubmitUpload" type="submit" disabled>Upload Reel</button>
         </div>
       </form>
     </dialog>
@@ -10692,7 +10692,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (reelUploadPreviewUrl) URL.revokeObjectURL(reelUploadPreviewUrl);
         reelUploadPreviewUrl = URL.createObjectURL(file);
         reelUploadFile = file;
-        $("#reelUploadFileName").textContent = `${file.name} · ${(file.size / (1024 * 1024)).toFixed(1)} MB`;
         const preview = $("#reelUploadPreview");
         preview.src = reelUploadPreviewUrl;
         preview.hidden = false;
@@ -10719,10 +10718,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             return;
           }
           reelUploadMetadataReady = true;
-          const ratio = preview.videoWidth / Math.max(1, preview.videoHeight);
-          $("#reelUploadHint").textContent = ratio > 1
-            ? "Landscape video will be center-cropped to fit the vertical Reel."
-            : `Video checked · ${Math.floor(preview.duration)} sec · vertical framing preserved where possible.`;
           setReelUploadStatus("Video ready to upload.");
           updateReelUploadButton();
         };
@@ -10744,9 +10739,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           $("#reelUploadPreview").removeAttribute("src");
           $("#reelUploadPreview").hidden = true;
           $("#reelUploadPlaceholder").hidden = false;
-          $("#reelUploadFileName").textContent = "No video selected";
-          $("#reelUploadHint").textContent = "Use a clear, original video. Maximum duration: 60 seconds.";
           $("#reelCaptionCount").textContent = "0 / 280";
+          $("#reelCaptionCount").hidden = true;
           $("#reelUploadProgressWrap").hidden = true;
           setReelUploadStatus("");
           updateReelUploadButton();
@@ -11122,7 +11116,15 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function initializeReels() {
         $("#createReelButton").addEventListener("click", showReelCreateDialog);
         $("#createReelFromComposer").addEventListener("click", showReelCreateDialog);
-        $("#reelChooseVideo").addEventListener("click", () => $("#reelFileInput").click());
+        const dropzone = $(".reel-upload-preview");
+        dropzone.addEventListener("click", (event) => {
+          if (!event.target.closest("video")) $("#reelFileInput").click();
+        });
+        dropzone.addEventListener("keydown", (event) => {
+          if (event.target !== dropzone || !["Enter", " "].includes(event.key)) return;
+          event.preventDefault();
+          $("#reelFileInput").click();
+        });
         $("#reelFileInput").addEventListener("change", (event) => selectReelFile(event.target.files?.[0]));
         $("#reelCreateForm").addEventListener("submit", uploadReel);
         $("#reelUploadProgressWrap").addEventListener("click", (event) => {
@@ -11130,9 +11132,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (retry) retryReelStatus(retry.dataset.reelStatusRetry);
         });
         $("#reelCaption").addEventListener("input", (event) => {
-          $("#reelCaptionCount").textContent = `${event.target.value.length} / 280`;
+          const count = event.target.value.length;
+          $("#reelCaptionCount").textContent = `${count} / 280`;
+          $("#reelCaptionCount").hidden = count < 220;
         });
-        const dropzone = $(".reel-upload-preview");
         ["dragenter", "dragover"].forEach((type) => dropzone.addEventListener(type, (event) => {
           event.preventDefault();
           dropzone.classList.add("is-dragging");
