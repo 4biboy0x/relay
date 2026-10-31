@@ -989,6 +989,11 @@
         margin-top: 8px;
         overflow-y: auto;
       }
+      .location-result-skeleton {
+        height: 36px;
+        border-radius: 7px;
+        background: var(--surface-2);
+      }
       .location-result {
         display: block;
         width: 100%;
@@ -1315,25 +1320,20 @@
         font-size: 20px;
         line-height: 1;
       }
-      .emoji-loading {
-        display: grid;
-        grid-column: 1 / -1;
-        min-height: 180px;
-        place-items: center;
-        gap: 8px;
-        color: var(--text-3);
-        font-size: 12px;
+      .emoji-skeleton {
+        position: relative;
+        height: 32px;
+        overflow: hidden;
+        border-radius: 7px;
+        background: var(--surface-2);
       }
-      .emoji-loading-spinner {
-        width: 22px;
-        height: 22px;
-        border: 2px solid var(--border);
-        border-top-color: var(--accent);
-        border-radius: 50%;
-        animation: emoji-spin 700ms linear infinite;
-      }
-      @keyframes emoji-spin {
-        to { transform: rotate(360deg); }
+      .emoji-skeleton::after {
+        position: absolute;
+        inset: 0;
+        background: rgba(255,255,255,.22);
+        content: "";
+        transform: translateX(-120%);
+        animation: relay-skeleton-shimmer 1.2s ease-in-out infinite;
       }
       .emoji-picker .emoji-results.is-switching {
         animation: emoji-category-switch 260ms cubic-bezier(.2, .8, .2, 1);
@@ -1515,12 +1515,11 @@
       .gif-picker-dialog {
         width: min(560px, calc(100vw - 28px));
         max-width: none;
-        height: min(720px, calc(100dvh - 32px));
+        height: fit-content;
         max-height: min(720px, calc(100dvh - 32px));
         box-sizing: border-box;
         padding: 18px;
         overflow: hidden;
-        grid-template-rows: auto auto auto minmax(0, 1fr) auto;
         border: 1px solid var(--border);
         border-radius: 20px;
         color: var(--text);
@@ -1528,7 +1527,8 @@
         box-shadow: 0 24px 80px rgba(0, 0, 0, .24);
       }
       .gif-picker-dialog[open] {
-        display: grid;
+        display: flex;
+        flex-direction: column;
       }
       .gif-picker-dialog::backdrop {
         background: rgba(9, 9, 11, .46);
@@ -1536,6 +1536,7 @@
       }
       .gif-picker-heading {
         display: flex;
+        flex: none;
         align-items: center;
         gap: 12px;
         margin-bottom: 14px;
@@ -1568,6 +1569,7 @@
       }
       .gif-picker-search {
         display: flex;
+        flex: none;
         gap: 8px;
         margin-bottom: 10px;
       }
@@ -1584,13 +1586,17 @@
       }
       .gif-picker-search .btn { flex: none; }
       .gif-picker-status {
+        flex: none;
         min-height: 22px;
         margin: 0 0 8px;
         color: var(--text-2);
         font-size: 13px;
       }
+      .gif-picker-status:empty { display: none; }
       .gif-picker-results-scroll {
         min-height: 0;
+        max-height: min(52dvh, 430px);
+        flex: 0 1 auto;
         overflow-x: hidden;
         overflow-y: auto;
         overscroll-behavior: contain;
@@ -1648,6 +1654,204 @@
       @media (prefers-color-scheme: dark) {
         :root:not([data-theme="light"]) .gif-picker-attribution .giphy-black { display: none; }
         :root:not([data-theme="light"]) .gif-picker-attribution .giphy-white { display: block; }
+      }
+      .profile-crop-dialog {
+        width: min(420px, calc(100vw - 28px));
+        max-width: none;
+        height: fit-content;
+        max-height: min(680px, calc(100dvh - 32px));
+        box-sizing: border-box;
+        padding: 18px;
+        overflow: auto;
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        color: var(--text);
+        background: var(--surface);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, .24);
+      }
+      .profile-crop-dialog::backdrop {
+        background: rgba(9, 9, 11, .52);
+        backdrop-filter: blur(3px);
+      }
+      .profile-crop-heading {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .profile-crop-heading h2 {
+        flex: 1;
+        margin: 0;
+        font-size: 18px;
+      }
+      .profile-crop-close,
+      .profile-crop-save {
+        display: grid;
+        width: 38px;
+        height: 38px;
+        flex: none;
+        place-items: center;
+        border: 1px solid var(--border);
+        border-radius: 50%;
+        color: var(--text-2);
+        background: transparent;
+        cursor: pointer;
+      }
+      .profile-crop-close:hover { color: var(--text); background: var(--surface-2); }
+      .profile-crop-close svg,
+      .profile-crop-save svg {
+        width: 19px;
+        height: 19px;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 2;
+      }
+      .profile-crop-instructions {
+        margin: 0 0 14px;
+        color: var(--text-2);
+        font-size: 13px;
+        text-align: center;
+      }
+      .profile-crop-stage {
+        position: relative;
+        width: min(280px, 72vw);
+        aspect-ratio: 1;
+        margin: 0 auto;
+        overflow: hidden;
+        border-radius: 14px;
+        background: var(--surface-2);
+        cursor: grab;
+        touch-action: none;
+        user-select: none;
+      }
+      .profile-crop-stage.is-dragging { cursor: grabbing; }
+      .profile-crop-image-clip {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        border-radius: inherit;
+      }
+      .profile-crop-image {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        max-width: none;
+        pointer-events: none;
+        user-select: none;
+      }
+      .profile-crop-mask {
+        position: absolute;
+        z-index: 1;
+        inset: 0;
+        pointer-events: none;
+        background: rgba(0, 0, 0, .48);
+        -webkit-mask: radial-gradient(circle, transparent 0 49.4%, #000 50%);
+        mask: radial-gradient(circle, transparent 0 49.4%, #000 50%);
+      }
+      .profile-crop-ring {
+        position: absolute;
+        z-index: 2;
+        inset: 0;
+        border: 2px solid rgba(255, 255, 255, .92);
+        border-radius: 50%;
+        pointer-events: none;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, .2);
+      }
+      .profile-crop-zoom {
+        display: grid;
+        grid-template-columns: 24px minmax(0, 1fr) 24px;
+        align-items: center;
+        gap: 10px;
+        width: min(320px, 100%);
+        margin: 18px auto 0;
+        color: var(--text-2);
+      }
+      .profile-crop-zoom svg { width: 18px; height: 18px; }
+      .profile-crop-zoom input {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+      .profile-crop-footer {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 16px;
+      }
+      .profile-crop-save {
+        border-color: var(--accent);
+        color: #fff;
+        background: var(--accent);
+        transition: background 140ms ease, transform 140ms ease;
+      }
+      .profile-crop-save:hover:not(:disabled) {
+        background: var(--accent-h);
+        transform: scale(1.04);
+      }
+      .profile-crop-save:disabled {
+        cursor: wait;
+        opacity: .55;
+      }
+      .gif-picker-result { position: relative; }
+      .gif-picker-skeleton {
+        display: block;
+        aspect-ratio: 4 / 3;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--surface-2);
+      }
+      #profileBody.is-loading .cover {
+        background: var(--surface-2);
+      }
+      #profileBody.is-loading .cover img { visibility: hidden; }
+      #profileBody.is-loading .cover::after {
+        position: absolute;
+        inset: 0;
+        background: rgba(255,255,255,.22);
+        content: "";
+        transform: translateX(-120%);
+        animation: relay-skeleton-shimmer 1.2s ease-in-out infinite;
+        pointer-events: none;
+      }
+      #profileBody.is-loading :is(#profileAvatar, #profileName, #profileHandle, #profileBio, #followingCount, #followerCount) {
+        position: relative;
+        overflow: hidden;
+        color: transparent !important;
+        border-radius: 6px;
+        background: var(--surface-2);
+      }
+      #profileBody.is-loading #profileAvatar {
+        border-radius: 50%;
+        border-color: var(--surface-2);
+      }
+      #profileBody.is-loading #profileAvatar img,
+      #profileBody.is-loading #profileAvatar svg { visibility: hidden; }
+      #profileBody.is-loading #profileName { width: min(240px, 58%); }
+      #profileBody.is-loading #profileHandle { width: min(160px, 42%); min-height: 18px; }
+      #profileBody.is-loading #profileBio { width: min(360px, 85%); min-height: 38px; }
+      #profileBody.is-loading :is(#followingCount, #followerCount) {
+        display: inline-block;
+        width: 28px;
+        height: 14px;
+        vertical-align: middle;
+      }
+      #profileBody.is-loading :is(#profileAvatar, #profileName, #profileHandle, #profileBio, #followingCount, #followerCount)::after {
+        position: absolute;
+        inset: 0;
+        background: rgba(255,255,255,.22);
+        content: "";
+        transform: translateX(-120%);
+        animation: relay-skeleton-shimmer 1.2s ease-in-out infinite;
+        pointer-events: none;
+      }
+      #profileBody.is-loading #profileAvatar::after { border-radius: inherit; }
+      @media (prefers-reduced-motion: reduce) {
+        #profileBody.is-loading .cover::after,
+        #profileBody.is-loading :is(#profileAvatar, #profileName, #profileHandle, #profileBio, #followingCount, #followerCount)::after {
+          animation: none;
+        }
       }
       .giphy-embed-frame {
         display: block;
@@ -4194,28 +4398,21 @@
         background: var(--surface);
         box-shadow: var(--shadow);
       }
-      .global-search-dropdown::before {
-        position: absolute;
-        z-index: 1;
-        top: 0;
-        left: 0;
-        width: 34%;
-        height: 2px;
-        border-radius: 999px;
-        background: color-mix(in srgb, var(--text) 55%, transparent);
-        content: "";
-        opacity: 0;
-        pointer-events: none;
+      .global-search-loading.relay-skeleton {
+        display: grid;
+        grid-template-columns: 30px minmax(0, 1fr);
+        align-items: center;
+        gap: 9px;
+        min-height: 40px;
+        padding: 7px 9px;
+        border: 0;
       }
-      .global-search-dropdown.is-loading::before {
-        opacity: 1;
-        animation: global-search-progress 900ms ease-in-out infinite;
+      .global-search-loading .relay-skeleton-avatar {
+        width: 30px;
+        height: 30px;
       }
-      @keyframes global-search-progress {
-        0% { transform: translateX(-115%); }
-        55% { transform: translateX(210%); }
-        100% { transform: translateX(310%); }
-      }
+      .global-search-loading .relay-skeleton-copy { gap: 6px; }
+      .global-search-loading .relay-skeleton-bar { height: 8px; }
       .global-search-dropdown[hidden] { display: none; }
       .global-search-dropdown.is-opening {
         animation: global-search-pop-in 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -4310,9 +4507,6 @@
         .global-search-results.is-incoming .global-search-option,
         .global-search-results.is-incoming .global-search-status,
         .global-search-results.is-incoming .global-search-divider {
-          animation: none;
-        }
-        .global-search-dropdown.is-loading::before {
           animation: none;
         }
       }
@@ -4509,16 +4703,6 @@
       }
       .explore-person-row .follow-button:hover { background: var(--surface-2); }
       .explore-person-row .follow-button[aria-pressed="true"] { color: var(--text-2); }
-      .explore-skeleton {
-        height: 64px;
-        margin: 8px 20px;
-        border-radius: 12px;
-        background: linear-gradient(90deg, var(--surface-2) 25%, var(--hover) 50%, var(--surface-2) 75%);
-        background-size: 200% 100%;
-        animation: explore-shimmer 1.2s infinite linear;
-      }
-      @keyframes explore-shimmer { to { background-position: -200% 0; } }
-      @media (prefers-reduced-motion: reduce) { .explore-skeleton { animation: none; } }
       #v-explore .media {
         aspect-ratio: auto;
         display: block;
@@ -4667,31 +4851,20 @@
       .post-actions .act[data-count="views"] + span { visibility: visible; }
       .post-actions .repost-wrap { position: relative; justify-self: stretch; display: grid; place-items: center; }
       .feed-sentinel {
-        min-height: 28px;
-        display: grid;
-        place-items: center;
-        color: var(--text-3);
+        min-height: 1px;
+        height: 1px;
       }
       .feed-sentinel-spinner {
-        width: 16px;
-        height: 16px;
-        border: 2px solid var(--border);
-        border-top-color: var(--accent);
-        border-radius: 50%;
-        animation: feed-sentinel-spin 700ms linear infinite;
+        display: none;
       }
       .feed-item-entering {
         animation: feed-item-enter 220ms cubic-bezier(0.16, 1, 0.3, 1) var(--feed-item-delay, 0ms) both;
-      }
-      @keyframes feed-sentinel-spin {
-        to { transform: rotate(360deg); }
       }
       @keyframes feed-item-enter {
         from { opacity: 0; transform: translateY(8px); }
         to { opacity: 1; transform: translateY(0); }
       }
       @media (prefers-reduced-motion: reduce) {
-        .feed-sentinel-spinner,
         .feed-item-entering {
           animation: none;
         }
@@ -5188,6 +5361,20 @@
       .relay-skeleton-bar { height: 12px; border-radius: 6px; }
       .relay-skeleton-bar.short { width: 58%; }
       .relay-skeleton-media { height: 180px; border-radius: 16px; }
+      .relay-skeleton-list { display: block; }
+      .relay-skeleton-trend {
+        min-height: 62px;
+        padding: 10px 16px;
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .relay-skeleton-person {
+        min-height: 76px;
+        grid-template-columns: 44px minmax(0, 1fr);
+      }
+      .relay-skeleton-person .relay-skeleton-avatar {
+        width: 44px;
+        height: 44px;
+      }
       .relay-skeleton-shimmer::after {
         position: absolute;
         inset: 0;
@@ -5198,6 +5385,12 @@
       }
       @keyframes relay-skeleton-shimmer {
         60%, 100% { transform: translateX(120%); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .relay-skeleton-shimmer::after,
+        .emoji-skeleton::after {
+          animation: none;
+        }
       }
       .relay-load-error {
         display: grid;
@@ -5861,6 +6054,34 @@
         <img class="giphy-white" src="assets/giphy/powered-by-giphy-white.png" alt="Powered by GIPHY">
       </div>
     </dialog>
+    <dialog class="profile-crop-dialog" id="profileCropDialog" aria-labelledby="profileCropTitle">
+      <header class="profile-crop-heading">
+        <h2 id="profileCropTitle">Adjust profile photo</h2>
+        <button class="profile-crop-close" id="profileCropClose" type="button" aria-label="Cancel crop">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>
+        </button>
+      </header>
+      <p class="profile-crop-instructions">Drag to reposition, then adjust the zoom.</p>
+      <div class="profile-crop-stage" id="profileCropStage" role="application" tabindex="0" aria-label="Drag the image to adjust the circular crop">
+        <div class="profile-crop-image-clip">
+          <img class="profile-crop-image" id="profileCropImage" alt="Profile photo crop preview" draggable="false">
+        </div>
+        <div class="profile-crop-mask" aria-hidden="true"></div>
+        <div class="profile-crop-ring" aria-hidden="true"></div>
+      </div>
+      <label class="profile-crop-zoom">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 4.5 4.5M10.8 7.8v6M7.8 10.8h6" /></svg>
+        <span class="sr">Zoom profile photo</span>
+        <input id="profileCropZoom" type="range" min="1" max="3" step="0.01" value="1">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 4.5 4.5M7.8 10.8h6" /></svg>
+      </label>
+      <footer class="profile-crop-footer">
+        <button class="btn btn-line btn-sm" id="profileCropCancel" type="button">Cancel</button>
+        <button class="profile-crop-save" id="profileCropSave" type="button" aria-label="Save cropped profile photo" title="Save cropped profile photo">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4.5 4.5L19 7" /></svg>
+        </button>
+      </footer>
+    </dialog>
     <dialog class="post-alt-dialog" id="postAltDialog" aria-label="Image description">
       <button class="dismiss-btn" type="button" data-alt-close aria-label="Close description">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>
@@ -6002,6 +6223,11 @@
       let gifSearchController = null;
       let gifSearchGeneration = 0;
       let giphyResultsById = new Map();
+      let profileCropInput = null;
+      let profileCropObjectUrl = "";
+      let profileCropZoom = 1;
+      let profileCropOffset = { x: 0, y: 0 };
+      let profileCropDrag = null;
       let composerMediaUrl = "";
       let composerLocation = "";
       let composerPreviewUrl = "";
@@ -6414,7 +6640,8 @@
         locationSearchTimer = setTimeout(async () => {
           status.textContent = "Searching places…";
           status.hidden = false;
-          results.hidden = true;
+          results.innerHTML = Array.from({ length: 3 }, () => '<span class="location-result-skeleton relay-skeleton-shimmer" aria-hidden="true"></span>').join("");
+          results.hidden = false;
           try {
             const response = await api(`/places/search?q=${encodeURIComponent(normalizedQuery)}`);
             if (generation !== locationSearchGeneration) return;
@@ -6683,6 +6910,7 @@
         const status = $("#gifPickerStatus");
         const results = $("#gifPickerResults");
         results.replaceChildren();
+        results.removeAttribute("aria-busy");
         giphyResultsById.clear();
         if (!GIPHY_API_KEY) {
           status.textContent = "GIF search is not configured. Add VITE_GIPHY_API_KEY to the frontend build environment.";
@@ -6693,6 +6921,8 @@
         gifSearchController = controller;
         const generation = ++gifSearchGeneration;
         status.textContent = query ? "Searching GIPHY…" : "Loading trending GIFs…";
+        results.setAttribute("aria-busy", "true");
+        results.innerHTML = Array.from({ length: 8 }, () => '<span class="gif-picker-skeleton relay-skeleton-shimmer" aria-hidden="true"></span>').join("");
         const params = new URLSearchParams({
           api_key: GIPHY_API_KEY,
           bundle: "messaging_non_clips",
@@ -6710,6 +6940,8 @@
           const payload = await response.json();
           if (generation !== gifSearchGeneration) return;
           if (!Array.isArray(payload.data)) throw new Error("GIPHY returned an invalid response.");
+          results.replaceChildren();
+          results.removeAttribute("aria-busy");
           for (const gif of payload.data) {
             if (typeof gif.id !== "string") continue;
             giphyResultsById.set(gif.id, gif);
@@ -6738,6 +6970,8 @@
           status.textContent = results.childElementCount ? "" : "No GIFs found.";
         } catch (error) {
           if (error.name === "AbortError" || generation !== gifSearchGeneration) return;
+          results.replaceChildren();
+          results.removeAttribute("aria-busy");
           status.textContent = error.message || "Could not load GIFs from GIPHY.";
         }
       }
@@ -6799,6 +7033,11 @@
           input.value = "";
           return;
         }
+        if (kind === "avatar") {
+          openProfileCrop(file, input);
+          input.value = "";
+          return;
+        }
         const property = kind === "avatar" ? "avatarUrl" : "bannerUrl";
         const previousUser = currentUser;
         const localUrl = URL.createObjectURL(file);
@@ -6820,6 +7059,113 @@
         } finally {
           input.disabled = false;
           input.value = "";
+        }
+      }
+      function openProfileCrop(file, input) {
+        profileCropInput = input;
+        profileCropZoom = 1;
+        profileCropOffset = { x: 0, y: 0 };
+        $("#profileCropZoom").value = "1";
+        const image = $("#profileCropImage");
+        image.onload = syncProfileCropPreview;
+        image.onerror = () => {
+          toast("This image could not be opened.");
+          $("#profileCropDialog").close();
+        };
+        if (profileCropObjectUrl) URL.revokeObjectURL(profileCropObjectUrl);
+        profileCropObjectUrl = URL.createObjectURL(file);
+        image.src = profileCropObjectUrl;
+        $("#profileCropDialog").showModal();
+        requestAnimationFrame(syncProfileCropPreview);
+      }
+      function syncProfileCropPreview() {
+        const image = $("#profileCropImage");
+        const stage = $("#profileCropStage");
+        if (!image.naturalWidth || !image.naturalHeight || !stage.clientWidth) return;
+        const stageSize = stage.clientWidth;
+        const coverScale = Math.max(stageSize / image.naturalWidth, stageSize / image.naturalHeight);
+        const imageWidth = image.naturalWidth * coverScale * profileCropZoom;
+        const imageHeight = image.naturalHeight * coverScale * profileCropZoom;
+        const maxX = Math.max(0, (imageWidth - stageSize) / 2);
+        const maxY = Math.max(0, (imageHeight - stageSize) / 2);
+        profileCropOffset = {
+          x: Math.max(-maxX, Math.min(maxX, profileCropOffset.x)),
+          y: Math.max(-maxY, Math.min(maxY, profileCropOffset.y)),
+        };
+        image.style.width = `${imageWidth}px`;
+        image.style.height = `${imageHeight}px`;
+        image.style.left = `calc(50% + ${profileCropOffset.x}px)`;
+        image.style.top = `calc(50% + ${profileCropOffset.y}px)`;
+      }
+      function resetProfileCrop() {
+        if (profileCropObjectUrl) URL.revokeObjectURL(profileCropObjectUrl);
+        profileCropObjectUrl = "";
+        profileCropInput = null;
+        profileCropDrag = null;
+        profileCropOffset = { x: 0, y: 0 };
+        $("#profileCropImage").removeAttribute("src");
+        $("#profileCropStage").classList.remove("is-dragging");
+      }
+      async function saveProfileCrop() {
+        const input = profileCropInput;
+        const image = $("#profileCropImage");
+        const stage = $("#profileCropStage");
+        if (!input || !image.naturalWidth || !stage.clientWidth) return;
+        const saveButton = $("#profileCropSave");
+        saveButton.disabled = true;
+        try {
+          const size = 512;
+          const canvas = document.createElement("canvas");
+          canvas.width = size;
+          canvas.height = size;
+          const context = canvas.getContext("2d");
+          if (!context) throw new Error("Could not prepare the cropped profile photo.");
+          const stageSize = stage.clientWidth;
+          const scale = size / stageSize;
+          const drawWidth = image.naturalWidth * Math.max(stageSize / image.naturalWidth, stageSize / image.naturalHeight) * profileCropZoom * scale;
+          const drawHeight = image.naturalHeight * Math.max(stageSize / image.naturalWidth, stageSize / image.naturalHeight) * profileCropZoom * scale;
+          context.drawImage(
+            image,
+            (size - drawWidth) / 2 + profileCropOffset.x * scale,
+            (size - drawHeight) / 2 + profileCropOffset.y * scale,
+            drawWidth,
+            drawHeight,
+          );
+          const blob = await new Promise((resolve, reject) => {
+            canvas.toBlob((result) => result
+              ? resolve(result)
+              : reject(new Error("Could not crop this image.")), "image/png");
+          });
+          const croppedFile = new File([blob], "profile-photo.png", { type: "image/png" });
+          const property = "avatarUrl";
+          const previousUser = currentUser;
+          const localUrl = URL.createObjectURL(croppedFile);
+          currentUser = { ...currentUser, [property]: localUrl };
+          updateAccountUI();
+          setAvatar($("#profileAvatar"), currentUser, "lg");
+          $("#profileCropDialog").close();
+          input.disabled = true;
+          try {
+            const result = await uploadMedia(croppedFile, "avatar");
+            currentUser = result.user;
+            updateAccountUI();
+            URL.revokeObjectURL(localUrl);
+            await renderProfile();
+            toast("Profile photo updated");
+          } catch (error) {
+            URL.revokeObjectURL(localUrl);
+            currentUser = previousUser;
+            updateAccountUI();
+            setAvatar($("#profileAvatar"), currentUser, "lg");
+            toast(error.message);
+          } finally {
+            input.disabled = false;
+            input.value = "";
+          }
+        } catch (error) {
+          toast(error.message || "Could not crop this image.");
+        } finally {
+          saveButton.disabled = false;
         }
       }
       function requireAuth() {
@@ -6938,18 +7284,39 @@
           console.warn("Could not clear cached views after deleting a post", error);
         }
       };
-      const listSkeleton = (kind = "post", count = 5) => Array.from({ length: count }, () => kind === "notification"
-        ? `<div class="relay-skeleton"><span class="relay-skeleton-avatar relay-skeleton-shimmer"></span><span class="relay-skeleton-copy"><span class="relay-skeleton-bar relay-skeleton-shimmer"></span><span class="relay-skeleton-bar short relay-skeleton-shimmer"></span></span></div>`
-        : kind === "message"
-          ? `<div class="relay-skeleton"><span class="relay-skeleton-avatar relay-skeleton-shimmer"></span><span class="relay-skeleton-copy"><span class="relay-skeleton-bar relay-skeleton-shimmer"></span><span class="relay-skeleton-bar short relay-skeleton-shimmer"></span></span></div>`
-          : kind === "explore"
-            ? `<div class="relay-skeleton"><span class="relay-skeleton-avatar relay-skeleton-shimmer"></span><span class="relay-skeleton-copy"><span class="relay-skeleton-bar relay-skeleton-shimmer"></span><span class="relay-skeleton-bar relay-skeleton-shimmer"></span></span></div>`
-            : `<div class="relay-skeleton"><span class="relay-skeleton-avatar relay-skeleton-shimmer"></span><span class="relay-skeleton-copy"><span class="relay-skeleton-bar relay-skeleton-shimmer"></span><span class="relay-skeleton-bar short relay-skeleton-shimmer"></span><span class="relay-skeleton-media relay-skeleton-shimmer"></span></span></div>`).join("");
+      const listSkeleton = (kind = "post", count = 5) => Array.from({ length: count }, () => kind === "trend"
+        ? `<div class="relay-skeleton relay-skeleton-trend" aria-hidden="true"><span class="relay-skeleton-copy"><span class="relay-skeleton-bar relay-skeleton-shimmer"></span><span class="relay-skeleton-bar short relay-skeleton-shimmer"></span></span></div>`
+        : kind === "notification" || kind === "message"
+          ? `<div class="relay-skeleton" aria-hidden="true"><span class="relay-skeleton-avatar relay-skeleton-shimmer"></span><span class="relay-skeleton-copy"><span class="relay-skeleton-bar relay-skeleton-shimmer"></span><span class="relay-skeleton-bar short relay-skeleton-shimmer"></span></span></div>`
+          : kind === "person"
+            ? `<div class="relay-skeleton relay-skeleton-person" aria-hidden="true"><span class="relay-skeleton-avatar relay-skeleton-shimmer"></span><span class="relay-skeleton-copy"><span class="relay-skeleton-bar relay-skeleton-shimmer"></span><span class="relay-skeleton-bar short relay-skeleton-shimmer"></span></span></div>`
+            : `<div class="relay-skeleton" aria-hidden="true"><span class="relay-skeleton-avatar relay-skeleton-shimmer"></span><span class="relay-skeleton-copy"><span class="relay-skeleton-bar relay-skeleton-shimmer"></span><span class="relay-skeleton-bar short relay-skeleton-shimmer"></span><span class="relay-skeleton-media relay-skeleton-shimmer"></span></span></div>`).join("");
+      const skeletonListMarkup = (kind = "post", count = 5, label = "content") =>
+        `<div class="relay-skeleton-list" role="status" aria-label="Loading ${label}" aria-busy="true">${listSkeleton(kind, count)}</div>`;
+      const appendSkeleton = (element, kind, count, label) => {
+        const wrapper = document.createElement("div");
+        wrapper.dataset.loadingSkeleton = "";
+        wrapper.innerHTML = skeletonListMarkup(kind, count, label);
+        element.append(wrapper);
+        return () => wrapper.remove();
+      };
+      const skeletonLabels = { post: "posts", notification: "notifications", message: "messages", person: "people", trend: "trending topics" };
+      const delayedSkeletons = new WeakMap();
       const showDelayedSkeleton = (element, kind, delay = 150) => {
+        const requestToken = {};
+        delayedSkeletons.set(element, requestToken);
         let timer = setTimeout(() => {
-          if (!element.dataset.loaded) element.innerHTML = listSkeleton(kind);
+          if (delayedSkeletons.get(element) === requestToken && !element.dataset.loaded) {
+            element.innerHTML = skeletonListMarkup(kind, 5, skeletonLabels[kind] || "content");
+          }
         }, delay);
-        return () => { clearTimeout(timer); element.dataset.loaded = "true"; };
+        return () => {
+          clearTimeout(timer);
+          if (delayedSkeletons.get(element) === requestToken) {
+            element.dataset.loaded = "true";
+            delayedSkeletons.delete(element);
+          }
+        };
       };
       const transitionStates = new WeakMap();
       const waitForOpacityTransition = (element) => {
@@ -7206,6 +7573,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (feedLoading || (append && !feedCursor)) return;
         feedLoading = true;
         let finishSkeleton;
+        let removeAppendSkeleton;
         if (!append) {
           feedCursor = null;
           $("#feedSentinel").hidden = true;
@@ -7217,6 +7585,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             $("#feed").innerHTML = posts.map(post).join("");
           }
           finishSkeleton = showDelayedSkeleton($("#feed"), "post");
+        } else {
+          $("#feedSentinel").hidden = true;
+          removeAppendSkeleton = appendSkeleton($("#feed"), "post", 2, "more posts");
         }
         try {
           const query = new URLSearchParams({ feed: feedTab, limit: "20" });
@@ -7225,6 +7596,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const items = result.items.map(normalizePost);
           posts.push(...items);
           if (append) {
+            removeAppendSkeleton?.();
             $("#feed").insertAdjacentHTML("beforeend", items.map(post).join(""));
             const appended = items
               .map((item) => $(`.post[data-id="${CSS.escape(item.id)}"]`, $("#feed")))
@@ -7247,9 +7619,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           $("#feedSentinel").hidden = !feedCursor;
         } catch (error) {
           finishSkeleton?.();
+          removeAppendSkeleton?.();
           $("#feedSentinel").hidden = true;
           renderError($("#feed"), error, "feed");
         } finally {
+          removeAppendSkeleton?.();
           feedLoading = false;
         }
       }
@@ -7258,6 +7632,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const owner = !viewedProfileId || viewedProfileId === currentUser.id;
         const targetId = owner ? currentUser.id : viewedProfileId;
         if (!owner && t === "Likes") t = "Posts";
+        let finishSkeleton;
+        let removeAppendSkeleton;
         if (!append) {
           profileCursor = null;
           profileTab = t;
@@ -7270,7 +7646,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           $("#editProfileAvatar").hidden = !owner;
           $("#editProfileBanner").hidden = !owner;
           $("#profileFollow").hidden = owner;
-          $("#pf").innerHTML = '<div class="row">Loading profile…</div>';
+          $("#profileBody").classList.add("is-loading");
+          $("#profileBody").setAttribute("aria-busy", "true");
+          $("#pf").innerHTML = "";
+          delete $("#pf").dataset.loaded;
+          finishSkeleton = showDelayedSkeleton($("#pf"), "post");
+        } else {
+          removeAppendSkeleton = appendSkeleton($("#pf"), "post", 2, "more profile posts");
         }
         try {
           const query = new URLSearchParams({ tab: t, limit: "20" });
@@ -7302,13 +7684,21 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             viewerFollows: !!profile.viewerFollows,
           });
           const items = result.items.map(normalizePost);
+          removeAppendSkeleton?.();
           $("#pf").innerHTML = append
             ? $("#pf").innerHTML + items.map(post).join("")
             : items.map(post).join("") || emptyState(`No ${t.toLowerCase()} yet.`, "Posts from this profile will appear here.");
+          finishSkeleton?.();
+          $("#profileBody").classList.remove("is-loading");
+          $("#profileBody").removeAttribute("aria-busy");
           joinVisiblePostRooms();
           profileCursor = result.nextCursor;
           $("#profileMore").hidden = !profileCursor;
         } catch (error) {
+          finishSkeleton?.();
+          removeAppendSkeleton?.();
+          $("#profileBody").classList.remove("is-loading");
+          $("#profileBody").removeAttribute("aria-busy");
           renderError($("#pf"), error);
         }
       }
@@ -7338,7 +7728,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           positionFloatingMenu($("#startConversation"), $("#recipientMenu"));
           return;
         }
-        $("#recipientOptions").innerHTML = '<div class="recipient-hint">Searching…</div>';
+        $("#recipientOptions").innerHTML = skeletonListMarkup("person", 2, "people");
         $("#recipientEmpty").hidden = true;
         try {
           const result = await api(`/users/directory?q=${encodeURIComponent(query)}`);
@@ -7393,7 +7783,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           results.innerHTML = "";
           return;
         }
-        results.innerHTML = '<div class="row">Searching…</div>';
+        results.innerHTML = skeletonListMarkup("person", 3, "people");
         try {
           const result = await api(`/users/directory?q=${encodeURIComponent(query)}`);
           if (generation !== directorySearchGeneration || input.value.trim().replace(/^@/, "").toLowerCase() !== query.toLowerCase()) return;
@@ -7506,7 +7896,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         threadScrollIntents = new WeakMap();
         threadLastGestureAt = 0;
         resetThreadScrollPositions();
-        $("#threadContent").innerHTML = '<div class="row">Loading thread…</div>';
+        $("#threadContent").innerHTML = skeletonListMarkup("post", 2, "thread");
         const moreButton = $("#threadMore");
         moreButton.hidden = true;
         moreButton.disabled = false;
@@ -7699,8 +8089,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           status.setAttribute("role", "status");
           replies.append(status);
         }
-        status.textContent = "Loading replies…";
+        status.innerHTML = listSkeleton("post", 2);
         status.hidden = false;
+        status.setAttribute("aria-busy", "true");
         status.classList.remove("thread-load-error");
         try {
           const query = new URLSearchParams({ limit: "20" });
@@ -7731,6 +8122,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (generation !== threadLoadGeneration) return;
           status.hidden = true;
           status.textContent = error.message;
+          status.removeAttribute("aria-busy");
           status.classList.add("thread-load-error");
           threadRepliesError = true;
           button.hidden = false;
@@ -7909,12 +8301,24 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       async function renderTrending(animateChanges = false) {
         const generation = ++trendingRenderGeneration;
         $("#trendingMore").hidden = true;
-        const result = await api("/trending");
-        if (generation !== trendingRenderGeneration) return;
+        const container = $("#tr");
+        delete container.dataset.loaded;
+        const finishSkeleton = showDelayedSkeleton(container, "trend");
+        let result;
+        try {
+          result = await api("/trending");
+        } catch (error) {
+          finishSkeleton();
+          renderError(container, error);
+          throw error;
+        }
+        if (generation !== trendingRenderGeneration) {
+          finishSkeleton();
+          return;
+        }
         trendingSearchItems = result.items;
         const visibleTopicCount = trendingExpanded ? 10 : 5;
         const topics = result.items.slice(0, visibleTopicCount);
-        const container = $("#tr");
         const previousTags = new Set($$(".trend", container).map((button) => button.dataset.searchTag));
         const nextTags = new Set(topics.map((item) => item.tag));
         const removedTopics = animateChanges
@@ -7923,11 +8327,15 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (removedTopics.length && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
           removedTopics.forEach((topic) => topic.classList.add("trend-widget-exiting"));
           await new Promise((resolve) => setTimeout(resolve, 180));
-          if (generation !== trendingRenderGeneration) return;
+          if (generation !== trendingRenderGeneration) {
+            finishSkeleton();
+            return;
+          }
         }
         container.innerHTML = topics.map((item) =>
           `<button class="trend" data-search-tag="${esc(item.tag)}"><b>${esc(item.tag)}</b><small>${fmt(item.postCount)} posts · ${fmt(item.uniqueUsers)} people</small></button>`,
         ).join("") || emptyState("No trends right now", "", true, "megaphone");
+        finishSkeleton();
         if (animateChanges && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
           if (!topics.length && previousTags.size) {
             const empty = container.querySelector(".empty-state");
@@ -7968,17 +8376,21 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           || !(activeRecommendations.length > 3 || hasMore);
       }
       async function renderSide() {
+        delete $("#wf").dataset.loaded;
+        const finishSkeleton = showDelayedSkeleton($("#wf"), "person");
         try {
           const [, suggestions, contacts] = await Promise.all([
             renderTrending(),
             api("/users/suggestions?limit=6"),
             api("/explore?limit=20"),
           ]);
+          finishSkeleton();
           hasMoreSuggestedPeople = !!suggestions.nextCursor;
           people = contacts.items;
           renderWhoToFollow(suggestions.items, hasMoreSuggestedPeople, true);
           renderRecipientOptions();
         } catch (error) {
+          finishSkeleton();
           hasMoreSuggestedPeople = false;
           $("#whoToFollowMore").hidden = true;
           renderError($("#wf"), error, "explore");
@@ -8004,7 +8416,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const isCurrentRequest = () => requestGeneration === exploreRequestGeneration;
         const searchFilters = ["Top", "Latest", "People"];
         const searchTabs = `<nav class="tabs explore-tabs explore-filter-tabs" role="tablist" aria-label="Search results">${searchFilters.map((filter) => `<button class="tab" type="button" role="tab" data-explore-filter="${filter}" aria-selected="${filter === requestFilter}">${filter}</button>`).join("")}</nav>`;
+        const skeletonKind = searchText
+          ? requestFilter === "People" ? "person" : "post"
+          : requestTab === "people" ? "person" : requestTab === "trending" ? "trend" : "post";
         let finishSkeleton;
+        let removeAppendSkeleton;
         if (!append) {
           exploreCursor = null;
           $("#exploreTabs").hidden = !!searchText;
@@ -8014,7 +8430,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           delete $("#exp").dataset.loaded;
           const cached = readViewCache(searchText ? `explore:${searchText}:${requestFilter}` : "explore");
           if (cached) $("#exp").innerHTML = cached;
-          finishSkeleton = showDelayedSkeleton($("#exp"), "explore");
+          finishSkeleton = showDelayedSkeleton($("#exp"), skeletonKind);
+        } else {
+          removeAppendSkeleton = appendSkeleton($("#exp"), skeletonKind, 2, "more results");
         }
         try {
           if (searchText && !searchTerm) {
@@ -8039,6 +8457,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             const posts = explorePostCards(result.posts.items.map((item) => post(normalizePost(item), searchTerm)).join(""));
             const content = requestFilter === "People" ? people : posts;
             const empty = emptyState(`No results for “${searchText}”.`, "Try a different search or filter.");
+            removeAppendSkeleton?.();
             if (append) {
               const results = $("#exp [data-search-results]");
               if (results) results.insertAdjacentHTML("beforeend", content || empty);
@@ -8058,6 +8477,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               finishSkeleton?.();
               return;
             }
+            removeAppendSkeleton?.();
             $("#exp").innerHTML = append ? $("#exp").innerHTML : trending.items.slice(0, 10).map((item) => `<button class="explore-trending-row" type="button" data-search-tag="${esc(item.tag)}"><strong>${esc(item.tag)}</strong><small>${fmt(item.postCount)} posts · ${fmt(item.uniqueUsers)} people</small></button>`).join("");
             exploreCursor = null;
           } else {
@@ -8069,6 +8489,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             const html = requestTab === "people"
               ? result.items.map((person) => `<div class="explore-person-row" role="link" tabindex="0" aria-label="View @${esc(person.handle)} profile" data-explore-profile-id="${esc(person.id)}">${avatarMarkup(person)}<div class="explore-person-copy"><strong>${esc(person.displayName)}</strong><small>@${esc(person.handle)} · ${fmt(person.followerCount)} followers</small><span>${esc(person.bio || "")}</span></div>${fbtn(person)}</div>`).join("")
               : explorePostCards(result.items.map((item) => post(normalizePost(item))).join(""));
+            removeAppendSkeleton?.();
             $("#exp").innerHTML = append ? $("#exp").innerHTML + html : html || emptyState("Nothing to explore yet.", "Try another tab or check back later.");
             exploreCursor = result.nextCursor;
           }
@@ -8077,7 +8498,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           finishSkeleton?.();
         } catch (error) {
           finishSkeleton?.();
+          removeAppendSkeleton?.();
           if (isCurrentRequest()) renderError($("#exp"), error, "explore");
+        } finally {
+          removeAppendSkeleton?.();
         }
       }
       exploreObserver = new IntersectionObserver((entries) => {
@@ -8134,12 +8558,15 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       };
       async function renderNotifications(append = false) {
         let finishSkeleton;
+        let removeAppendSkeleton;
         if (!append) {
           notificationCursor = null;
           delete $("#nl").dataset.loaded;
           const cached = readViewCache("notifications");
           if (cached) $("#nl").innerHTML = cached;
           finishSkeleton = showDelayedSkeleton($("#nl"), "notification");
+        } else {
+          removeAppendSkeleton = appendSkeleton($("#nl"), "notification", 2, "more notifications");
         }
         try {
           const query = new URLSearchParams({ limit: "20" });
@@ -8148,6 +8575,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           result.items.forEach((item) => seenNotificationIds.add(item.id));
           const visibleItems = groupedNotifications(result.items);
           const html = visibleItems.map(notificationText).join("") || emptyState("No notifications yet.", "New activity will appear here.");
+          removeAppendSkeleton?.();
           $("#nl").innerHTML = append ? $("#nl").innerHTML + html : html;
           if (!append) writeViewCache("notifications", $("#nl").innerHTML);
           notificationCursor = result.nextCursor;
@@ -8174,6 +8602,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (!append) startNotificationStream();
         } catch (error) {
           finishSkeleton?.();
+          removeAppendSkeleton?.();
           renderError($("#nl"), error, "notifications");
           const detail = document.createElement("span");
           detail.textContent = error.message || "An unexpected error occurred.";
@@ -8752,7 +9181,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         globalSearchGeneration += 1;
         globalSearchState = null;
         globalSearchDropdown.classList.remove("is-empty");
-        globalSearchDropdown.classList.remove("is-loading");
+        globalSearchDropdown.removeAttribute("aria-busy");
         globalSearchDropdown.hidden = true;
         globalSearchDropdown.innerHTML = "";
         $("#sideSearch").setAttribute("aria-expanded", "false");
@@ -8762,6 +9191,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function renderGlobalSearchDropdown(query, trends, users, errorMessage = "") {
         if (!globalSearchState) return;
+        globalSearchDropdown.removeAttribute("aria-busy");
         const options = [];
         let markup = "";
         const hasMatches = trends.length > 0 || users.length > 0;
@@ -8819,7 +9249,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         globalSearchState = { query, options: [], selectedIndex: -1 };
         const wasHidden = globalSearchDropdown.hidden;
         globalSearchDropdown.hidden = false;
-        globalSearchDropdown.classList.add("is-loading");
+        globalSearchDropdown.setAttribute("aria-busy", "true");
+        const loadingRows = Array.from({ length: 3 }, () =>
+          '<div class="relay-skeleton global-search-loading" aria-hidden="true"><span class="relay-skeleton-avatar relay-skeleton-shimmer"></span><span class="relay-skeleton-copy"><span class="relay-skeleton-bar relay-skeleton-shimmer"></span><span class="relay-skeleton-bar short relay-skeleton-shimmer"></span></span></div>',
+        ).join("");
+        setGlobalSearchContent(`<div class="global-search-results" role="status" aria-label="Loading search suggestions">${loadingRows}</div>`, false);
         $("#sideSearch").setAttribute("aria-expanded", "true");
         if (wasHidden) animateGlobalSearchOpen();
         positionGlobalSearchDropdown();
@@ -8833,11 +9267,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             const trends = trendingResult.items
               .filter((item) => item.tag.toLowerCase().includes(normalizedQuery.toLowerCase()))
               .slice(0, 3);
-            globalSearchDropdown.classList.remove("is-loading");
             renderGlobalSearchDropdown(query, trends, peopleResult.users.slice(0, 10));
           } catch (error) {
             if (generation !== globalSearchGeneration || !globalSearchState) return;
-            globalSearchDropdown.classList.remove("is-loading");
             renderGlobalSearchDropdown(query, [], [], error.message || "Search suggestions could not be loaded.");
           }
         }, 120);
@@ -9109,7 +9541,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         else {
           $("#conversationList").hidden = false;
           $("#conversationSearchEmpty").hidden = true;
-          $("#conversationList").innerHTML = emptyState("Searching message history…", "Checking previous conversations.", true);
+          $("#conversationList").innerHTML = skeletonListMarkup("message", 3, "message history");
         }
         conversationSearchTimer = setTimeout(async () => {
           try {
@@ -9191,7 +9623,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           delete chatProfileLink.dataset.profileId;
           chatProfileLink.setAttribute("aria-label", "Conversation profile unavailable");
         }
-        $("#chatLog").innerHTML = `${listSkeleton("message", 4)}<div class="typing-status" id="typingStatus" aria-live="polite"></div>`;
+        $("#chatLog").innerHTML = `${skeletonListMarkup("message", 4, "messages")}<div class="typing-status" id="typingStatus" aria-live="polite"></div>`;
         $("#messageInput").disabled = false;
         ["#messageImageButton", "#messageGifButton", "#messageStickerButton", "#messageAudioButton"].forEach((selector) => $(selector).disabled = false);
         syncMessageComposer();
@@ -9225,7 +9657,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         loader.className = "chat-history-loader";
         loader.setAttribute("role", "status");
         loader.setAttribute("aria-label", "Loading older messages");
-        loader.innerHTML = listSkeleton("message", 2);
+        loader.innerHTML = skeletonListMarkup("message", 2, "older messages");
         log.prepend(loader);
         let anchorShift = 0;
         try {
@@ -10691,6 +11123,53 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       $("#gifPickerDialog").addEventListener("click", (event) => {
         if (event.target === $("#gifPickerDialog")) $("#gifPickerDialog").close();
       });
+      $("#profileCropZoom").addEventListener("input", (event) => {
+        profileCropZoom = Number(event.target.value);
+        syncProfileCropPreview();
+      });
+      $("#profileCropStage").addEventListener("pointerdown", (event) => {
+        if (event.button !== 0) return;
+        const stage = event.currentTarget;
+        profileCropDrag = {
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          offsetX: profileCropOffset.x,
+          offsetY: profileCropOffset.y,
+        };
+        stage.setPointerCapture(event.pointerId);
+        stage.classList.add("is-dragging");
+      });
+      $("#profileCropStage").addEventListener("pointermove", (event) => {
+        if (profileCropDrag?.pointerId !== event.pointerId) return;
+        profileCropOffset = {
+          x: profileCropDrag.offsetX + event.clientX - profileCropDrag.startX,
+          y: profileCropDrag.offsetY + event.clientY - profileCropDrag.startY,
+        };
+        syncProfileCropPreview();
+      });
+      const finishProfileCropDrag = (event) => {
+        if (profileCropDrag?.pointerId !== event.pointerId) return;
+        profileCropDrag = null;
+        $("#profileCropStage").classList.remove("is-dragging");
+      };
+      $("#profileCropStage").addEventListener("pointerup", finishProfileCropDrag);
+      $("#profileCropStage").addEventListener("pointercancel", finishProfileCropDrag);
+      $("#profileCropStage").addEventListener("keydown", (event) => {
+        const steps = { ArrowLeft: [-8, 0], ArrowRight: [8, 0], ArrowUp: [0, -8], ArrowDown: [0, 8] };
+        const step = steps[event.key];
+        if (!step) return;
+        event.preventDefault();
+        profileCropOffset = { x: profileCropOffset.x + step[0], y: profileCropOffset.y + step[1] };
+        syncProfileCropPreview();
+      });
+      $("#profileCropSave").addEventListener("click", saveProfileCrop);
+      $("#profileCropClose").addEventListener("click", () => $("#profileCropDialog").close());
+      $("#profileCropCancel").addEventListener("click", () => $("#profileCropDialog").close());
+      $("#profileCropDialog").addEventListener("close", resetProfileCrop);
+      $("#profileCropDialog").addEventListener("click", (event) => {
+        if (event.target === $("#profileCropDialog")) $("#profileCropDialog").close();
+      });
       $("#actionCancel").addEventListener("click", closeActionDialog);
       actionDialog.addEventListener("click", (e) => {
         if (e.target === actionDialog) closeActionDialog();
@@ -10940,6 +11419,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function renderEmojiChoices(records = emojiRecords) {
         const grid = $("#emojiGrid");
         const title = $("#emojiCategoryTitle");
+        grid.removeAttribute("aria-busy");
         const query = $("#emojiSearch").value.trim().toLowerCase();
         const visibleRecords = records.filter((record) =>
           (!query && record.category === selectedEmojiCategory)
@@ -10959,12 +11439,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function renderEmojiLoading() {
         $("#emojiCategoryTitle").textContent = "Loading emojis…";
-        $("#emojiGrid").innerHTML = `
-          <div class="emoji-loading" role="status" aria-live="polite">
-            <span class="emoji-loading-spinner" aria-hidden="true"></span>
-            <span>Loading emojis…</span>
-          </div>
-        `;
+        const grid = $("#emojiGrid");
+        grid.setAttribute("aria-busy", "true");
+        grid.innerHTML = Array.from({ length: 32 }, () => '<span class="emoji-skeleton" aria-hidden="true"></span>').join("");
       }
       function animateEmojiCategoryChange(render) {
         const results = $("#emojiResults");
