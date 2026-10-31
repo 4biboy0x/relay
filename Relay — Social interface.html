@@ -797,6 +797,45 @@
         border-radius: inherit;
         object-fit: cover;
       }
+      .presence-avatar {
+        position: relative;
+        display: inline-flex;
+        flex: none;
+        line-height: 0;
+      }
+      .presence-dot {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        width: 8px;
+        height: 8px;
+        box-sizing: content-box;
+        border: 2px solid var(--surface);
+        border-radius: 50%;
+        background: var(--ok);
+      }
+      .presence-dot[hidden],
+      .presence-label[hidden],
+      .chat-heading .chat-title small[hidden] {
+        display: none;
+      }
+      .presence-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: var(--ok);
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.2;
+        white-space: nowrap;
+      }
+      .presence-label::before {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--ok);
+        content: "";
+      }
       .av.has-image {
         background: var(--bg);
       }
@@ -2635,6 +2674,16 @@
         border-radius: 50%;
         isolation: isolate;
       }
+      .profile-avatar-wrap > .presence-avatar {
+        width: 88px;
+        height: 88px;
+      }
+      .profile-avatar-wrap .presence-dot {
+        right: auto;
+        bottom: 6px;
+        left: 5px;
+        z-index: 3;
+      }
       .profile-actions {
         align-self: flex-start;
         margin-top: 12px;
@@ -2658,6 +2707,11 @@
       .prof .h {
         color: var(--text-3);
         font-size: 14px;
+      }
+      .profile-identity-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
       }
       .prof p {
         margin: 10px 0;
@@ -2912,6 +2966,14 @@
       #profileBack {
         margin: 8px 0 0 12px;
         flex: none;
+      }
+      .chat-profile-link .presence-avatar {
+        width: 34px;
+        height: 34px;
+      }
+      .chat-profile-link .presence-dot {
+        width: 7px;
+        height: 7px;
       }
       .profile-title-row {
         display: flex;
@@ -4094,7 +4156,8 @@
         background: transparent;
         transition: background-color 160ms ease;
       }
-      .conversation-item > .av {
+      .conversation-item > .presence-avatar,
+      .conversation-item > .presence-avatar > .av {
         width: 48px;
         height: 48px;
       }
@@ -4292,6 +4355,14 @@
         display: block;
         color: var(--text-3);
         font-size: 12px;
+      }
+      .chat-heading .chat-title .presence-label {
+        display: inline-flex;
+        color: var(--ok);
+        font-size: 11px;
+      }
+      .chat-heading .chat-title .presence-label[hidden] {
+        display: none;
       }
       .messages-back {
         display: none;
@@ -5605,6 +5676,10 @@
           width: 36px;
           height: 36px;
         }
+        .chat-profile-link .presence-avatar {
+          width: 36px;
+          height: 36px;
+        }
         .chat-log {
           padding-inline: var(--chat-inline-padding);
         }
@@ -6186,8 +6261,8 @@
                   <svg class="i" aria-hidden="true"><use href="#back" /></svg>
                 </button>
                 <button class="chat-profile-link" id="chatProfileLink" type="button" disabled aria-label="Conversation profile unavailable">
-                  <span class="av sm t3" id="chatAvatar" aria-hidden="true">?</span>
-                  <span class="chat-title"><b id="chatName">Messages</b><small id="chatSubtitle" hidden></small></span>
+                  <span class="presence-avatar" data-presence-avatar><span class="av sm t3" id="chatAvatar" aria-hidden="true">?</span><span class="presence-dot" data-presence-dot aria-label="Active now" hidden></span></span>
+                  <span class="chat-title"><b id="chatName">Messages</b><small id="chatSubtitle" hidden></small><small class="presence-label" id="chatPresence" data-presence-label-user hidden>Active now</small></span>
                 </button>
               </header>
               <div class="chat-log" id="chatLog" data-transition-content aria-live="polite">
@@ -6323,7 +6398,7 @@
           <div class="prof">
             <div class="prof-top">
               <div class="profile-avatar-wrap">
-                <span class="av lg t3" id="profileAvatar" aria-hidden="true">?</span>
+                <span class="presence-avatar" data-presence-avatar><span class="av lg t3" id="profileAvatar" aria-hidden="true">?</span><span class="presence-dot" data-presence-dot aria-label="Active now" hidden></span></span>
                 <button class="profile-edit-overlay" id="editProfileAvatar" type="button" aria-label="Update profile photo" title="Update profile photo">
                   <svg class="i" aria-hidden="true"><use href="#camera" /></svg>
                 </button>
@@ -6335,7 +6410,7 @@
               </div>
             </div>
             <h2 id="profileName">Your profile</h2>
-            <div class="h" id="profileHandle"></div>
+            <div class="profile-identity-meta"><div class="h" id="profileHandle"></div><span class="presence-label" id="profilePresence" data-presence-label-user hidden>Active now</span></div>
             <p id="profileBio"></p>
             <div class="stats">
               <span><b id="followingCount">0</b> Following</span
@@ -6664,6 +6739,8 @@
       let loadingOlderMessages = false;
       let socket = null;
       let socketClientPromise = null;
+      let presenceHeartbeatTimer = null;
+      const presenceByUser = new Map();
       const joinedPostRoomIds = new Set();
       let typingSent = false;
       let typingStopTimer = null;
@@ -6795,6 +6872,30 @@
       };
       const avatarMarkup = (user, size = "") =>
         `<span class="av ${size}${user?.avatarUrl ? " has-image" : " av-default"}" aria-hidden="true">${user?.avatarUrl ? `<img src="${esc(mediaHref(user.avatarUrl))}" alt="">` : defaultAvatarSvg}</span>`;
+      const isUserOnline = (user) => {
+        const livePresence = presenceByUser.get(user?.id);
+        if (livePresence) return livePresence.isOnline;
+        if (!user?.isOnline) return false;
+        return !user.lastSeen || Date.now() - new Date(user.lastSeen).getTime() <= 90_000;
+      };
+      const presenceAvatarMarkup = (user, size = "") =>
+        `<span class="presence-avatar" data-presence-avatar${user?.id ? ` data-presence-user="${esc(user.id)}"` : ""}>${avatarMarkup(user, size)}<span class="presence-dot" data-presence-dot aria-label="Active now"${isUserOnline(user) ? "" : " hidden"}></span></span>`;
+      function setPresenceAvatar(element, user) {
+        const wrapper = element?.closest("[data-presence-avatar]");
+        if (!wrapper) return;
+        if (user?.id) wrapper.dataset.presenceUser = user.id;
+        else delete wrapper.dataset.presenceUser;
+        const online = isUserOnline(user);
+        wrapper.dataset.online = String(online);
+        const dot = wrapper.querySelector("[data-presence-dot]");
+        if (dot) dot.hidden = !online;
+      }
+      function setPresenceLabel(element, user) {
+        if (!element) return;
+        if (user?.id) element.dataset.presenceLabelUser = user.id;
+        else delete element.dataset.presenceLabelUser;
+        element.hidden = !isUserOnline(user);
+      }
       const profileLink = (user, label = user.displayName) =>
         `<button class="profile-link" type="button" data-profile-id="${esc(user.id)}">${esc(label)}</button>`;
       const P = (handle) => people.find((person) => person.handle === handle);
@@ -6874,6 +6975,9 @@
         accessToken = "";
         currentUser = null;
         viewedProfileId = null;
+        clearInterval(presenceHeartbeatTimer);
+        presenceHeartbeatTimer = null;
+        presenceByUser.clear();
         sessionStorage.removeItem("relay_access_token");
         if (streamController) streamController.abort();
         if (socket) socket.disconnect();
@@ -6924,6 +7028,11 @@
           socket.on("connect", () => {
             joinedPostRoomIds.clear();
             typingSent = false;
+            clearInterval(presenceHeartbeatTimer);
+            socket.emit("presence:heartbeat");
+            presenceHeartbeatTimer = window.setInterval(() => {
+              if (socket?.connected) socket.emit("presence:heartbeat");
+            }, 30_000);
             if (streamController) streamController.abort();
             streamController = null;
             if (activeConversation) socket.emit("conversation:join", activeConversation.id);
@@ -6931,6 +7040,8 @@
             refreshMessageBadge();
           });
           socket.on("disconnect", () => {
+            clearInterval(presenceHeartbeatTimer);
+            presenceHeartbeatTimer = null;
             if (accessToken && currentUser) setTimeout(() => {
               if (!socket?.connected && !streamController) startNotificationStream();
             }, 1000);
@@ -6960,6 +7071,7 @@
             renderTrending(true).catch((error) => console.error("Could not refresh trending topics", error));
           });
           socket.on("profile:updated", receiveProfileUpdate);
+          socket.on("presence:update", receivePresenceUpdate);
           socket.on("message:new", receiveMessage);
           socket.on("messages:unread-increment", refreshMessageBadge);
           socket.on("typing:update", receiveTyping);
@@ -8073,7 +8185,7 @@
         if (p.replyToId) {
           const parent = p.replyTo;
           return `<article class="post reply-card" data-id="${esc(p.id)}" data-reply-to="${esc(p.replyToId)}" tabindex="0">
-${avatarMarkup(p.author, "sm")}
+${presenceAvatarMarkup(p.author, "sm")}
 <div class="p-body">
 <div class="reply-context">Replying to ${parent ? profileLink(parent.author, `@${parent.author.handle}`) : "a post that is no longer available"}</div>
 <div class="p-head"><b>${profileLink(p.author, p.n)}</b><span class="m">@${esc(p.u)} · ${p.t}</span>${postMenu}</div>
@@ -8088,7 +8200,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
 <div class="post-actions-right"><button class="act" data-a="bookmark" aria-label="Bookmark">${ic("bookmark")}</button><button class="act" data-a="share" aria-label="Share">${ic("share")}</button></div></div>
 </div></article>`;
         }
-        return `<article class="post" data-id="${esc(p.id)}" tabindex="0"><button class="profile-avatar-link" type="button" data-profile-id="${esc(p.author.id)}" aria-label="View @${esc(p.u)} profile">${avatarMarkup(p.author)}</button><div class="p-body">
+        return `<article class="post" data-id="${esc(p.id)}" tabindex="0"><button class="profile-avatar-link" type="button" data-profile-id="${esc(p.author.id)}" aria-label="View @${esc(p.u)} profile">${presenceAvatarMarkup(p.author)}</button><div class="p-body">
 <div class="p-head"><b>${profileLink(p.author, p.n)}</b><span class="m">@${esc(p.u)} · ${p.t}</span>${postMenu}</div>
 ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class="i" aria-hidden="true"><use href="#pin" /></svg><span>${esc(getCompactLocationLabel(p.location))}</span></div>` : ""}<p class="p-text">${renderPostText(p.x, searchTerm)}</p>${homePostMedia(p)}
 <div class="acts post-actions" role="group" aria-label="Post actions">
@@ -8354,6 +8466,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             $("#profileHandle").textContent = `@${profile.handle}`;
             $("#profileBio").textContent = profile.bio || "";
             setAvatar($("#profileAvatar"), profile, "lg");
+            setPresenceAvatar($("#profileAvatar"), profile);
+            setPresenceLabel($("#profilePresence"), profile);
             const banner = $("#profileBanner");
             banner.hidden = !profile.bannerUrl;
             if (profile.bannerUrl) banner.src = mediaHref(profile.bannerUrl);
@@ -9159,7 +9273,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               : message?.sender?.displayName || other?.displayName || "Relay user";
             const body = message?.body?.trim()
               || (message?.mediaUrl ? "Photo" : message?.audioUrl ? "Voice message" : message?.stickerId ? "Sticker" : "Message");
-            return `<button class="conversation-item message-search-result" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search-message-id="${esc(message?.id || "")}" data-search-message-candidate="false" aria-current="${item.id === activeConversation?.id}">${avatarMarkup(other, "sm")}<span class="grow"><b>${esc(other?.displayName || "Relay user")}</b><small><span class="conversation-preview-text">${esc(sender)}: ${emphasizeConversationMatch(body, query)}</span></small></span></button>`;
+            return `<button class="conversation-item message-search-result" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search-message-id="${esc(message?.id || "")}" data-search-message-candidate="false" aria-current="${item.id === activeConversation?.id}">${presenceAvatarMarkup(other, "sm")}<span class="grow"><b>${esc(other?.displayName || "Relay user")}</b><small><span class="conversation-preview-text">${esc(sender)}: ${emphasizeConversationMatch(body, query)}</span></small></span></button>`;
           }).join("");
         } catch (error) {
           if (generation !== exploreMessageSearchGeneration) return;
@@ -9665,6 +9779,27 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         people = people.map((person) => person.id === user.id ? { ...person, ...user } : person);
       }
+      function receivePresenceUpdate(presence) {
+        if (!presence || typeof presence.userId !== "string") return;
+        const state = {
+          isOnline: Boolean(presence.isOnline),
+          lastSeen: presence.lastSeen || null,
+        };
+        presenceByUser.set(presence.userId, state);
+        if (presenceByUser.size > 2000) {
+          presenceByUser.delete(presenceByUser.keys().next().value);
+        }
+        const online = state.isOnline;
+        $$("[data-presence-user]").forEach((element) => {
+          if (element.dataset.presenceUser !== presence.userId) return;
+          element.dataset.online = String(online);
+          const dot = element.querySelector("[data-presence-dot]");
+          if (dot) dot.hidden = !online;
+        });
+        $$("[data-presence-label-user]").forEach((element) => {
+          if (element.dataset.presenceLabelUser === presence.userId) element.hidden = !online;
+        });
+      }
       let voiceRecorder = null;
       let voiceChunks = [];
       let voiceRecordingCanceled = false;
@@ -9998,7 +10133,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             markup += globalSearchOption(
               "message",
               conversation.id,
-              `${avatarMarkup(other, "sm")}<span class="grow user-search-copy"><b>${esc(other?.displayName || "Relay user")}</b><small>${emphasizeConversationMatch(body, query)}</small></span>`,
+              `${presenceAvatarMarkup(other, "sm")}<span class="grow user-search-copy"><b>${esc(other?.displayName || "Relay user")}</b><small>${emphasizeConversationMatch(body, query)}</small></span>`,
               "",
               message?.id || "",
             );
@@ -10294,7 +10429,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const unreadLabel = unreadCount > 99 ? "+99" : unreadCount > 9 ? "+9" : fmt(unreadCount);
           const searchMessageId = searchQuery && searchMode !== "conversations" ? item.matchedMessage?.id || "" : "";
           const searchMessageCandidate = Boolean(searchQuery && searchMode === "all" && !searchMessageId && matchingLastMessage);
-          return `<button class="conversation-item${searchMode === "messages" ? " message-search-result" : ""}${unreadCount ? " has-unread" : ""}" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}">${avatarMarkup(other, "sm")}<span class="grow"><span class="conversation-item-heading"><b>${esc(other?.displayName || "Relay user")}</b>${messageTime}</span><small>${preview}</small></span>${unreadCount ? `<span class="unread-count" aria-label="${unreadCount} unread messages">${unreadLabel}</span>` : ""}</button>`;
+          return `<button class="conversation-item${searchMode === "messages" ? " message-search-result" : ""}${unreadCount ? " has-unread" : ""}" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}">${presenceAvatarMarkup(other, "sm")}<span class="grow"><span class="conversation-item-heading"><b>${esc(other?.displayName || "Relay user")}</b>${messageTime}</span><small>${preview}</small></span>${unreadCount ? `<span class="unread-count" aria-label="${unreadCount} unread messages">${unreadLabel}</span>` : ""}</button>`;
         }).join("");
         if (append) resultList.insertAdjacentHTML("beforeend", markup);
         else resultList.innerHTML = markup;
@@ -10504,6 +10639,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#chatSubtitle").textContent = "";
         $("#chatSubtitle").hidden = true;
         setAvatar($("#chatAvatar"), null, "sm");
+        setPresenceAvatar($("#chatAvatar"), null);
+        setPresenceLabel($("#chatPresence"), null);
         $("#chatProfileLink").disabled = true;
         $("#chatProfileLink").removeAttribute("data-profile-id");
         $("#chatProfileLink").setAttribute("aria-label", "Conversation profile unavailable");
@@ -10544,6 +10681,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#chatSubtitle").textContent = other?.handle ? `@${other.handle}` : "Private conversation";
         $("#chatSubtitle").hidden = !other?.handle;
         setAvatar($("#chatAvatar"), other, "sm");
+        setPresenceAvatar($("#chatAvatar"), other);
+        setPresenceLabel($("#chatPresence"), other);
         const chatProfileLink = $("#chatProfileLink");
         chatProfileLink.disabled = !other?.id;
         if (other?.id) {
@@ -10726,6 +10865,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#profileHandle").textContent = currentUser ? `@${currentUser.handle}` : "";
         $("#profileBio").textContent = currentUser?.bio || "";
         setAvatar($("#profileAvatar"), currentUser, "lg");
+        setPresenceAvatar($("#profileAvatar"), currentUser);
+        setPresenceLabel($("#profilePresence"), currentUser);
         setAvatar($("#composerAvatar"), currentUser);
         const banner = $("#profileBanner");
         banner.hidden = !currentUser?.bannerUrl;

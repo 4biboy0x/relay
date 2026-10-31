@@ -18,6 +18,8 @@ model User {
   bio           String         @default("") @db.VarChar(280)
   avatarUrl     String?
   bannerUrl     String?
+  isOnline      Boolean        @default(false)
+  lastSeen      DateTime?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   followers     Follow[]       @relation("Followers")

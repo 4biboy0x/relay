@@ -1,11 +1,31 @@
 import type { Server as HttpServer } from "node:http";
 import jwt from "jsonwebtoken";
+import { Prisma } from "@prisma/client";
 import { Server } from "socket.io";
 import { z } from "zod";
 import { clientOrigins, config } from "./config";
 import { prisma } from "./db";
 
 let io: Server | undefined;
+
+const presenceHeartbeatIntervalMs = 30_000;
+const presenceExpiryMs = 90_000;
+
+const emitPresence = (userId: string, isOnline: boolean, lastSeen: Date): void => {
+  io?.emit("presence:update", { userId, isOnline, lastSeen: lastSeen.toISOString() });
+};
+
+const markStaleUsersOffline = async (): Promise<void> => {
+  const staleBefore = new Date(Date.now() - presenceExpiryMs);
+  const staleUsers = await prisma.$queryRaw<Array<{ id: string; lastSeen: Date | null }>>(Prisma.sql`
+    UPDATE "User"
+    SET "isOnline" = false
+    WHERE "isOnline" = true
+      AND ("lastSeen" IS NULL OR "lastSeen" < ${staleBefore})
+    RETURNING "id", "lastSeen"
+  `);
+  staleUsers.forEach(({ id, lastSeen }) => emitPresence(id, false, lastSeen || new Date()));
+};
 
 export const initializeRealtime = (server: HttpServer): Server => {
   io = new Server(server, {
@@ -17,6 +37,13 @@ export const initializeRealtime = (server: HttpServer): Server => {
     },
     maxHttpBufferSize: 16_384,
   });
+
+  const presenceCleanupTimer = setInterval(() => {
+    void markStaleUsersOffline().catch((error: unknown) => {
+      console.error("Could not reconcile stale user presence", error);
+    });
+  }, presenceHeartbeatIntervalMs);
+  presenceCleanupTimer.unref();
 
   io.use(async (socket, next) => {
     try {
@@ -47,6 +74,47 @@ export const initializeRealtime = (server: HttpServer): Server => {
     const expiryTimer = setTimeout(() => socket.disconnect(true), expiresIn);
     socket.on("disconnect", () => clearTimeout(expiryTimer));
     socket.join(`user:${userId}`);
+    const connectedAt = new Date();
+    socket.data.lastPresenceHeartbeatAt = Date.now();
+    void prisma.$executeRaw(Prisma.sql`
+      UPDATE "User"
+      SET "isOnline" = true, "lastSeen" = ${connectedAt}
+      WHERE "id" = ${userId}
+    `).then((updated) => {
+      if (updated) emitPresence(userId, true, connectedAt);
+    }).catch((error: unknown) => {
+      console.error("Could not mark user online", error);
+    });
+
+    socket.on("presence:heartbeat", () => {
+      const now = Date.now();
+      const lastHeartbeatAt = socket.data.lastPresenceHeartbeatAt as number;
+      if (now - lastHeartbeatAt < presenceHeartbeatIntervalMs - 5_000) return;
+      socket.data.lastPresenceHeartbeatAt = now;
+      void prisma.$executeRaw(Prisma.sql`
+        UPDATE "User"
+        SET "lastSeen" = ${new Date(now)}
+        WHERE "id" = ${userId} AND "isOnline" = true
+      `).catch((error: unknown) => {
+        console.error("Could not refresh user presence", error);
+      });
+    });
+
+    socket.on("disconnect", () => {
+      void (async () => {
+        const remainingSockets = await io?.in(`user:${userId}`).fetchSockets();
+        if (remainingSockets?.length) return;
+        const lastSeen = new Date();
+        const updated = await prisma.$executeRaw(Prisma.sql`
+          UPDATE "User"
+          SET "isOnline" = false, "lastSeen" = ${lastSeen}
+          WHERE "id" = ${userId} AND "isOnline" = true
+        `);
+        if (updated) emitPresence(userId, false, lastSeen);
+      })().catch((error: unknown) => {
+        console.error("Could not mark user offline", error);
+      });
+    });
 
     socket.on("post:join", async (postId: unknown) => {
       const parsed = z.string().cuid().safeParse(postId);

@@ -27,7 +27,17 @@ import {
 
 const app = express();
 const api = express.Router();
-const publicUser = { id: true, handle: true, displayName: true, bio: true, avatarUrl: true, bannerUrl: true, createdAt: true } as const;
+const publicUser = {
+  id: true,
+  handle: true,
+  displayName: true,
+  bio: true,
+  avatarUrl: true,
+  bannerUrl: true,
+  isOnline: true,
+  lastSeen: true,
+  createdAt: true,
+} as const;
 
 async function withNotificationFollowState<T extends { actor: { id: string } }>(viewerId: string, notifications: T[]): Promise<T[]> {
   const actorIds = [...new Set(notifications.map((notification) => notification.actor.id))];
