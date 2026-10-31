@@ -5882,6 +5882,10 @@
         transform: scale(0.92);
         transition-duration: 80ms;
       }
+      .nav-item[data-view="reels"][aria-current="page"] .reels-symbol,
+      .profile-tabs [data-pt="Reels"][aria-selected="true"] .reels-symbol {
+        --reels-play-fill: currentColor;
+      }
       @media (max-width: 1100px) {
         .app {
           grid-template-columns: 72px minmax(0, 1fr);
@@ -6013,6 +6017,7 @@
           flex: 1;
           min-height: 48px;
         }
+        .nav-item[data-view="reels"] .reels-symbol { width: 22px; height: 22px; }
         .post,
         .composer,
         .prof,
@@ -6355,7 +6360,8 @@
         padding: 8px 18px;
         border-bottom: 1px solid var(--border);
       }
-      .reels-top h1 { margin: 0; font-size: 19px; letter-spacing: -.025em; }
+      .reels-top h1 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 19px; letter-spacing: -.025em; }
+      .reels-top h1 .reels-symbol { width: 20px; height: 20px; }
       .reels-top p { margin: 4px 0 0; color: var(--text-3); font-size: 12px; }
       .reels-top .btn { min-height: 36px; gap: 7px; padding: 0 12px; }
       .reels-top .i { width: 16px; height: 16px; }
@@ -6694,7 +6700,9 @@
       .reel-upload-preview.is-dragging { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface-2)); }
       .reel-upload-preview video { width: 100%; height: 100%; object-fit: contain; background: #08090b; }
       .reel-upload-placeholder { display: grid; justify-items: center; gap: 10px; padding: 20px 12px; color: var(--text-2); text-align: center; }
-      .reel-upload-placeholder .i { width: 28px; height: 28px; color: var(--accent); }
+      .reel-upload-placeholder .i { width: 20px; height: 20px; color: var(--accent); }
+      .profile-tabs [data-pt="Reels"] { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+      .profile-tabs [data-pt="Reels"] .reels-symbol { width: 18px; height: 18px; }
       .reel-upload-placeholder strong { color: var(--text); font-size: 14px; }
       .reel-upload-placeholder span { font-size: 11px; line-height: 1.45; }
       .reel-upload-fields { display: flex; min-width: 0; flex-direction: column; align-items: stretch; }
@@ -6854,10 +6862,12 @@
           <circle cx="12" cy="12" r="9" />
           <path d="m16 8-2.4 5.6L8 16l2.4-5.6z" />
         </symbol>
-        <symbol id="reels" viewBox="0 0 24 24">
-          <rect x="3" y="4" width="18" height="16" rx="2" />
-          <path d="M3 9h18M8 4l3 5m2-5 3 5" />
-          <path d="m10 12 5 3-5 3z" />
+        <symbol id="reels" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="5.5"/>
+          <path d="M3.5 8.5h17"/>
+          <path d="M9 3.2v5.3"/>
+          <path d="M15 3.2v5.3"/>
+          <path d="M10.2 12.2v4.2a.55.55 0 0 0 .84.47l3.45-2.1a.55.55 0 0 0 0-.94l-3.45-2.1a.55.55 0 0 0-.84.47z" fill="var(--reels-play-fill, none)"/>
         </symbol>
         <symbol id="bell" viewBox="0 0 24 24">
           <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
@@ -6975,7 +6985,7 @@
           ><span class="l">Explore</span>
         </button>
         <button class="nav-item" data-view="reels">
-          <svg class="i" aria-hidden="true"><use href="#reels" /></svg
+          <svg class="i reels-symbol" aria-hidden="true"><use href="#reels" /></svg
           ><span class="l">Reels</span>
         </button>
         <button class="nav-item" data-view="messages">
@@ -7086,7 +7096,7 @@
                   <svg class="i" aria-hidden="true"><use href="#image" /></svg>
                 </button>
                 <button class="icon-btn" id="createReelFromComposer" type="button" aria-label="Create a Reel" title="Create a Reel">
-                  <svg class="i" aria-hidden="true"><use href="#reels" /></svg>
+                  <svg class="i reels-symbol" aria-hidden="true"><use href="#reels" /></svg>
                 </button>
                 <input id="postFileInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden />
                 <button class="icon-btn" id="gifButton" type="button" aria-label="Choose a GIF" aria-haspopup="dialog" aria-controls="gifPickerDialog" aria-expanded="false">GIF</button>
@@ -7149,7 +7159,7 @@
         <section id="v-reels" data-v hidden aria-label="Reels">
           <header class="reels-top">
             <div>
-              <h1>Reels</h1>
+              <h1><svg class="i reels-symbol" aria-hidden="true"><use href="#reels" /></svg>Reels</h1>
               <p>Short videos from people on Relay</p>
             </div>
             <button class="btn btn-primary" id="createReelButton" type="button">
@@ -7442,7 +7452,7 @@
               aria-selected="false"
               data-pt="Reels"
             >
-              Reels
+              <svg class="i reels-symbol" aria-hidden="true"><use href="#reels" /></svg>Reels
             </button>
             <button
               class="tab"
@@ -7646,7 +7656,7 @@
           <div class="reel-upload-preview">
             <video id="reelUploadPreview" controls playsinline muted hidden></video>
             <div class="reel-upload-placeholder" id="reelUploadPlaceholder">
-              <svg class="i" aria-hidden="true"><use href="#reels" /></svg>
+              <svg class="i reels-symbol" aria-hidden="true"><use href="#reels" /></svg>
               <strong>Choose a video</strong>
               <span>MP4, MOV, or WebM · up to 100 MB</span>
             </div>
