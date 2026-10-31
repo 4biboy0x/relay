@@ -1740,6 +1740,7 @@
       }
       .legal-tab {
         position: relative;
+        flex: 1;
         margin-bottom: -1px;
         padding: 12px 4px;
         border: 0;
@@ -1748,6 +1749,7 @@
         font: inherit;
         font-size: 14px;
         font-weight: 500;
+        text-align: center;
         cursor: pointer;
       }
       .legal-tab[aria-selected="true"] { color: var(--text); font-weight: 600; }
@@ -1776,14 +1778,14 @@
         display: flex;
         flex: 1;
         min-height: 0;
-        gap: 20px;
+        gap: 32px;
       }
       .legal-panel[hidden] { display: none; }
       .legal-copy { max-width: 62ch; margin: 0 auto; }
       .legal-toc {
         position: sticky;
         top: 20px;
-        width: 200px;
+        width: 180px;
         height: max-content;
         flex: none;
         margin: 20px 0 32px 24px;
@@ -1801,13 +1803,23 @@
       }
       .legal-toc a,
       .legal-toc-mobile a {
-        color: var(--accent);
+        display: block;
+        padding: 4px 0;
+        border-left: 2px solid transparent;
+        color: var(--text-2);
         font-size: 14px;
+        line-height: 1.4;
         text-decoration: none;
       }
       .legal-toc a:hover,
-      .legal-toc-mobile a:hover { text-decoration: underline; }
-      .legal-toc a[aria-current="location"] { font-weight: 650; }
+      .legal-toc-mobile a:hover { color: var(--text); text-decoration: underline; }
+      .legal-toc a[aria-current="location"],
+      .legal-toc-mobile a[aria-current="location"] {
+        padding-left: 10px;
+        border-left-color: var(--accent);
+        color: var(--accent);
+        font-weight: 600;
+      }
       .legal-toc-mobile { display: none; }
       .legal-scroll-shell {
         position: relative;
@@ -1845,7 +1857,7 @@
         padding: 12px 24px;
         border-top: 1px solid var(--border);
       }
-      .legal-footer small { color: var(--text-3); font-size: 13px; }
+      .legal-footer small { color: var(--text-2); font-size: 13px; }
       .legal-footer .btn,
       .cookie-settings-actions .btn {
         display: inline-flex;
@@ -1924,8 +1936,8 @@
         font-size: 13px;
         line-height: 1.45;
       }
-      .cookie-essential-state { display: grid; justify-items: center; gap: 2px; }
-      .cookie-essential-state small { color: var(--text-3); font-size: 13px; white-space: nowrap; }
+      .cookie-essential-state { display: flex; align-items: center; gap: 10px; }
+      .cookie-essential-state small { color: var(--text-2); font-size: 13px; white-space: nowrap; }
       .cookie-switch {
         position: relative;
         width: 40px;
@@ -7031,8 +7043,8 @@
         <div class="cookie-preference">
           <span class="cookie-preference-copy"><strong>Essential session</strong><small>Required for secure sign-in and core account functions. Essential authentication storage is required.</small></span>
           <span class="cookie-essential-state">
-            <button class="cookie-switch" type="button" role="switch" aria-checked="true" aria-label="Essential session storage is always on" disabled></button>
             <small>Always on</small>
+            <button class="cookie-switch" type="button" role="switch" aria-checked="true" aria-label="Essential session storage is always on" disabled></button>
           </span>
         </div>
         <div class="cookie-preference">
@@ -13805,7 +13817,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               const visible = entries.filter((entry) => entry.isIntersecting)
                 .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
               if (!visible) return;
-              panel.querySelectorAll(".legal-toc a").forEach((link) => {
+              panel.querySelectorAll(".legal-toc a, .legal-toc-mobile a").forEach((link) => {
                 if (link.hash === `#${visible.target.id}`) link.setAttribute("aria-current", "location");
                 else link.removeAttribute("aria-current");
               });
@@ -13843,9 +13855,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
       }
       function openCookieSettings(trigger = document.activeElement) {
+        const savedOptionalAnalytics = readCookieConsent()?.optionalAnalytics ?? false;
         $("#analyticsCookies").setAttribute(
           "aria-checked",
-          String(readCookieConsent()?.optionalAnalytics === true),
+          String(savedOptionalAnalytics),
         );
         openPolicyDialog(cookieSettingsDialog, trigger);
       }
