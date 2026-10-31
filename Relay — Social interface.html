@@ -4275,6 +4275,19 @@
         color: #fff;
         background: var(--accent);
       }
+      .message-bubble.search-message-shake {
+        animation: search-message-shake 520ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+        will-change: transform;
+      }
+      @keyframes search-message-shake {
+        0%, 100% { transform: translateX(0); }
+        15% { transform: translateX(7px); }
+        30% { transform: translateX(-6px); }
+        45% { transform: translateX(5px); }
+        60% { transform: translateX(-4px); }
+        75% { transform: translateX(2px); }
+        90% { transform: translateX(-1px); }
+      }
       .chat-compose {
         position: sticky;
         bottom: 0;
@@ -5490,7 +5503,8 @@
         .spinner { animation: relay-opacity-pulse 1.2s ease-in-out infinite alternate; }
         .relay-skeleton-shimmer { animation: none !important; }
         .chat-panel.chat-panel-entering,
-        .chat-message-entering {
+        .chat-message-entering,
+        .message-bubble.search-message-shake {
           animation: none !important;
         }
       }
@@ -6489,6 +6503,7 @@
       let chatPanelAnimationTimer = null;
       let conversationSearchTimer = null;
       let conversationSearchGeneration = 0;
+      let conversationSelectionGeneration = 0;
       let loadingOlderMessages = false;
       let socket = null;
       let socketClientPromise = null;
@@ -9873,7 +9888,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
           const unreadCount = Number(item.unreadCount) || 0;
           const unreadLabel = unreadCount > 99 ? "+99" : unreadCount > 9 ? "+9" : fmt(unreadCount);
-          return `<button class="conversation-item" type="button" style="--conversation-index:${items.indexOf(item)}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" aria-current="${current}">${avatarMarkup(other, "sm")}<span class="grow"><b>${esc(other?.displayName || "Relay user")}</b><small>${preview}</small></span>${unreadCount ? `<span class="unread-count" aria-label="${unreadCount} unread messages">${unreadLabel}</span>` : ""}</button>`;
+          const searchMessageId = searchQuery ? item.matchedMessage?.id || "" : "";
+          const searchMessageCandidate = Boolean(searchQuery && !searchMessageId && matchingLastMessage);
+          return `<button class="conversation-item" type="button" style="--conversation-index:${items.indexOf(item)}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}">${avatarMarkup(other, "sm")}<span class="grow"><b>${esc(other?.displayName || "Relay user")}</b><small>${preview}</small></span>${unreadCount ? `<span class="unread-count" aria-label="${unreadCount} unread messages">${unreadLabel}</span>` : ""}</button>`;
         }).join("");
       }
       function animateConversationListEntrance() {
@@ -9966,7 +9983,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           console.error("Could not refresh message badge", error);
         }
       }
-      function openConversation(conversation, updateRoute = true) {
+      function openConversation(conversation, updateRoute = true, targetMessageId = "") {
         try {
           sessionStorage.setItem("relay_active_conversation", conversation.id);
         } catch {}
@@ -9976,9 +9993,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const route = `#/messages?conversation=${encodeURIComponent(conversation.id)}`;
           if (location.hash !== route) location.hash = route;
         }
-        return loadConversation(conversation);
+        return loadConversation(conversation, targetMessageId);
       }
-      async function loadConversation(conversation) {
+      async function loadConversation(conversation, targetMessageId = "") {
         sendTyping(false);
         const loadGeneration = ++activeConversationLoadGeneration;
         activeConversation = conversation;
@@ -10017,10 +10034,87 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           bindVoiceMessages($("#chatLog"));
           bindMessageMediaScroll($("#chatLog"));
           scrollMessageListToBottom(false);
+          if (targetMessageId) {
+            await new Promise((resolve) => requestAnimationFrame(resolve));
+            let target = null;
+            let searchLoadFailed = false;
+            try {
+              target = await loadConversationUntilMessage(conversation.id, targetMessageId, loadGeneration);
+            } catch (error) {
+              searchLoadFailed = true;
+              if (loadGeneration === activeConversationLoadGeneration) {
+                toast(`Could not load the matching message: ${error.message}`);
+              }
+            }
+            if (loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversation.id) return;
+            if (target) await revealSearchedMessage(target, loadGeneration);
+            else if (!searchLoadFailed) toast("Could not find that matching message in the conversation.");
+          }
           await renderConversations();
         } catch (error) {
           if (loadGeneration === activeConversationLoadGeneration) renderError($("#chatLog"), error);
         }
+      }
+      async function loadConversationUntilMessage(conversationId, targetMessageId, loadGeneration) {
+        const log = $("#chatLog");
+        const findTarget = () => $$(".message-bubble", log).find((bubble) => bubble.dataset.messageId === targetMessageId);
+        loadingOlderMessages = true;
+        try {
+          while (!findTarget() && activeConversationCursor
+            && loadGeneration === activeConversationLoadGeneration
+            && activeConversation?.id === conversationId) {
+            const cursor = activeConversationCursor;
+            const query = new URLSearchParams({ limit: "40", cursor });
+            const result = await api(`/conversations/${encodeURIComponent(conversationId)}/messages?${query}`);
+            if (loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversationId) return null;
+            const unseen = result.items.filter((message) => !receivedMessageIds.has(message.id));
+            unseen.forEach((message) => receivedMessageIds.add(message.id));
+            if (unseen.length) {
+              const anchor = log.querySelector(".message-bubble");
+              const anchorTop = anchor?.getBoundingClientRect().top ?? null;
+              log.insertAdjacentHTML("afterbegin", unseen.map(messageMarkup).join(""));
+              if (anchor && anchorTop !== null) log.scrollTop += anchor.getBoundingClientRect().top - anchorTop;
+              bindVoiceMessages(log);
+              bindMessageMediaScroll(log, false);
+            }
+            activeConversationCursor = result.nextCursor;
+          }
+          return findTarget() || null;
+        } finally {
+          if (loadGeneration === activeConversationLoadGeneration) loadingOlderMessages = false;
+        }
+      }
+      async function revealSearchedMessage(target, loadGeneration) {
+        const log = $("#chatLog");
+        const targetRect = target.getBoundingClientRect();
+        const logRect = log.getBoundingClientRect();
+        const isVisible = targetRect.top >= logRect.top && targetRect.bottom <= logRect.bottom;
+        if (!isVisible) {
+          const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+          const top = log.scrollTop + targetRect.top - logRect.top - (log.clientHeight - target.offsetHeight) / 2;
+          log.scrollTo({
+            top: Math.max(0, Math.min(top, log.scrollHeight - log.clientHeight)),
+            behavior: reduceMotion ? "auto" : "smooth",
+          });
+          if (!reduceMotion) {
+            await new Promise((resolve) => {
+              let timer;
+              const finish = () => {
+                clearTimeout(timer);
+                log.removeEventListener("scrollend", finish);
+                resolve();
+              };
+              log.addEventListener("scrollend", finish, { once: true });
+              timer = setTimeout(finish, 700);
+            });
+          }
+        }
+        if (loadGeneration !== activeConversationLoadGeneration || !target.isConnected) return;
+        if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+        target.classList.remove("search-message-shake");
+        void target.offsetWidth;
+        target.classList.add("search-message-shake");
+        setTimeout(() => target.classList.remove("search-message-shake"), 560);
       }
       async function loadOlderMessages() {
         const log = $("#chatLog");
@@ -11106,10 +11200,34 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const conversationButton = e.target.closest("[data-conversation]");
         if (conversationButton) {
           const conversation = conversations.find((item) => item.id === conversationButton.dataset.conversation);
-          if (conversation) openConversation(conversation);
+          if (conversation) {
+            const selectionGeneration = ++conversationSelectionGeneration;
+            const query = $("#conversationSearch").value.trim().replace(/\s+/g, " ");
+            let targetMessageId = conversationButton.dataset.searchMessageId || "";
+            let searchTargetMissing = false;
+            if (!targetMessageId && conversationButton.dataset.searchMessageCandidate === "true") {
+              if (query) {
+                try {
+                  const params = new URLSearchParams({ q: query, limit: "1", conversationId: conversation.id });
+                  const result = await api(`/conversations/search?${params}`);
+                  targetMessageId = result.items.find((item) => item.id === conversation.id)?.matchedMessage?.id || "";
+                  searchTargetMissing = !targetMessageId;
+                } catch (error) {
+                  if (selectionGeneration === conversationSelectionGeneration && !$("#v-messages").hidden) {
+                    toast(`Could not search for the matching message: ${error.message}`);
+                  }
+                }
+              }
+            }
+            if (selectionGeneration !== conversationSelectionGeneration || $("#v-messages").hidden
+              || (query && $("#conversationSearch").value.trim().replace(/\s+/g, " ") !== query)) return;
+            if (searchTargetMissing) toast("Could not find that matching message in the conversation.");
+            openConversation(conversation, true, targetMessageId);
+          }
           return;
         }
         if (e.target.closest("#messagesBack")) {
+          conversationSelectionGeneration += 1;
           if (location.hash !== "#/messages") location.hash = "#/messages";
           document.activeElement?.blur();
           transitionContent($("#chatLog"), async () => {

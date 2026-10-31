@@ -1362,6 +1362,7 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
 api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (req, res) => {
   const rawQuery = z.string().trim().min(1).max(100).parse(req.query.q);
   const limit = z.coerce.number().int().min(1).max(50).default(50).parse(req.query.limit);
+  const requestedConversationId = z.string().cuid().optional().parse(req.query.conversationId);
   const normalizedQuery = rawQuery.normalize("NFKC").toLowerCase();
   const terms = [...new Set(normalizedQuery.split(/\s+/).filter(Boolean))]
     .map((term) => term.replace(/[\\%_]/g, "\\$&"));
@@ -1397,6 +1398,9 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
       ON viewer."conversationId" = conversation."id"
       AND viewer."userId" = ${req.userId!}
     WHERE ${Prisma.join(termConditions, " AND ")}
+    ${requestedConversationId
+      ? Prisma.sql`AND conversation."id" = ${requestedConversationId}`
+      : Prisma.empty}
     ORDER BY
       (
         CASE WHEN ${matchingMessage(phrase)} THEN 8 ELSE 0 END
@@ -1419,9 +1423,8 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
         ROW_NUMBER() OVER (
           PARTITION BY message."conversationId"
           ORDER BY
-            CASE WHEN message."body" ILIKE ${`%${phrase}%`} ESCAPE '\\' THEN 0 ELSE 1 END,
-            message."createdAt" DESC,
-            message."id" DESC
+            message."createdAt" ASC,
+            message."id" ASC
         ) AS message_rank
       FROM "Message" AS message
       WHERE message."conversationId" IN (${Prisma.join(conversationIds)})
