@@ -17,6 +17,7 @@ import { config } from "./config";
 import { prisma } from "./db";
 import { asyncRoute, HttpError } from "./http";
 import { emitToUser } from "./realtime";
+import { wakeReelWorker } from "./reel-worker";
 import {
   createLocalReelReadUrl,
   createReelReadUrl,
@@ -123,8 +124,6 @@ const statusLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req) => req.userId ?? ipKeyGenerator(req.ip ?? "unknown"),
 });
-const observedReelStatuses = new Map<string, ReelStatus>();
-
 const multipartUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: config.REEL_MAX_UPLOAD_BYTES, files: 1 },
@@ -502,6 +501,7 @@ router.post("/:id/complete", authRequired, writeLimiter, asyncRoute(async (req, 
     return true;
   });
   if (!result) throw new HttpError(409, "This Reel upload is already being processed");
+  wakeReelWorker();
   res.status(202).json({ id: reel.id, status: ReelStatus.PROCESSING });
 }));
 
@@ -512,18 +512,6 @@ router.get("/:id/status", authRequired, statusLimiter, asyncRoute(async (req, re
     select: { id: true, status: true, processingError: true, durationMs: true },
   });
   if (!reel) throw new HttpError(404, "Reel not found");
-  const previousStatus = observedReelStatuses.get(reelId);
-  if (previousStatus && previousStatus !== reel.status) {
-    console.info(`Reel ${reelId} status transition: ${previousStatus.toLowerCase()} -> ${reel.status.toLowerCase()}`);
-  } else if (!previousStatus && reel.status === ReelStatus.PROCESSING) {
-    console.info(`Reel ${reelId} status transition: uploading -> processing`);
-  }
-  observedReelStatuses.delete(reelId);
-  observedReelStatuses.set(reelId, reel.status);
-  if (observedReelStatuses.size > 10_000) {
-    const oldestReelId = observedReelStatuses.keys().next().value;
-    if (oldestReelId) observedReelStatuses.delete(oldestReelId);
-  }
   const body = {
     id: reel.id,
     status: reel.status,
