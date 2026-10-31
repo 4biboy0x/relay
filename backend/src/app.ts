@@ -7,7 +7,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { NotificationType, Prisma, type InteractionType, type NotificationType as NotificationTypeValue } from "@prisma/client";
 import { z } from "zod";
 import { authRequired, createAccessToken, hashPassword, hashRefreshToken, issueRefreshToken, verifyPassword } from "./auth";
-import { config } from "./config";
+import { clientOrigins, config } from "./config";
 import { prisma } from "./db";
 import { getNeonRealtime } from "./neon-realtime";
 import { asyncRoute, errorHandler, HttpError } from "./http";
@@ -56,7 +56,12 @@ const refreshCookieOptions = {
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
 app.use(helmet());
-app.use(cors({ origin: config.CLIENT_ORIGIN, credentials: true }));
+app.use(cors({
+  origin: clientOrigins,
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
 app.use(express.json({ limit: "32kb" }));
 app.use("/uploads", express.static(uploadDirectory, {
   maxAge: "1d",

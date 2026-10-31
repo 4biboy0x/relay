@@ -2,14 +2,19 @@ import type { Server as HttpServer } from "node:http";
 import jwt from "jsonwebtoken";
 import { Server } from "socket.io";
 import { z } from "zod";
-import { config } from "./config";
+import { clientOrigins, config } from "./config";
 import { prisma } from "./db";
 
 let io: Server | undefined;
 
 export const initializeRealtime = (server: HttpServer): Server => {
   io = new Server(server, {
-    cors: { origin: config.CLIENT_ORIGIN, credentials: true },
+    cors: {
+      origin: clientOrigins,
+      credentials: true,
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"],
+    },
     maxHttpBufferSize: 16_384,
   });
 

@@ -11,3 +11,10 @@ const configSchema = z.object({
 });
 
 export const config = configSchema.parse(process.env);
+
+export const clientOrigins = [
+  config.CLIENT_ORIGIN,
+  "https://relay-4vm.pages.dev",
+  "http://localhost:4173",
+  "http://localhost:5173",
+];
