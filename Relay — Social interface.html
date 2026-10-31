@@ -3808,6 +3808,48 @@
         font-size: 15px;
         font-weight: 650;
       }
+      #startConversation {
+        display: grid;
+        width: 36px;
+        height: 36px;
+        place-items: center;
+        padding: 0;
+        border: 1px solid var(--border);
+        border-radius: 50%;
+        color: var(--text);
+        background: transparent;
+        transition: background-color 140ms ease, border-color 140ms ease;
+      }
+      #startConversation:hover,
+      #startConversation[aria-expanded="true"] {
+        border-color: var(--border);
+        background: var(--surface-2);
+      }
+      .conversation-new-icon {
+        position: relative;
+        display: block;
+        width: 20px;
+        height: 20px;
+      }
+      .conversation-new-icon > .i {
+        width: 18px;
+        height: 18px;
+      }
+      .conversation-new-plus {
+        position: absolute;
+        right: -3px;
+        bottom: -3px;
+        display: grid;
+        width: 12px;
+        height: 12px;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--surface);
+      }
+      .conversation-new-plus .i {
+        width: 10px;
+        height: 10px;
+      }
       .conversation-list-header p {
         margin: 2px 0 0;
         color: var(--text-3);
@@ -3965,21 +4007,23 @@
       }
       .conversation-item {
         display: flex;
-        width: 100%;
-        min-height: 76px;
+        width: calc(100% - 16px);
+        min-height: 72px;
         align-items: center;
         gap: 10px;
-        padding: 11px 14px;
+        margin: 2px 8px;
+        padding: 11px 12px;
+        border: 0;
+        border-radius: 12px;
         text-align: left;
-        border-bottom: 1px solid var(--border);
-        border-left: 2px solid transparent;
+        background: transparent;
+        transition: background-color 160ms ease;
       }
-      .conversation-item:hover,
-      .conversation-item[aria-current="true"] {
+      .conversation-item:hover {
         background: var(--hover);
       }
       .conversation-item[aria-current="true"] {
-        border-left-color: var(--accent);
+        background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
       }
       .conversation-item:focus {
         outline: none;
@@ -4070,10 +4114,10 @@
         background: var(--surface);
       }
       .chat-panel.chat-panel-entering {
-        animation: chat-panel-enter 220ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+        animation: chat-panel-enter 240ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
       }
       @keyframes chat-panel-enter {
-        from { opacity: 0.7; transform: translateY(8px); }
+        from { opacity: 0; transform: translateY(6px); }
         to { opacity: 1; transform: translateY(0); }
       }
       .chat-history-loader {
@@ -4154,6 +4198,67 @@
         padding: 18px 16px 24px;
         background:
           radial-gradient(ellipse at 50% 0, color-mix(in srgb, var(--surface-2) 45%, transparent), transparent 58%);
+      }
+      .conversation-start-empty {
+        display: flex;
+        width: 100%;
+        min-height: 100%;
+        flex: 1;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        box-sizing: border-box;
+        padding: 24px 12px;
+        text-align: center;
+      }
+      .conversation-start-icon {
+        display: grid;
+        width: 64px;
+        height: 64px;
+        place-items: center;
+        margin-bottom: 4px;
+        border: 1px solid var(--border);
+        border-radius: 50%;
+        color: var(--text-2);
+        background: var(--surface-2);
+      }
+      .conversation-start-icon .i {
+        width: 27px;
+        height: 27px;
+      }
+      .conversation-start-empty h2 {
+        margin: 0;
+        color: var(--text);
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+      .conversation-start-empty p {
+        max-width: 320px;
+        margin: -4px 0 4px;
+        color: var(--text-3);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .conversation-start-action {
+        min-height: 40px;
+        padding: 0 20px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        color: #fff;
+        background: #0f1419;
+        font-size: 13px;
+        font-weight: 650;
+        transition: background-color 140ms ease, transform 140ms ease;
+      }
+      .conversation-start-action:hover {
+        background: #272c30;
+        transform: translateY(-1px);
+      }
+      .conversation-start-action:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
       }
       .message-bubble {
         max-width: min(90%, 720px);
@@ -5882,7 +5987,12 @@
               <header class="conversation-list-header">
                 <h2>Inbox</h2>
                 <div class="recipient-picker">
-                  <button class="btn btn-line btn-sm" id="startConversation" type="button" aria-expanded="false" aria-haspopup="listbox" aria-controls="recipientMenu">New message</button>
+                  <button id="startConversation" type="button" aria-label="New chat" title="New chat" aria-expanded="false" aria-haspopup="listbox" aria-controls="recipientMenu">
+                    <span class="conversation-new-icon" aria-hidden="true">
+                      <svg class="i"><use href="#msg"></use></svg>
+                      <span class="conversation-new-plus"><svg class="i"><use href="#plus"></use></svg></span>
+                    </span>
+                  </button>
                   <div class="recipient-menu" id="recipientMenu" role="listbox" aria-label="Choose a recipient" hidden>
                     <div class="recipient-search">
                       <input id="recipientSearch" type="search" placeholder="Search people" autocomplete="off" />
@@ -5917,7 +6027,12 @@
                 </button>
               </header>
               <div class="chat-log" id="chatLog" data-transition-content aria-live="polite">
-                <div class="empty-state empty-state-compact" role="status"><svg class="i" aria-hidden="true"><use href="#search"></use></svg><strong>No conversation selected.</strong><span>Choose a conversation to view messages.</span></div>
+                <div class="conversation-start-empty">
+                  <span class="conversation-start-icon" aria-hidden="true"><svg class="i"><use href="#msg"></use></svg></span>
+                  <h2>Start Conversation</h2>
+                  <p>Choose from your existing conversations, or start a new one.</p>
+                  <button class="conversation-start-action" id="emptyNewChat" type="button">New chat</button>
+                </div>
                 <div class="typing-status" id="typingStatus" aria-live="polite"></div>
               </div>
               <form class="chat-compose" id="messageForm">
@@ -6306,6 +6421,8 @@
         );
       const emptyState = (title, subtitle = "", compact = false, icon = "search") =>
         `<div class="empty-state${compact ? " empty-state-compact" : ""}" role="status">${ic(icon)}<strong>${esc(String(title))}</strong>${subtitle ? `<span>${esc(String(subtitle))}</span>` : ""}</div>`;
+      const conversationStartMarkup = () =>
+        `<div class="conversation-start-empty"><span class="conversation-start-icon" aria-hidden="true">${ic("msg")}</span><h2>Start Conversation</h2><p>Choose from your existing conversations, or start a new one.</p><button class="conversation-start-action" id="emptyNewChat" type="button">New chat</button></div>`;
       const fmt = (n) =>
         n >= 1e4
           ? (n / 1e3).toFixed(0) + "K"
@@ -11012,7 +11129,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             $("#chatProfileLink").disabled = true;
             $("#chatProfileLink").removeAttribute("data-profile-id");
             $("#chatProfileLink").setAttribute("aria-label", "Conversation profile unavailable");
-            $("#chatLog").innerHTML = `${emptyState("No conversation selected.", "Choose a conversation to view messages.", true)}<div class="typing-status" id="typingStatus" aria-live="polite"></div>`;
+            $("#chatLog").innerHTML = `${conversationStartMarkup()}<div class="typing-status" id="typingStatus" aria-live="polite"></div>`;
             $("#messageInput").disabled = true;
             $("#sendMessage").disabled = true;
             ["#messageImageButton", "#messageGifButton", "#messageStickerButton", "#messageAudioButton"].forEach((selector) => $(selector).disabled = true);
@@ -11021,7 +11138,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           });
           return;
         }
-        if (e.target.closest("#startConversation")) {
+        if (e.target.closest("#startConversation, #emptyNewChat")) {
           toggleRecipientMenu();
           return;
         }
