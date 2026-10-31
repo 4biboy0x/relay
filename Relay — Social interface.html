@@ -1763,6 +1763,7 @@
         content: "";
       }
       .legal-body {
+        position: relative;
         flex: 1;
         min-height: 0;
         overflow-y: auto;
@@ -1819,6 +1820,12 @@
         border-left-color: var(--accent);
         color: var(--accent);
         font-weight: 600;
+      }
+      .legal-toc a:focus-visible,
+      .legal-toc-mobile a:focus-visible {
+        outline: 2px solid var(--accent) !important;
+        outline-offset: 2px;
+        box-shadow: none !important;
       }
       .legal-toc-mobile { display: none; }
       .legal-scroll-shell {
@@ -13662,6 +13669,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       const cookieSettingsDialog = $("#cookieSettingsDialog");
       const dialogFocusTriggers = new WeakMap();
       const legalScrollPositions = new Map();
+      const legalTocStates = new Map();
+      let activeId = "";
+      let lockUntilScrollEnd = false;
+      let scrollLockTimeout = null;
+      let lockedScrollTarget = null;
+      let activeLegalTocState = null;
       let legalHashToRestore = null;
       function syncPolicyDialogScrollLock() {
         document.body.classList.toggle(
@@ -13753,15 +13766,17 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         });
         $("#termsContent").hidden = selectedTab !== "terms";
         $("#privacyContent").hidden = selectedTab !== "privacy";
+        clearLegalScrollLock();
         if (updateHash && legalDialog.open) {
           history.replaceState(history.state, "", `${location.pathname}${location.search}#${selectedTab}`);
         }
-        const shell = $(`#${selectedTab}Content .legal-scroll-shell`);
-        const body = shell?.querySelector(".legal-body");
-        if (body && legalScrollPositions.has(selectedTab)) {
-          body.scrollTop = legalScrollPositions.get(selectedTab);
-        }
-        if (shell && body) updateLegalScrollHints(shell, body);
+        const state = legalTocStates.get(selectedTab);
+        if (!state) return;
+        activeLegalTocState = state;
+        rebuildLegalHeadingOffsets(state);
+        state.body.scrollTop = legalScrollPositions.get(selectedTab) ?? 0;
+        updateLegalScrollHints(state.shell, state.body);
+        updateActiveIdFromScroll(state);
       }
       function openLegal(selectedTab, trigger = document.activeElement, fromDeepLink = false) {
         if (!legalDialog.open) {
@@ -13776,6 +13791,49 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           "can-scroll-more",
           body.scrollHeight - body.scrollTop - body.clientHeight > 1,
         );
+      }
+      function clearLegalScrollLock() {
+        lockUntilScrollEnd = false;
+        lockedScrollTarget = null;
+        clearTimeout(scrollLockTimeout);
+        scrollLockTimeout = null;
+      }
+      function setLegalTocActiveId(state, id) {
+        activeId = id;
+        state.panel.querySelectorAll(".legal-toc a, .legal-toc-mobile a").forEach((link) => {
+          if (link.hash === `#${id}`) link.setAttribute("aria-current", "location");
+          else link.removeAttribute("aria-current");
+        });
+      }
+      function rebuildLegalHeadingOffsets(state) {
+        const { body, copy, headings } = state;
+        const lastHeading = headings.at(-1);
+        if (!lastHeading || body.clientHeight === 0) return;
+        const currentPadding = Number.parseFloat(copy.style.paddingBottom) || 0;
+        const lastSectionHeight = copy.scrollHeight - currentPadding - lastHeading.offsetTop;
+        copy.style.paddingBottom = `${Math.max(24, body.clientHeight - lastSectionHeight)}px`;
+        state.headingOffsets = headings.map((heading) => heading.offsetTop);
+      }
+      function updateActiveIdFromScroll(state) {
+        const { body, headings, headingOffsets } = state;
+        if (!headings.length || !headingOffsets.length || !body.clientHeight) return;
+        let nextHeading;
+        if (body.scrollTop + body.clientHeight >= body.scrollHeight - 2) {
+          nextHeading = headings.at(-1);
+        } else if (body.scrollTop <= 2) {
+          nextHeading = headings[0];
+        } else {
+          let index = -1;
+          for (let headingIndex = 0; headingIndex < headingOffsets.length; headingIndex += 1) {
+            if (headingOffsets[headingIndex] - body.scrollTop <= 24) index = headingIndex;
+          }
+          nextHeading = headings[Math.max(0, index)];
+        }
+        setLegalTocActiveId(state, nextHeading.id);
+      }
+      function releaseLegalScrollLock() {
+        if (!lockUntilScrollEnd) return;
+        clearLegalScrollLock();
       }
       function initializeLegalContents() {
         ["terms", "privacy"].forEach((tabName) => {
@@ -13797,9 +13855,17 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               link.textContent = heading.textContent;
               link.addEventListener("click", (event) => {
                 event.preventDefault();
-                heading.scrollIntoView({
-                  behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
-                  block: "start",
+                const state = legalTocStates.get(tabName);
+                if (!state) return;
+                setLegalTocActiveId(state, id);
+                clearLegalScrollLock();
+                lockUntilScrollEnd = true;
+                const target = Math.max(0, heading.offsetTop - 8);
+                lockedScrollTarget = { body, target };
+                scrollLockTimeout = setTimeout(releaseLegalScrollLock, 900);
+                body.scrollTo({
+                  top: target,
+                  behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
                 });
                 heading.focus({ preventScroll: true });
               });
@@ -13807,23 +13873,34 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               return item;
             }));
           });
+          const state = { panel, body, copy: body.querySelector(".legal-copy"), shell, headings, headingOffsets: [], frame: 0 };
+          legalTocStates.set(tabName, state);
           body.addEventListener("scroll", () => {
             legalScrollPositions.set(tabName, body.scrollTop);
             updateLegalScrollHints(shell, body);
+            if (lockUntilScrollEnd) {
+              if (lockedScrollTarget?.body === body
+                && Math.abs(body.scrollTop - lockedScrollTarget.target) < 2) {
+                releaseLegalScrollLock();
+              }
+              return;
+            }
+            if (state.frame) return;
+            state.frame = requestAnimationFrame(() => {
+              state.frame = 0;
+              if (!lockUntilScrollEnd && activeLegalTocState === state) {
+                updateActiveIdFromScroll(state);
+              }
+            });
           }, { passive: true });
+          body.addEventListener("scrollend", releaseLegalScrollLock);
+          ["wheel", "touchstart", "keydown"].forEach((eventName) => {
+            body.addEventListener(eventName, releaseLegalScrollLock, { passive: eventName !== "keydown" });
+          });
+          new ResizeObserver(() => {
+            rebuildLegalHeadingOffsets(state);
+          }).observe(body);
           updateLegalScrollHints(shell, body);
-          if ("IntersectionObserver" in window) {
-            const observer = new IntersectionObserver((entries) => {
-              const visible = entries.filter((entry) => entry.isIntersecting)
-                .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-              if (!visible) return;
-              panel.querySelectorAll(".legal-toc a, .legal-toc-mobile a").forEach((link) => {
-                if (link.hash === `#${visible.target.id}`) link.setAttribute("aria-current", "location");
-                else link.removeAttribute("aria-current");
-              });
-            }, { root: body, rootMargin: "-8px 0px -60% 0px", threshold: 0 });
-            headings.forEach((heading) => observer.observe(heading));
-          }
         });
       }
       function readCookieConsent() {
