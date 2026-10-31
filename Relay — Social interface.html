@@ -805,11 +805,11 @@
       }
       .presence-dot {
         position: absolute;
-        right: 3px;
-        bottom: 3px;
-        width: 8px;
-        height: 8px;
-        box-sizing: content-box;
+        right: -2px;
+        bottom: -2px;
+        width: 10px;
+        height: 10px;
+        box-sizing: border-box;
         border: 2px solid var(--surface);
         border-radius: 50%;
         background: var(--text-3);
@@ -2871,11 +2871,9 @@
         height: 88px;
       }
       .profile-avatar-wrap .presence-dot {
-        right: 0;
-        bottom: 0;
-        width: 10px;
-        height: 10px;
-        box-sizing: border-box;
+        width: 14px;
+        height: 14px;
+        border-width: 3px;
       }
       .profile-actions {
         align-self: flex-start;
