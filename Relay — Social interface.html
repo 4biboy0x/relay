@@ -3341,6 +3341,9 @@
         column-gap: 12px;
         padding: 8px 22px 0;
       }
+      .reply-composer-form.has-media .reply-composer-thread {
+        grid-template-rows: auto minmax(44px, auto);
+      }
       .reply-composer-location { margin: 8px 22px 0 74px; }
       .reply-composer-thread::before {
         position: absolute;
@@ -3425,6 +3428,10 @@
         font: inherit;
         font-size: 20px;
         line-height: 1.45;
+      }
+      .reply-composer-form.has-media textarea {
+        min-height: 44px;
+        padding-block: 6px;
       }
       .reply-composer-form textarea:focus-visible {
         outline: none;
@@ -10861,6 +10868,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#replyComposerAttachImage").disabled = Boolean(replyComposerUploadPromise);
         $("#replyComposerGifButton").disabled = Boolean(replyComposerUploadPromise);
         $("#replyComposerAttachImage").setAttribute("aria-pressed", String(Boolean(replyComposerMediaUrl || replyComposerPreviewUrl)));
+        replyComposerForm.classList.toggle("has-media", !$("#replyComposerMedia").hidden);
       }
       function clearReplyComposerMedia() {
         replyComposerUploadGeneration += 1;
