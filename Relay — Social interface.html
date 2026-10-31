@@ -4075,23 +4075,33 @@
       }
       .conversation-item {
         display: flex;
-        width: calc(100% - 16px);
+        width: calc(100% - 32px);
         min-height: 72px;
         align-items: center;
-        gap: 10px;
-        margin: 2px 8px;
-        padding: 11px 12px;
+        gap: 16px;
+        margin: 2px 16px;
+        padding: 10px 8px;
         border: 0;
-        border-radius: 14px;
+        border-radius: 16px;
         text-align: left;
         background: transparent;
         transition: background-color 160ms ease;
+      }
+      .conversation-item > .av {
+        width: 48px;
+        height: 48px;
       }
       .conversation-item:hover:not([aria-current="true"]) {
         background: color-mix(in srgb, var(--text) 2.5%, var(--surface));
       }
       .conversation-item[aria-current="true"] {
         background: color-mix(in srgb, var(--text) 6%, var(--surface));
+      }
+      .conversation-item-heading {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 8px;
       }
       .conversation-item:focus {
         outline: none;
@@ -4113,22 +4123,25 @@
         }
       }
       .conversation-item .grow {
+        flex: 1;
         min-width: 0;
-        padding-right: 22px;
       }
       .conversation-item b {
+        min-width: 0;
+        flex: 1;
         display: block;
         overflow: hidden;
-        font-size: 13px;
-        font-weight: 600;
+        font-size: 15px;
+        font-weight: 700;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
       .conversation-item small {
         display: flex;
         min-width: 0;
-        align-items: baseline;
+        align-items: center;
         overflow: hidden;
+        margin-top: 4px;
         color: var(--text-2);
         white-space: nowrap;
         font-size: 12px;
@@ -4145,13 +4158,12 @@
       }
       .conversation-preview-time {
         flex: none;
+        margin-left: auto;
         color: var(--text-3);
         font-size: 11px;
       }
-      .conversation-preview-time::before {
-        content: "·";
-        margin: 0 5px;
-        color: var(--text-3);
+      .conversation-item.has-unread .conversation-preview-time {
+        margin-right: 22px;
       }
       .unread-count {
         position: absolute;
@@ -10115,7 +10127,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               const createdAt = new Date(message.createdAt).toISOString();
               messageTime = `<time class="conversation-preview-time" datetime="${esc(createdAt)}" title="${esc(new Date(createdAt).toLocaleString())}">${esc(timeAgo(createdAt))}</time>`;
             }
-            preview = `<span class="conversation-preview-text">${previewText}</span>${messageTime}`;
+            preview = `<span class="conversation-preview-text">${previewText}</span>`;
           } else {
             preview = `<span class="conversation-preview-text">${esc(preview)}</span>`;
           }
@@ -10123,7 +10135,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const unreadLabel = unreadCount > 99 ? "+99" : unreadCount > 9 ? "+9" : fmt(unreadCount);
           const searchMessageId = searchQuery && searchMode !== "conversations" ? item.matchedMessage?.id || "" : "";
           const searchMessageCandidate = Boolean(searchQuery && searchMode === "all" && !searchMessageId && matchingLastMessage);
-          return `<button class="conversation-item${searchMode === "messages" ? " message-search-result" : ""}" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}">${avatarMarkup(other, "sm")}<span class="grow"><b>${esc(other?.displayName || "Relay user")}</b><small>${preview}</small></span>${unreadCount ? `<span class="unread-count" aria-label="${unreadCount} unread messages">${unreadLabel}</span>` : ""}</button>`;
+          return `<button class="conversation-item${searchMode === "messages" ? " message-search-result" : ""}${unreadCount ? " has-unread" : ""}" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}">${avatarMarkup(other, "sm")}<span class="grow"><span class="conversation-item-heading"><b>${esc(other?.displayName || "Relay user")}</b>${messageTime}</span><small>${preview}</small></span>${unreadCount ? `<span class="unread-count" aria-label="${unreadCount} unread messages">${unreadLabel}</span>` : ""}</button>`;
         }).join("");
         if (append) resultList.insertAdjacentHTML("beforeend", markup);
         else resultList.innerHTML = markup;
