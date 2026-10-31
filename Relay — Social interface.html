@@ -1647,27 +1647,47 @@
       .legal-dialog,
       .cookie-settings-dialog {
         box-sizing: border-box;
-        width: min(760px, calc(100vw - 28px));
-        max-width: none;
-        max-height: min(780px, calc(100dvh - 32px));
+        width: calc(100% - 32px);
+        max-height: calc(100dvh - 32px);
         padding: 0;
         overflow: hidden;
         border: 1px solid var(--border);
-        border-radius: 18px;
+        border-radius: 16px;
         color: var(--text);
-        background: var(--surface);
-        box-shadow: 0 24px 80px rgba(0, 0, 0, .24);
+        background: var(--bg);
+        box-shadow: 0 8px 32px rgba(9, 9, 11, .16);
+        opacity: 0;
+        transform: translateY(8px);
+        transition: opacity 150ms ease, transform 150ms ease;
       }
       .legal-dialog[open],
       .cookie-settings-dialog[open] {
         display: flex;
         flex-direction: column;
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .legal-dialog.is-closing,
+      .cookie-settings-dialog.is-closing {
+        opacity: 0;
+        transform: translateY(8px);
       }
       .legal-dialog::backdrop,
       .cookie-settings-dialog::backdrop {
-        background: rgba(9, 9, 11, .46);
-        backdrop-filter: blur(3px);
+        background: rgba(9, 9, 11, .5);
+        backdrop-filter: blur(4px);
+        transition: background-color 150ms ease, backdrop-filter 150ms ease;
       }
+      @starting-style {
+        .legal-dialog[open],
+        .cookie-settings-dialog[open] {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+      }
+      body.has-open-policy-dialog { overflow: hidden; }
+      .legal-dialog { max-width: 720px; max-height: min(86dvh, 820px); }
+      .cookie-settings-dialog { max-width: 480px; }
       .legal-heading,
       .cookie-settings-heading {
         display: flex;
@@ -1677,29 +1697,31 @@
         padding: 16px 20px;
         border-bottom: 1px solid var(--border);
       }
+      .legal-heading { padding-inline: 24px; }
       .legal-heading h2,
       .cookie-settings-heading h2 {
         flex: 1;
         margin: 0;
-        font-size: 18px;
+        color: var(--text);
+        font-size: 17px;
+        font-weight: 650;
+        letter-spacing: -0.02em;
       }
       .legal-close,
       .cookie-settings-close {
         display: grid;
-        width: 34px;
-        height: 34px;
+        width: 32px;
+        height: 32px;
         flex: none;
         place-items: center;
         border: 0;
-        border-radius: 50%;
+        border-radius: 8px;
         color: var(--text-2);
         background: transparent;
         cursor: pointer;
       }
       .legal-close:hover,
-      .cookie-settings-close:hover {
-        background: var(--surface-2);
-      }
+      .cookie-settings-close:hover { background: var(--surface-2); }
       .legal-close svg,
       .cookie-settings-close svg {
         width: 18px;
@@ -1712,88 +1734,232 @@
       .legal-tabs {
         display: flex;
         flex: none;
-        gap: 8px;
-        padding: 12px 20px 0;
+        gap: 20px;
+        padding: 0 24px;
         border-bottom: 1px solid var(--border);
       }
       .legal-tab {
         position: relative;
-        padding: 10px 4px 12px;
+        margin-bottom: -1px;
+        padding: 12px 4px;
         border: 0;
         color: var(--text-2);
         background: transparent;
         font: inherit;
         font-size: 14px;
-        font-weight: 600;
+        font-weight: 500;
         cursor: pointer;
       }
-      .legal-tab[aria-selected="true"] { color: var(--text); }
+      .legal-tab[aria-selected="true"] { color: var(--text); font-weight: 600; }
       .legal-tab[aria-selected="true"]::after {
         position: absolute;
         right: 0;
         bottom: -1px;
         left: 0;
-        height: 3px;
-        border-radius: 3px 3px 0 0;
+        height: 2px;
         background: var(--accent);
         content: "";
       }
       .legal-body {
+        flex: 1;
         min-height: 0;
-        padding: 20px;
-        overflow: auto;
+        overflow-y: auto;
         overscroll-behavior: contain;
+        scrollbar-width: thin;
+        scrollbar-color: var(--border) transparent;
+        padding: 20px 24px 32px;
         color: var(--text-2);
-        font-size: 14px;
+        font-size: 15px;
         line-height: 1.65;
       }
-      .legal-body[hidden] { display: none; }
+      .legal-panel {
+        display: flex;
+        flex: 1;
+        min-height: 0;
+        gap: 20px;
+      }
+      .legal-panel[hidden] { display: none; }
+      .legal-copy { max-width: 62ch; margin: 0 auto; }
+      .legal-toc {
+        position: sticky;
+        top: 20px;
+        width: 200px;
+        height: max-content;
+        flex: none;
+        margin: 20px 0 32px 24px;
+        color: var(--text-2);
+        font-size: 13px;
+      }
+      .legal-toc strong { display: block; margin-bottom: 8px; color: var(--text); }
+      .legal-toc ol,
+      .legal-toc-mobile ol {
+        display: grid;
+        gap: 6px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .legal-toc a,
+      .legal-toc-mobile a {
+        color: var(--accent);
+        font-size: 14px;
+        text-decoration: none;
+      }
+      .legal-toc a:hover,
+      .legal-toc-mobile a:hover { text-decoration: underline; }
+      .legal-toc a[aria-current="location"] { font-weight: 650; }
+      .legal-toc-mobile { display: none; }
+      .legal-scroll-shell {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+      }
       .legal-body h3 {
-        margin: 22px 0 6px;
+        margin: 28px 0 8px;
         color: var(--text);
-        font-size: 15px;
+        font-size: 16px;
+        font-weight: 650;
+        letter-spacing: -0.01em;
         line-height: 1.35;
+        scroll-margin-top: 8px;
       }
       .legal-body h3:first-child { margin-top: 0; }
-      .legal-body p { margin: 6px 0 12px; }
-      .legal-body ul,
-      .legal-body ol { padding-left: 22px; }
+      .legal-body p { margin: 0 0 12px; }
+      .legal-body strong { color: var(--text); }
+      .legal-body ul { display: grid; gap: 6px; padding-left: 20px; }
       .legal-updated {
         margin: 0 0 18px !important;
-        color: var(--text-3);
-        font-size: 12px;
-      }
-      .cookie-settings-dialog { width: min(480px, calc(100vw - 28px)); }
-      .cookie-settings-body {
-        padding: 18px 20px 20px;
         color: var(--text-2);
-        font-size: 14px;
-        line-height: 1.55;
+        font-size: 13px;
       }
-      .cookie-settings-body > p { margin: 0 0 14px; }
-      .cookie-preference {
+      .legal-footer {
         display: flex;
-        align-items: flex-start;
+        flex: none;
+        align-items: center;
+        justify-content: space-between;
         gap: 12px;
-        padding: 13px 0;
+        padding: 12px 24px;
         border-top: 1px solid var(--border);
       }
-      .cookie-preference-copy { flex: 1; }
+      .legal-footer small { color: var(--text-3); font-size: 13px; }
+      .legal-footer .btn,
+      .cookie-settings-actions .btn {
+        display: inline-flex;
+        height: 38px;
+        min-height: 0;
+        align-items: center;
+        justify-content: center;
+        padding: 0 14px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .legal-footer .btn { height: 36px; }
+      .legal-footer .btn-primary,
+      .cookie-settings-actions .btn-primary {
+        border-color: var(--accent);
+        color: #fff;
+        background: var(--accent);
+      }
+      .legal-footer .btn-primary:hover,
+      .cookie-settings-actions .btn-primary:hover { background: var(--accent-h); }
+      .legal-footer .btn-line,
+      .cookie-settings-actions .btn-line { border: 1px solid var(--border); background: transparent; }
+      .legal-scroll-shell::before,
+      .legal-scroll-shell::after {
+        position: absolute;
+        z-index: 1;
+        right: 0;
+        left: 0;
+        height: 16px;
+        content: "";
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 150ms ease;
+      }
+      .legal-scroll-shell::before {
+        top: 0;
+        background: linear-gradient(var(--bg), transparent);
+      }
+      .legal-scroll-shell::after {
+        bottom: 0;
+        background: linear-gradient(transparent, var(--bg));
+      }
+      .legal-scroll-shell.has-scrolled::before,
+      .legal-scroll-shell.can-scroll-more::after { opacity: 1; }
+      .cookie-settings-body {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: 16px 20px 20px;
+        color: var(--text-2);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      .cookie-settings-body > p { margin: 0 0 4px; }
+      .cookie-preference {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .cookie-preference:nth-last-of-type(2) { border-bottom: 0; }
       .cookie-preference-copy strong {
         display: block;
-        margin-bottom: 2px;
+        margin-bottom: 3px;
         color: var(--text);
-        font-size: 14px;
+        font-size: 15px;
+        font-weight: 600;
       }
-      .cookie-preference-copy small { display: block; color: var(--text-3); line-height: 1.45; }
-      .cookie-preference input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--accent); }
-      .cookie-preference input:disabled { opacity: .7; }
+      .cookie-preference-copy small {
+        display: block;
+        color: var(--text-2);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .cookie-essential-state { display: grid; justify-items: center; gap: 2px; }
+      .cookie-essential-state small { color: var(--text-3); font-size: 13px; white-space: nowrap; }
+      .cookie-switch {
+        position: relative;
+        width: 40px;
+        height: 24px;
+        flex: none;
+        padding: 0;
+        border: 0;
+        border-radius: 999px;
+        background: var(--border);
+        cursor: pointer;
+        transition: background-color 150ms ease, opacity 150ms ease;
+      }
+      .cookie-switch::after {
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 1px 2px rgba(9, 9, 11, .2);
+        content: "";
+        transition: transform 150ms ease;
+      }
+      .cookie-switch[aria-checked="true"] { background: var(--accent); }
+      .cookie-switch[aria-checked="true"]::after { transform: translateX(16px); }
+      .cookie-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .cookie-switch:disabled { opacity: .6; cursor: not-allowed; }
       .cookie-settings-actions {
         display: flex;
         flex-wrap: wrap;
         justify-content: flex-end;
         gap: 8px;
-        margin-top: 18px;
+        margin-top: 12px;
       }
       .cookie-banner {
         position: fixed;
@@ -1836,13 +2002,8 @@
         color: var(--bg);
         background: var(--text);
       }
-      .cookie-banner-actions .cookie-accept:hover { opacity: .88; background: var(--text); }
+      .cookie-banner-actions .cookie-accept:hover { opacity: .88; background: var(--text);       }
       @media (max-width: 520px) {
-        .legal-heading,
-        .cookie-settings-heading { padding: 14px 16px; }
-        .legal-tabs { padding-inline: 16px; }
-        .legal-body { padding: 16px; font-size: 13px; }
-        .cookie-settings-body { padding: 16px; }
         .cookie-banner {
           right: 10px;
           bottom: max(10px, env(safe-area-inset-bottom, 0px));
@@ -1850,6 +2011,76 @@
           padding: 14px;
         }
         .cookie-banner-actions { justify-content: flex-start; }
+      }
+      @media (max-width: 719px) {
+        .legal-heading { padding-inline: 20px; }
+        .legal-tabs { padding-inline: 20px; }
+        .legal-toc { display: none; }
+        .legal-toc-mobile {
+          display: block;
+          margin: 0 0 18px;
+          padding: 10px 12px;
+          border: 1px solid var(--border);
+          border-radius: 10px;
+        }
+        .legal-toc-mobile summary { color: var(--text); font-size: 14px; cursor: pointer; }
+        .legal-toc-mobile ol { margin-top: 10px; }
+        .legal-panel { flex-direction: column; gap: 0; }
+        .legal-toc-mobile { margin: 12px 20px 0; }
+        .legal-toc { margin: 0; }
+        .legal-body { padding: 18px 20px 28px; }
+      }
+      @media (max-width: 419px) {
+        .cookie-settings-actions { flex-direction: column-reverse; }
+        .cookie-settings-actions .btn { width: 100%; }
+        .legal-footer { padding-inline: 16px; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .legal-dialog,
+        .cookie-settings-dialog,
+        .legal-scroll-shell::before,
+        .legal-scroll-shell::after,
+        .cookie-switch,
+        .cookie-switch::after { transition: none; }
+        .legal-dialog[open],
+        .cookie-settings-dialog[open] { transform: none; }
+      }
+      @media print {
+        body.has-open-policy-dialog { overflow: visible; }
+        #legalDialog {
+          position: static;
+          display: block !important;
+          width: auto;
+          max-width: none;
+          max-height: none;
+          overflow: visible;
+          border: 0;
+          box-shadow: none;
+          color: #000;
+          background: #fff;
+          opacity: 1;
+          transform: none;
+        }
+        #legalDialog > .legal-heading,
+        #legalDialog > .legal-tabs,
+        #legalDialog .legal-toc,
+        #legalDialog > .legal-footer,
+        #legalDialog .legal-toc-mobile,
+        #cookieSettingsDialog { display: none !important; }
+        #legalDialog .legal-panel,
+        #legalDialog .legal-panel[hidden] { display: block !important; }
+        #legalDialog .legal-body {
+          display: block !important;
+          height: auto;
+          overflow: visible;
+          color: #222;
+          break-after: page;
+        }
+        #legalDialog .legal-body h3,
+        #legalDialog .legal-body strong { color: #000; }
+        #legalDialog .legal-scroll-shell { overflow: visible; }
+        #legalDialog .legal-scroll-shell::before,
+        #legalDialog .legal-scroll-shell::after { display: none; }
       }
       .gif-picker-heading {
         display: flex;
@@ -6687,7 +6918,7 @@
         <button class="cookie-accept" type="button" data-cookie-choice="all">Allow optional</button>
       </div>
     </section>
-    <dialog class="legal-dialog" id="legalDialog" aria-labelledby="legalTitle">
+    <dialog class="legal-dialog" id="legalDialog" role="dialog" aria-modal="true" aria-labelledby="legalTitle" tabindex="-1">
       <header class="legal-heading">
         <h2 id="legalTitle">Relay policies</h2>
         <button class="legal-close" type="button" data-close-legal aria-label="Close policies">
@@ -6695,10 +6926,21 @@
         </button>
       </header>
       <div class="legal-tabs" role="tablist" aria-label="Relay policies">
-        <button class="legal-tab" id="termsTab" type="button" role="tab" aria-selected="true" aria-controls="termsContent" data-legal-tab="terms">Terms of Service</button>
-        <button class="legal-tab" id="privacyTab" type="button" role="tab" aria-selected="false" aria-controls="privacyContent" data-legal-tab="privacy">Privacy Policy</button>
+        <button class="legal-tab" id="termsTab" type="button" role="tab" aria-selected="true" aria-controls="termsContent" data-legal-tab="terms" tabindex="0">Terms of Service</button>
+        <button class="legal-tab" id="privacyTab" type="button" role="tab" aria-selected="false" aria-controls="privacyContent" data-legal-tab="privacy" tabindex="-1">Privacy Policy</button>
       </div>
-      <section class="legal-body" id="termsContent" role="tabpanel" aria-labelledby="termsTab">
+      <section class="legal-panel" id="termsContent" role="tabpanel" aria-labelledby="termsTab" tabindex="0">
+        <details class="legal-toc-mobile">
+          <summary>On this page</summary>
+          <ol></ol>
+        </details>
+        <nav class="legal-toc" aria-label="On this page">
+          <strong>On this page</strong>
+          <ol></ol>
+        </nav>
+        <div class="legal-scroll-shell">
+        <div class="legal-body">
+        <div class="legal-copy">
         <p class="legal-updated">Last updated: 31 October 2026</p>
         <p>These Terms of Service (“Terms”) govern your use of Relay, including its website, social feed, profiles, direct messages, and media features (the “Service”). By creating an account or using the Service, you agree to these Terms. If you do not agree, do not use Relay.</p>
         <h3>1. Who may use Relay and your account</h3>
@@ -6723,8 +6965,22 @@
         <p>The operator may update these Terms to reflect changes to Relay, security, or legal requirements. Material changes will be presented through the Service or another reasonable notice method. The revised date will be updated above. Continued use after the effective date means acceptance only to the extent permitted by law; if you disagree, stop using the Service.</p>
         <h3>10. General</h3>
         <p>These Terms do not remove any mandatory protections available to you under the law where you live. If a provision is unenforceable, the remaining provisions continue to apply to the extent permitted. The Service operator is the entity or person operating the Relay deployment you use; use that deployment’s published support or contact channel for questions about these Terms.</p>
+        </div>
+        </div>
+        </div>
       </section>
-      <section class="legal-body" id="privacyContent" role="tabpanel" aria-labelledby="privacyTab" hidden>
+      <section class="legal-panel" id="privacyContent" role="tabpanel" aria-labelledby="privacyTab" tabindex="0" hidden>
+        <details class="legal-toc-mobile">
+          <summary>On this page</summary>
+          <ol></ol>
+        </details>
+        <nav class="legal-toc" aria-label="On this page">
+          <strong>On this page</strong>
+          <ol></ol>
+        </nav>
+        <div class="legal-scroll-shell">
+        <div class="legal-body">
+        <div class="legal-copy">
         <p class="legal-updated">Last updated: 31 October 2026</p>
         <p>This Privacy Policy explains how the operator of this Relay deployment handles information when you use Relay. The operator is responsible for this deployment’s data practices. For privacy requests, use the support or contact channel published by the deployment hosting this Service.</p>
         <h3>1. Information Relay handles</h3>
@@ -6754,9 +7010,16 @@
         <p>Relay is not intended for children under 13 or the higher minimum age required in their location. The operator does not knowingly collect information from children below that age. If you believe a child has provided information, contact the deployment operator so it can be reviewed and removed where appropriate.</p>
         <h3>10. Policy changes</h3>
         <p>This policy may be updated as Relay or applicable requirements change. Material changes will be communicated through the Service or another reasonable method, and the updated date will appear above.</p>
+        </div>
+        </div>
+        </div>
       </section>
+      <footer class="legal-footer">
+        <small>Last updated 31 Oct 2026</small>
+        <button class="btn btn-primary" type="button" data-close-legal>Close</button>
+      </footer>
     </dialog>
-    <dialog class="cookie-settings-dialog" id="cookieSettingsDialog" aria-labelledby="cookieSettingsTitle">
+    <dialog class="cookie-settings-dialog" id="cookieSettingsDialog" role="dialog" aria-modal="true" aria-labelledby="cookieSettingsTitle" tabindex="-1">
       <header class="cookie-settings-heading">
         <h2 id="cookieSettingsTitle">Cookie preferences</h2>
         <button class="cookie-settings-close" type="button" data-close-cookie-settings aria-label="Close cookie preferences">
@@ -6764,18 +7027,21 @@
         </button>
       </header>
       <div class="cookie-settings-body">
-        <p>Choose which optional browser storage Relay may use. Your choice is saved on this device. Essential authentication storage is required for sign-in.</p>
-        <label class="cookie-preference">
-          <span class="cookie-preference-copy"><strong>Essential session</strong><small>Required for secure sign-in and core account functions. Always active.</small></span>
-          <input type="checkbox" checked disabled aria-label="Essential session storage is always active">
-        </label>
-        <label class="cookie-preference">
-          <span class="cookie-preference-copy"><strong>Optional analytics</strong><small>Not currently active in Relay. Your choice is saved and will apply if optional analytics are introduced.</small></span>
-          <input id="analyticsCookies" type="checkbox" aria-label="Allow optional analytics">
-        </label>
+        <p>Choose which optional storage Relay may use. Your choice is saved on this device.</p>
+        <div class="cookie-preference">
+          <span class="cookie-preference-copy"><strong>Essential session</strong><small>Required for secure sign-in and core account functions. Essential authentication storage is required.</small></span>
+          <span class="cookie-essential-state">
+            <button class="cookie-switch" type="button" role="switch" aria-checked="true" aria-label="Essential session storage is always on" disabled></button>
+            <small>Always on</small>
+          </span>
+        </div>
+        <div class="cookie-preference">
+          <span class="cookie-preference-copy"><strong>Optional analytics</strong><small>Not used in Relay today. Your choice is saved and applies if analytics are added.</small></span>
+          <button class="cookie-switch" id="analyticsCookies" type="button" role="switch" aria-checked="false" aria-label="Allow optional analytics"></button>
+        </div>
         <div class="cookie-settings-actions">
           <button class="btn btn-line" type="button" data-cookie-choice="essential">Essential only</button>
-          <button class="btn btn-primary" type="button" id="saveCookiePreferences">Save preferences</button>
+          <button class="btn btn-primary" type="button" id="saveCookiePreferences" autofocus>Save preferences</button>
         </div>
       </div>
     </dialog>
@@ -11760,6 +12026,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function routeFromHash() {
         if (!accessToken || !currentUser) return;
         const hash = location.hash || "#/home";
+        if (hash === "#privacy" || hash === "#terms") return;
         const [routePath, routeQuery = ""] = hash.replace(/^#\/?/, "").split("?");
         const routeParams = new URLSearchParams(routeQuery);
         const requestedExploreTab = routeParams.get("tab");
@@ -13379,6 +13646,174 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       $("#settingsPasswordForm")?.addEventListener("input", syncSettingsPassword);
       $("#settingsPasswordForm")?.elements.confirmPassword?.addEventListener("blur", syncSettingsPassword);
       const cookieConsentStorageKey = "relay_cookie_consent";
+      const legalDialog = $("#legalDialog");
+      const cookieSettingsDialog = $("#cookieSettingsDialog");
+      const dialogFocusTriggers = new WeakMap();
+      const legalScrollPositions = new Map();
+      let legalHashToRestore = null;
+      function syncPolicyDialogScrollLock() {
+        document.body.classList.toggle(
+          "has-open-policy-dialog",
+          legalDialog.open || cookieSettingsDialog.open,
+        );
+      }
+      function openPolicyDialog(dialog, trigger = document.activeElement) {
+        if (dialog.open) return;
+        dialogFocusTriggers.set(dialog, trigger instanceof HTMLElement ? trigger : null);
+        dialog.classList.remove("is-closing");
+        dialog.showModal();
+        syncPolicyDialogScrollLock();
+      }
+      function closePolicyDialog(dialog) {
+        if (!dialog.open || dialog.classList.contains("is-closing")) return;
+        if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          dialog.close();
+          return;
+        }
+        dialog.classList.add("is-closing");
+        setTimeout(() => {
+          if (dialog.open) dialog.close();
+        }, 150);
+      }
+      [legalDialog, cookieSettingsDialog].forEach((dialog) => {
+        dialog.addEventListener("cancel", (event) => {
+          event.preventDefault();
+          closePolicyDialog(dialog);
+        });
+        dialog.addEventListener("click", (event) => {
+          if (event.target === dialog) closePolicyDialog(dialog);
+        });
+        dialog.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            closePolicyDialog(dialog);
+            return;
+          }
+          if (event.key !== "Tab") return;
+          const focusable = [...dialog.querySelectorAll(
+            'a[href], button:not(:disabled), [tabindex]:not([tabindex="-1"])',
+          )].filter((element) => element.getClientRects().length > 0);
+          if (!focusable.length) {
+            event.preventDefault();
+            dialog.focus();
+            return;
+          }
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+          if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+          }
+        });
+        dialog.addEventListener("close", () => {
+          dialog.classList.remove("is-closing");
+          syncPolicyDialogScrollLock();
+          const trigger = dialogFocusTriggers.get(dialog);
+          if (trigger?.isConnected && trigger.getClientRects().length > 0) {
+            trigger.focus({ preventScroll: true });
+          } else if (dialog === cookieSettingsDialog && authDialog.open) {
+            $("#authEmail").focus({ preventScroll: true });
+          }
+          dialogFocusTriggers.delete(dialog);
+          if (dialog === legalDialog && legalHashToRestore !== null) {
+            history.replaceState(history.state, "", `${location.pathname}${location.search}${legalHashToRestore}`);
+            legalHashToRestore = null;
+          }
+        });
+      });
+      function setLegalTab(selectedTab, updateHash = false) {
+        const tab = $(`#${selectedTab}Tab`);
+        if (!tab) return;
+        const previousTab = $$("#legalDialog [data-legal-tab]")
+          .find((item) => item.getAttribute("aria-selected") === "true")?.dataset.legalTab;
+        const previousBody = previousTab
+          ? $(`#${previousTab}Content .legal-body`)
+          : null;
+        if (previousTab && previousBody) {
+          legalScrollPositions.set(previousTab, previousBody.scrollTop);
+        }
+        $$("#legalDialog [data-legal-tab]").forEach((item) => {
+          item.setAttribute("aria-selected", String(item === tab));
+          item.tabIndex = item === tab ? 0 : -1;
+        });
+        $("#termsContent").hidden = selectedTab !== "terms";
+        $("#privacyContent").hidden = selectedTab !== "privacy";
+        if (updateHash && legalDialog.open) {
+          history.replaceState(history.state, "", `${location.pathname}${location.search}#${selectedTab}`);
+        }
+        const shell = $(`#${selectedTab}Content .legal-scroll-shell`);
+        const body = shell?.querySelector(".legal-body");
+        if (body && legalScrollPositions.has(selectedTab)) {
+          body.scrollTop = legalScrollPositions.get(selectedTab);
+        }
+        if (shell && body) updateLegalScrollHints(shell, body);
+      }
+      function openLegal(selectedTab, trigger = document.activeElement, fromDeepLink = false) {
+        if (!legalDialog.open) {
+          legalHashToRestore = fromDeepLink ? null : location.hash;
+          openPolicyDialog(legalDialog, trigger);
+        }
+        setLegalTab(selectedTab, !fromDeepLink);
+      }
+      function updateLegalScrollHints(shell, body) {
+        shell.classList.toggle("has-scrolled", body.scrollTop > 0);
+        shell.classList.toggle(
+          "can-scroll-more",
+          body.scrollHeight - body.scrollTop - body.clientHeight > 1,
+        );
+      }
+      function initializeLegalContents() {
+        ["terms", "privacy"].forEach((tabName) => {
+          const panel = $(`#${tabName}Content`);
+          const body = panel.querySelector(".legal-body");
+          const shell = panel.querySelector(".legal-scroll-shell");
+          const headings = [...body.querySelectorAll("h3")];
+          const tocEntries = headings.map((heading, index) => {
+            const id = `${tabName}-section-${index + 1}`;
+            heading.id = id;
+            heading.tabIndex = -1;
+            return { heading, id };
+          });
+          panel.querySelectorAll(".legal-toc ol, .legal-toc-mobile ol").forEach((list) => {
+            list.replaceChildren(...tocEntries.map(({ heading, id }) => {
+              const item = document.createElement("li");
+              const link = document.createElement("a");
+              link.href = `#${id}`;
+              link.textContent = heading.textContent;
+              link.addEventListener("click", (event) => {
+                event.preventDefault();
+                heading.scrollIntoView({
+                  behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+                  block: "start",
+                });
+                heading.focus({ preventScroll: true });
+              });
+              item.append(link);
+              return item;
+            }));
+          });
+          body.addEventListener("scroll", () => {
+            legalScrollPositions.set(tabName, body.scrollTop);
+            updateLegalScrollHints(shell, body);
+          }, { passive: true });
+          updateLegalScrollHints(shell, body);
+          if ("IntersectionObserver" in window) {
+            const observer = new IntersectionObserver((entries) => {
+              const visible = entries.filter((entry) => entry.isIntersecting)
+                .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+              if (!visible) return;
+              panel.querySelectorAll(".legal-toc a").forEach((link) => {
+                if (link.hash === `#${visible.target.id}`) link.setAttribute("aria-current", "location");
+                else link.removeAttribute("aria-current");
+              });
+            }, { root: body, rootMargin: "-8px 0px -60% 0px", threshold: 0 });
+            headings.forEach((heading) => observer.observe(heading));
+          }
+        });
+      }
       function readCookieConsent() {
         try {
           const value = localStorage.getItem(cookieConsentStorageKey);
@@ -13401,16 +13836,18 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             savedAt: new Date().toISOString(),
           }));
           updateCookieConsentVisibility();
-          $("#cookieSettingsDialog").close();
+          closePolicyDialog(cookieSettingsDialog);
         } catch (error) {
           console.error("Could not save cookie preferences.", error);
           toast("Could not save your preferences. Check your browser storage settings and try again.");
         }
       }
-      function openCookieSettings() {
-        $("#analyticsCookies").checked = readCookieConsent()?.optionalAnalytics === true;
-        const dialog = $("#cookieSettingsDialog");
-        if (!dialog.open) dialog.showModal();
+      function openCookieSettings(trigger = document.activeElement) {
+        $("#analyticsCookies").setAttribute(
+          "aria-checked",
+          String(readCookieConsent()?.optionalAnalytics === true),
+        );
+        openPolicyDialog(cookieSettingsDialog, trigger);
       }
       function initializeCookieConsent() {
         updateCookieConsentVisibility();
@@ -13424,34 +13861,31 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       $$("[data-open-legal]").forEach((button) => {
         button.addEventListener("click", () => {
           const selectedTab = button.dataset.openLegal === "privacy" ? "privacy" : "terms";
-          $$("#legalDialog [data-legal-tab]").forEach((tab) => {
-            const selected = tab.dataset.legalTab === selectedTab;
-            tab.setAttribute("aria-selected", String(selected));
-          });
-          $("#termsContent").hidden = selectedTab !== "terms";
-          $("#privacyContent").hidden = selectedTab !== "privacy";
-          const dialog = $("#legalDialog");
-          if (!dialog.open) dialog.showModal();
+          openLegal(selectedTab, button);
         });
       });
-      $$("#legalDialog [data-legal-tab]").forEach((tab) => {
-        tab.addEventListener("click", () => {
-          const selectedTab = tab.dataset.legalTab;
-          $$("#legalDialog [data-legal-tab]").forEach((item) => {
-            item.setAttribute("aria-selected", String(item === tab));
-          });
-          $("#termsContent").hidden = selectedTab !== "terms";
-          $("#privacyContent").hidden = selectedTab !== "privacy";
+      const legalTabs = $$("#legalDialog [data-legal-tab]");
+      legalTabs.forEach((tab) => {
+        tab.addEventListener("click", () => setLegalTab(tab.dataset.legalTab, true));
+        tab.addEventListener("keydown", (event) => {
+          const index = legalTabs.indexOf(tab);
+          const next = event.key === "ArrowRight" ? (index + 1) % legalTabs.length
+            : event.key === "ArrowLeft" ? (index - 1 + legalTabs.length) % legalTabs.length
+              : -1;
+          if (next < 0) return;
+          event.preventDefault();
+          legalTabs[next].focus();
+          setLegalTab(legalTabs[next].dataset.legalTab, true);
         });
       });
       $$("#legalDialog [data-close-legal]").forEach((button) => {
-        button.addEventListener("click", () => $("#legalDialog").close());
+        button.addEventListener("click", () => closePolicyDialog(legalDialog));
       });
       $$("[data-open-cookie-settings]").forEach((button) => {
-        button.addEventListener("click", openCookieSettings);
+        button.addEventListener("click", () => openCookieSettings(button));
       });
       $$("[data-close-cookie-settings]").forEach((button) => {
-        button.addEventListener("click", () => $("#cookieSettingsDialog").close());
+        button.addEventListener("click", () => closePolicyDialog(cookieSettingsDialog));
       });
       $$("[data-cookie-choice]").forEach((button) => {
         button.addEventListener("click", () => {
@@ -13459,11 +13893,29 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         });
       });
       $("#saveCookiePreferences").addEventListener("click", () => {
-        saveCookieConsent($("#analyticsCookies").checked);
+        saveCookieConsent($("#analyticsCookies").getAttribute("aria-checked") === "true");
       });
+      $("#analyticsCookies").addEventListener("click", (event) => {
+        const control = event.currentTarget;
+        control.setAttribute("aria-checked", String(control.getAttribute("aria-checked") !== "true"));
+      });
+      initializeLegalContents();
+      legalDialog.addEventListener("close", () => {
+        legalScrollPositions.clear();
+      });
+      window.addEventListener("hashchange", () => {
+        if (location.hash === "#privacy" || location.hash === "#terms") {
+          openLegal(location.hash.slice(1), document.activeElement, true);
+        }
+      });
+      const initialLegalTab = location.hash === "#privacy" || location.hash === "#terms"
+        ? location.hash.slice(1)
+        : null;
       authDialog.addEventListener("close", updateCookieConsentVisibility);
       initializeCookieConsent();
-      loadSession();
+      loadSession().then(() => {
+        if (initialLegalTab) openLegal(initialLegalTab, null, true);
+      });
     </script>
   </body>
 </html>
