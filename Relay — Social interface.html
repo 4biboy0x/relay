@@ -7041,6 +7041,7 @@
       let people = [];
       let conversations = [];
       let activeConversation = null;
+      let selectedConversationId = "";
       let activeConversationCursor = null;
       let activeConversationLoadGeneration = 0;
       let conversationSearchTimer = null;
@@ -9597,7 +9598,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               : message?.sender?.displayName || other?.displayName || "Relay user";
             const body = message?.body?.trim()
               || (message?.mediaUrl ? "Photo" : message?.audioUrl ? "Voice message" : message?.stickerId ? "Sticker" : "Message");
-            return `<button class="conversation-item message-search-result" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search-message-id="${esc(message?.id || "")}" data-search-message-candidate="false" aria-current="${item.id === activeConversation?.id}">${presenceAvatarMarkup(other, "sm")}<span class="grow"><b>${esc(other?.displayName || "Relay user")}</b><small><span class="conversation-preview-text">${esc(sender)}: ${emphasizeConversationMatch(body, query)}</span></small></span></button>`;
+            return `<button class="conversation-item message-search-result" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search-message-id="${esc(message?.id || "")}" data-search-message-candidate="false" aria-current="${item.id === selectedConversationId || (!selectedConversationId && item.id === activeConversation?.id)}">${presenceAvatarMarkup(other, "sm")}<span class="grow"><b>${esc(other?.displayName || "Relay user")}</b><small><span class="conversation-preview-text">${esc(sender)}: ${emphasizeConversationMatch(body, query)}</span></small></span></button>`;
           }).join("");
         } catch (error) {
           if (generation !== exploreMessageSearchGeneration) return;
@@ -10705,7 +10706,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         const markup = items.map((item, index) => {
           const other = item.members.find((member) => member.id !== currentUser?.id);
-          const current = item.id === activeConversation?.id;
+          const current = item.id === selectedConversationId
+            || (!selectedConversationId && item.id === activeConversation?.id);
           const search = `${conversationSearchText(item)} ${normalizedQuery}`;
           const lastMessage = item.lastMessage;
           const matchingLastMessage = queryTerms.length > 0
@@ -10872,7 +10874,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         try {
           delete $("#conversationList").dataset.loaded;
           const cached = readViewCache("messages");
-          if (cached) $("#conversationList").innerHTML = cached;
+          if (cached) {
+            $("#conversationList").innerHTML = cached;
+            syncConversationSelection(selectedConversationId || activeConversation?.id || "");
+          }
           finishSkeleton = showDelayedSkeleton($("#conversationList"), "message");
           const result = await api("/conversations");
           conversations = result.items;
@@ -10900,6 +10905,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const conversation = conversations.find((item) => item.id === conversationButton.dataset.conversation);
         if (!conversation) return;
         const selectionGeneration = ++conversationSelectionGeneration;
+        syncConversationSelection(conversation.id);
         const query = $("#conversationSearch").value.trim().replace(/\s+/g, " ");
         let targetMessageId = conversationButton.dataset.searchMessageId || "";
         if (activeConversation?.id === conversation.id && !targetMessageId
@@ -10918,11 +10924,17 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
         }
         if (selectionGeneration !== conversationSelectionGeneration || $("#v-messages").hidden
-          || (query && $("#conversationSearch").value.trim().replace(/\s+/g, " ") !== query)) return;
+          || (query && $("#conversationSearch").value.trim().replace(/\s+/g, " ") !== query)) {
+          if (selectionGeneration === conversationSelectionGeneration) {
+            syncConversationSelection(activeConversation?.id || "");
+          }
+          return;
+        }
         if (searchTargetMissing) toast("Could not find that matching message in the conversation.");
         openConversation(conversation, true, targetMessageId);
       }
       function openConversation(conversation, updateRoute = true, targetMessageId = "") {
+        syncConversationSelection(conversation.id);
         if (activeConversation?.id === conversation.id) {
           const route = `#/messages?conversation=${encodeURIComponent(conversation.id)}`;
           if (updateRoute || location.hash !== route) location.hash = route;
@@ -10946,9 +10958,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           sessionStorage.setItem("relay_active_conversation", conversation.id);
         } catch {}
         $("#messagesLayout").classList.add("has-conversation");
-        $$("[data-conversation]").forEach((item) => {
-          item.setAttribute("aria-current", String(item.dataset.conversation === conversation.id));
-        });
         const route = `#/messages?conversation=${encodeURIComponent(conversation.id)}`;
         if (updateRoute || location.hash !== route) location.hash = route;
         return loadConversation(conversation, targetMessageId);
@@ -10958,6 +10967,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         conversationSelectionGeneration += 1;
         activeConversationLoadGeneration += 1;
         activeConversation = null;
+        syncConversationSelection("");
         activeConversationCursor = null;
         loadingOlderMessages = false;
         clearTypingUsers();
@@ -10982,7 +10992,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#sendMessage").disabled = true;
         ["#messageImageButton", "#messageGifButton", "#messageStickerButton", "#messageAudioButton"]
           .forEach((selector) => $(selector).disabled = true);
-        $$(".conversation-item").forEach((item) => item.setAttribute("aria-current", "false"));
+      }
+      function syncConversationSelection(conversationId) {
+        selectedConversationId = conversationId;
+        $$("[data-conversation]").forEach((item) => {
+          item.setAttribute("aria-current", String(item.dataset.conversation === conversationId));
+        });
       }
       function navigateToSearchedMessage(conversation, messageId) {
         closeGlobalSearchDropdown();
@@ -11002,6 +11017,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         sendTyping(false);
         const loadGeneration = ++activeConversationLoadGeneration;
         activeConversation = conversation;
+        syncConversationSelection(conversation.id);
         activeConversationCursor = null;
         loadingOlderMessages = false;
         clearTypingUsers();
@@ -11683,6 +11699,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (v === "messages") {
           if (restoreConversationId) {
             pendingConversationRestoreId = restoreConversationId;
+            syncConversationSelection(restoreConversationId);
           } else {
             pendingConversationRestoreId = "";
             resetActiveConversation();
@@ -11691,6 +11708,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           pendingConversationRestoreId = "";
           pendingMessageNavigation = null;
           conversationSelectionGeneration += 1;
+          syncConversationSelection(activeConversation?.id || "");
         }
         closeAutocomplete();
         if (v !== "profile" && v !== "thread" || (v === "profile" && !preserveProfile)) viewedProfileId = null;
