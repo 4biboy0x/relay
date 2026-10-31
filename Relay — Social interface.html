@@ -8579,7 +8579,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             preview = `<span class="conversation-preview-text">${esc(preview)}</span>`;
           }
           const unreadCount = Number(item.unreadCount) || 0;
-          const unreadLabel = unreadCount >= 10 ? "+9" : fmt(unreadCount);
+          const unreadLabel = unreadCount > 99 ? "+99" : unreadCount > 9 ? "+9" : fmt(unreadCount);
           return `<button class="conversation-item" type="button" style="--conversation-index:${items.indexOf(item)}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" aria-current="${current}">${avatarMarkup(other, "sm")}<span class="grow"><b>${esc(other?.displayName || "Relay user")}</b><small>${preview}</small></span>${unreadCount ? `<span class="unread-count" aria-label="${unreadCount} unread messages">${unreadLabel}</span>` : ""}</button>`;
         }).join("");
       }
