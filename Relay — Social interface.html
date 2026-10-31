@@ -3886,6 +3886,61 @@
       .conversation-search input::placeholder {
         color: var(--text-3);
       }
+      .conversation-search-tabs {
+        display: flex;
+        flex: none;
+        gap: 18px;
+        margin: -2px 12px 8px;
+        border-bottom: 1px solid var(--border);
+      }
+      .conversation-search-tabs[hidden] {
+        display: none;
+      }
+      .conversation-search-tab {
+        position: relative;
+        min-height: 38px;
+        padding: 0 2px;
+        color: var(--text-3);
+        font-size: 12px;
+        font-weight: 600;
+        transition: color 140ms ease;
+      }
+      .conversation-search-tab:hover {
+        color: var(--text);
+        background: transparent;
+      }
+      .conversation-search-tab[aria-selected="true"] {
+        color: var(--text);
+      }
+      .conversation-search-tab[aria-selected="true"]::after {
+        position: absolute;
+        right: 0;
+        bottom: -1px;
+        left: 0;
+        height: 2px;
+        border-radius: 2px;
+        background: var(--accent);
+        content: "";
+      }
+      .conversation-search-results[hidden] {
+        display: none;
+      }
+      .explore-message-search {
+        margin-top: 12px;
+        border-top: 1px solid var(--border);
+      }
+      .explore-message-search[hidden] {
+        display: none;
+      }
+      .explore-message-search h2 {
+        margin: 0;
+        padding: 14px 16px 6px;
+        font-size: 14px;
+        font-weight: 650;
+      }
+      .explore-message-search .conversation-list {
+        max-height: 330px;
+      }
       .recipient-picker {
         position: relative;
       }
@@ -4668,6 +4723,13 @@
         height: 1px;
         margin: 4px 8px;
         background: var(--border);
+      }
+      .global-search-section-title {
+        padding: 8px 9px 4px;
+        color: var(--text-3);
+        font-size: 11px;
+        font-weight: 650;
+        letter-spacing: 0.02em;
       }
       .global-search-option {
         display: flex;
@@ -5967,6 +6029,10 @@
           </nav>
           <div id="exploreSearchFilters" hidden></div>
           <div id="exp" data-transition-content></div>
+          <section class="explore-message-search" id="exploreMessageSearch" data-transition-content aria-labelledby="exploreMessageSearchHeading" hidden>
+            <h2 id="exploreMessageSearchHeading">Messages (0)</h2>
+            <div class="conversation-list" id="exploreMessageResults" role="list" aria-label="Matching messages"></div>
+          </section>
             <button class="more-l" id="exploreMore" data-transition-content data-more="explore" hidden>Load more</button>
         </section>
 
@@ -6021,13 +6087,18 @@
               </header>
               <label class="conversation-search">
                 <svg class="i" aria-hidden="true"><use href="#search" /></svg>
-                <span class="sr">Search conversations</span>
-                <input id="conversationSearch" type="search" placeholder="Search conversations" autocomplete="off" maxlength="100" />
+                <span class="sr">Search conversations and messages</span>
+                <input id="conversationSearch" type="search" placeholder="Search conversations and messages" autocomplete="off" maxlength="100" />
                 <button class="dismiss-btn search-input-clear" type="button" data-search-clear="conversationSearch" aria-label="Clear conversation search" hidden>
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>
                 </button>
               </label>
-              <div class="conversation-list" id="conversationList" data-transition-content aria-label="Conversations"></div>
+              <div class="conversation-search-tabs" id="conversationSearchTabs" role="tablist" aria-label="Message search results" hidden>
+                <button class="conversation-search-tab" id="conversationSearchTab" type="button" role="tab" aria-selected="true" aria-controls="conversationList" data-conversation-search-mode="conversations">Conversations</button>
+                <button class="conversation-search-tab" id="messageSearchTab" type="button" role="tab" aria-selected="false" aria-controls="messageSearchResults" data-conversation-search-mode="messages">Messages (0)</button>
+              </div>
+              <div class="conversation-list" id="conversationList" data-transition-content role="tabpanel" aria-labelledby="conversationSearchTab" aria-label="Conversations"></div>
+              <div class="conversation-list conversation-search-results" id="messageSearchResults" data-transition-content aria-label="Matching messages" role="tabpanel" aria-labelledby="messageSearchTab" hidden></div>
               <div class="conversation-search-empty" id="conversationSearchEmpty" data-transition-content hidden></div>
             </section>
             <section class="chat-panel" aria-label="Conversation">
@@ -6503,6 +6574,8 @@
       let chatPanelAnimationTimer = null;
       let conversationSearchTimer = null;
       let conversationSearchGeneration = 0;
+      let conversationSearchMode = "conversations";
+      let pendingMessageNavigation = null;
       let conversationSelectionGeneration = 0;
       let loadingOlderMessages = false;
       let socket = null;
@@ -6523,6 +6596,7 @@
       let feedObserver = null;
       let exploreTimer;
       let exploreRequestGeneration = 0;
+      let exploreMessageSearchGeneration = 0;
       let exploreTab = "trending";
       let exploreSearchFilter = "Top";
       let lastExploreSearch = "";
@@ -7740,8 +7814,8 @@
       function transitionTargetsForView(view) {
         switch (view) {
           case "home": return $("#homeTimeline");
-          case "explore": return [$("#exp"), $("#exploreMore")];
-          case "messages": return [$("#conversationList"), $("#conversationSearchEmpty"), $("#chatLog")];
+          case "explore": return [$("#exp"), $("#exploreSearchFilters"), $("#exploreMessageSearch"), $("#exploreMore")];
+          case "messages": return [$("#conversationList"), $("#messageSearchResults"), $("#conversationSearchEmpty"), $("#chatLog")];
           case "notifs": return [$("#nl"), $("#notificationsMore")];
           case "settings": return $(".settings-page");
           case "profile": return $("#profileBody");
@@ -8795,9 +8869,51 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           $("#exploreTabs").style.setProperty("--explore-indicator-position", `${index * 50}%`);
         }
       }
+      async function searchExploreMessages(query) {
+        const section = $("#exploreMessageSearch");
+        const results = $("#exploreMessageResults");
+        const generation = ++exploreMessageSearchGeneration;
+        if (!query) {
+          section.hidden = true;
+          results.replaceChildren();
+          return;
+        }
+        section.hidden = false;
+        section.setAttribute("aria-busy", "true");
+        $("#exploreMessageSearchHeading").textContent = "Messages";
+        results.innerHTML = skeletonListMarkup("message", 2, "message search results");
+        try {
+          const params = new URLSearchParams({ q: query, limit: "5", mode: "messages" });
+          const result = await api(`/conversations/search?${params}`);
+          if (generation !== exploreMessageSearchGeneration
+            || $("#exploreSearch").value.trim().replace(/^[@#]+/, "").trim() !== query) return;
+          conversations = [...new Map([...conversations, ...result.items].map((item) => [item.id, item])).values()];
+          $("#exploreMessageSearchHeading").textContent = `Messages (${fmt(result.count || 0)})`;
+          if (!result.items.length) {
+            results.innerHTML = emptyState("No matching messages.", "Try another search term.", true);
+            return;
+          }
+          results.innerHTML = result.items.map((item, index) => {
+            const other = item.members.find((member) => member.id !== currentUser?.id);
+            const message = item.matchedMessage;
+            const sender = message?.senderId === currentUser?.id
+              ? "You"
+              : message?.sender?.displayName || other?.displayName || "Relay user";
+            const body = message?.body?.trim()
+              || (message?.mediaUrl ? "Photo" : message?.audioUrl ? "Voice message" : message?.stickerId ? "Sticker" : "Message");
+            return `<button class="conversation-item message-search-result" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search-message-id="${esc(message?.id || "")}" data-search-message-candidate="false" aria-current="${item.id === activeConversation?.id}">${avatarMarkup(other, "sm")}<span class="grow"><b>${esc(other?.displayName || "Relay user")}</b><small><span class="conversation-preview-text">${esc(sender)}: ${emphasizeConversationMatch(body, query)}</span></small></span></button>`;
+          }).join("");
+        } catch (error) {
+          if (generation !== exploreMessageSearchGeneration) return;
+          results.innerHTML = emptyState("Couldn’t search messages.", error.message || "Search failed.", true);
+        } finally {
+          if (generation === exploreMessageSearchGeneration) section.removeAttribute("aria-busy");
+        }
+      }
       async function renderExplore(search = "", append = false) {
         const searchText = String(search ?? "").trim();
         const searchTerm = searchText.replace(/^[@#]+/, "").trim();
+        if (!append) void searchExploreMessages(searchTerm);
         const requestTab = exploreTab;
         const requestFilter = exploreSearchFilter;
         const requestGeneration = append ? exploreRequestGeneration : ++exploreRequestGeneration;
@@ -9579,15 +9695,15 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         globalSearchDropdown.innerHTML = "";
         $("#sideSearch").setAttribute("aria-expanded", "false");
       }
-      function globalSearchOption(type, value, content, extraClass = "") {
-        return `<button type="button" class="global-search-option${extraClass ? ` ${extraClass}` : ""}" role="option" aria-selected="false" data-global-search-type="${type}" data-global-search-value="${esc(value)}">${content}</button>`;
+      function globalSearchOption(type, value, content, extraClass = "", messageId = "") {
+        return `<button type="button" class="global-search-option${extraClass ? ` ${extraClass}` : ""}" role="option" aria-selected="false" data-global-search-type="${type}" data-global-search-value="${esc(value)}"${messageId ? ` data-global-search-message-id="${esc(messageId)}"` : ""}>${content}</button>`;
       }
-      function renderGlobalSearchDropdown(query, trends, users, errorMessage = "") {
+      function renderGlobalSearchDropdown(query, trends, users, messages, messageCount = 0, errorMessage = "") {
         if (!globalSearchState) return;
         globalSearchDropdown.removeAttribute("aria-busy");
         const options = [];
         let markup = "";
-        const hasMatches = trends.length > 0 || users.length > 0;
+        const hasMatches = trends.length > 0 || users.length > 0 || messages.length > 0;
         if (!hasMatches) {
           options.push({ type: "search", value: query });
           markup += globalSearchOption(
@@ -9606,8 +9722,29 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             );
           }
         }
-        if (users.length || errorMessage || !hasMatches) {
+        if (users.length || messages.length || errorMessage || !hasMatches) {
           markup += `<div class="global-search-divider" aria-hidden="true"></div>`;
+        }
+        if (messages.length) {
+          markup += `<div class="global-search-section-title">Messages (${fmt(messageCount)})</div>`;
+          for (const conversation of messages.slice(0, 3)) {
+            const other = conversation.members.find((member) => member.id !== currentUser?.id);
+            const message = conversation.matchedMessage;
+            const body = message?.body?.trim() || (message?.mediaUrl ? "Photo" : message?.audioUrl ? "Voice message" : message?.stickerId ? "Sticker" : "Message");
+            options.push({
+              type: "message",
+              value: conversation.id,
+              messageId: message?.id || "",
+              conversation,
+            });
+            markup += globalSearchOption(
+              "message",
+              conversation.id,
+              `${avatarMarkup(other, "sm")}<span class="grow user-search-copy"><b>${esc(other?.displayName || "Relay user")}</b><small>${emphasizeConversationMatch(body, query)}</small></span>`,
+              "",
+              message?.id || "",
+            );
+          }
         }
         for (const person of users.slice(0, 10)) {
           options.push({ type: "person", value: person.id });
@@ -9619,7 +9756,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         if (errorMessage) {
           markup += `<div class="global-search-status" role="status">${esc(errorMessage)}</div>`;
-        } else if (!users.length) {
+        } else if (!users.length && !messages.length) {
           markup += `<div class="global-search-status" role="status">No matching accounts.</div>`;
         }
         globalSearchState.options = options;
@@ -9652,18 +9789,22 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         positionGlobalSearchDropdown();
         globalSearchTimer = setTimeout(async () => {
           try {
-            const [trendingResult, peopleResult] = await Promise.all([
+            const params = new URLSearchParams({ q: normalizedQuery, limit: "3", mode: "messages" });
+            const [trendingResult, peopleResult, messageResult] = await Promise.all([
               trendingSearchItems ? Promise.resolve({ items: trendingSearchItems }) : api("/trending"),
               api(`/search?q=${encodeURIComponent(normalizedQuery)}&limit=10&mode=users`),
+              api(`/conversations/search?${params}`),
             ]);
             if (generation !== globalSearchGeneration || !globalSearchState) return;
             const trends = trendingResult.items
               .filter((item) => item.tag.toLowerCase().includes(normalizedQuery.toLowerCase()))
               .slice(0, 3);
-            renderGlobalSearchDropdown(query, trends, peopleResult.users.slice(0, 10));
+            const messageItems = messageResult.items || [];
+            conversations = [...new Map([...conversations, ...messageItems].map((item) => [item.id, item])).values()];
+            renderGlobalSearchDropdown(query, trends, peopleResult.users.slice(0, 10), messageItems, messageResult.count || 0);
           } catch (error) {
             if (generation !== globalSearchGeneration || !globalSearchState) return;
-            renderGlobalSearchDropdown(query, [], [], error.message || "Search suggestions could not be loaded.");
+            renderGlobalSearchDropdown(query, [], [], [], 0, error.message || "Search suggestions could not be loaded.");
           }
         }, 120);
       }
@@ -9673,6 +9814,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (option.type === "person") {
           closeGlobalSearchDropdown();
           openPublicProfile(option.value);
+          return;
+        }
+        if (option.type === "message") {
+          navigateToSearchedMessage(option.conversation, option.messageId);
           return;
         }
         if (option.type === "topic") {
@@ -9838,27 +9983,26 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           .normalize("NFKC")
           .toLowerCase();
       }
-      function renderConversationItems(items, searchQuery = "") {
+      function renderConversationItems(items, searchQuery = "", searchMode = "all") {
         const normalizedQuery = searchQuery.normalize("NFKC").toLowerCase();
         const queryTerms = normalizedConversationQuery(searchQuery);
-        $("#conversationList").hidden = false;
-        $("#conversationSearchEmpty").hidden = true;
+        const resultList = searchMode === "messages" ? $("#messageSearchResults") : $("#conversationList");
         if (!items.length) {
-          $("#conversationList").innerHTML = emptyState(
-            searchQuery ? "No matching conversations." : "No conversations yet.",
+          resultList.innerHTML = emptyState(
+            searchQuery ? (searchMode === "messages" ? "No matching messages." : "No matching conversations.") : "No conversations yet.",
             searchQuery ? "Try a different search or filter." : "Start a new conversation to get things going.",
             true,
           );
           return;
         }
-        $("#conversationList").innerHTML = items.map((item) => {
+        resultList.innerHTML = items.map((item) => {
           const other = item.members.find((member) => member.id !== currentUser?.id);
           const current = item.id === activeConversation?.id;
           const search = `${conversationSearchText(item)} ${normalizedQuery}`;
           const lastMessage = item.lastMessage;
           const matchingLastMessage = queryTerms.length > 0
             && queryTerms.every((term) => (lastMessage?.body || "").normalize("NFKC").toLowerCase().includes(term));
-          const message = item.matchedMessage || lastMessage;
+          const message = searchMode === "messages" ? item.matchedMessage : item.matchedMessage || lastMessage;
           const highlightMessage = Boolean(searchQuery && (item.matchedMessage || matchingLastMessage));
           let preview = "Start a conversation";
           let messageTime = "";
@@ -9888,9 +10032,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
           const unreadCount = Number(item.unreadCount) || 0;
           const unreadLabel = unreadCount > 99 ? "+99" : unreadCount > 9 ? "+9" : fmt(unreadCount);
-          const searchMessageId = searchQuery ? item.matchedMessage?.id || "" : "";
-          const searchMessageCandidate = Boolean(searchQuery && !searchMessageId && matchingLastMessage);
-          return `<button class="conversation-item" type="button" style="--conversation-index:${items.indexOf(item)}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}">${avatarMarkup(other, "sm")}<span class="grow"><b>${esc(other?.displayName || "Relay user")}</b><small>${preview}</small></span>${unreadCount ? `<span class="unread-count" aria-label="${unreadCount} unread messages">${unreadLabel}</span>` : ""}</button>`;
+          const searchMessageId = searchQuery && searchMode !== "conversations" ? item.matchedMessage?.id || "" : "";
+          const searchMessageCandidate = Boolean(searchQuery && searchMode === "all" && !searchMessageId && matchingLastMessage);
+          return `<button class="conversation-item${searchMode === "messages" ? " message-search-result" : ""}" type="button" style="--conversation-index:${items.indexOf(item)}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}">${avatarMarkup(other, "sm")}<span class="grow"><b>${esc(other?.displayName || "Relay user")}</b><small>${preview}</small></span>${unreadCount ? `<span class="unread-count" aria-label="${unreadCount} unread messages">${unreadLabel}</span>` : ""}</button>`;
         }).join("");
       }
       function animateConversationListEntrance() {
@@ -9918,37 +10062,57 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#conversationList").hidden = !!terms.length && !hasMatches;
         $("#conversationSearchEmpty").hidden = !terms.length || hasMatches;
       }
+      function setConversationSearchMode(mode) {
+        conversationSearchMode = mode === "messages" ? "messages" : "conversations";
+        const messagesSelected = conversationSearchMode === "messages";
+        $("#conversationSearchTab").setAttribute("aria-selected", String(!messagesSelected));
+        $("#messageSearchTab").setAttribute("aria-selected", String(messagesSelected));
+        $("#conversationList").hidden = messagesSelected;
+        $("#messageSearchResults").hidden = !messagesSelected;
+        $("#conversationSearchEmpty").hidden = true;
+      }
       function searchConversations() {
         clearTimeout(conversationSearchTimer);
         const query = $("#conversationSearch").value.trim().replace(/\s+/g, " ");
-        const terms = normalizedConversationQuery(query);
         const generation = ++conversationSearchGeneration;
         if (!query) {
+          $("#conversationSearchTabs").hidden = true;
+          $("#messageSearchResults").hidden = true;
+          $("#messageSearchTab").textContent = "Messages (0)";
+          setConversationSearchMode("conversations");
           renderConversationItems(conversations);
           filterConversations();
           return;
         }
-        const localMatches = conversations.filter((item) => {
-          const searchable = conversationSearchText(item);
-          return terms.every((term) => searchable.includes(term));
-        });
-        if (localMatches.length) renderConversationItems(localMatches, query);
-        else {
-          $("#conversationList").hidden = false;
-          $("#conversationSearchEmpty").hidden = true;
-          $("#conversationList").innerHTML = skeletonListMarkup("message", 3, "message history");
-        }
+        $("#conversationSearchTabs").hidden = false;
+        $("#messageSearchTab").textContent = "Messages (…)";
+        $("#conversationSearchEmpty").hidden = true;
+        $("#conversationList").innerHTML = skeletonListMarkup("message", 3, "conversation search results");
+        $("#messageSearchResults").innerHTML = skeletonListMarkup("message", 3, "message search results");
+        setConversationSearchMode(conversationSearchMode);
         conversationSearchTimer = setTimeout(async () => {
           try {
-            const result = await api(`/conversations/search?q=${encodeURIComponent(query)}&limit=50`);
+            const params = new URLSearchParams({ q: query, limit: "50" });
+            const [conversationResult, messageResult] = await Promise.all([
+              api(`/conversations/search?${params}&mode=conversations`),
+              api(`/conversations/search?${params}&mode=messages`),
+            ]);
             if (generation !== conversationSearchGeneration
               || $("#conversationSearch").value.trim().replace(/\s+/g, " ") !== query) return;
-            renderConversationItems(result.items, query);
+            conversations = [...new Map([
+              ...conversations,
+              ...conversationResult.items,
+              ...messageResult.items,
+            ].map((item) => [item.id, item])).values()];
+            renderConversationItems(conversationResult.items, query, "conversations");
+            renderConversationItems(messageResult.items, query, "messages");
+            $("#messageSearchTab").textContent = `Messages (${fmt(messageResult.count || 0)})`;
+            setConversationSearchMode(conversationSearchMode);
           } catch (error) {
             if (generation !== conversationSearchGeneration) return;
-            if (!localMatches.length) {
-              $("#conversationList").innerHTML = emptyState("Couldn’t search conversations.", error.message, true);
-            }
+            $("#conversationList").innerHTML = emptyState("Couldn’t search conversations.", error.message, true);
+            $("#messageSearchResults").innerHTML = emptyState("Couldn’t search messages.", error.message, true);
+            $("#messageSearchTab").textContent = "Messages (0)";
             toast(`Conversation search failed: ${error.message}`);
           }
         }, 500);
@@ -9984,6 +10148,27 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
       }
       function openConversation(conversation, updateRoute = true, targetMessageId = "") {
+        if (activeConversation?.id === conversation.id) {
+          if (updateRoute) {
+            const route = `#/messages?conversation=${encodeURIComponent(conversation.id)}`;
+            if (location.hash !== route) location.hash = route;
+          }
+          if (!targetMessageId) return Promise.resolve();
+          const loadGeneration = activeConversationLoadGeneration;
+          const target = $$(".message-bubble", $("#chatLog")).find((bubble) => bubble.dataset.messageId === targetMessageId);
+          const targetPromise = target
+            ? Promise.resolve(target)
+            : loadConversationUntilMessage(conversation.id, targetMessageId, loadGeneration);
+          return targetPromise.then((message) => {
+            if (!message) {
+              toast("Could not find that matching message in the conversation.");
+              return;
+            }
+            return revealSearchedMessage(message, loadGeneration);
+          }).catch((error) => {
+            toast(`Could not load the matching message: ${error.message}`);
+          });
+        }
         try {
           sessionStorage.setItem("relay_active_conversation", conversation.id);
         } catch {}
@@ -9994,6 +10179,20 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (location.hash !== route) location.hash = route;
         }
         return loadConversation(conversation, targetMessageId);
+      }
+      function navigateToSearchedMessage(conversation, messageId) {
+        closeGlobalSearchDropdown();
+        if (!conversation?.id || !messageId) {
+          toast("Could not open that matching message.");
+          return;
+        }
+        conversations = [...new Map([...conversations, conversation].map((item) => [item.id, item])).values()];
+        if (!$("#v-messages").hidden) {
+          openConversation(conversation, true, messageId);
+          return;
+        }
+        pendingMessageNavigation = { conversation, messageId };
+        go("messages");
       }
       async function loadConversation(conversation, targetMessageId = "") {
         sendTyping(false);
@@ -10058,6 +10257,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       async function loadConversationUntilMessage(conversationId, targetMessageId, loadGeneration) {
         const log = $("#chatLog");
         const findTarget = () => $$(".message-bubble", log).find((bubble) => bubble.dataset.messageId === targetMessageId);
+        while (loadingOlderMessages && loadGeneration === activeConversationLoadGeneration
+          && activeConversation?.id === conversationId) {
+          await new Promise((resolve) => setTimeout(resolve, 24));
+        }
+        if (loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversationId) return null;
         loadingOlderMessages = true;
         try {
           while (!findTarget() && activeConversationCursor
@@ -10668,6 +10872,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function go(v, updateRoute = true, preserveProfile = false) {
         if (!requireAuth()) return;
+        if (v === "messages" && !$("#v-messages").hidden) return;
+        if (v !== "messages") {
+          pendingMessageNavigation = null;
+          conversationSelectionGeneration += 1;
+        }
         closeAutocomplete();
         if (v !== "profile" && v !== "thread" || (v === "profile" && !preserveProfile)) viewedProfileId = null;
         $(".app").classList.toggle("messages-active", v === "messages");
@@ -10694,6 +10903,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             if (v === "notifs") await renderNotifications();
             if (v === "messages") {
               await renderConversations();
+              if (pendingMessageNavigation) {
+                const pending = pendingMessageNavigation;
+                pendingMessageNavigation = null;
+                const conversation = conversations.find((item) => item.id === pending.conversation.id)
+                  || pending.conversation;
+                await openConversation(conversation, false, pending.messageId);
+                return;
+              }
               let savedConversationId = "";
               try {
                 savedConversationId = sessionStorage.getItem("relay_active_conversation") || "";
@@ -11197,6 +11414,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           go("explore");
           return;
         }
+        const searchModeButton = e.target.closest("[data-conversation-search-mode]");
+        if (searchModeButton) {
+          setConversationSearchMode(searchModeButton.dataset.conversationSearchMode);
+          return;
+        }
         const conversationButton = e.target.closest("[data-conversation]");
         if (conversationButton) {
           const conversation = conversations.find((item) => item.id === conversationButton.dataset.conversation);
@@ -11204,6 +11426,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             const selectionGeneration = ++conversationSelectionGeneration;
             const query = $("#conversationSearch").value.trim().replace(/\s+/g, " ");
             let targetMessageId = conversationButton.dataset.searchMessageId || "";
+            if (activeConversation?.id === conversation.id && !targetMessageId
+              && conversationButton.dataset.searchMessageCandidate !== "true") return;
             let searchTargetMissing = false;
             if (!targetMessageId && conversationButton.dataset.searchMessageCandidate === "true") {
               if (query) {

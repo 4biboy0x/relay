@@ -1363,6 +1363,7 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
   const rawQuery = z.string().trim().min(1).max(100).parse(req.query.q);
   const limit = z.coerce.number().int().min(1).max(50).default(50).parse(req.query.limit);
   const requestedConversationId = z.string().cuid().optional().parse(req.query.conversationId);
+  const searchMode = z.enum(["all", "conversations", "messages"]).default("all").parse(req.query.mode);
   const normalizedQuery = rawQuery.normalize("NFKC").toLowerCase();
   const terms = [...new Set(normalizedQuery.split(/\s+/).filter(Boolean))]
     .map((term) => term.replace(/[\\%_]/g, "\\$&"));
@@ -1388,9 +1389,37 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
         )
     )
   `;
-  const termConditions = terms.map((term) => Prisma.sql`
-    (${matchingMessage(term)} OR ${matchingParticipant(term)})
-  `);
+  const matchingAllMessageTerms = Prisma.sql`
+    EXISTS (
+      SELECT 1
+      FROM "Message" AS message
+      WHERE message."conversationId" = conversation."id"
+        AND ${Prisma.join(terms.map((term) => Prisma.sql`
+          message."body" ILIKE ${`%${term}%`} ESCAPE '\\'
+        `), " AND ")}
+    )
+  `;
+  const messageCountRows = searchMode === "messages"
+    ? await prisma.$queryRaw<Array<{ count: number }>>(Prisma.sql`
+      SELECT COUNT(*)::int AS "count"
+      FROM "Message" AS message
+      JOIN "ConversationMember" AS viewer
+        ON viewer."conversationId" = message."conversationId"
+        AND viewer."userId" = ${req.userId!}
+      WHERE ${Prisma.join(terms.map((term) => Prisma.sql`
+        message."body" ILIKE ${`%${term}%`} ESCAPE '\\'
+      `), " AND ")}
+      ${requestedConversationId
+        ? Prisma.sql`AND message."conversationId" = ${requestedConversationId}`
+        : Prisma.empty}
+    `)
+    : [];
+  const messageCount = messageCountRows[0]?.count ?? 0;
+  const termConditions = searchMode === "messages"
+    ? [matchingAllMessageTerms]
+    : terms.map((term) => searchMode === "conversations"
+      ? matchingParticipant(term)
+      : Prisma.sql`(${matchingMessage(term)} OR ${matchingParticipant(term)})`);
   const rankedConversations = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
     SELECT conversation."id"
     FROM "Conversation" AS conversation
@@ -1411,11 +1440,13 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
     LIMIT ${limit}
   `);
   if (!rankedConversations.length) {
-    res.json({ items: [] });
+    res.json({ items: [], count: messageCount });
     return;
   }
   const conversationIds = rankedConversations.map(({ id }) => id);
-  const matchingMessages = await prisma.$queryRaw<Array<{ id: string; conversationId: string }>>(Prisma.sql`
+  const matchingMessages = searchMode === "conversations"
+    ? []
+    : await prisma.$queryRaw<Array<{ id: string; conversationId: string }>>(Prisma.sql`
     WITH ranked_messages AS (
       SELECT
         message."id",
@@ -1435,7 +1466,7 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
     SELECT "id", "conversationId"
     FROM ranked_messages
     WHERE message_rank = 1
-  `);
+    `);
   const matchedMessageIds = matchingMessages.map(({ id }) => id);
   const matchedMessages = matchedMessageIds.length
     ? await prisma.message.findMany({
@@ -1475,6 +1506,7 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
   const unread = new Map(unreadRows.map((row) => [row.conversationId, row.unreadCount]));
   const rowsById = new Map(rows.map((row) => [row.id, row]));
   res.json({
+    count: messageCount,
     items: rankedConversations.flatMap(({ id }) => {
       const row = rowsById.get(id);
       return row ? [{
