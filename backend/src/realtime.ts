@@ -12,7 +12,7 @@ export const initializeRealtime = (server: HttpServer): Server => {
     cors: {
       origin: clientOrigins,
       credentials: true,
-      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization"],
     },
     maxHttpBufferSize: 16_384,

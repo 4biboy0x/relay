@@ -60,7 +60,7 @@ app.use(helmet());
 app.use(cors({
   origin: clientOrigins,
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
 app.use(express.json({ limit: "32kb" }));
@@ -1608,7 +1608,7 @@ api.get("/notifications/stream", authRequired, asyncRoute(async (req, res) => {
   res.write("retry: 5000\n\n");
 
   const timer = setInterval(async () => {
-    if (polling || res.writableEnded) return;
+    if (polling || res.writableEnded || res.destroyed) return;
     polling = true;
     try {
       const fresh = await prisma.notification.findMany({
@@ -1624,18 +1624,20 @@ api.get("/notifications/stream", authRequired, asyncRoute(async (req, res) => {
         take: 100,
       });
       for (const notification of await withNotificationFollowState(req.userId!, fresh)) {
+        if (res.destroyed) return;
         res.write(`id: ${notification.id}\nevent: notification\ndata: ${JSON.stringify(notification)}\n\n`);
         cursor = { id: notification.id, createdAt: notification.createdAt };
       }
-      if (!fresh.length) res.write(": keep-alive\n\n");
+      if (!fresh.length && !res.destroyed) res.write(": keep-alive\n\n");
     } catch (error) {
+      if (res.destroyed) return;
       console.error("Notification stream poll failed", error);
       res.write("event: error\ndata: {\"error\":\"Notification stream temporarily unavailable\"}\n\n");
     } finally {
       polling = false;
     }
   }, 3000);
-  req.on("close", () => clearInterval(timer));
+  res.on("close", () => clearInterval(timer));
 }));
 
 api.patch("/notifications/read", authRequired, asyncRoute(async (req, res) => {

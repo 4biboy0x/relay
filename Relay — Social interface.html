@@ -714,10 +714,11 @@
         font-size: 12.5px;
       }
       .av.lg {
-        width: 80px;
-        height: 80px;
+        width: 88px;
+        height: 88px;
         font-size: 26px;
-        border: 3px solid var(--bg);
+        border: 4px solid var(--surface);
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--border) 80%, transparent);
       }
       .av img {
         display: block;
@@ -1514,14 +1515,20 @@
       .gif-picker-dialog {
         width: min(560px, calc(100vw - 28px));
         max-width: none;
+        height: min(720px, calc(100dvh - 32px));
         max-height: min(720px, calc(100dvh - 32px));
+        box-sizing: border-box;
         padding: 18px;
         overflow: hidden;
+        grid-template-rows: auto auto auto minmax(0, 1fr) auto;
         border: 1px solid var(--border);
         border-radius: 20px;
         color: var(--text);
         background: var(--surface);
         box-shadow: 0 24px 80px rgba(0, 0, 0, .24);
+      }
+      .gif-picker-dialog[open] {
+        display: grid;
       }
       .gif-picker-dialog::backdrop {
         background: rgba(9, 9, 11, .46);
@@ -1582,25 +1589,43 @@
         color: var(--text-2);
         font-size: 13px;
       }
+      .gif-picker-results-scroll {
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+        padding: 2px;
+      }
+      .gif-picker-results-scroll::-webkit-scrollbar { width: 8px; }
+      .gif-picker-results-scroll::-webkit-scrollbar-thumb {
+        border: 2px solid var(--surface);
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--text-3) 45%, transparent);
+      }
       .gif-picker-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(min(112px, 100%), 1fr));
+        align-content: start;
         gap: 8px;
-        max-height: min(52dvh, 430px);
-        overflow: auto;
-        overscroll-behavior: contain;
       }
       .gif-picker-result {
+        display: block;
+        width: 100%;
         min-width: 0;
-        aspect-ratio: 1.25;
+        aspect-ratio: 4 / 3;
         padding: 0;
         overflow: hidden;
         border: 1px solid var(--border);
         border-radius: 10px;
         background: var(--surface-2);
         cursor: pointer;
+        transition: border-color 140ms ease, box-shadow 140ms ease;
       }
-      .gif-picker-result:hover { border-color: var(--accent); }
+      .gif-picker-result:hover {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+      }
       .gif-picker-result:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       .gif-picker-result img {
         display: block;
@@ -1612,6 +1637,7 @@
         display: flex;
         align-items: center;
         justify-content: flex-end;
+        flex: none;
         min-height: 30px;
         margin-top: 10px;
       }
@@ -1859,6 +1885,7 @@
         display: grid;
         width: 24px;
         height: 24px;
+        flex: none;
         place-items: center;
         border-radius: 50%;
         color: var(--text-2);
@@ -2301,11 +2328,13 @@
       }
       .profile-avatar-wrap {
         position: relative;
-        width: 80px;
-        height: 80px;
+        width: 88px;
+        height: 88px;
         flex: none;
-        margin-top: -40px;
+        margin-top: -44px;
         z-index: 2;
+        border-radius: 50%;
+        isolation: isolate;
       }
       .profile-actions {
         align-self: flex-start;
@@ -5824,7 +5853,9 @@
         <button class="btn btn-primary" type="submit">Search</button>
       </form>
       <p class="gif-picker-status" id="gifPickerStatus" role="status" aria-live="polite"></p>
-      <div class="gif-picker-grid" id="gifPickerResults" aria-label="GIF search results"></div>
+      <div class="gif-picker-results-scroll" role="region" aria-label="GIF search results" tabindex="0">
+        <div class="gif-picker-grid" id="gifPickerResults"></div>
+      </div>
       <div class="gif-picker-attribution" aria-label="Powered by GIPHY">
         <img class="giphy-black" src="assets/giphy/powered-by-giphy-black.png" alt="Powered by GIPHY">
         <img class="giphy-white" src="assets/giphy/powered-by-giphy-white.png" alt="Powered by GIPHY">
@@ -8152,7 +8183,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
       async function startNotificationStream() {
         if (socket?.connected) return;
-        if (streamController) streamController.abort();
+        if (streamController && !streamController.signal.aborted) return;
         streamController = new AbortController();
         const signal = streamController.signal;
         while (!signal.aborted && accessToken) {
