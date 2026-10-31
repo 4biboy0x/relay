@@ -1314,7 +1314,7 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
   const conversationIds = rows.map((row) => row.conversationId);
   const unreadRows = conversationIds.length
     ? await prisma.$queryRaw<Array<{ conversationId: string; unreadCount: number }>>(Prisma.sql`
-        SELECT member."conversationId", COUNT(message."id")::int AS "unreadCount"
+        SELECT member."conversationId", COUNT(DISTINCT message."senderId")::int AS "unreadCount"
         FROM "ConversationMember" AS member
         LEFT JOIN "Message" AS message
           ON message."conversationId" = member."conversationId"
@@ -1437,7 +1437,7 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
     },
   });
   const unreadRows = await prisma.$queryRaw<Array<{ conversationId: string; unreadCount: number }>>(Prisma.sql`
-    SELECT member."conversationId", COUNT(message."id")::int AS "unreadCount"
+    SELECT member."conversationId", COUNT(DISTINCT message."senderId")::int AS "unreadCount"
     FROM "ConversationMember" AS member
     LEFT JOIN "Message" AS message
       ON message."conversationId" = member."conversationId"

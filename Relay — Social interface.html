@@ -299,20 +299,21 @@
       .badge {
         position: absolute;
         z-index: 2;
-        top: -7px;
-        right: -9px;
+        top: -8px;
+        right: -11px;
         display: grid;
-        min-width: 18px;
-        height: 18px;
+        width: 24px;
+        height: 24px;
         place-items: center;
         margin: 0;
-        padding: 0 4px;
+        padding: 0;
         border: 2px solid var(--bg);
         background: var(--accent);
         color: #fff;
-        font-size: 10px;
+        font-size: 9px;
         font-weight: 600;
-        border-radius: 99px;
+        border-radius: 50%;
+        box-sizing: border-box;
         text-align: center;
         line-height: 1;
         box-shadow: 0 0 0 1px color-mix(in srgb, var(--border) 72%, transparent);
@@ -7780,10 +7781,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         clearTimeout(tt);
         tt = setTimeout(() => t.classList.remove("on"), 1800);
       }
-      function setUnreadBadge(element, count, label, cap = 99) {
+      function setUnreadBadge(element, count, label) {
         const unread = Math.max(0, Number(count) || 0);
         element.dataset.unreadCount = String(unread);
-        element.textContent = unread >= cap + 1 ? `+${cap}` : String(unread);
+        element.textContent = unread > 99 ? "+99" : unread > 9 ? "+9" : String(unread);
         element.hidden = unread === 0;
         element.setAttribute("aria-label", `${unread} unread ${label}`);
       }
