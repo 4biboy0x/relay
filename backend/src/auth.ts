@@ -60,6 +60,31 @@ export const authRequired: RequestHandler = (req, _res, next) => {
   }
 };
 
+export const authOptional: RequestHandler = (req, _res, next) => {
+  const header = req.header("authorization");
+  if (!header) {
+    next();
+    return;
+  }
+  if (!header.startsWith("Bearer ")) {
+    next(new HttpError(401, "Invalid authentication header"));
+    return;
+  }
+  try {
+    const payload = jwt.verify(header.slice(7), config.JWT_ACCESS_SECRET, {
+      issuer: "relay-api",
+      audience: "relay-client",
+    });
+    if (typeof payload === "string" || !payload.sub) {
+      throw new Error("Invalid access token subject");
+    }
+    req.userId = payload.sub;
+    next();
+  } catch {
+    next(new HttpError(401, "Invalid or expired access token"));
+  }
+};
+
 export const hashPassword = (password: string): Promise<string> =>
   bcrypt.hash(password, 12);
 

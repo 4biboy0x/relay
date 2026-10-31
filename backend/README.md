@@ -20,6 +20,20 @@ Relay is a Node.js 20+ / TypeScript API using Express, PostgreSQL, Prisma, Zod, 
 
 For production, build the TypeScript app with `npm run build`, generate the Prisma client during the build, and apply committed migrations with `npm run db:deploy`. A production deployment also needs TLS, a managed PostgreSQL instance, backups, monitoring, and shared Socket.IO pub/sub when running multiple API instances.
 
+## Reels media setup and operations
+
+The Reels API requires the `20261101120000_reels` and `20261101130000_reel_storage_cleanup` migrations. Apply them with `npm run db:migrate` locally or `npm run db:deploy` in production; the migrations are additive and have matching `down.sql` rollback scripts. The checked-in migration has not been applied automatically.
+
+Run the API and the processing worker as separate processes. Start the API with `npm run dev`, then run `npm run reel-worker` from another backend terminal. The worker requires `ffmpeg` and `ffprobe` on `PATH`; it claims queued jobs from PostgreSQL, retries failures up to three times, publishes processed videos, and cleans up expired uploads and deleted media. Keep the worker running for uploads to finish processing.
+
+Reels accept MP4, MOV, or WebM uploads up to 100 MB, 60 seconds, and 4096 pixels per dimension. The worker validates the container and metadata, rejects location metadata, transcodes video to H.264/AAC MP4, creates a JPEG preview, and strips embedded metadata. This is format validation and transcoding, not malware scanning.
+
+`REEL_STORAGE_DRIVER=local` stores source videos and processed media in `REEL_STORAGE_DIR`, which must be outside the public `/uploads/` directory. Local storage is appropriate for development or a single server with a durable disk. For multiple API/worker instances, configure `REEL_STORAGE_DRIVER=s3`, `REEL_S3_BUCKET`, `REEL_S3_REGION`, and (if needed) `REEL_S3_ENDPOINT`; give both API and worker private access to the same bucket. Configure bucket CORS for the exact `CLIENT_ORIGIN`, `PUT`, and the `Content-Type` request header so browser uploads can use signed URLs. Signed upload URLs expire after 10 minutes; media read URLs expire after one hour. Never make the bucket public.
+
+Ensure the reverse proxy permits request bodies up to at least 100 MB and sufficient upload/processing timeouts. Deleted Reel media is retained for seven days, then removed by the worker; `storageDeletedAt` records successful cleanup so object deletion is not retried indefinitely. Uploads left incomplete for one hour are expired by the worker.
+
+Moderation is intentionally limited: users can report a Reel, and it is hidden when the configured pending-report threshold is reached (`REEL_REPORT_AUTO_HIDE_COUNT`, default 5). A Reel owner can inspect reports on their own content and update their statuses. This implementation does not include a central admin moderation role or block/mute-based feed exclusion.
+
 ## Neon Realtime demo
 
 The authenticated `GET /api/realtime-demo/live` endpoint seals a query scoped to the current user. `POST /api/realtime-demo` inserts a row and returns its transaction ID. The standalone client is available at `/realtime-demo.html`; sign in with a Relay account and add a row to see it arrive through the live subscription.
@@ -37,6 +51,7 @@ To run the end-to-end subscriber smoke test, start the API on port `3100` (`PORT
 5. Type in the conversation from either session and confirm the other session displays only the sender's display name in the typing indicator. Each active typist is shown on a separate line in the reserved status area.
 6. In Explore, search for a handle and a hashtag from a recent post. Resize to 375px and verify that Messages switches between the inbox list and active conversation without horizontal overflow.
 7. Confirm accounts without an uploaded image use Relay's branded relay-mark avatar. On your own post, open **Post options**, edit the text, image, and location using the same full composer used for a new post, then verify the saved content and location ordering. Delete a post and confirm it fades and collapses both locally and in a second session.
+8. Run `npm run test:reels`; with the API, worker, PostgreSQL, and configured private media storage running, upload an MP4/MOV/WebM, verify processing and playback, test comments and interactions, then delete a Reel and verify media cleanup after seven days.
 
 ## API
 
@@ -74,6 +89,26 @@ All endpoints except registration and login require `Authorization: Bearer <acce
 | POST | `/api/conversations` | Find or create a private conversation (`{ "userId": "..." }`) |
 | GET | `/api/conversations/:conversationId/messages` | Read a cursor-paginated conversation and mark it read |
 | POST | `/api/conversations/:conversationId/messages` | Send a message (`{ "body": "..." }`, max 2,000 characters) |
+| GET | `/api/reels/feed?limit=10&cursor=...` | Follow-prioritized, engagement-ranked Reel feed |
+| GET | `/api/reels/bookmarks` | List the signed-in user's bookmarked Reels |
+| POST | `/api/reels/uploads` | Create an upload and return a private-storage upload URL |
+| POST | `/api/reels/local-upload` | Upload a video through the API when local storage is configured |
+| POST | `/api/reels/:id/complete` | Validate a finished upload and enqueue processing |
+| GET | `/api/reels/:id/status` | Read upload and processing status |
+| GET | `/api/reels/:id/media/:kind` | Read a signed local-storage video or poster (`kind`: `video`, `poster`) |
+| GET | `/api/reels/:id` | Read a public, ready Reel |
+| POST, DELETE | `/api/reels/:id/like` | Like or unlike a Reel |
+| POST, DELETE | `/api/reels/:id/bookmark` | Bookmark or remove a Reel bookmark |
+| POST, DELETE | `/api/reels/:id/repost` | Repost or undo a Reel repost |
+| POST | `/api/reels/:id/share` | Record a share |
+| POST | `/api/reels/:id/view` | Record a view after the client observes at least three seconds of playback; deduplicated per viewer per UTC day |
+| GET, POST | `/api/reels/:id/comments` | Read or add comments and one-level replies |
+| DELETE | `/api/reels/:id/comments/:commentId` | Delete your own comment or a comment on your Reel |
+| POST | `/api/reels/:id/report` | Submit a report against a ready Reel |
+| GET | `/api/reels/:id/reports` | View report details for your own Reel |
+| PATCH | `/api/reels/:id/reports/:reportId` | Update a report status for your own Reel |
+| PATCH, DELETE | `/api/reels/:id` | Edit or remove your own Reel |
+| GET | `/api/users/:handle/reels` | List a profile's published Reels |
 
 Post creation accepts `{ "body": "...", "mediaUrl": "/uploads/<filename>", "location": "Brooklyn, NY", "replyToId": "..." }`; optional fields may be omitted. Replies are stored by `replyToId`, counted atomically on their parent, and appear in profile Replies—not as standalone feed, Explore, search, or profile Posts entries. Reply cards include a safe parent preview and use a distinct presentation. Hashtags in the post body are normalized and linked transactionally. Valid `@handles` in posts and replies create persistent mention notifications for matching users, and mention handles link to their public profile. Thread reply counters increment with the reply write and decrement when an authored reply is soft-deleted. The feed uses an explainable newest-first order; the `following` tab limits candidates to followed accounts plus the viewer. Pagination uses descending `(createdAt, id)` keysets, not offsets. Feed pages return `items` and `nextCursor`; pass the cursor unchanged to fetch the next page.
 

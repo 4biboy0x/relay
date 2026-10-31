@@ -11,6 +11,8 @@ import { clientOrigins, config } from "./config";
 import { prisma } from "./db";
 import { getNeonRealtime } from "./neon-realtime";
 import { asyncRoute, errorHandler, HttpError } from "./http";
+import { getReelStorageOrigins } from "./reel-storage";
+import { reelProfileRouter, reelsRouter } from "./reels";
 import { emitToAuthenticated, emitToConversation, emitToPost, emitToUser } from "./realtime";
 import { audioUpload, imageUpload, readStoredUpload, saveAudio, saveImage, uploadDirectory } from "./uploads";
 import {
@@ -27,6 +29,8 @@ import {
 
 const app = express();
 const api = express.Router();
+api.use("/reels", reelsRouter);
+api.use("/users", reelProfileRouter);
 const publicUser = {
   id: true,
   handle: true,
@@ -66,7 +70,13 @@ const refreshCookieOptions = {
 
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      mediaSrc: ["'self'", ...getReelStorageOrigins()],
+    },
+  },
+}));
 app.use(cors({
   origin: clientOrigins,
   credentials: true,

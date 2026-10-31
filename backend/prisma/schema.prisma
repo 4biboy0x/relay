@@ -92,39 +92,41 @@ model PostView {
 }
 
 model Reel {
-  id              String         @id @default(uuid()) @db.Uuid
-  authorId        String
-  caption         String?        @db.VarChar(280)
-  status          ReelStatus     @default(UPLOADING)
-  originalKey     String
-  videoKey        String?
-  posterKey       String?
-  durationMs      Int?
-  width           Int?
-  height          Int?
-  sizeBytes       BigInt
-  mime            String         @db.VarChar(100)
-  likeCount       Int            @default(0)
-  commentCount    Int            @default(0)
-  repostCount     Int            @default(0)
-  shareCount      Int            @default(0)
-  viewCount       Int            @default(0)
-  createdAt       DateTime       @default(now())
-  publishedAt     DateTime?
-  deletedAt       DateTime?
-  processingError String?
-  author          User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  likes           ReelLike[]
-  reposts         ReelRepost[]
-  bookmarks       ReelBookmark[]
-  views           ReelView[]
-  comments        ReelComment[]
-  reports         ReelReport[]
-  notifications   Notification[] @relation("NotificationReel")
+  id               String         @id @default(uuid()) @db.Uuid
+  authorId         String
+  caption          String?        @db.VarChar(280)
+  status           ReelStatus     @default(UPLOADING)
+  originalKey      String
+  videoKey         String?
+  posterKey        String?
+  durationMs       Int?
+  width            Int?
+  height           Int?
+  sizeBytes        BigInt
+  mime             String         @db.VarChar(100)
+  likeCount        Int            @default(0)
+  commentCount     Int            @default(0)
+  repostCount      Int            @default(0)
+  shareCount       Int            @default(0)
+  viewCount        Int            @default(0)
+  createdAt        DateTime       @default(now())
+  publishedAt      DateTime?
+  deletedAt        DateTime?
+  storageDeletedAt DateTime?
+  processingError  String?
+  author           User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes            ReelLike[]
+  reposts          ReelRepost[]
+  bookmarks        ReelBookmark[]
+  views            ReelView[]
+  comments         ReelComment[]
+  reports          ReelReport[]
+  notifications    Notification[] @relation("NotificationReel")
 
   // The SQL migration adds these as partial indexes; Prisma 6.19 cannot model the predicate.
   @@index([status, publishedAt(sort: Desc), id(sort: Desc)])
   @@index([authorId, publishedAt(sort: Desc), id(sort: Desc)])
+  @@index([storageDeletedAt, deletedAt])
 }
 
 model ReelLike {

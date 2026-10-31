@@ -141,6 +141,7 @@ CREATE TABLE "Reel" (
   "createdAt" timestamptz(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "publishedAt" timestamptz(3),
   "deletedAt" timestamptz(3),
+  "storageDeletedAt" timestamptz(3),
   "processingError" text,
   CHECK ("status" <> 'READY' OR ("durationMs" IS NOT NULL AND "durationMs" BETWEEN 1 AND 60000))
 );
@@ -229,6 +230,7 @@ CREATE INDEX "Message_senderId_createdAt_idx" ON "Message" ("senderId", "created
 CREATE INDEX "Message_body_trgm_idx" ON "Message" USING gin ("body" gin_trgm_ops);
 CREATE INDEX "Reel_status_publishedAt_id_idx" ON "Reel" ("status", "publishedAt" DESC, "id" DESC) WHERE "deletedAt" IS NULL;
 CREATE INDEX "Reel_authorId_publishedAt_id_idx" ON "Reel" ("authorId", "publishedAt" DESC, "id" DESC) WHERE "deletedAt" IS NULL;
+CREATE INDEX "Reel_storageDeletedAt_deletedAt_idx" ON "Reel" ("storageDeletedAt", "deletedAt");
 CREATE INDEX "ReelLike_userId_createdAt_idx" ON "ReelLike" ("userId", "createdAt" DESC);
 CREATE INDEX "ReelBookmark_userId_createdAt_idx" ON "ReelBookmark" ("userId", "createdAt" DESC);
 CREATE INDEX "ReelRepost_userId_createdAt_idx" ON "ReelRepost" ("userId", "createdAt" DESC);
