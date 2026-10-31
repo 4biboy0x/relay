@@ -812,29 +812,14 @@
         box-sizing: content-box;
         border: 2px solid var(--surface);
         border-radius: 50%;
+        background: var(--text-3);
+      }
+      [data-presence-user][data-online="true"] [data-presence-dot] {
         background: var(--ok);
       }
       .presence-dot[hidden],
-      .presence-label[hidden],
       .chat-heading .chat-title small[hidden] {
         display: none;
-      }
-      .presence-label {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        color: var(--text-3);
-        font-size: 11px;
-        font-weight: 500;
-        line-height: 1.2;
-        white-space: nowrap;
-      }
-      .presence-label::before {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: var(--ok);
-        content: "";
       }
       .av.has-image {
         background: var(--bg);
@@ -4577,19 +4562,6 @@
         color: var(--text-3);
         font-size: 12px;
       }
-      .chat-heading .chat-title #chatSubtitle {
-        display: inline;
-        margin-right: 8px;
-      }
-      .chat-heading .chat-title .presence-label {
-        display: inline-flex;
-        color: var(--text-3);
-        font-size: 11px;
-        vertical-align: middle;
-      }
-      .chat-heading .chat-title .presence-label[hidden] {
-        display: none;
-      }
       .messages-back {
         display: none;
       }
@@ -6486,8 +6458,8 @@
                   <svg class="i" aria-hidden="true"><use href="#back" /></svg>
                 </button>
                 <button class="chat-profile-link" id="chatProfileLink" type="button" disabled aria-label="Conversation profile unavailable">
-                  <span class="presence-avatar" data-presence-avatar><span class="av sm t3" id="chatAvatar" aria-hidden="true">?</span><span class="presence-dot" data-presence-dot aria-label="Active now" hidden></span></span>
-                  <span class="chat-title"><b id="chatName">Messages</b><small id="chatSubtitle" hidden></small><small class="presence-label" id="chatPresence" data-presence-label-user hidden>Active now</small></span>
+                  <span class="presence-avatar" data-presence-avatar><span class="av sm t3" id="chatAvatar" aria-hidden="true">?</span><span class="presence-dot" data-presence-dot aria-label="Offline" hidden></span></span>
+                  <span class="chat-title"><b id="chatName">Messages</b><small id="chatSubtitle" hidden></small></span>
                 </button>
               </header>
               <div class="chat-log" id="chatLog" data-transition-content aria-live="polite">
@@ -6623,7 +6595,7 @@
           <div class="prof">
             <div class="prof-top">
               <div class="profile-avatar-wrap">
-                <span class="presence-avatar" data-presence-avatar><span class="av lg t3" id="profileAvatar" aria-hidden="true">?</span><span class="presence-dot" data-presence-dot aria-label="Active now" hidden></span></span>
+                <span class="presence-avatar" data-presence-avatar><span class="av lg t3" id="profileAvatar" aria-hidden="true">?</span><span class="presence-dot" data-presence-dot aria-label="Offline" hidden></span></span>
                 <button class="profile-edit-overlay" id="editProfileAvatar" type="button" aria-label="Update profile photo" title="Update profile photo">
                   <svg class="i" aria-hidden="true"><use href="#camera" /></svg>
                 </button>
@@ -6635,7 +6607,7 @@
               </div>
             </div>
             <h2 id="profileName">Your profile</h2>
-            <div class="profile-identity-meta"><div class="h" id="profileHandle"></div><span class="presence-label" id="profilePresence" data-presence-label-user hidden>Active now</span></div>
+            <div class="profile-identity-meta"><div class="h" id="profileHandle"></div></div>
             <p id="profileBio"></p>
             <div class="stats">
               <span><b id="followingCount">0</b> Following</span
@@ -7218,23 +7190,31 @@
         if (!user?.isOnline) return false;
         return !user.lastSeen || Date.now() - new Date(user.lastSeen).getTime() <= 90_000;
       };
-      const presenceAvatarMarkup = (user, size = "") =>
-        `<span class="presence-avatar" data-presence-avatar${user?.id ? ` data-presence-user="${esc(user.id)}"` : ""}>${avatarMarkup(user, size)}<span class="presence-dot" data-presence-dot aria-label="Active now"${isUserOnline(user) ? "" : " hidden"}></span></span>`;
+      const presenceAvatarMarkup = (user, size = "") => {
+        const hasUser = Boolean(user?.id);
+        const isSelf = hasUser && user.id === currentUser?.id;
+        const online = isUserOnline(user);
+        return `<span class="presence-avatar" data-presence-avatar${hasUser ? ` data-presence-user="${esc(user.id)}" data-online="${online}"${isSelf ? ' data-presence-self="true"' : ""}` : ""}>${avatarMarkup(user, size)}<span class="presence-dot" data-presence-dot aria-label="${online ? "Online" : "Offline"}"${!hasUser || isSelf ? " hidden" : ""}></span></span>`;
+      };
       function setPresenceAvatar(element, user) {
         const wrapper = element?.closest("[data-presence-avatar]");
         if (!wrapper) return;
-        if (user?.id) wrapper.dataset.presenceUser = user.id;
-        else delete wrapper.dataset.presenceUser;
+        const hasUser = Boolean(user?.id);
+        const isSelf = hasUser && user.id === currentUser?.id;
+        if (hasUser) {
+          wrapper.dataset.presenceUser = user.id;
+          wrapper.dataset.presenceSelf = String(isSelf);
+        } else {
+          delete wrapper.dataset.presenceUser;
+          delete wrapper.dataset.presenceSelf;
+        }
         const online = isUserOnline(user);
         wrapper.dataset.online = String(online);
         const dot = wrapper.querySelector("[data-presence-dot]");
-        if (dot) dot.hidden = !online;
-      }
-      function setPresenceLabel(element, user) {
-        if (!element) return;
-        if (user?.id) element.dataset.presenceLabelUser = user.id;
-        else delete element.dataset.presenceLabelUser;
-        element.hidden = !isUserOnline(user);
+        if (dot) {
+          dot.hidden = !hasUser || isSelf;
+          dot.setAttribute("aria-label", online ? "Online" : "Offline");
+        }
       }
       const profileLink = (user, label = user.displayName) =>
         `<button class="profile-link" type="button" data-profile-id="${esc(user.id)}">${esc(label)}</button>`;
@@ -8807,7 +8787,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             $("#profileBio").textContent = profile.bio || "";
             setAvatar($("#profileAvatar"), profile, "lg");
             setPresenceAvatar($("#profileAvatar"), profile);
-            setPresenceLabel($("#profilePresence"), profile);
             const banner = $("#profileBanner");
             banner.hidden = !profile.bannerUrl;
             if (profile.bannerUrl) banner.src = mediaHref(profile.bannerUrl);
@@ -10134,10 +10113,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (element.dataset.presenceUser !== presence.userId) return;
           element.dataset.online = String(online);
           const dot = element.querySelector("[data-presence-dot]");
-          if (dot) dot.hidden = !online;
-        });
-        $$("[data-presence-label-user]").forEach((element) => {
-          if (element.dataset.presenceLabelUser === presence.userId) element.hidden = !online;
+          if (dot) {
+            dot.hidden = element.dataset.presenceSelf === "true";
+            dot.setAttribute("aria-label", online ? "Online" : "Offline");
+          }
         });
       }
       let voiceRecorder = null;
@@ -10988,7 +10967,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#chatSubtitle").hidden = true;
         setAvatar($("#chatAvatar"), null, "sm");
         setPresenceAvatar($("#chatAvatar"), null);
-        setPresenceLabel($("#chatPresence"), null);
         $("#chatProfileLink").disabled = true;
         $("#chatProfileLink").removeAttribute("data-profile-id");
         $("#chatProfileLink").setAttribute("aria-label", "Conversation profile unavailable");
@@ -11030,7 +11008,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#chatSubtitle").hidden = !other?.handle;
         setAvatar($("#chatAvatar"), other, "sm");
         setPresenceAvatar($("#chatAvatar"), other);
-        setPresenceLabel($("#chatPresence"), other);
         const chatProfileLink = $("#chatProfileLink");
         chatProfileLink.disabled = !other?.id;
         if (other?.id) {
@@ -11215,7 +11192,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#profileBio").textContent = currentUser?.bio || "";
         setAvatar($("#profileAvatar"), currentUser, "lg");
         setPresenceAvatar($("#profileAvatar"), currentUser);
-        setPresenceLabel($("#profilePresence"), currentUser);
         setAvatar($("#composerAvatar"), currentUser);
         const banner = $("#profileBanner");
         banner.hidden = !currentUser?.bannerUrl;
