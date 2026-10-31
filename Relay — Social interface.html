@@ -4215,6 +4215,32 @@
         padding: 10px 16px;
         border-bottom: 1px solid var(--border);
       }
+      .messages-layout .chat-heading,
+      .messages-layout .chat-compose {
+        overflow: hidden;
+        opacity: 1;
+        transform: translateY(0);
+        visibility: visible;
+        transition:
+          opacity 180ms ease,
+          transform 240ms cubic-bezier(0.2, 0.7, 0.2, 1),
+          height 240ms cubic-bezier(0.2, 0.7, 0.2, 1),
+          max-height 240ms cubic-bezier(0.2, 0.7, 0.2, 1),
+          padding 240ms cubic-bezier(0.2, 0.7, 0.2, 1),
+          margin 240ms cubic-bezier(0.2, 0.7, 0.2, 1),
+          border-color 180ms ease,
+          visibility 0s linear;
+      }
+      .messages-layout:not(.has-conversation) .chat-heading {
+        height: 0;
+        padding-block: 0;
+        border-bottom-color: transparent;
+        opacity: 0;
+        transform: translateY(-8px);
+        visibility: hidden;
+        pointer-events: none;
+        transition-delay: 0s, 0s, 0s, 0s, 0s, 0s, 0s, 180ms;
+      }
       .chat-heading .chat-title {
         min-width: 0;
       }
@@ -4360,8 +4386,26 @@
         position: sticky;
         bottom: 0;
         flex: none;
+        max-height: 120px;
         padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
         background: var(--bg);
+      }
+      .messages-layout:not(.has-conversation) .chat-compose {
+        max-height: 0;
+        margin-bottom: 0;
+        padding-block: 0;
+        opacity: 0;
+        transform: translateY(8px);
+        visibility: hidden;
+        pointer-events: none;
+        transition-delay: 0s, 0s, 0s, 0s, 0s, 0s, 0s, 180ms;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .messages-layout .chat-heading,
+        .messages-layout .chat-compose {
+          transition-duration: 0.01ms;
+          transition-delay: 0s;
+        }
       }
       .chat-compose-pill {
         display: flex;
@@ -6594,6 +6638,7 @@
       let messageSearchOffset = 0;
       let messageSearchCount = 0;
       let messageSearchLoading = false;
+      let pendingConversationRestoreId = "";
       let pendingMessageNavigation = null;
       let conversationSelectionGeneration = 0;
       let loadingOlderMessages = false;
@@ -10221,10 +10266,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function openConversation(conversation, updateRoute = true, targetMessageId = "") {
         if (activeConversation?.id === conversation.id) {
-          if (updateRoute) {
-            const route = `#/messages?conversation=${encodeURIComponent(conversation.id)}`;
-            if (location.hash !== route) location.hash = route;
-          }
+          const route = `#/messages?conversation=${encodeURIComponent(conversation.id)}`;
+          if (updateRoute || location.hash !== route) location.hash = route;
           if (!targetMessageId) return Promise.resolve();
           const loadGeneration = activeConversationLoadGeneration;
           const target = $$(".message-bubble", $("#chatLog")).find((bubble) => bubble.dataset.messageId === targetMessageId);
@@ -10246,10 +10289,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         } catch {}
         $("#messagesLayout").classList.add("has-conversation");
         animateChatPanelEntrance();
-        if (updateRoute) {
-          const route = `#/messages?conversation=${encodeURIComponent(conversation.id)}`;
-          if (location.hash !== route) location.hash = route;
-        }
+        const route = `#/messages?conversation=${encodeURIComponent(conversation.id)}`;
+        if (updateRoute || location.hash !== route) location.hash = route;
         return loadConversation(conversation, targetMessageId);
       }
       function resetActiveConversation() {
@@ -10972,11 +11013,17 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           finishSplash();
         }
       }
-      function go(v, updateRoute = true, preserveProfile = false) {
+      function go(v, updateRoute = true, preserveProfile = false, restoreConversationId = "") {
         if (!requireAuth()) return;
         if (v === "messages") {
-          resetActiveConversation();
+          if (restoreConversationId) {
+            pendingConversationRestoreId = restoreConversationId;
+          } else {
+            pendingConversationRestoreId = "";
+            resetActiveConversation();
+          }
         } else {
+          pendingConversationRestoreId = "";
           pendingMessageNavigation = null;
           conversationSelectionGeneration += 1;
         }
@@ -11012,6 +11059,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 const conversation = conversations.find((item) => item.id === pending.conversation.id)
                   || pending.conversation;
                 await openConversation(conversation, false, pending.messageId);
+                return;
+              }
+              if (pendingConversationRestoreId) {
+                const conversationId = pendingConversationRestoreId;
+                pendingConversationRestoreId = "";
+                const conversation = conversations.find((item) => item.id === conversationId);
+                if (conversation) await openConversation(conversation, false);
+                else toast("Could not restore the conversation from this page.");
                 return;
               }
             }
@@ -11070,9 +11125,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           || !viewedProfileId
           || viewedProfileId === currentUser?.id;
         if (!$(`#v-${view}`).hidden && sameProfileRoute) {
-          if (view === "messages" && activeConversation
-            && routeParams.get("conversation") !== activeConversation.id) {
-            resetActiveConversation();
+          if (view === "messages") {
+            const requestedConversationId = routeParams.get("conversation") || "";
+            if (!requestedConversationId && activeConversation) {
+              resetActiveConversation();
+            } else if (requestedConversationId !== activeConversation?.id) {
+              go("messages", false, false, requestedConversationId);
+            }
           }
           if (view === "explore" && exploreTab !== previousExploreTab) {
             transitionContent(transitionTargetsForView("explore"), () => renderExplore($("#exploreSearch").value.trim()));
@@ -11080,7 +11139,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           return;
         }
         if (view === "profile" && viewedProfileId) viewedProfileId = null;
-        go(view, false);
+        go(view, false, false, view === "messages" ? routeParams.get("conversation") || "" : "");
       }
       window.addEventListener("hashchange", routeFromHash);
       $("#notificationsMarkAll").addEventListener("click", async () => {
