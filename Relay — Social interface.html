@@ -4059,6 +4059,7 @@
         box-shadow: 0 0 0 1px var(--border);
       }
       .chat-panel {
+        --chat-inline-padding: 16px;
         display: flex;
         min-width: 0;
         min-height: 0;
@@ -4111,7 +4112,7 @@
         flex: 1;
         align-items: center;
         gap: 9px;
-        padding: 4px 8px;
+        padding: 4px 0;
         border-radius: 9px;
         text-align: left;
         cursor: pointer;
@@ -4155,7 +4156,7 @@
           radial-gradient(ellipse at 50% 0, color-mix(in srgb, var(--surface-2) 45%, transparent), transparent 58%);
       }
       .message-bubble {
-        max-width: 82%;
+        max-width: min(90%, 720px);
         align-self: flex-start;
         padding: 8px 11px;
         border-radius: 12px 12px 12px 3px;
@@ -5172,19 +5173,19 @@
         .chat-log,
         .chat-compose {
           width: 100%;
-          max-width: 600px;
-          align-self: center;
+          max-width: none;
+          align-self: stretch;
           box-sizing: border-box;
         }
         .chat-heading {
           border-bottom-color: var(--border);
-          padding-inline: 24px;
+          padding-inline: var(--chat-inline-padding);
         }
         .chat-log {
-          padding-inline: 24px;
+          padding-inline: var(--chat-inline-padding);
         }
         .chat-compose {
-          padding-inline: 24px;
+          padding-inline: var(--chat-inline-padding);
         }
         .message-bubble {
           max-width: 620px;
@@ -5272,13 +5273,16 @@
           width: 100%;
           max-width: 100%;
         }
+        .chat-panel {
+          --chat-inline-padding: 12px;
+        }
         .chat-heading {
           height: 60px;
-          padding: 8px 12px;
+          padding: 8px var(--chat-inline-padding);
         }
         .chat-profile-link {
           gap: 8px;
-          padding-inline: 4px;
+          padding-inline: 0;
         }
         .messages-back {
           display: grid;
@@ -5301,10 +5305,10 @@
           padding-left: 16px;
         }
         .chat-log {
-          padding: 12px 12px 18px;
+          padding: 12px var(--chat-inline-padding) 18px;
         }
         .message-bubble {
-          max-width: min(82%, calc(100% - 32px));
+          max-width: min(90%, 720px);
         }
         .message-media {
           width: min(260px, 100%);
@@ -5314,20 +5318,23 @@
         }
         .chat-compose {
           margin-bottom: 12px;
-          padding: 8px 12px 0;
+          padding: 8px var(--chat-inline-padding) 0;
         }
         .emoji-grid {
           grid-template-columns: repeat(7, 1fr);
         }
       }
       @media (max-width: 380px) {
+        .chat-panel {
+          --chat-inline-padding: 8px;
+        }
         #v-messages > .top h1 {
           padding: 12px 14px 9px;
           font-size: 17px;
         }
         .chat-heading {
           height: 56px;
-          padding-inline: 8px;
+          padding-inline: var(--chat-inline-padding);
           gap: 6px;
         }
         .chat-heading .chat-title b {
@@ -5341,14 +5348,14 @@
           height: 36px;
         }
         .chat-log {
-          padding-inline: 8px;
+          padding-inline: var(--chat-inline-padding);
         }
         .message-bubble {
-          max-width: calc(100% - 24px);
+          max-width: min(90%, 720px);
         }
         .chat-compose {
           margin-bottom: 12px;
-          padding: 8px 8px 0;
+          padding: 8px var(--chat-inline-padding) 0;
         }
         .chat-compose-pill {
           min-height: 44px;
