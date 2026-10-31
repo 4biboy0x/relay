@@ -823,9 +823,9 @@
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        color: var(--ok);
+        color: var(--text-3);
         font-size: 11px;
-        font-weight: 600;
+        font-weight: 500;
         line-height: 1.2;
         white-space: nowrap;
       }
@@ -1660,6 +1660,213 @@
       .gif-picker-dialog::backdrop {
         background: rgba(9, 9, 11, .46);
         backdrop-filter: blur(3px);
+      }
+      .legal-dialog,
+      .cookie-settings-dialog {
+        box-sizing: border-box;
+        width: min(760px, calc(100vw - 28px));
+        max-width: none;
+        max-height: min(780px, calc(100dvh - 32px));
+        padding: 0;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        color: var(--text);
+        background: var(--surface);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, .24);
+      }
+      .legal-dialog[open],
+      .cookie-settings-dialog[open] {
+        display: flex;
+        flex-direction: column;
+      }
+      .legal-dialog::backdrop,
+      .cookie-settings-dialog::backdrop {
+        background: rgba(9, 9, 11, .46);
+        backdrop-filter: blur(3px);
+      }
+      .legal-heading,
+      .cookie-settings-heading {
+        display: flex;
+        flex: none;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+      }
+      .legal-heading h2,
+      .cookie-settings-heading h2 {
+        flex: 1;
+        margin: 0;
+        font-size: 18px;
+      }
+      .legal-close,
+      .cookie-settings-close {
+        display: grid;
+        width: 34px;
+        height: 34px;
+        flex: none;
+        place-items: center;
+        border: 0;
+        border-radius: 50%;
+        color: var(--text-2);
+        background: transparent;
+        cursor: pointer;
+      }
+      .legal-close:hover,
+      .cookie-settings-close:hover {
+        background: var(--surface-2);
+      }
+      .legal-close svg,
+      .cookie-settings-close svg {
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+      }
+      .legal-tabs {
+        display: flex;
+        flex: none;
+        gap: 8px;
+        padding: 12px 20px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .legal-tab {
+        position: relative;
+        padding: 10px 4px 12px;
+        border: 0;
+        color: var(--text-2);
+        background: transparent;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .legal-tab[aria-selected="true"] { color: var(--text); }
+      .legal-tab[aria-selected="true"]::after {
+        position: absolute;
+        right: 0;
+        bottom: -1px;
+        left: 0;
+        height: 3px;
+        border-radius: 3px 3px 0 0;
+        background: var(--accent);
+        content: "";
+      }
+      .legal-body {
+        min-height: 0;
+        padding: 20px;
+        overflow: auto;
+        overscroll-behavior: contain;
+        color: var(--text-2);
+        font-size: 14px;
+        line-height: 1.65;
+      }
+      .legal-body[hidden] { display: none; }
+      .legal-body h3 {
+        margin: 22px 0 6px;
+        color: var(--text);
+        font-size: 15px;
+        line-height: 1.35;
+      }
+      .legal-body h3:first-child { margin-top: 0; }
+      .legal-body p { margin: 6px 0 12px; }
+      .legal-body ul,
+      .legal-body ol { padding-left: 22px; }
+      .legal-updated {
+        margin: 0 0 18px !important;
+        color: var(--text-3);
+        font-size: 12px;
+      }
+      .cookie-settings-dialog { width: min(480px, calc(100vw - 28px)); }
+      .cookie-settings-body {
+        padding: 18px 20px 20px;
+        color: var(--text-2);
+        font-size: 14px;
+        line-height: 1.55;
+      }
+      .cookie-settings-body > p { margin: 0 0 14px; }
+      .cookie-preference {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 13px 0;
+        border-top: 1px solid var(--border);
+      }
+      .cookie-preference-copy { flex: 1; }
+      .cookie-preference-copy strong {
+        display: block;
+        margin-bottom: 2px;
+        color: var(--text);
+        font-size: 14px;
+      }
+      .cookie-preference-copy small { display: block; color: var(--text-3); line-height: 1.45; }
+      .cookie-preference input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--accent); }
+      .cookie-preference input:disabled { opacity: .7; }
+      .cookie-settings-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 18px;
+      }
+      .cookie-banner {
+        position: fixed;
+        right: max(18px, env(safe-area-inset-right, 0px));
+        bottom: max(18px, env(safe-area-inset-bottom, 0px));
+        z-index: 35;
+        width: min(480px, calc(100vw - 32px));
+        padding: 16px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        color: var(--text);
+        background: var(--surface);
+        box-shadow: 0 12px 38px rgba(0, 0, 0, .16);
+      }
+      .cookie-banner[hidden] { display: none; }
+      .cookie-banner h2 { margin: 0 0 5px; font-size: 15px; }
+      .cookie-banner p { margin: 0; color: var(--text-2); font-size: 12.5px; line-height: 1.5; }
+      .cookie-banner-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 14px;
+      }
+      .cookie-banner-actions button {
+        min-height: 34px;
+        padding: 0 11px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        background: var(--surface);
+        font: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .cookie-banner-actions button:hover { background: var(--surface-2); }
+      .cookie-banner-actions .cookie-accept {
+        border-color: var(--text);
+        color: var(--bg);
+        background: var(--text);
+      }
+      .cookie-banner-actions .cookie-accept:hover { opacity: .88; background: var(--text); }
+      @media (max-width: 520px) {
+        .legal-heading,
+        .cookie-settings-heading { padding: 14px 16px; }
+        .legal-tabs { padding-inline: 16px; }
+        .legal-body { padding: 16px; font-size: 13px; }
+        .cookie-settings-body { padding: 16px; }
+        .cookie-banner {
+          right: 10px;
+          bottom: max(10px, env(safe-area-inset-bottom, 0px));
+          width: calc(100vw - 20px);
+          padding: 14px;
+        }
+        .cookie-banner-actions { justify-content: flex-start; }
       }
       .gif-picker-heading {
         display: flex;
@@ -2678,12 +2885,6 @@
         width: 88px;
         height: 88px;
       }
-      .profile-avatar-wrap .presence-dot {
-        right: auto;
-        bottom: 6px;
-        left: 5px;
-        z-index: 3;
-      }
       .profile-actions {
         align-self: flex-start;
         margin-top: 12px;
@@ -3215,6 +3416,15 @@
         font-size: 12.5px;
         color: var(--text-3);
       }
+      .foot button {
+        padding: 0;
+        border: 0;
+        color: inherit;
+        background: transparent;
+        font: inherit;
+        cursor: pointer;
+      }
+      .foot button:hover { color: var(--text-2); text-decoration: underline; }
       .toast {
         position: fixed;
         left: 50%;
@@ -3249,6 +3459,37 @@
       }
       .auth-dialog::backdrop {
         background: rgba(9, 9, 11, 0.42);
+      }
+      .auth-cookie-prompt {
+        margin-top: 16px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+      }
+      .auth-cookie-prompt[hidden] { display: none; }
+      .auth-cookie-prompt p {
+        margin: 0;
+        color: var(--text-2);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      .auth-cookie-prompt-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+        margin-top: 10px;
+      }
+      .auth-cookie-prompt button {
+        padding: 0;
+        border: 0;
+        color: var(--text-2);
+        background: transparent;
+        font: inherit;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .auth-cookie-prompt button:hover {
+        color: var(--text);
+        text-decoration: underline;
       }
       .reply-composer-overlay {
         position: fixed;
@@ -4154,7 +4395,7 @@
         border-radius: 16px;
         text-align: left;
         background: transparent;
-        transition: background-color 160ms ease;
+        transition: background-color 80ms ease-out;
       }
       .conversation-item > .presence-avatar,
       .conversation-item > .presence-avatar > .av {
@@ -4178,19 +4419,6 @@
       }
       .conversation-item:focus-visible {
         box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 42%, transparent);
-      }
-      .conversation-list.is-returning .conversation-item {
-        animation: conversation-item-enter 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-        animation-delay: calc(var(--conversation-index, 0) * 28ms);
-      }
-      @keyframes conversation-item-enter {
-        from { opacity: 0; }
-        to { opacity: 1; }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .conversation-list.is-returning .conversation-item {
-          animation: none;
-        }
       }
       .conversation-item .grow {
         flex: 1;
@@ -4262,13 +4490,6 @@
         overflow: hidden;
         flex-direction: column;
         background: var(--surface);
-      }
-      .chat-panel.chat-panel-entering {
-        animation: chat-panel-enter 240ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
-      }
-      @keyframes chat-panel-enter {
-        from { opacity: 0; transform: translateY(6px); }
-        to { opacity: 1; transform: translateY(0); }
       }
       .chat-history-loader {
         display: grid;
@@ -4358,7 +4579,7 @@
       }
       .chat-heading .chat-title .presence-label {
         display: inline-flex;
-        color: var(--ok);
+        color: var(--text-3);
         font-size: 11px;
       }
       .chat-heading .chat-title .presence-label[hidden] {
@@ -5718,7 +5939,6 @@
       @media (prefers-reduced-motion: reduce) {
         .spinner { animation: relay-opacity-pulse 1.2s ease-in-out infinite alternate; }
         .relay-skeleton-shimmer { animation: none !important; }
-        .chat-panel.chat-panel-entering,
         .chat-message-entering,
         .message-bubble.search-message-shake {
           animation: none !important;
@@ -6477,10 +6697,116 @@
           <div id="wf"></div>
           <a class="more-l" id="whoToFollowMore" href="#/explore?tab=people" data-action="show-people" hidden>Show more</a>
         </section>
-        <p class="foot">Terms · Privacy · Cookies · © 2026 Relay</p>
+        <p class="foot">
+          <button type="button" data-open-legal="terms">Terms</button>
+          · <button type="button" data-open-legal="privacy">Privacy</button>
+          · <button type="button" data-open-cookie-settings>Cookie settings</button>
+          · © 2026 Relay
+        </p>
       </aside>
     </div>
     <div class="toast" id="toast" role="status"></div>
+    <section class="cookie-banner" id="cookieBanner" aria-labelledby="cookieBannerTitle" aria-describedby="cookieBannerDescription" hidden>
+      <h2 id="cookieBannerTitle">Your privacy choices</h2>
+      <p id="cookieBannerDescription">Relay uses a necessary session cookie to keep your account secure. Optional analytics and advertising cookies are not currently active. Choose whether Relay may use optional analytics if introduced, or review your preferences.</p>
+      <div class="cookie-banner-actions">
+        <button type="button" data-open-cookie-settings>Settings</button>
+        <button type="button" data-cookie-choice="essential">Essential only</button>
+        <button class="cookie-accept" type="button" data-cookie-choice="all">Allow optional</button>
+      </div>
+    </section>
+    <dialog class="legal-dialog" id="legalDialog" aria-labelledby="legalTitle">
+      <header class="legal-heading">
+        <h2 id="legalTitle">Relay policies</h2>
+        <button class="legal-close" type="button" data-close-legal aria-label="Close policies">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>
+        </button>
+      </header>
+      <div class="legal-tabs" role="tablist" aria-label="Relay policies">
+        <button class="legal-tab" id="termsTab" type="button" role="tab" aria-selected="true" aria-controls="termsContent" data-legal-tab="terms">Terms of Service</button>
+        <button class="legal-tab" id="privacyTab" type="button" role="tab" aria-selected="false" aria-controls="privacyContent" data-legal-tab="privacy">Privacy Policy</button>
+      </div>
+      <section class="legal-body" id="termsContent" role="tabpanel" aria-labelledby="termsTab">
+        <p class="legal-updated">Last updated: 31 October 2026</p>
+        <p>These Terms of Service (“Terms”) govern your use of Relay, including its website, social feed, profiles, direct messages, and media features (the “Service”). By creating an account or using the Service, you agree to these Terms. If you do not agree, do not use Relay.</p>
+        <h3>1. Who may use Relay and your account</h3>
+        <p>You must be at least 13 years old, or the minimum age required to use an online service where you live if that age is higher. If you are under the age of majority, you confirm that a parent or legal guardian has permitted your use where required. Provide accurate account information, keep your credentials secure, and promptly tell the Service operator if you believe your account has been accessed without permission. You are responsible for activity under your account.</p>
+        <h3>2. Your content and permissions</h3>
+        <p>You retain ownership of content you create and submit, including posts, replies, profile information, messages, and uploaded media (“User Content”). You represent that you have the rights needed to submit it and that its use through the Service will not violate another person’s rights or the law.</p>
+        <p>You grant the Service operator a non-exclusive, worldwide, royalty-free license to host, store, reproduce, adapt only as technically necessary (such as formatting or resizing), display, transmit, and distribute your User Content solely to operate, secure, and provide the Service and the features you choose. This license ends when your content is removed from the Service, except for copies retained in backups or where retention is legally required. Content you have shared with others, including screenshots or forwarded copies, may remain available to them.</p>
+        <p>Posts and profile details you make public may be seen, copied, or shared by other people. Direct messages are intended for their participants, but are not end-to-end encrypted; do not send information that requires that level of confidentiality.</p>
+        <h3>3. Acceptable use</h3>
+        <p>You may not use Relay to break the law, threaten or harass others, exploit or endanger minors, share non-consensual intimate imagery, infringe intellectual property or privacy rights, impersonate others, distribute malware, interfere with the Service, scrape or collect data without permission, evade security controls, or send spam or deceptive content. Do not attempt to access another user’s account or private information.</p>
+        <h3>4. Safety, moderation, and suspension</h3>
+        <p>The Service operator may review reports and take proportionate action when reasonably necessary to protect users, comply with law, enforce these Terms, or maintain the Service. Actions may include removing or limiting content, restricting features, suspending an account, or terminating access. Where appropriate and lawful, the operator may provide notice and an opportunity to appeal. Nothing in these Terms limits rights or procedures that cannot legally be excluded.</p>
+        <h3>5. Intellectual property and feedback</h3>
+        <p>Relay’s software, branding, and original design are owned by the Service operator or its licensors and are protected by applicable intellectual-property laws. These Terms give you a limited, revocable, non-transferable right to use the Service as intended; they do not transfer ownership to you. If you send suggestions, you permit the operator to use them without restriction or payment, provided this does not reduce your rights in User Content.</p>
+        <h3>6. Third-party services and links</h3>
+        <p>Some features may rely on third-party services, including GIF search provided through GIPHY. Those services have their own terms and privacy practices. The Service operator is not responsible for independent third-party services, except where applicable law provides otherwise.</p>
+        <h3>7. Changes, availability, and termination</h3>
+        <p>Features may change, be suspended, or be discontinued. The Service is provided on an evolving basis and may be unavailable for maintenance or circumstances beyond the operator’s control. You may stop using Relay at any time. The operator may end or restrict access for a reason described in these Terms or where required by law, subject to any notice or remedy required by law.</p>
+        <h3>8. Disclaimers and liability</h3>
+        <p>To the extent permitted by law, the Service is provided “as is” and “as available,” without warranties that it will be uninterrupted, secure, or error-free. Nothing in these Terms excludes a warranty or consumer right that cannot legally be excluded. To the extent permitted by law, the Service operator will not be liable for indirect, incidental, special, consequential, or punitive loss, or loss of profits, data, or goodwill. These limits do not apply to liability that cannot legally be limited, including liability for fraud or intentional misconduct where applicable.</p>
+        <h3>9. Changes to these Terms</h3>
+        <p>The operator may update these Terms to reflect changes to Relay, security, or legal requirements. Material changes will be presented through the Service or another reasonable notice method. The revised date will be updated above. Continued use after the effective date means acceptance only to the extent permitted by law; if you disagree, stop using the Service.</p>
+        <h3>10. General</h3>
+        <p>These Terms do not remove any mandatory protections available to you under the law where you live. If a provision is unenforceable, the remaining provisions continue to apply to the extent permitted. The Service operator is the entity or person operating the Relay deployment you use; use that deployment’s published support or contact channel for questions about these Terms.</p>
+      </section>
+      <section class="legal-body" id="privacyContent" role="tabpanel" aria-labelledby="privacyTab" hidden>
+        <p class="legal-updated">Last updated: 31 October 2026</p>
+        <p>This Privacy Policy explains how the operator of this Relay deployment handles information when you use Relay. The operator is responsible for this deployment’s data practices. For privacy requests, use the support or contact channel published by the deployment hosting this Service.</p>
+        <h3>1. Information Relay handles</h3>
+        <ul>
+          <li><strong>Account and profile information:</strong> your email address, handle, display name, password verifier (not your readable password), profile biography, and optional avatar and banner.</li>
+          <li><strong>Content and communications:</strong> posts, replies, likes, reposts, follows, direct messages, and images, GIFs, audio, or other media you submit.</li>
+          <li><strong>Service activity:</strong> conversation read state, notification state, and online/last-seen status while an authenticated connection is active.</li>
+          <li><strong>Device storage:</strong> Relay stores your theme and cookie choice in local storage, and uses session storage for the current access token and interface state such as the active conversation. Your browser controls this storage.</li>
+          <li><strong>Authentication cookie:</strong> Relay sets a necessary, HTTP-only refresh-token cookie to maintain sign-in securely. In production it is marked Secure and uses the SameSite setting required by the deployment. The access token is held in session storage.</li>
+        </ul>
+        <h3>2. How information is used</h3>
+        <p>Relay uses this information to create and secure accounts; show profiles, feeds, and messages; deliver notifications; synchronize online status; store submitted media; prevent abuse; troubleshoot service issues; and meet legal obligations. Information is processed for those purposes and, where required, on a contractual, legitimate-interest, consent, or legal-obligation basis.</p>
+        <h3>3. What other users can see</h3>
+        <p>Profile details and posts you publish for a public audience can be viewed by other users of the Service and may be copied outside Relay. Direct messages are available to their conversation participants and are stored by the Service to provide messaging; they are not end-to-end encrypted. Online status may be shown beside your avatar while your authenticated connection is active, with a last-seen timestamp stored for presence handling.</p>
+        <h3>4. Cookies and similar storage</h3>
+        <p>The necessary refresh-token cookie supports sign-in and account security. Relay’s cookie-choice interface stores your preferences in local storage rather than setting a consent cookie. This version of Relay does not activate analytics or advertising cookies. You can change your optional analytics choice through Cookie settings; that preference will be honored if optional analytics are introduced. Blocking essential browser storage or cookies may prevent sign-in from working.</p>
+        <h3>5. Service providers and third parties</h3>
+        <p>Relay relies on infrastructure providers selected by the deployment operator to host the app, database, and uploaded media. Those providers process information to deliver their services under their own terms and applicable agreements. If you use GIF search, your search request is sent to GIPHY; GIPHY may receive your query and standard connection information such as your IP address and browser details. Review GIPHY’s privacy policy before using that feature.</p>
+        <p>Relay does not sell personal information or use it for cross-context behavioral advertising in this version. The operator may disclose information when required by law, to protect users or the Service, or as part of a business transfer with appropriate safeguards.</p>
+        <h3>6. Retention and deletion</h3>
+        <p>Information is retained while needed to provide the Service, protect accounts, resolve disputes, and satisfy legal obligations. Content may remain in backups for a limited period after removal. You may request access, correction, export, or deletion through the deployment’s published contact channel; requests are handled subject to identity checks, applicable law, and information that must be retained for security or legal reasons.</p>
+        <h3>7. Security and international processing</h3>
+        <p>The operator uses administrative and technical safeguards designed to protect information, but no online service can guarantee absolute security. Infrastructure providers may process information in locations different from yours. Where required, the operator is responsible for using appropriate safeguards for international transfers.</p>
+        <h3>8. Your choices and rights</h3>
+        <p>Depending on where you live, you may have rights to access, correct, delete, restrict, object to, or obtain a copy of personal information, and to withdraw consent where processing relies on consent. You may also have the right to complain to a data-protection authority. Use the deployment’s published privacy contact channel to make a request.</p>
+        <h3>9. Children</h3>
+        <p>Relay is not intended for children under 13 or the higher minimum age required in their location. The operator does not knowingly collect information from children below that age. If you believe a child has provided information, contact the deployment operator so it can be reviewed and removed where appropriate.</p>
+        <h3>10. Policy changes</h3>
+        <p>This policy may be updated as Relay or applicable requirements change. Material changes will be communicated through the Service or another reasonable method, and the updated date will appear above.</p>
+      </section>
+    </dialog>
+    <dialog class="cookie-settings-dialog" id="cookieSettingsDialog" aria-labelledby="cookieSettingsTitle">
+      <header class="cookie-settings-heading">
+        <h2 id="cookieSettingsTitle">Cookie preferences</h2>
+        <button class="cookie-settings-close" type="button" data-close-cookie-settings aria-label="Close cookie preferences">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>
+        </button>
+      </header>
+      <div class="cookie-settings-body">
+        <p>Choose which optional browser storage Relay may use. Your choice is saved on this device. Essential authentication storage is required for sign-in.</p>
+        <label class="cookie-preference">
+          <span class="cookie-preference-copy"><strong>Essential session</strong><small>Required for secure sign-in and core account functions. Always active.</small></span>
+          <input type="checkbox" checked disabled aria-label="Essential session storage is always active">
+        </label>
+        <label class="cookie-preference">
+          <span class="cookie-preference-copy"><strong>Optional analytics</strong><small>Not currently active in Relay. Your choice is saved and will apply if optional analytics are introduced.</small></span>
+          <input id="analyticsCookies" type="checkbox" aria-label="Allow optional analytics">
+        </label>
+        <div class="cookie-settings-actions">
+          <button class="btn btn-line" type="button" data-cookie-choice="essential">Essential only</button>
+          <button class="btn btn-primary" type="button" id="saveCookiePreferences">Save preferences</button>
+        </div>
+      </div>
+    </dialog>
     <div class="autocomplete-menu" id="autocompleteMenu" role="listbox" aria-label="Text suggestions" hidden></div>
     <dialog class="post-lightbox" id="postLightbox" aria-label="Image viewer">
       <button class="post-lightbox-close" id="postLightboxClose" type="button" data-lightbox-close aria-label="Close image viewer">
@@ -6563,6 +6889,16 @@
         <button class="btn btn-primary" id="authSubmit" type="submit">Sign in</button>
       </form>
       <button class="auth-switch" id="authSwitch" type="button">Create an account</button>
+      <section class="auth-cookie-prompt" id="cookieAuthPrompt" aria-label="Cookie preferences" hidden>
+        <p>Relay uses necessary cookies for secure sign-in. Optional analytics and advertising cookies are not currently active.</p>
+        <div class="auth-cookie-prompt-actions">
+          <button type="button" data-cookie-choice="essential">Essential only</button>
+          <button type="button" data-cookie-choice="all">Allow optional</button>
+          <button type="button" data-open-cookie-settings>Settings</button>
+          <button type="button" data-open-legal="terms">Terms</button>
+          <button type="button" data-open-legal="privacy">Privacy</button>
+        </div>
+      </section>
     </dialog>
     <dialog class="auth-dialog action-dialog" id="actionDialog" aria-labelledby="actionTitle" aria-describedby="actionDescription">
       <h2 id="actionTitle"></h2>
@@ -6725,7 +7061,6 @@
       let activeConversation = null;
       let activeConversationCursor = null;
       let activeConversationLoadGeneration = 0;
-      let chatPanelAnimationTimer = null;
       let conversationSearchTimer = null;
       let conversationSearchGeneration = 0;
       let conversationSearchMode = "conversations";
@@ -9950,17 +10285,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }, { once: true });
         });
       }
-      function animateChatPanelEntrance() {
-        const panel = $("#messagesLayout .chat-panel");
-        clearTimeout(chatPanelAnimationTimer);
-        panel.classList.remove("chat-panel-entering");
-        if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-        void panel.offsetWidth;
-        panel.classList.add("chat-panel-entering");
-        chatPanelAnimationTimer = setTimeout(() => {
-          panel.classList.remove("chat-panel-entering");
-        }, 260);
-      }
       function scrollMessageListToBottom(smooth = false) {
         const list = $("#chatLog");
         requestAnimationFrame(() => {
@@ -10474,15 +10798,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
         }
       }
-      function animateConversationListEntrance() {
-        const list = $("#conversationList");
-        if (!list || list.hidden) return;
-        list.classList.remove("is-returning");
-        void list.offsetWidth;
-        list.classList.add("is-returning");
-        const duration = Math.min($$(".conversation-item", list).length * 28 + 300, 1200);
-        window.setTimeout(() => list.classList.remove("is-returning"), duration);
-      }
       function filterConversations() {
         const terms = normalizedConversationQuery($("#conversationSearch").value);
         const items = $$(".conversation-item", $("#conversationList"));
@@ -10592,6 +10907,32 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           console.error("Could not refresh message badge", error);
         }
       }
+      async function selectConversationItem(conversationButton) {
+        const conversation = conversations.find((item) => item.id === conversationButton.dataset.conversation);
+        if (!conversation) return;
+        const selectionGeneration = ++conversationSelectionGeneration;
+        const query = $("#conversationSearch").value.trim().replace(/\s+/g, " ");
+        let targetMessageId = conversationButton.dataset.searchMessageId || "";
+        if (activeConversation?.id === conversation.id && !targetMessageId
+          && conversationButton.dataset.searchMessageCandidate !== "true") return;
+        let searchTargetMissing = false;
+        if (!targetMessageId && conversationButton.dataset.searchMessageCandidate === "true" && query) {
+          try {
+            const params = new URLSearchParams({ q: query, limit: "1", conversationId: conversation.id });
+            const result = await api(`/conversations/search?${params}`);
+            targetMessageId = result.items.find((item) => item.id === conversation.id)?.matchedMessage?.id || "";
+            searchTargetMissing = !targetMessageId;
+          } catch (error) {
+            if (selectionGeneration === conversationSelectionGeneration && !$("#v-messages").hidden) {
+              toast(`Could not search for the matching message: ${error.message}`);
+            }
+          }
+        }
+        if (selectionGeneration !== conversationSelectionGeneration || $("#v-messages").hidden
+          || (query && $("#conversationSearch").value.trim().replace(/\s+/g, " ") !== query)) return;
+        if (searchTargetMissing) toast("Could not find that matching message in the conversation.");
+        openConversation(conversation, true, targetMessageId);
+      }
       function openConversation(conversation, updateRoute = true, targetMessageId = "") {
         if (activeConversation?.id === conversation.id) {
           const route = `#/messages?conversation=${encodeURIComponent(conversation.id)}`;
@@ -10616,7 +10957,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           sessionStorage.setItem("relay_active_conversation", conversation.id);
         } catch {}
         $("#messagesLayout").classList.add("has-conversation");
-        animateChatPanelEntrance();
+        $$("[data-conversation]").forEach((item) => {
+          item.setAttribute("aria-current", String(item.dataset.conversation === conversation.id));
+        });
         const route = `#/messages?conversation=${encodeURIComponent(conversation.id)}`;
         if (updateRoute || location.hash !== route) location.hash = route;
         return loadConversation(conversation, targetMessageId);
@@ -10853,6 +11196,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function showAuth() {
         closeActionDialog();
         if (!authDialog.open) authDialog.showModal();
+        updateCookieConsentVisibility();
       }
       function updateAccountUI() {
         $("#navName").textContent = currentUser?.displayName || "Sign in to Relay";
@@ -11477,6 +11821,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         go(view, false, false, view === "messages" ? routeParams.get("conversation") || "" : "");
       }
       window.addEventListener("hashchange", routeFromHash);
+      $("#messagesLayout").addEventListener("click", async (event) => {
+        const conversationButton = event.target.closest("[data-conversation]");
+        if (!conversationButton) return;
+        event.stopPropagation();
+        await selectConversationItem(conversationButton);
+      });
       $("#notificationsMarkAll").addEventListener("click", async () => {
         const button = $("#notificationsMarkAll");
         button.disabled = true;
@@ -11936,44 +12286,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           loadMoreMessageSearchResults();
           return;
         }
-        const conversationButton = e.target.closest("[data-conversation]");
-        if (conversationButton) {
-          const conversation = conversations.find((item) => item.id === conversationButton.dataset.conversation);
-          if (conversation) {
-            const selectionGeneration = ++conversationSelectionGeneration;
-            const query = $("#conversationSearch").value.trim().replace(/\s+/g, " ");
-            let targetMessageId = conversationButton.dataset.searchMessageId || "";
-            if (activeConversation?.id === conversation.id && !targetMessageId
-              && conversationButton.dataset.searchMessageCandidate !== "true") return;
-            let searchTargetMissing = false;
-            if (!targetMessageId && conversationButton.dataset.searchMessageCandidate === "true") {
-              if (query) {
-                try {
-                  const params = new URLSearchParams({ q: query, limit: "1", conversationId: conversation.id });
-                  const result = await api(`/conversations/search?${params}`);
-                  targetMessageId = result.items.find((item) => item.id === conversation.id)?.matchedMessage?.id || "";
-                  searchTargetMissing = !targetMessageId;
-                } catch (error) {
-                  if (selectionGeneration === conversationSelectionGeneration && !$("#v-messages").hidden) {
-                    toast(`Could not search for the matching message: ${error.message}`);
-                  }
-                }
-              }
-            }
-            if (selectionGeneration !== conversationSelectionGeneration || $("#v-messages").hidden
-              || (query && $("#conversationSearch").value.trim().replace(/\s+/g, " ") !== query)) return;
-            if (searchTargetMissing) toast("Could not find that matching message in the conversation.");
-            openConversation(conversation, true, targetMessageId);
-          }
-          return;
-        }
         if (e.target.closest("#messagesBack")) {
           if (location.hash !== "#/messages") location.hash = "#/messages";
           document.activeElement?.blur();
           transitionContent($("#chatLog"), async () => {
             resetActiveConversation();
             await renderConversations();
-            animateConversationListEntrance();
           });
           return;
         }
@@ -13068,6 +13386,91 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       $("#settingsEmailPassword")?.querySelector("input")?.addEventListener("input", syncSettingsEmail);
       $("#settingsPasswordForm")?.addEventListener("input", syncSettingsPassword);
       $("#settingsPasswordForm")?.elements.confirmPassword?.addEventListener("blur", syncSettingsPassword);
+      const cookieConsentStorageKey = "relay_cookie_consent";
+      function readCookieConsent() {
+        try {
+          const value = localStorage.getItem(cookieConsentStorageKey);
+          if (!value) return null;
+          const consent = JSON.parse(value);
+          return consent?.version === 1 && typeof consent.optionalAnalytics === "boolean"
+            ? consent
+            : null;
+        } catch (error) {
+          console.warn("Could not read cookie preferences.", error);
+          return null;
+        }
+      }
+      function saveCookieConsent(optionalAnalytics) {
+        try {
+          localStorage.setItem(cookieConsentStorageKey, JSON.stringify({
+            version: 1,
+            necessary: true,
+            optionalAnalytics,
+            savedAt: new Date().toISOString(),
+          }));
+          updateCookieConsentVisibility();
+          $("#cookieSettingsDialog").close();
+        } catch (error) {
+          console.error("Could not save cookie preferences.", error);
+          toast("Could not save your preferences. Check your browser storage settings and try again.");
+        }
+      }
+      function openCookieSettings() {
+        $("#analyticsCookies").checked = readCookieConsent()?.optionalAnalytics === true;
+        const dialog = $("#cookieSettingsDialog");
+        if (!dialog.open) dialog.showModal();
+      }
+      function initializeCookieConsent() {
+        updateCookieConsentVisibility();
+      }
+      function updateCookieConsentVisibility() {
+        const consentSaved = Boolean(readCookieConsent());
+        const authIsOpen = authDialog.open;
+        $("#cookieBanner").hidden = consentSaved || authIsOpen;
+        $("#cookieAuthPrompt").hidden = consentSaved || !authIsOpen;
+      }
+      $$("[data-open-legal]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const selectedTab = button.dataset.openLegal === "privacy" ? "privacy" : "terms";
+          $$("#legalDialog [data-legal-tab]").forEach((tab) => {
+            const selected = tab.dataset.legalTab === selectedTab;
+            tab.setAttribute("aria-selected", String(selected));
+          });
+          $("#termsContent").hidden = selectedTab !== "terms";
+          $("#privacyContent").hidden = selectedTab !== "privacy";
+          const dialog = $("#legalDialog");
+          if (!dialog.open) dialog.showModal();
+        });
+      });
+      $$("#legalDialog [data-legal-tab]").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          const selectedTab = tab.dataset.legalTab;
+          $$("#legalDialog [data-legal-tab]").forEach((item) => {
+            item.setAttribute("aria-selected", String(item === tab));
+          });
+          $("#termsContent").hidden = selectedTab !== "terms";
+          $("#privacyContent").hidden = selectedTab !== "privacy";
+        });
+      });
+      $$("#legalDialog [data-close-legal]").forEach((button) => {
+        button.addEventListener("click", () => $("#legalDialog").close());
+      });
+      $$("[data-open-cookie-settings]").forEach((button) => {
+        button.addEventListener("click", openCookieSettings);
+      });
+      $$("[data-close-cookie-settings]").forEach((button) => {
+        button.addEventListener("click", () => $("#cookieSettingsDialog").close());
+      });
+      $$("[data-cookie-choice]").forEach((button) => {
+        button.addEventListener("click", () => {
+          saveCookieConsent(button.dataset.cookieChoice === "all");
+        });
+      });
+      $("#saveCookiePreferences").addEventListener("click", () => {
+        saveCookieConsent($("#analyticsCookies").checked);
+      });
+      authDialog.addEventListener("close", updateCookieConsentVisibility);
+      initializeCookieConsent();
       loadSession();
     </script>
   </body>
