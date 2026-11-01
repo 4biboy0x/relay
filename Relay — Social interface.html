@@ -10187,6 +10187,21 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         });
         return video;
       }
+      async function playReelVideo(reel, stage, video) {
+        try {
+          await video.play();
+          return;
+        } catch (error) {
+          if (error.name === "AbortError" || error.name === "NotAllowedError") throw error;
+          const fresh = await api(`/reels/${encodeURIComponent(reel.id)}`);
+          if (fresh.status !== "READY" || !fresh.videoUrl) throw error;
+          reel.videoUrl = fresh.videoUrl;
+          reel.posterUrl = fresh.posterUrl;
+          video.src = mediaHref(fresh.videoUrl);
+          video.load();
+          await video.play();
+        }
+      }
       function syncReelPlayback() {
         if ($("#v-reels").hidden) return;
         const activeIndex = profileReelIndex(activeReelId);
@@ -10206,7 +10221,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             video.muted = reelMuted;
             video.preload = isActive ? "metadata" : "none";
             if (shouldStart && !document.hidden) {
-              video.play().catch((error) => {
+              playReelVideo(reel, stage, video).catch((error) => {
+                if (error.name === "AbortError") return;
                 stage.classList.remove("is-loading");
                 stage.classList.add("is-paused");
                 console.warn(`Autoplay was blocked for Reel ${reel.id}.`, error);
@@ -10289,12 +10305,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         video.muted = reelMuted;
         try {
-          await video.play();
+          await playReelVideo(reel, stage, video);
         } catch (error) {
+          if (error.name === "AbortError") return;
           stage.classList.remove("is-loading");
           stage.classList.add("is-paused");
           console.warn(`Could not start Reel ${reel.id}.`, error);
-          toast("Could not play this Reel. Try again.");
+          toast("Could not load this Reel. Check your connection and try again.");
         }
       }
       function openReelById(reelId) {
