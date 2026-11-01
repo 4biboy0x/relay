@@ -5110,6 +5110,9 @@
       .conversation-item.is-search-result:hover {
         background: color-mix(in srgb, var(--text) 2.5%, var(--surface));
       }
+      .conversation-item.is-search-result[aria-selected="true"] {
+        background: var(--accent-soft);
+      }
       .conversation-item-heading {
         display: flex;
         min-width: 0;
@@ -5374,18 +5377,9 @@
         color: #fff;
         background: var(--accent);
       }
-      .message-bubble.search-message-shake {
-        animation: search-message-shake 520ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
-        will-change: transform;
-      }
-      @keyframes search-message-shake {
-        0%, 100% { transform: translateX(0); }
-        15% { transform: translateX(7px); }
-        30% { transform: translateX(-6px); }
-        45% { transform: translateX(5px); }
-        60% { transform: translateX(-4px); }
-        75% { transform: translateX(2px); }
-        90% { transform: translateX(-1px); }
+      .message-bubble.search-message-highlight {
+        background: var(--accent-soft);
+        transition: background-color 160ms ease;
       }
       .chat-compose {
         position: sticky;
@@ -6629,8 +6623,7 @@
       @media (prefers-reduced-motion: reduce) {
         .spinner { animation: relay-opacity-pulse 1.2s ease-in-out infinite alternate; }
         .relay-skeleton-shimmer { animation: none !important; }
-        .chat-message-entering,
-        .message-bubble.search-message-shake {
+        .chat-message-entering {
           animation: none !important;
         }
       }
@@ -8796,12 +8789,16 @@
       let activeConversationCursor = null;
       let activeConversationLoadGeneration = 0;
       let conversationSearchTimer = null;
-      let conversationSearchGeneration = 0;
-      let conversationSearchMode = "conversations";
-      let messageSearchQuery = "";
-      let messageSearchOffset = 0;
-      let messageSearchCount = 0;
-      let messageSearchLoading = false;
+      const conversationSearchState = {
+        query: "",
+        tab: "conversations",
+        results: { conversations: [], messages: [] },
+        generation: 0,
+        messageOffset: 0,
+        messageCount: 0,
+        messageLoading: false,
+      };
+      const messageSearchHighlightTimers = new WeakMap();
       let pendingConversationRestoreId = "";
       let pendingMessageNavigation = null;
       let conversationSelectionGeneration = 0;
@@ -14565,7 +14562,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function conversationSearchText(item) {
         const otherMembers = item.members.filter((member) => member.id !== currentUser?.id);
-        return `${otherMembers.map((member) => `${member.displayName || ""} ${member.handle || ""}`).join(" ")} ${item.lastMessage?.body || ""} ${item.matchedMessage?.body || ""}`
+        return `${otherMembers.map((member) => `${member.displayName || ""} ${member.handle || ""}`).join(" ")} ${item.lastMessage?.body || ""}`
           .normalize("NFKC")
           .toLowerCase();
       }
@@ -14591,8 +14588,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const lastMessage = item.lastMessage;
           const matchingLastMessage = queryTerms.length > 0
             && queryTerms.every((term) => (lastMessage?.body || "").normalize("NFKC").toLowerCase().includes(term));
-          const message = searchMode === "messages" ? item.matchedMessage : item.matchedMessage || lastMessage;
-          const highlightMessage = Boolean(searchQuery && (item.matchedMessage || matchingLastMessage));
+          const message = searchMode === "messages" ? item.matchedMessage : lastMessage;
+          const highlightMessage = Boolean(searchQuery && (searchMode === "messages" ? item.matchedMessage : matchingLastMessage));
           let preview = "Start a conversation";
           let messageTime = "";
           if (message) {
@@ -14621,9 +14618,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
           const unreadCount = Number(item.unreadCount) || 0;
           const unreadLabel = unreadCount > 99 ? "+99" : unreadCount > 9 ? "+9" : fmt(unreadCount);
-          const searchMessageId = searchQuery && searchMode !== "conversations" ? item.matchedMessage?.id || "" : "";
-          const searchMessageCandidate = Boolean(searchQuery && searchMode === "all" && !searchMessageId && matchingLastMessage);
-          return `<button class="conversation-item${searchQuery ? " is-search-result" : ""}${searchMode === "messages" ? " message-search-result" : ""}${unreadCount ? " has-unread" : ""}" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}">${presenceAvatarMarkup(other, "sm")}<span class="grow"><span class="conversation-item-heading"><b>${esc(other?.displayName || "Relay user")}</b>${messageTime}</span><small>${preview}</small></span>${unreadCount ? `<span class="unread-count" aria-label="${unreadCount} unread messages">${unreadLabel}</span>` : ""}</button>`;
+          const searchMessageId = searchQuery
+            ? (searchMode === "messages" ? item.matchedMessage?.id : matchingLastMessage ? lastMessage?.id : "")
+            : "";
+          const searchMessageCandidate = Boolean(searchQuery && searchMode === "conversations" && !searchMessageId);
+          return `<button class="conversation-item${searchQuery ? " is-search-result" : ""}${searchMode === "messages" ? " message-search-result" : ""}${unreadCount ? " has-unread" : ""}" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}"${searchQuery ? ` aria-selected="${current}"` : ""}>${presenceAvatarMarkup(other, "sm")}<span class="grow"><span class="conversation-item-heading"><b>${esc(other?.displayName || "Relay user")}</b>${messageTime}</span><small>${preview}</small></span>${unreadCount ? `<span class="unread-count" aria-label="${unreadCount} unread messages">${unreadLabel}</span>` : ""}</button>`;
         }).join("");
         if (append) resultList.insertAdjacentHTML("beforeend", markup);
         else resultList.innerHTML = markup;
@@ -14631,39 +14630,40 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function updateMessageSearchLoadMore() {
         const list = $("#messageSearchResults");
         list.querySelector(".message-search-load-more")?.remove();
-        if (messageSearchLoading) {
+        if (conversationSearchState.messageLoading) {
           list.insertAdjacentHTML("beforeend", `<button class="message-search-load-more" type="button" disabled aria-live="polite">Loading more messages…</button>`);
-        } else if (messageSearchOffset < messageSearchCount) {
+        } else if (conversationSearchState.messageOffset < conversationSearchState.messageCount) {
           list.insertAdjacentHTML("beforeend", `<button class="message-search-load-more" type="button">Load more messages</button>`);
         }
       }
       async function loadMoreMessageSearchResults() {
-        const query = messageSearchQuery;
-        const generation = conversationSearchGeneration;
-        if (!query || messageSearchLoading || messageSearchOffset >= messageSearchCount) return;
-        messageSearchLoading = true;
+        const { query, generation } = conversationSearchState;
+        if (!query || conversationSearchState.messageLoading
+          || conversationSearchState.messageOffset >= conversationSearchState.messageCount) return;
+        conversationSearchState.messageLoading = true;
         updateMessageSearchLoadMore();
         try {
           const params = new URLSearchParams({
             q: query,
             limit: "50",
-            offset: String(messageSearchOffset),
+            offset: String(conversationSearchState.messageOffset),
             mode: "messages",
           });
           const result = await api(`/conversations/search?${params}`);
-          if (generation !== conversationSearchGeneration
+          if (generation !== conversationSearchState.generation
             || $("#conversationSearch").value.trim().replace(/\s+/g, " ") !== query) return;
-          conversations = [...new Map([...conversations, ...result.items].map((item) => [item.id, item])).values()];
-          messageSearchOffset += result.items.length;
-          messageSearchCount = result.count || 0;
-          renderConversationItems(result.items, query, "messages", true);
+          const items = JSON.parse(JSON.stringify(result.items));
+          conversationSearchState.results.messages.push(...items);
+          conversationSearchState.messageOffset += items.length;
+          conversationSearchState.messageCount = result.count || 0;
+          renderConversationItems(items, query, "messages", true);
         } catch (error) {
-          if (generation === conversationSearchGeneration) {
+          if (generation === conversationSearchState.generation) {
             toast(`Could not load more matching messages: ${error.message}`);
           }
         } finally {
-          if (generation === conversationSearchGeneration) {
-            messageSearchLoading = false;
+          if (generation === conversationSearchState.generation) {
+            conversationSearchState.messageLoading = false;
             updateMessageSearchLoadMore();
           }
         }
@@ -14685,8 +14685,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#conversationSearchEmpty").hidden = !terms.length || hasMatches;
       }
       function setConversationSearchMode(mode) {
-        conversationSearchMode = mode === "messages" ? "messages" : "conversations";
-        const messagesSelected = conversationSearchMode === "messages";
+        conversationSearchState.tab = mode === "messages" ? "messages" : "conversations";
+        const messagesSelected = conversationSearchState.tab === "messages";
         $("#conversationSearchTab").setAttribute("aria-selected", String(!messagesSelected));
         $("#messageSearchTab").setAttribute("aria-selected", String(messagesSelected));
         $("#conversationList").hidden = messagesSelected;
@@ -14696,11 +14696,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function searchConversations() {
         clearTimeout(conversationSearchTimer);
         const query = $("#conversationSearch").value.trim().replace(/\s+/g, " ");
-        const generation = ++conversationSearchGeneration;
-        messageSearchQuery = query;
-        messageSearchOffset = 0;
-        messageSearchCount = 0;
-        messageSearchLoading = false;
+        const generation = ++conversationSearchState.generation;
+        conversationSearchState.query = query;
+        conversationSearchState.results = { conversations: [], messages: [] };
+        conversationSearchState.messageOffset = 0;
+        conversationSearchState.messageCount = 0;
+        conversationSearchState.messageLoading = false;
         if (!query) {
           $("#conversationSearchTabs").hidden = true;
           $("#messageSearchResults").hidden = true;
@@ -14716,7 +14717,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#conversationList").innerHTML = skeletonListMarkup("message", 3, "conversation search results");
         $("#messageSearchResults").innerHTML = skeletonListMarkup("message", 3, "message search results");
         $("#messageSearchResults").scrollTop = 0;
-        setConversationSearchMode(conversationSearchMode);
+        setConversationSearchMode(conversationSearchState.tab);
         conversationSearchTimer = setTimeout(async () => {
           try {
             const params = new URLSearchParams({ q: query, limit: "50" });
@@ -14724,22 +14725,26 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               api(`/conversations/search?${params}&mode=conversations`),
               api(`/conversations/search?${params}&mode=messages`),
             ]);
-            if (generation !== conversationSearchGeneration
+            if (generation !== conversationSearchState.generation
               || $("#conversationSearch").value.trim().replace(/\s+/g, " ") !== query) return;
-            conversations = [...new Map([
-              ...conversations,
-              ...conversationResult.items,
-              ...messageResult.items,
-            ].map((item) => [item.id, item])).values()];
-            renderConversationItems(conversationResult.items, query, "conversations");
-            renderConversationItems(messageResult.items, query, "messages");
-            messageSearchOffset = messageResult.items.length;
-            messageSearchCount = messageResult.count || 0;
+            const conversationIds = new Set(conversationResult.items.map((item) => item.id));
+            const conversationItems = JSON.parse(JSON.stringify(
+              conversations.filter((item) => conversationIds.has(item.id)),
+            ));
+            const messageItems = JSON.parse(JSON.stringify(messageResult.items));
+            conversationSearchState.results = {
+              conversations: conversationItems,
+              messages: messageItems,
+            };
+            renderConversationItems(conversationSearchState.results.conversations, query, "conversations");
+            renderConversationItems(messageItems, query, "messages");
+            conversationSearchState.messageOffset = messageItems.length;
+            conversationSearchState.messageCount = messageResult.count || 0;
             $("#messageSearchTab").textContent = `Messages (${fmt(messageResult.count || 0)})`;
             updateMessageSearchLoadMore();
-            setConversationSearchMode(conversationSearchMode);
+            setConversationSearchMode(conversationSearchState.tab);
           } catch (error) {
-            if (generation !== conversationSearchGeneration) return;
+            if (generation !== conversationSearchState.generation) return;
             $("#conversationList").innerHTML = emptyState("Couldn’t search conversations.", error.message, true);
             $("#messageSearchResults").innerHTML = emptyState("Couldn’t search messages.", error.message, true);
             $("#messageSearchTab").textContent = "Messages (0)";
@@ -14781,30 +14786,36 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
       }
       async function selectConversationItem(conversationButton) {
-        const conversation = conversations.find((item) => item.id === conversationButton.dataset.conversation);
+        const conversationId = conversationButton.dataset.conversation;
+        const searchResult = conversationSearchState.results.messages.find((item) =>
+          item.id === conversationId && item.matchedMessage?.id === conversationButton.dataset.searchMessageId)
+          || conversationSearchState.results.conversations.find((item) => item.id === conversationId);
+        const conversation = conversations.find((item) => item.id === conversationId) || searchResult;
         if (!conversation) return;
         const selectionGeneration = ++conversationSelectionGeneration;
         syncConversationSelection(conversation.id);
-        const query = $("#conversationSearch").value.trim().replace(/\s+/g, " ");
+        const resultList = conversationButton.closest(".conversation-list");
+        const query = conversationSearchState.query;
+        if (query) {
+          $$("[data-conversation]", resultList).forEach((item) => item.removeAttribute("aria-selected"));
+          conversationButton.setAttribute("aria-selected", "true");
+        }
+        const searchGeneration = conversationSearchState.generation;
         let targetMessageId = conversationButton.dataset.searchMessageId || "";
         if (activeConversation?.id === conversation.id && !targetMessageId
           && conversationButton.dataset.searchMessageCandidate !== "true") {
-          if (query) {
-            $("#conversationSearch").value = "";
-            searchConversations();
-            $$(".conversation-item", $("#conversationList"))
-              .find((item) => item.dataset.conversation === conversation.id)
-              ?.focus({ preventScroll: true });
-          }
           return;
         }
-        let searchTargetMissing = false;
-        if (!targetMessageId && conversationButton.dataset.searchMessageCandidate === "true" && query) {
+        if (!targetMessageId && query) {
           try {
-            const params = new URLSearchParams({ q: query, limit: "1", conversationId: conversation.id });
+            const params = new URLSearchParams({
+              q: query,
+              limit: "1",
+              conversationId: conversation.id,
+              mode: "all",
+            });
             const result = await api(`/conversations/search?${params}`);
             targetMessageId = result.items.find((item) => item.id === conversation.id)?.matchedMessage?.id || "";
-            searchTargetMissing = !targetMessageId;
           } catch (error) {
             if (selectionGeneration === conversationSelectionGeneration && !$("#v-messages").hidden) {
               toast(`Could not search for the matching message: ${error.message}`);
@@ -14812,19 +14823,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
         }
         if (selectionGeneration !== conversationSelectionGeneration || $("#v-messages").hidden
-          || (query && $("#conversationSearch").value.trim().replace(/\s+/g, " ") !== query)) {
+          || (query && (conversationSearchState.generation !== searchGeneration
+            || conversationSearchState.query !== query))) {
           if (selectionGeneration === conversationSelectionGeneration) {
             syncConversationSelection(activeConversation?.id || "");
           }
           return;
-        }
-        if (searchTargetMissing) toast("Could not find that matching message in the conversation.");
-        if (query) {
-          $("#conversationSearch").value = "";
-          searchConversations();
-          $$(".conversation-item", $("#conversationList"))
-            .find((item) => item.dataset.conversation === conversation.id)
-            ?.focus({ preventScroll: true });
         }
         openConversation(conversation, true, targetMessageId);
       }
@@ -14890,6 +14894,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function syncConversationSelection(conversationId) {
         selectedConversationId = conversationId;
+        if (conversationSearchState.query) return;
         $$("[data-conversation]", $("#conversationList")).forEach((item) => {
           item.setAttribute("aria-current", String(item.dataset.conversation === conversationId));
         });
@@ -14968,7 +14973,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             if (target) await revealSearchedMessage(target, loadGeneration);
             else if (!searchLoadFailed) toast("Could not find that matching message in the conversation.");
           }
-          await renderConversations();
+          if (!conversationSearchState.query) await renderConversations();
         } catch (error) {
           if (loadGeneration === activeConversationLoadGeneration) renderError($("#chatLog"), error);
         }
@@ -15033,11 +15038,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
         }
         if (loadGeneration !== activeConversationLoadGeneration || !target.isConnected) return;
-        if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-        target.classList.remove("search-message-shake");
+        clearTimeout(messageSearchHighlightTimers.get(target));
+        target.classList.remove("search-message-highlight");
         void target.offsetWidth;
-        target.classList.add("search-message-shake");
-        setTimeout(() => target.classList.remove("search-message-shake"), 560);
+        target.classList.add("search-message-highlight");
+        messageSearchHighlightTimers.set(target, setTimeout(() => {
+          target.classList.remove("search-message-highlight");
+          messageSearchHighlightTimers.delete(target);
+        }, 1500));
       }
       async function loadOlderMessages() {
         const log = $("#chatLog");
@@ -17416,6 +17424,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
       });
       $("#conversationSearch").addEventListener("input", searchConversations);
+      $("#conversationSearch").addEventListener("keydown", (event) => {
+        if (event.key !== "Escape" || !$("#conversationSearch").value) return;
+        event.preventDefault();
+        $("#conversationSearch").value = "";
+        $("#conversationSearch").dispatchEvent(new Event("input", { bubbles: true }));
+      });
       $("#messageSearchResults").addEventListener("scroll", () => {
         const list = $("#messageSearchResults");
         if (list.scrollHeight - list.scrollTop - list.clientHeight < 120) {
