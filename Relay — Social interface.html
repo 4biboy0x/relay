@@ -5430,22 +5430,16 @@
         background: var(--accent);
       }
       .message-bubble.search-message-highlight {
-        animation: message-search-shake 420ms ease-in-out,
-          message-search-highlight 1500ms ease-out;
+        animation: message-search-shake 420ms ease-in-out;
       }
       @keyframes message-search-shake {
         0%, 100% { transform: translateX(0); }
         25% { transform: translateX(-4px); }
         75% { transform: translateX(4px); }
       }
-      @keyframes message-search-highlight {
-        0%, 65% { background-color: var(--accent-soft); }
-        100% { background-color: transparent; }
-      }
       @media (prefers-reduced-motion: reduce) {
         .message-bubble.search-message-highlight {
           animation: none;
-          background-color: var(--accent-soft);
         }
       }
       .chat-compose {
