@@ -774,6 +774,7 @@
       .av {
         width: 40px;
         height: 40px;
+        aspect-ratio: 1 / 1;
         border-radius: 50%;
         overflow: hidden;
         box-sizing: border-box;
@@ -801,9 +802,15 @@
         display: block;
         width: 100%;
         height: 100%;
+        aspect-ratio: 1 / 1;
         border-radius: inherit;
         object-fit: cover;
+        object-position: center;
+        opacity: 0;
+        transition: opacity 180ms ease;
       }
+      .av img.is-avatar-decoded { opacity: 1; }
+      .av img.is-avatar-instant { transition: none; }
       .presence-avatar {
         position: relative;
         display: inline-block;
@@ -837,9 +844,10 @@
       }
       @media (prefers-reduced-motion: reduce) {
         .presence-dot { transition: none; }
+        .av img { transition: none; }
       }
       .av.has-image {
-        background: var(--bg);
+        background: transparent;
       }
       .av.av-default {
         color: var(--text-2);
@@ -2539,10 +2547,13 @@
       }
       #profileBody.is-loading #profileAvatar {
         border-radius: 50%;
-        border-color: var(--surface-2);
+        border-color: transparent;
+        background: transparent;
+        box-shadow: none;
       }
       #profileBody.is-loading #profileAvatar img,
       #profileBody.is-loading #profileAvatar svg { visibility: hidden; }
+      #profileBody.is-loading #profileAvatar::after { display: none; }
       #profileBody.is-loading #profileName { width: min(240px, 58%); }
       #profileBody.is-loading #profileHandle { width: min(160px, 42%); min-height: 18px; }
       #profileBody.is-loading #profileBio { width: min(360px, 85%); min-height: 38px; }
@@ -3239,6 +3250,7 @@
         position: relative;
         width: 88px;
         height: 88px;
+        aspect-ratio: 1 / 1;
         flex: none;
         margin-top: -44px;
         z-index: 2;
@@ -3248,6 +3260,7 @@
       .profile-avatar-wrap > .presence-avatar {
         width: 88px;
         height: 88px;
+        aspect-ratio: 1 / 1;
       }
       .profile-avatar-wrap .presence-dot {
         border-width: 3px;
@@ -3257,7 +3270,7 @@
         margin-top: 12px;
       }
       .profile-avatar-wrap .profile-edit-overlay {
-        right: 0;
+        inset-inline-end: 0;
         bottom: 0;
         width: 30px;
         height: 30px;
@@ -8643,7 +8656,7 @@
           <div class="prof">
             <div class="prof-top">
               <div class="profile-avatar-wrap">
-                <span class="presence-avatar" data-presence-avatar><span class="av lg t3" id="profileAvatar" aria-hidden="true">?</span><span class="presence-dot" data-presence-dot role="status" aria-label="Online" hidden></span></span>
+                <span class="presence-avatar" data-presence-avatar><span class="av lg t3" id="profileAvatar" aria-hidden="true"></span><span class="presence-dot" data-presence-dot role="status" aria-label="Online" hidden></span></span>
                 <button class="profile-edit-overlay" id="editProfileAvatar" type="button" aria-label="Update profile photo" title="Update profile photo">
                   <svg class="i" aria-hidden="true"><use href="#camera" /></svg>
                 </button>
@@ -9510,14 +9523,169 @@
         gif?.images?.fixed_width?.url,
       ].find(isGiphyDirectGifUrl) || "";
       const defaultAvatarSvg = `<svg class="relay-avatar-mark" viewBox="0 0 40 40" focusable="false"><use href="#default-avatar" /></svg>`;
-      const setAvatar = (element, user, size = "") => {
-        element.innerHTML = user?.avatarUrl
-          ? `<img src="${esc(mediaHref(user.avatarUrl))}" alt="">`
-          : defaultAvatarSvg;
-        element.className = `av ${size}${user?.avatarUrl ? " has-image" : " av-default"}`.trim();
+      const avatarUrlsByUser = new Map();
+      const avatarPreloads = new Map();
+      const avatarSetGenerations = new WeakMap();
+      const normalizedAvatarUrl = (value) => value ? new URL(mediaHref(value), window.location.href).href : "";
+      function preloadAvatarImage(value) {
+        const url = normalizedAvatarUrl(value);
+        if (!url) return Promise.resolve(false);
+        const existing = avatarPreloads.get(url);
+        if (existing) return existing;
+        const image = new Image();
+        image.decoding = "async";
+        image.fetchPriority = "high";
+        const ready = new Promise((resolve) => {
+          let settled = false;
+          const finish = (loaded) => {
+            if (settled) return;
+            settled = true;
+            resolve(loaded);
+          };
+          const decode = async () => {
+            if (!image.naturalWidth) {
+              finish(false);
+              return;
+            }
+            try {
+              if (typeof image.decode === "function") await image.decode();
+            } catch {
+              if (!image.naturalWidth) {
+                finish(false);
+                return;
+              }
+            }
+            finish(image.naturalWidth > 0);
+          };
+          image.addEventListener("load", () => void decode(), { once: true });
+          image.addEventListener("error", () => finish(false), { once: true });
+          image.src = url;
+          if (image.complete) void decode();
+        }).then((loaded) => {
+          if (!loaded) avatarPreloads.delete(url);
+          return loaded;
+        });
+        avatarPreloads.set(url, ready);
+        return ready;
+      }
+      function rememberAvatarUrl(user) {
+        if (!user?.id || !user.avatarUrl) return "";
+        const url = normalizedAvatarUrl(user.avatarUrl);
+        avatarUrlsByUser.set(user.id, url);
+        return url;
+      }
+      function fallbackAvatarImage(image) {
+        const avatar = image.parentElement;
+        if (!avatar?.classList.contains("av") || !image.isConnected) return;
+        avatar.classList.remove("has-image");
+        avatar.classList.add("av-default");
+        avatar.innerHTML = defaultAvatarSvg;
+      }
+      function decodeAvatarImage(image) {
+        if (!image.isConnected) return;
+        const source = image.currentSrc || image.src;
+        if (image.dataset.avatarDecodedSrc === source) return;
+        const wasCached = image.complete && image.naturalWidth > 0;
+        const reveal = async () => {
+          if (!image.isConnected || (image.currentSrc || image.src) !== source) return;
+          if (!image.naturalWidth) {
+            fallbackAvatarImage(image);
+            return;
+          }
+          try {
+            if (typeof image.decode === "function") await image.decode();
+          } catch {
+            if (!image.naturalWidth) {
+              fallbackAvatarImage(image);
+              return;
+            }
+          }
+          if (!image.isConnected || (image.currentSrc || image.src) !== source) return;
+          image.dataset.avatarDecodedSrc = source;
+          image.classList.toggle("is-avatar-instant", wasCached && image.dataset.avatarFade !== "true");
+          image.classList.add("is-avatar-decoded");
+        };
+        if (image.complete) {
+          if (image.naturalWidth) void reveal();
+          else if (image.loading !== "lazy"
+            || image.getBoundingClientRect().top < window.innerHeight * 1.5) fallbackAvatarImage(image);
+          return;
+        }
+        image.addEventListener("load", () => void reveal(), { once: true });
+        image.addEventListener("error", () => fallbackAvatarImage(image), { once: true });
+      }
+      function prepareAvatarImages(root) {
+        if (root instanceof HTMLImageElement && root.closest(".av")) {
+          prepareAvatarImagesInAvatar(root.closest(".av"));
+        } else if (root instanceof Element) {
+          root.querySelectorAll(".av img").forEach((image) => prepareAvatarImagesInAvatar(image.parentElement));
+        }
+      }
+      function prepareAvatarImagesInAvatar(avatar) {
+        const image = avatar?.querySelector("img");
+        if (!image) return;
+        const profileHeaderAvatar = image.closest("#profileAvatar");
+        const eager = Boolean(profileHeaderAvatar)
+          || image.getBoundingClientRect().top < window.innerHeight * 1.5;
+        image.decoding = "async";
+        image.loading = eager ? "eager" : "lazy";
+        image.fetchPriority = profileHeaderAvatar ? "high" : "auto";
+        decodeAvatarImage(image);
+      }
+      const avatarMutationObserver = new MutationObserver((records) => {
+        records.forEach((record) => record.addedNodes.forEach(prepareAvatarImages));
+      });
+      avatarMutationObserver.observe(document.body, { childList: true, subtree: true });
+      document.querySelectorAll(".av img").forEach((image) => prepareAvatarImagesInAvatar(image.parentElement));
+      const preloadProfileAvatarOnIntent = (event) => {
+        const trigger = event.target instanceof Element
+          ? event.target.closest("[data-profile-id], [data-explore-profile-id]")
+          : null;
+        if (!trigger || (event.type === "pointerover" && trigger.contains(event.relatedTarget))) return;
+        const userId = trigger.dataset.profileId || trigger.dataset.exploreProfileId;
+        const avatarUrl = avatarUrlsByUser.get(userId);
+        if (avatarUrl) void preloadAvatarImage(avatarUrl);
       };
-      const avatarMarkup = (user, size = "") =>
-        `<span class="av ${size}${user?.avatarUrl ? " has-image" : " av-default"}" aria-hidden="true">${user?.avatarUrl ? `<img src="${esc(mediaHref(user.avatarUrl))}" alt="">` : defaultAvatarSvg}</span>`;
+      document.addEventListener("pointerover", preloadProfileAvatarOnIntent, true);
+      document.addEventListener("focusin", preloadProfileAvatarOnIntent, true);
+      function setAvatar(element, user, size = "") {
+        if (!element) return;
+        const url = rememberAvatarUrl(user);
+        const className = `av ${size}${url ? " has-image" : " av-default"}`.trim();
+        if (!url) {
+          avatarSetGenerations.set(element, (avatarSetGenerations.get(element) || 0) + 1);
+          element.innerHTML = defaultAvatarSvg;
+          element.className = className;
+          return;
+        }
+        const source = normalizedAvatarUrl(url);
+        const existingImage = element.querySelector("img");
+        const hasExistingVisual = element.childElementCount > 0;
+        const existingSource = existingImage ? normalizedAvatarUrl(existingImage.currentSrc || existingImage.src) : "";
+        if (existingImage && existingSource === source) {
+          element.className = className;
+          return;
+        }
+        const generation = (avatarSetGenerations.get(element) || 0) + 1;
+        avatarSetGenerations.set(element, generation);
+        const apply = () => {
+          if (avatarSetGenerations.get(element) !== generation) return;
+          element.className = className;
+          const fadeOnReveal = hasExistingVisual ? ' data-avatar-fade="true"' : "";
+          element.innerHTML = `<img src="${esc(source)}" alt="" decoding="async" loading="${element.id === "profileAvatar" ? "eager" : "lazy"}" fetchpriority="${element.id === "profileAvatar" ? "high" : "auto"}"${fadeOnReveal}>`;
+        };
+        if (hasExistingVisual) {
+          void preloadAvatarImage(source).then((loaded) => {
+            if (loaded) apply();
+          });
+        } else {
+          apply();
+        }
+      }
+      const avatarMarkup = (user, size = "") => {
+        const url = rememberAvatarUrl(user);
+        return `<span class="av ${size}${url ? " has-image" : " av-default"}" aria-hidden="true">${url ? `<img src="${esc(url)}" alt="" decoding="async" loading="lazy" fetchpriority="auto">` : defaultAvatarSvg}</span>`;
+      };
       const isUserOnline = (user) => {
         const livePresence = presenceByUser.get(user?.id);
         if (livePresence) return livePresence.isOnline;
@@ -11356,6 +11524,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             result = response.posts;
           }
           if (generation !== profileRenderGeneration || targetId !== (viewedProfileId || currentUser.id)) return;
+          if (headerNeedsLoad && profile?.avatarUrl) {
+            await preloadAvatarImage(profile.avatarUrl);
+            if (generation !== profileRenderGeneration || targetId !== (viewedProfileId || currentUser.id)) return;
+          }
           await finishSkeleton?.();
           await removeAppendSkeleton?.();
           await finishProfileHeaderSkeleton?.();
