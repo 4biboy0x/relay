@@ -6261,6 +6261,9 @@
       .explore-filter-tabs {
         padding-bottom: 0;
       }
+      #v-explore #exp {
+        min-height: 180px;
+      }
       #exp.explore-search-loading [data-search-results] {
         opacity: 0.55;
         transition: opacity 140ms ease;
@@ -8270,7 +8273,7 @@
           </nav>
           <div id="exploreSearchFilters" hidden></div>
           <div id="exp" data-transition-content></div>
-            <button class="more-l" id="exploreMore" data-transition-content data-more="explore" hidden>Load more</button>
+            <button class="more-l" id="exploreMore" data-more="explore" hidden>Load more</button>
         </section>
 
         <section id="v-reels" data-v hidden aria-label="Reels">
@@ -10651,7 +10654,7 @@
       function transitionTargetsForView(view) {
         switch (view) {
           case "home": return $("#homeTimeline");
-          case "explore": return [$("#exp"), $("#exploreSearchFilters"), $("#exploreMore")];
+          case "explore": return $("#exp");
           case "reels": return [$("#reelItems"), $("#reelFeedState")];
           case "messages": return [$("#conversationList"), $("#messageSearchResults"), $("#conversationSearchEmpty"), $("#chatLog")];
           case "notifs": return $("#nl");
@@ -13843,11 +13846,17 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function renderExploreSearchTabs(searchText = $("#exploreSearch").value.trim()) {
         const searching = !!searchText;
+        const filters = $("#exploreSearchFilters");
         $("#exploreTabs").hidden = searching;
-        $("#exploreSearchFilters").hidden = !searching;
-        $("#exploreSearchFilters").innerHTML = searching
-          ? `<nav class="tabs explore-tabs explore-filter-tabs" role="tablist" aria-label="Search results">${["Top", "Latest", "People"].map((filter) => `<button class="tab" type="button" role="tab" data-explore-filter="${filter}" aria-selected="${filter === exploreSearchFilter}">${filter}</button>`).join("")}</nav>`
-          : "";
+        filters.hidden = !searching;
+        let tabs = filters.querySelector('[role="tablist"]');
+        if (!tabs) {
+          filters.innerHTML = `<nav class="tabs explore-tabs explore-filter-tabs" role="tablist" aria-label="Search results">${["Top", "Latest", "People"].map((filter) => `<button class="tab" type="button" role="tab" data-explore-filter="${filter}">${filter}</button>`).join("")}</nav>`;
+          tabs = filters.querySelector('[role="tablist"]');
+        }
+        tabs.querySelectorAll("[data-explore-filter]").forEach((button) => {
+          button.setAttribute("aria-selected", String(button.dataset.exploreFilter === exploreSearchFilter));
+        });
       }
       function setExploreSearchLoading(searchText) {
         renderExploreSearchTabs(searchText);
@@ -16917,7 +16926,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             }
           }
           if (view === "explore" && exploreTab !== previousExploreTab) {
-            renderExplore($("#exploreSearch").value.trim());
+            transitionContent($("#exp"), () => {
+              void renderExplore($("#exploreSearch").value.trim());
+            });
           }
           return;
         }
@@ -17224,20 +17235,24 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const exploreTabLink = e.target.closest("[data-explore-tab-link]");
         if (exploreTabLink) {
           selectExploreTab(exploreTabLink.dataset.exploreTabLink);
-          renderExplore();
-          return;
+          return transitionContent($("#exp"), () => {
+            void renderExplore();
+          });
         }
         const exploreTabButton = e.target.closest("[data-explore-tab]");
         if (exploreTabButton) {
           selectExploreTab(exploreTabButton.dataset.exploreTab);
-          renderExplore();
-          return;
+          return transitionContent($("#exp"), () => {
+            void renderExplore();
+          });
         }
         const exploreFilter = e.target.closest("[data-explore-filter]");
         if (exploreFilter) {
           exploreSearchFilter = exploreFilter.dataset.exploreFilter;
-          renderExplore($("#exploreSearch").value.trim());
-          return;
+          renderExploreSearchTabs();
+          return transitionContent($("#exp"), () => {
+            void renderExplore($("#exploreSearch").value.trim());
+          });
         }
         const action = e.target.closest("[data-action]");
         if (action?.dataset.action === "show-topics") {
