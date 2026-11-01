@@ -3701,15 +3701,9 @@
       .auth-cookie-prompt[hidden] { display: none; }
       .auth-cookie-prompt p {
         margin: 0;
-        color: var(--text-2);
+        color: var(--text-3);
         font-size: 12px;
         line-height: 1.5;
-      }
-      .auth-cookie-prompt-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px 12px;
-        margin-top: 10px;
       }
       .auth-cookie-prompt button {
         padding: 0;
@@ -3720,10 +3714,7 @@
         font-size: 12px;
         cursor: pointer;
       }
-      .auth-cookie-prompt button:hover {
-        color: var(--text);
-        text-decoration: underline;
-      }
+      .auth-cookie-prompt button:hover { text-decoration: underline; }
       .reply-composer-overlay {
         position: fixed;
         z-index: 9999;
@@ -3787,6 +3778,108 @@
         background: var(--surface);
         font: inherit;
       }
+      #authDialog {
+        --auth-submit-bg: var(--accent);
+        --auth-submit-hover: var(--accent-h);
+        width: min(400px, calc(100vw - 32px));
+        max-width: none;
+        max-height: calc(100dvh - 32px);
+        overflow-y: auto;
+        padding: 28px;
+        border-radius: 16px;
+        border-color: var(--border);
+        background: var(--bg);
+        box-shadow: 0 8px 32px rgba(9, 9, 11, .16);
+      }
+      :root[data-theme="dark"] #authDialog { --auth-submit-bg: #555fcf; --auth-submit-hover: #4f59c7; }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) #authDialog {
+          --auth-submit-bg: #555fcf;
+          --auth-submit-hover: #4f59c7;
+        }
+      }
+      #authDialog .auth-brand { display: flex; justify-content: center; margin-bottom: 16px; }
+      #authDialog .auth-brand .mark { width: 28px; height: 28px; border-radius: 8px; }
+      #authDialog h2 {
+        margin: 0;
+        text-align: center;
+        font-size: 22px;
+        font-weight: 650;
+        letter-spacing: -0.02em;
+      }
+      #authDialog .auth-subtitle {
+        margin: 6px 0 24px;
+        color: var(--text-2);
+        font-size: 14px;
+        text-align: center;
+      }
+      #authDialog form { display: grid; width: 100%; gap: 16px; }
+      #authDialog .auth-field { display: grid; min-width: 0; gap: 6px; }
+      #authDialog .auth-field > label {
+        color: var(--text-2);
+        font-size: 13px;
+        font-weight: 500;
+      }
+      #authDialog input {
+        box-sizing: border-box;
+        height: 44px;
+        border-color: var(--border);
+        border-radius: 10px;
+        background: var(--bg);
+        font-size: 15px;
+      }
+      #authDialog input:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+      }
+      #authDialog .settings-password-wrap { display: block; }
+      #authDialog .settings-password-wrap input { padding-right: 44px; }
+      #authDialog .settings-password-toggle {
+        bottom: 6px;
+        border-radius: 8px;
+      }
+      #authDialog .auth-forgot {
+        justify-self: end;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: var(--accent);
+        font-size: 13px;
+        cursor: pointer;
+      }
+      #authDialog .auth-forgot:hover { text-decoration: underline; }
+      #authError { min-height: 0; margin: 0; color: var(--like); font-size: 13px; }
+      #authError:empty { display: none; }
+      #authDialog #authSubmit {
+        width: 100%;
+        height: 44px;
+        padding: 0 16px;
+        border-radius: 10px;
+        background: var(--auth-submit-bg);
+        color: #fff;
+        font-size: 15px;
+        font-weight: 600;
+      }
+      #authDialog #authSubmit:hover:not(:disabled) { background: var(--auth-submit-hover); }
+      #authDialog #authSubmit:disabled { opacity: .8; }
+      #authDialog .auth-switch-row {
+        margin: 16px 0 0;
+        color: var(--text-2);
+        font-size: 14px;
+        text-align: center;
+      }
+      #authDialog .auth-switch {
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: var(--accent);
+        font-size: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      #authDialog .auth-switch:hover { text-decoration: underline; }
       .auth-switch {
         margin-top: 10px;
         color: var(--accent);
@@ -4471,7 +4564,7 @@
       .message-search-load-more {
         align-self: center;
         margin: 8px 0 14px;
-        padding: 8px 14px;
+        padding: 8px 20px;
         border-radius: 999px;
         color: var(--text-2);
         font-size: 12px;
@@ -5882,8 +5975,7 @@
         transform: scale(0.92);
         transition-duration: 80ms;
       }
-      .nav-item[data-view="reels"][aria-current="page"] .reels-symbol,
-      .profile-tabs [data-pt="Reels"][aria-selected="true"] .reels-symbol {
+      .nav-item[data-view="reels"][aria-current="page"] .reels-symbol {
         --reels-play-fill: currentColor;
       }
       @media (max-width: 1100px) {
@@ -6356,13 +6448,11 @@
         align-items: center;
         justify-content: space-between;
         gap: 12px;
-        min-height: 64px;
-        padding: 8px 18px;
+        min-height: 56px;
+        padding: 8px 20px;
         border-bottom: 1px solid var(--border);
       }
-      .reels-top h1 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 19px; letter-spacing: -.025em; }
-      .reels-top h1 .reels-symbol { width: 20px; height: 20px; }
-      .reels-top p { margin: 4px 0 0; color: var(--text-3); font-size: 12px; }
+      .reels-top h1 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: -0.02em; }
       .reels-top .btn { min-height: 36px; gap: 7px; padding: 0 12px; }
       .reels-top .i { width: 16px; height: 16px; }
       .reel-feed {
@@ -6704,8 +6794,6 @@
       .reel-upload-preview video { width: 100%; height: 100%; object-fit: contain; background: #08090b; }
       .reel-upload-placeholder { display: grid; justify-items: center; gap: 10px; padding: 20px 12px; color: var(--text-2); text-align: center; }
       .reel-upload-placeholder .i { width: 20px; height: 20px; color: var(--accent); }
-      .profile-tabs [data-pt="Reels"] { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-      .profile-tabs [data-pt="Reels"] .reels-symbol { width: 18px; height: 18px; }
       .reel-upload-placeholder strong { color: var(--text); font-size: 14px; }
       .reel-upload-placeholder span { color: var(--text-2); font-size: 11px; line-height: 1.45; }
       .reel-upload-fields { display: flex; min-width: 0; flex-direction: column; align-items: stretch; }
@@ -6811,8 +6899,6 @@
           pointer-events: none;
         }
         .app.reels-active .reels-top > * { pointer-events: auto; }
-        .app.reels-active .reels-top p { display: none; }
-        .app.reels-active .reels-top h1 { font-size: 17px; }
         .app.reels-active .reels-top .btn { min-height: 34px; font-size: 12px; }
         .app.reels-active .reel-feed { position: absolute; inset: 0; }
         .reel-item { height: 100%; min-height: 100%; padding: 0; }
@@ -7163,8 +7249,7 @@
         <section id="v-reels" data-v hidden aria-label="Reels">
           <header class="reels-top">
             <div>
-              <h1><svg class="i reels-symbol" aria-hidden="true"><use href="#reels" /></svg>Reels</h1>
-              <p>Short videos from people on Relay</p>
+              <h1>Reels</h1>
             </div>
             <button class="btn btn-primary" id="createReelButton" type="button">
               <svg class="i" aria-hidden="true"><use href="#plus" /></svg>
@@ -7456,7 +7541,7 @@
               aria-selected="false"
               data-pt="Reels"
             >
-              <svg class="i reels-symbol" aria-hidden="true"><use href="#reels" /></svg>Reels
+              Reels
             </button>
             <button
               class="tab"
@@ -7822,34 +7907,34 @@
       <strong>ALT</strong>
       <p id="postAltText"></p>
     </dialog>
-    <dialog class="auth-dialog" id="authDialog" aria-labelledby="authTitle">
+    <dialog class="auth-dialog" id="authDialog" role="dialog" aria-modal="true" aria-labelledby="authTitle" aria-describedby="authSubtitle" tabindex="-1">
+      <div class="auth-brand" aria-hidden="true"><span class="mark"><svg class="i"><use href="#relay" /></svg></span></div>
       <h2 id="authTitle">Welcome to Relay</h2>
+      <p class="auth-subtitle" id="authSubtitle">Sign in to continue.</p>
       <form id="authForm" novalidate>
-        <label id="authNameLabel" hidden>Display name
+        <div class="auth-field" id="authNameLabel" hidden>
+          <label for="authName">Display name</label>
           <input id="authName" name="displayName" maxlength="60" autocomplete="name" />
-        </label>
-        <label id="authHandleLabel" hidden>Username
+        </div>
+        <div class="auth-field" id="authHandleLabel" hidden>
+          <label for="authHandle">Username</label>
           <input id="authHandle" name="handle" maxlength="30" autocomplete="username" />
-        </label>
-        <label>Email
-          <input id="authEmail" name="email" type="email" maxlength="254" required autocomplete="email" />
-        </label>
-        <label>Password
-          <span class="settings-password-wrap"><input id="authPassword" name="password" type="password" minlength="12" maxlength="72" required autocomplete="current-password" /><button class="settings-password-toggle" type="button" aria-label="Show password"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.06 12.35a1 1 0 0 1 0-.7C3.5 8.15 7.25 5 12 5s8.5 3.15 9.94 6.65a1 1 0 0 1 0 .7C20.5 15.85 16.75 19 12 19s-8.5-3.15-9.94-6.65Z"/><circle cx="12" cy="12" r="3"/></svg></button></span>
-        </label>
+        </div>
+        <div class="auth-field">
+          <label for="authEmail">Email</label>
+          <input id="authEmail" name="email" type="email" maxlength="254" placeholder="you@example.com" required autocomplete="email" autofocus />
+        </div>
+        <div class="auth-field">
+          <label for="authPassword">Password</label>
+          <span class="settings-password-wrap"><input id="authPassword" name="password" type="password" minlength="12" maxlength="72" placeholder="Password" required autocomplete="current-password" /><button class="settings-password-toggle" type="button" aria-label="Show password"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.06 12.35a1 1 0 0 1 0-.7C3.5 8.15 7.25 5 12 5s8.5 3.15 9.94 6.65a1 1 0 0 1 0 .7C20.5 15.85 16.75 19 12 19s-8.5-3.15-9.94-6.65Z"/><circle cx="12" cy="12" r="3"/></svg></button></span>
+          <button class="auth-forgot" id="authForgot" type="button" data-auth-forgot>Forgot password?</button>
+        </div>
         <p id="authError" class="dialog-error" role="alert"></p>
         <button class="btn btn-primary" id="authSubmit" type="submit">Sign in</button>
       </form>
-      <button class="auth-switch" id="authSwitch" type="button">Create an account</button>
+      <p class="auth-switch-row"><span id="authSwitchPrompt">New to Relay?</span> <button class="auth-switch" id="authSwitch" type="button">Create an account</button></p>
       <section class="auth-cookie-prompt" id="cookieAuthPrompt" aria-label="Cookie preferences" hidden>
-        <p>Relay uses necessary cookies for secure sign-in. Optional analytics and advertising cookies are not currently active.</p>
-        <div class="auth-cookie-prompt-actions">
-          <button type="button" data-cookie-choice="essential">Essential only</button>
-          <button type="button" data-cookie-choice="all">Allow optional</button>
-          <button type="button" data-open-cookie-settings>Settings</button>
-          <button type="button" data-open-legal="terms">Terms</button>
-          <button type="button" data-open-legal="privacy">Privacy</button>
-        </div>
+        <p>Relay uses only necessary cookies for sign-in. <button type="button" data-open-cookie-settings>Manage cookies</button> · <button type="button" data-open-legal="terms">Terms</button> · <button type="button" data-open-legal="privacy">Privacy</button></p>
       </section>
     </dialog>
     <dialog class="auth-dialog action-dialog" id="actionDialog" aria-labelledby="actionTitle" aria-describedby="actionDescription">
@@ -13723,7 +13808,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       let registering = false;
       function showAuth() {
         closeActionDialog();
-        if (!authDialog.open) authDialog.showModal();
+        if (!authDialog.open) {
+          authDialog.showModal();
+          $("#authEmail").focus({ preventScroll: true });
+        }
         updateCookieConsentVisibility();
       }
       function updateAccountUI() {
@@ -14205,14 +14293,17 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         registering = createAccount;
         $("#authError").textContent = "";
         $("#authTitle").textContent = registering ? "Create your Relay account" : "Welcome to Relay";
+        $("#authSubtitle").textContent = registering ? "Create your account to get started." : "Sign in to continue.";
         $("#authNameLabel").hidden = !registering;
         $("#authHandleLabel").hidden = !registering;
+        $("#authForgot").hidden = registering;
         $("#authName").required = registering;
         $("#authHandle").required = registering;
         $("#authPassword").minLength = registering ? 12 : 1;
         $("#authPassword").autocomplete = registering ? "new-password" : "current-password";
         $("#authSubmit").textContent = registering ? "Create account" : "Sign in";
-        $("#authSwitch").textContent = registering ? "Already have an account? Sign in" : "Create an account";
+        $("#authSwitchPrompt").textContent = registering ? "Already have an account?" : "New to Relay?";
+        $("#authSwitch").textContent = registering ? "Sign in" : "Create an account";
       }
       async function loadSession() {
         const splashStartedAt = performance.now();
@@ -14797,6 +14888,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         if (e.target.closest("#authSwitch")) {
           setAuthMode(!registering);
+          return;
+        }
+        if (e.target.closest("[data-auth-forgot]")) {
+          toast("Password reset isn’t available yet.");
           return;
         }
         if (e.target.closest("#emojiToggle")) {
@@ -16258,7 +16353,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const consentSaved = Boolean(readCookieConsent());
         const authIsOpen = authDialog.open;
         $("#cookieBanner").hidden = consentSaved || authIsOpen;
-        $("#cookieAuthPrompt").hidden = consentSaved || !authIsOpen;
+        $("#cookieAuthPrompt").hidden = !authIsOpen;
       }
       $$("[data-open-legal]").forEach((button) => {
         button.addEventListener("click", () => {
