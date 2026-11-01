@@ -4962,6 +4962,12 @@
       .conversation-item[aria-current="true"] {
         background: color-mix(in srgb, var(--text) 6%, var(--surface));
       }
+      .conversation-item.is-search-result[aria-current="true"] {
+        background: transparent;
+      }
+      .conversation-item.is-search-result:hover {
+        background: color-mix(in srgb, var(--text) 2.5%, var(--surface));
+      }
       .conversation-item-heading {
         display: flex;
         min-width: 0;
@@ -13761,8 +13767,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         const markup = items.map((item, index) => {
           const other = item.members.find((member) => member.id !== currentUser?.id);
-          const current = item.id === selectedConversationId
-            || (!selectedConversationId && item.id === activeConversation?.id);
+          const current = searchMode !== "messages" && (item.id === selectedConversationId
+            || (!selectedConversationId && item.id === activeConversation?.id));
           const search = `${conversationSearchText(item)} ${normalizedQuery}`;
           const lastMessage = item.lastMessage;
           const matchingLastMessage = queryTerms.length > 0
@@ -13799,7 +13805,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const unreadLabel = unreadCount > 99 ? "+99" : unreadCount > 9 ? "+9" : fmt(unreadCount);
           const searchMessageId = searchQuery && searchMode !== "conversations" ? item.matchedMessage?.id || "" : "";
           const searchMessageCandidate = Boolean(searchQuery && searchMode === "all" && !searchMessageId && matchingLastMessage);
-          return `<button class="conversation-item${searchMode === "messages" ? " message-search-result" : ""}${unreadCount ? " has-unread" : ""}" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}">${presenceAvatarMarkup(other, "sm")}<span class="grow"><span class="conversation-item-heading"><b>${esc(other?.displayName || "Relay user")}</b>${messageTime}</span><small>${preview}</small></span>${unreadCount ? `<span class="unread-count" aria-label="${unreadCount} unread messages">${unreadLabel}</span>` : ""}</button>`;
+          return `<button class="conversation-item${searchQuery ? " is-search-result" : ""}${searchMode === "messages" ? " message-search-result" : ""}${unreadCount ? " has-unread" : ""}" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}">${presenceAvatarMarkup(other, "sm")}<span class="grow"><span class="conversation-item-heading"><b>${esc(other?.displayName || "Relay user")}</b>${messageTime}</span><small>${preview}</small></span>${unreadCount ? `<span class="unread-count" aria-label="${unreadCount} unread messages">${unreadLabel}</span>` : ""}</button>`;
         }).join("");
         if (append) resultList.insertAdjacentHTML("beforeend", markup);
         else resultList.innerHTML = markup;
@@ -13964,7 +13970,16 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const query = $("#conversationSearch").value.trim().replace(/\s+/g, " ");
         let targetMessageId = conversationButton.dataset.searchMessageId || "";
         if (activeConversation?.id === conversation.id && !targetMessageId
-          && conversationButton.dataset.searchMessageCandidate !== "true") return;
+          && conversationButton.dataset.searchMessageCandidate !== "true") {
+          if (query) {
+            $("#conversationSearch").value = "";
+            searchConversations();
+            $$(".conversation-item", $("#conversationList"))
+              .find((item) => item.dataset.conversation === conversation.id)
+              ?.focus({ preventScroll: true });
+          }
+          return;
+        }
         let searchTargetMissing = false;
         if (!targetMessageId && conversationButton.dataset.searchMessageCandidate === "true" && query) {
           try {
@@ -13986,6 +14001,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           return;
         }
         if (searchTargetMissing) toast("Could not find that matching message in the conversation.");
+        if (query) {
+          $("#conversationSearch").value = "";
+          searchConversations();
+          $$(".conversation-item", $("#conversationList"))
+            .find((item) => item.dataset.conversation === conversation.id)
+            ?.focus({ preventScroll: true });
+        }
         openConversation(conversation, true, targetMessageId);
       }
       function openConversation(conversation, updateRoute = true, targetMessageId = "") {
@@ -14050,8 +14072,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function syncConversationSelection(conversationId) {
         selectedConversationId = conversationId;
-        $$("[data-conversation]").forEach((item) => {
+        $$("[data-conversation]", $("#conversationList")).forEach((item) => {
           item.setAttribute("aria-current", String(item.dataset.conversation === conversationId));
+        });
+        $$("[data-conversation]", $("#messageSearchResults")).forEach((item) => {
+          item.setAttribute("aria-current", "false");
         });
       }
       function navigateToSearchedMessage(conversation, messageId) {
