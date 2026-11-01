@@ -31,6 +31,7 @@ import {
   verifyLocalReelReadUrl,
 } from "./reel-storage";
 import { detectReelContainer } from "./reel-processing";
+import { recordUniqueReelShare } from "./reel-shares";
 import { createViewerKey, viewRateLimiter, viewRequestGuard } from "./view-tracking";
 
 const router = express.Router();
@@ -621,11 +622,16 @@ router.post("/:id/share", authRequired, writeLimiter, asyncRoute(async (req, res
       select: { id: true },
     });
     if (!reel) throw new HttpError(404, "Reel not found");
-    return tx.reel.update({
+    await recordUniqueReelShare(tx, req.userId!, reelId);
+    const updatedReel = await tx.reel.findUniqueOrThrow({
       where: { id: reelId },
-      data: { shareCount: { increment: 1 } },
       select: { likeCount: true, commentCount: true, repostCount: true, shareCount: true, viewCount: true },
     });
+    return makeInteractionResponse(updatedReel, {
+      liked: false,
+      bookmarked: false,
+      reposted: false,
+    }).counts;
   });
   res.json({ counts });
 }));

@@ -33,6 +33,7 @@ model User {
   reelLikes     ReelLike[]
   reelReposts   ReelRepost[]
   reelBookmarks ReelBookmark[]
+  reelShares    ReelShare[]
   reelComments  ReelComment[]
   reelReports   ReelReport[]
   posts         Post[]
@@ -119,6 +120,7 @@ model Reel {
   likes            ReelLike[]
   reposts          ReelRepost[]
   bookmarks        ReelBookmark[]
+  shares           ReelShare[]
   views            ReelView[]
   comments         ReelComment[]
   reports          ReelReport[]
@@ -161,6 +163,16 @@ model ReelRepost {
 
   @@id([userId, reelId])
   @@index([userId, createdAt(sort: Desc)])
+}
+
+model ReelShare {
+  userId    String
+  reelId    String   @db.Uuid
+  createdAt DateTime @default(now())
+  reel      Reel     @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, reelId])
 }
 
 model ReelView {
