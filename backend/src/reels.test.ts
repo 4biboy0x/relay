@@ -23,7 +23,9 @@ test("rejects content with a spoofed video extension but no video signature", ()
 });
 
 test("local media links are signed and expire", () => {
-  const url = new URL(createLocalReelReadUrl(reelId, "video"), "https://relay.test");
+  const signedUrl = createLocalReelReadUrl(reelId, "video");
+  assert.equal(createLocalReelReadUrl(reelId, "video"), signedUrl);
+  const url = new URL(signedUrl, "https://relay.test");
   const expires = url.searchParams.get("expires") ?? undefined;
   const signature = url.searchParams.get("signature") ?? undefined;
   assert.equal(verifyLocalReelReadUrl(reelId, "video", expires, signature), true);

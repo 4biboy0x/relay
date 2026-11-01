@@ -13,6 +13,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { config } from "./config";
+import { createSignedMediaUrl } from "./media-url";
 
 const publicUploadDirectory = path.resolve(process.cwd(), "uploads");
 export const reelStorageDirectory = path.resolve(process.cwd(), config.REEL_STORAGE_DIR);
@@ -79,15 +80,12 @@ export const createReelUploadUrl = async (
 
 export const createReelReadUrl = async (key: string): Promise<string> => {
   if (!s3) return "";
-  return getSignedUrl(s3, new GetObjectCommand({
-    Bucket: requireBucket(),
-    Key: key,
-    ResponseContentDisposition: "inline",
-  }), { expiresIn: 60 * 60 });
+  return createSignedMediaUrl(s3, requireBucket(), key);
 };
 
 export const createLocalReelReadUrl = (reelId: string, kind: "video" | "poster"): string => {
-  const expires = Math.floor(Date.now() / 1000) + 60 * 60;
+  const signingWindow = Math.floor(Date.now() / (24 * 60 * 60 * 1000)) * 24 * 60 * 60;
+  const expires = signingWindow + 48 * 60 * 60;
   const signature = createHmac("sha256", config.JWT_ACCESS_SECRET)
     .update(`${reelId}:${kind}:${expires}`)
     .digest("base64url");
@@ -103,7 +101,7 @@ export const verifyLocalReelReadUrl = (
   if (!expiresValue || !signature || !/^\d{10}$/.test(expiresValue)) return false;
   const expires = Number(expiresValue);
   const now = Math.floor(Date.now() / 1000);
-  if (expires < now || expires > now + 60 * 60 + 30) return false;
+  if (expires < now || expires > now + 48 * 60 * 60 + 30) return false;
 
   const expected = createHmac("sha256", config.JWT_ACCESS_SECRET)
     .update(`${reelId}:${kind}:${expires}`)

@@ -44,6 +44,10 @@ html = html.replace(
   '<meta name="relay-giphy-api-key" content="" />',
   `<meta name="relay-giphy-api-key" content="${escapedGiphyApiKey}" />`,
 );
+html = html.replace(
+  '<meta name="relay-production" content="false" />',
+  '<meta name="relay-production" content="true" />',
+);
 fs.writeFileSync(stagingHtml, "<!doctype html><html><head><title>Relay</title></head><body></body></html>");
 
 const viteCli = path.join(root, "node_modules", "vite", "bin", "vite.js");
@@ -54,6 +58,7 @@ const result = spawnSync(process.execPath, [viteCli, "build", "--config", "vite.
 if (result.status === 0) {
   fs.writeFileSync(outputHtml, html);
   fs.copyFileSync(path.join(root, "realtime-demo.html"), outputDemoHtml);
+  fs.copyFileSync(path.join(root, "sw.js"), path.join(root, "dist", "sw.js"));
   fs.cpSync(path.join(root, "assets"), path.join(root, "dist", "assets"), { recursive: true });
   fs.rmSync(path.join(root, "dist", ".vite-src"), { recursive: true, force: true });
 }

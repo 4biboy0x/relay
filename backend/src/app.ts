@@ -14,7 +14,7 @@ import { asyncRoute, errorHandler, HttpError } from "./http";
 import { getReelStorageOrigins } from "./reel-storage";
 import { reelProfileRouter, reelsRouter } from "./reels";
 import { emitToAuthenticated, emitToConversation, emitToPost, emitToUser } from "./realtime";
-import { audioUpload, imageUpload, readStoredUpload, saveAudio, saveImage, uploadDirectory } from "./uploads";
+import { audioUpload, createUploadReadUrl, getUploadStorageOrigins, imageUpload, saveAudio, saveImage, uploadDirectory } from "./uploads";
 import { createViewerKey, viewRateLimiter, viewRequestGuard } from "./view-tracking";
 import {
   loginSchema,
@@ -74,6 +74,7 @@ app.set("trust proxy", 1);
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
+      imgSrc: ["'self'", ...getUploadStorageOrigins(), ...getReelStorageOrigins()],
       mediaSrc: ["'self'", ...getReelStorageOrigins()],
     },
   },
@@ -84,7 +85,41 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "Range"],
   exposedHeaders: ["Accept-Ranges", "Content-Length", "Content-Range"],
+  maxAge: 86400,
 }));
+const mediaUrlFields = new Set([
+  "audioUrl",
+  "avatarUrl",
+  "bannerUrl",
+  "coverUrl",
+  "imageUrl",
+  "mediaUrl",
+  "posterUrl",
+  "thumbnailUrl",
+  "url",
+  "videoUrl",
+]);
+const normalizeMediaResponse = async (value: unknown, field = ""): Promise<unknown> => {
+  if (typeof value === "string" && mediaUrlFields.has(field) && /^\/uploads\//i.test(value)) {
+    return createUploadReadUrl(value);
+  }
+  if (Array.isArray(value)) return Promise.all(value.map((item) => normalizeMediaResponse(item, field)));
+  if (!value || typeof value !== "object" || Object.getPrototypeOf(value) !== Object.prototype) return value;
+  const entries = await Promise.all(Object.entries(value).map(async ([key, nested]) =>
+    [key, await normalizeMediaResponse(nested, key)] as const));
+  return Object.fromEntries(entries);
+};
+app.use((_req, res, next) => {
+  const sendJson = res.json.bind(res);
+  Object.defineProperty(res, "json", {
+    configurable: true,
+    value: (body: unknown) => {
+      void normalizeMediaResponse(body).then(sendJson).catch(next);
+      return res;
+    },
+  });
+  next();
+});
 app.use(express.json({ limit: "32kb" }));
 app.use("/uploads", express.static(uploadDirectory, {
   maxAge: "1d",
@@ -98,14 +133,13 @@ app.get("/uploads/:filename", asyncRoute(async (req, res) => {
     res.sendStatus(404);
     return;
   }
-  const stored = await readStoredUpload(filename);
-  if (!stored) {
+  const url = await createUploadReadUrl(`/uploads/${filename}`);
+  if (url.startsWith("/uploads/")) {
     res.sendStatus(404);
     return;
   }
   res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-  if (stored.contentType) res.type(stored.contentType);
-  stored.body.pipe(res);
+  res.redirect(302, url);
 }));
 const localhostAddresses = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
 app.use("/api/auth", rateLimit({

@@ -7,6 +7,7 @@
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
     <meta name="relay-api-base" content="/api" />
+    <meta name="relay-production" content="false" />
     <meta name="relay-giphy-api-key" content="" />
     <link rel="preload" href="assets/fonts/Piazzolla-Light.woff2" as="font" type="font/woff2" crossorigin />
     <title>Relay — Social</title>
@@ -9258,6 +9259,101 @@
         document.querySelector('meta[name="relay-api-base"]')?.content || "/api",
         window.location.href,
       ).href.replace(/\/$/, "");
+      const IMAGE_SERVICE_WORKER_VERSION = 1; // Change this value to disable the worker and clear its caches.
+      const imageServiceWorkerCachePrefix = "relay-images-";
+      if (document.querySelector('meta[name="relay-production"]')?.content === "true"
+        && "serviceWorker" in navigator) {
+        if (IMAGE_SERVICE_WORKER_VERSION === 1) {
+          navigator.serviceWorker.register(`/sw.js?v=${IMAGE_SERVICE_WORKER_VERSION}`)
+            .catch((error) => console.error("Could not register the image cache worker.", error));
+        } else {
+          void Promise.all([
+            navigator.serviceWorker.getRegistrations().then((registrations) =>
+              Promise.all(registrations
+                .filter((registration) =>
+                  [registration.active, registration.waiting, registration.installing]
+                  .some((worker) => worker?.scriptURL.includes("/sw.js")))
+                .map((registration) => registration.unregister()))),
+            "caches" in window
+              ? caches.keys().then((names) => Promise.all(names
+                .filter((name) => name.startsWith(imageServiceWorkerCachePrefix))
+                .map((name) => caches.delete(name))))
+              : Promise.resolve([]),
+          ]).catch((error) => console.error("Could not clear the image cache worker.", error));
+        }
+      }
+      const loadedImageUrls = new Set();
+      const preloadImageUrls = new Set();
+      const pendingImagePreloads = new Map();
+      const imagePreloadQueue = [];
+      let activeImagePreloads = 0;
+      const normalizedImageCacheUrl = (value) => {
+        const url = new URL(value, window.location.href);
+        for (const name of [...url.searchParams.keys()]) {
+          if (name.toLowerCase().startsWith("x-amz-")) url.searchParams.delete(name);
+        }
+        return url.href;
+      };
+      function rememberLoadedImage(value) {
+        const key = normalizedImageCacheUrl(value);
+        loadedImageUrls.delete(key);
+        loadedImageUrls.add(key);
+        while (loadedImageUrls.size > 1000) loadedImageUrls.delete(loadedImageUrls.values().next().value);
+      }
+      const pumpImagePreloadQueue = () => {
+        while (activeImagePreloads < 2 && imagePreloadQueue.length) {
+          const task = imagePreloadQueue.shift();
+          if (document.hidden) {
+            pendingImagePreloads.delete(task.key);
+            task.resolve(false);
+            continue;
+          }
+          activeImagePreloads += 1;
+          const image = new Image();
+          image.decoding = "async";
+          image.fetchPriority = "low";
+          let settled = false;
+          const finish = async (loaded) => {
+            if (settled) return;
+            settled = true;
+            if (loaded && image.naturalWidth) {
+              try {
+                if (typeof image.decode === "function") await image.decode();
+              } catch {
+                loaded = image.naturalWidth > 0;
+              }
+            }
+            if (loaded && image.naturalWidth) {
+              rememberLoadedImage(task.url);
+              preloadImageUrls.delete(task.key);
+              preloadImageUrls.add(task.key);
+              while (preloadImageUrls.size > 100) preloadImageUrls.delete(preloadImageUrls.values().next().value);
+            }
+            pendingImagePreloads.delete(task.key);
+            activeImagePreloads -= 1;
+            task.resolve(loaded && image.naturalWidth > 0);
+            pumpImagePreloadQueue();
+          };
+          image.addEventListener("load", () => void finish(true), { once: true });
+          image.addEventListener("error", () => void finish(false), { once: true });
+          image.src = task.url;
+          if (image.complete) void finish(image.naturalWidth > 0);
+        }
+      };
+      const preloadImageUrl = (value) => {
+        if (!value || document.hidden) return Promise.resolve(false);
+        const url = new URL(value, window.location.href).href;
+        const key = normalizedImageCacheUrl(url);
+        if (loadedImageUrls.has(key) || preloadImageUrls.has(key)) return Promise.resolve(true);
+        const existing = pendingImagePreloads.get(key);
+        if (existing) return existing;
+        const pending = new Promise((resolve) => {
+          imagePreloadQueue.push({ key, url, resolve });
+          pumpImagePreloadQueue();
+        });
+        pendingImagePreloads.set(key, pending);
+        return pending;
+      };
       const GIPHY_API_KEY = document.querySelector('meta[name="relay-giphy-api-key"]')?.content.trim() || "";
       let accessToken = sessionStorage.getItem("relay_access_token") || "";
       let currentUser = null;
@@ -9384,6 +9480,7 @@
       let reelCursor = null;
       let reelLoading = false;
       let reelRenderGeneration = 0;
+      const reelVideoReadyIds = new Set();
       let activeReelId = "";
       let deepLinkedReelId = "";
       let reelFeedObserver = null;
@@ -9527,56 +9624,37 @@
         gif?.images?.fixed_width?.url,
       ].find(isGiphyDirectGifUrl) || "";
       const defaultAvatarSvg = `<svg class="relay-avatar-mark" viewBox="0 0 40 40" focusable="false"><use href="#default-avatar" /></svg>`;
-      const avatarUrlsByUser = new Map();
-      const avatarPreloads = new Map();
+      const profileMediaUrlsByUser = new Map();
       const avatarSetGenerations = new WeakMap();
+      const trackedImageElements = new WeakSet();
       const normalizedAvatarUrl = (value) => value ? new URL(mediaHref(value), window.location.href).href : "";
       function preloadAvatarImage(value) {
         const url = normalizedAvatarUrl(value);
         if (!url) return Promise.resolve(false);
-        const existing = avatarPreloads.get(url);
-        if (existing) return existing;
-        const image = new Image();
-        image.decoding = "async";
-        image.fetchPriority = "high";
-        const ready = new Promise((resolve) => {
-          let settled = false;
-          const finish = (loaded) => {
-            if (settled) return;
-            settled = true;
-            resolve(loaded);
-          };
-          const decode = async () => {
-            if (!image.naturalWidth) {
-              finish(false);
-              return;
-            }
-            try {
-              if (typeof image.decode === "function") await image.decode();
-            } catch {
-              if (!image.naturalWidth) {
-                finish(false);
-                return;
-              }
-            }
-            finish(image.naturalWidth > 0);
-          };
-          image.addEventListener("load", () => void decode(), { once: true });
-          image.addEventListener("error", () => finish(false), { once: true });
-          image.src = url;
-          if (image.complete) void decode();
-        }).then((loaded) => {
-          if (!loaded) avatarPreloads.delete(url);
-          return loaded;
-        });
-        avatarPreloads.set(url, ready);
-        return ready;
+        return preloadImageUrl(url);
       }
       function rememberAvatarUrl(user) {
-        if (!user?.id || !user.avatarUrl) return "";
-        const url = normalizedAvatarUrl(user.avatarUrl);
-        avatarUrlsByUser.set(user.id, url);
-        return url;
+        if (!user?.id) return "";
+        const avatarUrl = user.avatarUrl ? normalizedAvatarUrl(user.avatarUrl) : "";
+        const profileMedia = [avatarUrl, user.bannerUrl ? normalizedAvatarUrl(user.bannerUrl) : ""].filter(Boolean);
+        if (profileMedia.length) profileMediaUrlsByUser.set(user.id, profileMedia);
+        else profileMediaUrlsByUser.delete(user.id);
+        return avatarUrl;
+      }
+      function rememberDecodedImage(image) {
+        if (trackedImageElements.has(image)) return;
+        trackedImageElements.add(image);
+        const decode = async () => {
+          if (!image.naturalWidth) return;
+          try {
+            if (typeof image.decode === "function") await image.decode();
+          } catch {
+            if (!image.naturalWidth) return;
+          }
+          if (image.naturalWidth) rememberLoadedImage(image.currentSrc || image.src);
+        };
+        if (image.complete) void decode();
+        else image.addEventListener("load", () => void decode(), { once: true });
       }
       function fallbackAvatarImage(image) {
         const avatar = image.parentElement;
@@ -9589,7 +9667,8 @@
         if (!image.isConnected) return;
         const source = image.currentSrc || image.src;
         if (image.dataset.avatarDecodedSrc === source) return;
-        const wasCached = image.complete && image.naturalWidth > 0;
+        const wasCached = loadedImageUrls.has(normalizedImageCacheUrl(source))
+          || image.complete && image.naturalWidth > 0;
         const reveal = async () => {
           if (!image.isConnected || (image.currentSrc || image.src) !== source) return;
           if (!image.naturalWidth) {
@@ -9605,6 +9684,7 @@
             }
           }
           if (!image.isConnected || (image.currentSrc || image.src) !== source) return;
+          rememberLoadedImage(source);
           image.dataset.avatarDecodedSrc = source;
           image.classList.toggle("is-avatar-instant", wasCached && image.dataset.avatarFade !== "true");
           image.classList.add("is-avatar-decoded");
@@ -9619,6 +9699,10 @@
         image.addEventListener("error", () => fallbackAvatarImage(image), { once: true });
       }
       function prepareAvatarImages(root) {
+        const images = root instanceof HTMLImageElement
+          ? [root]
+          : root instanceof Element ? [...root.querySelectorAll("img")] : [];
+        images.forEach(rememberDecodedImage);
         if (root instanceof HTMLImageElement && root.closest(".av")) {
           prepareAvatarImagesInAvatar(root.closest(".av"));
         } else if (root instanceof Element) {
@@ -9640,6 +9724,7 @@
         records.forEach((record) => record.addedNodes.forEach(prepareAvatarImages));
       });
       avatarMutationObserver.observe(document.body, { childList: true, subtree: true });
+      document.querySelectorAll("img").forEach(rememberDecodedImage);
       document.querySelectorAll(".av img").forEach((image) => prepareAvatarImagesInAvatar(image.parentElement));
       const preloadProfileAvatarOnIntent = (event) => {
         const trigger = event.target instanceof Element
@@ -9647,8 +9732,8 @@
           : null;
         if (!trigger || (event.type === "pointerover" && trigger.contains(event.relatedTarget))) return;
         const userId = trigger.dataset.profileId || trigger.dataset.exploreProfileId;
-        const avatarUrl = avatarUrlsByUser.get(userId);
-        if (avatarUrl) void preloadAvatarImage(avatarUrl);
+        const profileMedia = profileMediaUrlsByUser.get(userId);
+        profileMedia?.forEach((url) => void preloadImageUrl(url));
       };
       document.addEventListener("pointerover", preloadProfileAvatarOnIntent, true);
       document.addEventListener("focusin", preloadProfileAvatarOnIntent, true);
@@ -9678,7 +9763,7 @@
           const fadeOnReveal = hasExistingVisual ? ' data-avatar-fade="true"' : "";
           element.innerHTML = `<img src="${esc(source)}" alt="" decoding="async" loading="${element.id === "profileAvatar" ? "eager" : "lazy"}" fetchpriority="${element.id === "profileAvatar" ? "high" : "auto"}"${fadeOnReveal}>`;
         };
-        if (hasExistingVisual) {
+        if (hasExistingVisual && !document.hidden) {
           void preloadAvatarImage(source).then((loaded) => {
             if (loaded) apply();
           });
@@ -11634,7 +11719,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const hasVideo = Boolean(reel.videoUrl);
         return `<article class="reel-item" data-reel-id="${esc(reel.id)}" role="article" aria-label="Reel by @${esc(author.handle || "user")}, ${index + 1} of ${reelItems.length}">
           <div class="reel-stage${hasVideo && index === 0 && shouldAutoplayReels() ? " is-loading" : " is-paused"}" data-reel-stage="${esc(reel.id)}" role="button" tabindex="0" aria-label="Play reel">
-            ${poster ? `<img class="reel-poster" src="${esc(poster)}" alt="" loading="${index < 2 ? "eager" : "lazy"}">` : ""}
+            ${poster ? `<img class="reel-poster" src="${esc(poster)}" alt="" loading="${index === 0 ? "eager" : "lazy"}">` : ""}
             <div class="reel-play-overlay" aria-hidden="true">
               <svg data-indicator="play" viewBox="0 0 24 24"><path d="M8 5.6v12.8a.8.8 0 0 0 1.2.7l10.4-6.4a.8.8 0 0 0 0-1.4L9.2 4.9A.8.8 0 0 0 8 5.6z"/></svg>
               <svg data-indicator="pause" viewBox="0 0 24 24"><rect x="6" y="4.5" width="4" height="15" rx="1.5"/><rect x="14" y="4.5" width="4" height="15" rx="1.5"/></svg>
@@ -11883,6 +11968,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         return reelSettings.reduceData || navigator.connection?.saveData === true
           || matchMedia("(prefers-reduced-data: reduce)").matches;
       }
+      function reelVideoPreloadMode() {
+        const connection = navigator.connection;
+        if (isReelReducedData() || /^(slow-2g|2g|3g)$/i.test(connection?.effectiveType || "")) return "";
+        if (!connection || matchMedia("(pointer: coarse)").matches) return "metadata";
+        return /^(4g|5g)$/i.test(connection.effectiveType || "") ? "auto" : "metadata";
+      }
       function shouldAutoplayReels() {
         return reelSettings.autoplay && !reelReducedMotion.matches && !isReelReducedData();
       }
@@ -11947,12 +12038,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const video = stage?.querySelector(".reel-video");
         if (!video) return;
         video.pause();
+        video.muted = true;
         video.removeAttribute("src");
         video.load();
         video.remove();
+        reelVideoReadyIds.delete(stage.dataset.reelStage);
       }
       const reelStageKeyHandlers = new WeakSet();
-      function ensureReelVideo(reel, stage) {
+      function ensureReelVideo(reel, stage, preload = "metadata") {
         if (!reel?.videoUrl || !stage) return null;
         let video = stage.querySelector(".reel-video");
         if (video) return video;
@@ -11961,7 +12054,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         video.playsInline = true;
         video.loop = true;
         video.muted = stage.dataset.reelStage === activeReelId ? reelMuted : true;
-        video.preload = reel.id === activeReelId ? "metadata" : "none";
+        video.preload = preload;
         video.setAttribute("aria-label", `Reel by @${reel.author?.handle || "user"}`);
         video.src = mediaHref(reel.videoUrl);
         stage.append(video);
@@ -11976,7 +12069,22 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           });
           reelStageKeyHandlers.add(stage);
         }
-        video.addEventListener("canplay", () => stage.classList.remove("is-loading"));
+        video.addEventListener("canplay", () => {
+          reelVideoReadyIds.add(reel.id);
+          stage.classList.remove("is-loading");
+          if (reel.id === activeReelId) {
+            const activeIndex = profileReelIndex(reel.id);
+            for (let offset = 1; offset <= 3; offset += 1) {
+              const nextReel = reelItems[activeIndex + offset];
+              if (!nextReel) break;
+              if (nextReel.posterUrl) void preloadImageUrl(mediaHref(nextReel.posterUrl));
+              if (offset === 1 && nextReel.author?.avatarUrl) {
+                void preloadImageUrl(mediaHref(nextReel.author.avatarUrl));
+              }
+            }
+            syncReelPlayback();
+          }
+        });
         video.addEventListener("playing", () => {
           stage.classList.remove("is-loading", "is-paused");
           stage.classList.add("is-playing");
@@ -12124,22 +12232,35 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function syncReelPlayback() {
         if ($("#v-reels").hidden) return;
         const activeIndex = profileReelIndex(activeReelId);
+        const nextPreloadMode = reelVideoPreloadMode();
+        const activeStage = activeIndex >= 0
+          ? $(`[data-reel-stage="${CSS.escape(activeReelId)}"]`, $("#reelFeed"))
+          : null;
+        const activeVideo = activeStage?.querySelector(".reel-video");
+        const activeReady = reelVideoReadyIds.has(activeReelId)
+          || activeVideo?.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA;
         reelItems.forEach((reel, index) => {
           const stage = $(`[data-reel-stage="${CSS.escape(reel.id)}"]`, $("#reelFeed"));
           if (!stage) return;
           const isActive = index === activeIndex;
+          const isPrevious = index === activeIndex - 1;
+          const isNext = index === activeIndex + 1;
           const manualPlay = reelManualPlayback === reel.id;
           const shouldStart = isActive && (shouldAutoplayReels() || manualPlay);
-          const shouldPreload = isActive && (shouldAutoplayReels() || manualPlay)
-            || index === activeIndex + 1 && shouldAutoplayReels();
+          const shouldPreloadNext = isNext && activeReady && nextPreloadMode && !document.hidden
+            && (shouldAutoplayReels() || reelManualPlayback === activeReelId);
           let video = stage.querySelector(".reel-video");
-          if (!video && shouldPreload) {
-            video = ensureReelVideo(reel, stage);
+          if (!video && isActive && (shouldAutoplayReels() || manualPlay)) {
+            video = ensureReelVideo(reel, stage, "metadata");
+          } else if (!video && shouldPreloadNext) {
+            video = ensureReelVideo(reel, stage, nextPreloadMode);
           }
           if (video) {
             video.muted = isActive ? reelMuted : true;
-            video.preload = isActive ? "metadata" : "none";
-            if (shouldStart && !document.hidden) {
+            if (isActive) video.preload = "metadata";
+            else if (isNext && shouldPreloadNext) video.preload = nextPreloadMode;
+            else video.preload = "none";
+            if (shouldStart && !document.hidden && video.paused) {
               playReelVideo(reel, stage, video).catch((error) => {
                 if (error.name === "AbortError") return;
                 stage.classList.remove("is-loading");
@@ -12148,11 +12269,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 reelPlaybackFeedbackPending.delete(stage);
                 console.warn(`Autoplay was blocked for Reel ${reel.id}.`, error);
               });
-            } else {
+            } else if (!isActive) {
               video.pause();
             }
           }
-          if (!shouldPreload && video) removeReelVideo(stage);
+          const keepPreviousBuffer = isPrevious && Boolean(video);
+          const keepActive = isActive && Boolean(video);
+          if (!keepPreviousBuffer && !keepActive && !shouldPreloadNext && video) removeReelVideo(stage);
         });
         updateReelMuteControls();
       }
@@ -13488,6 +13611,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
       }
       function initializeReels() {
+        document.addEventListener("visibilitychange", () => {
+          if (document.hidden) {
+            $$(".reel-video").forEach((video) => video.pause());
+          } else {
+            syncReelPlayback();
+          }
+        });
         $("#createReelButton").addEventListener("click", showReelCreateDialog);
         const dropzone = $("#reelUploadPreviewFrame");
         $("#reelUploadPlaceholder").addEventListener("click", () => $("#reelFileInput").click());
