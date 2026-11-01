@@ -4610,21 +4610,59 @@
         background: var(--bg);
         box-shadow: 0 8px 24px rgba(9, 9, 11, .12);
       }
-      .confirm-dialog[open],
+      .confirm-dialog {
+        z-index: 1001;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        margin: 0;
+        padding: 0;
+        overflow: visible;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        transform: translate(-50%, -50%);
+      }
+      .confirm-dialog-card {
+        box-sizing: border-box;
+        width: 100%;
+        padding: 20px;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        color: var(--text);
+        background: var(--bg);
+        box-shadow: 0 8px 24px rgba(9, 9, 11, .12);
+        transition: opacity 150ms ease-out, transform 150ms ease-out;
+      }
+      .confirm-dialog-card.is-entering {
+        opacity: .85;
+        transform: translateY(8px);
+      }
       .action-dialog.confirmation[open] {
         animation: confirm-dialog-in 150ms ease-out both;
       }
-      .confirm-dialog::backdrop,
+      .confirm-dialog::backdrop {
+        position: fixed;
+        z-index: 1000;
+        inset: 0;
+        background: rgba(9, 9, 11, .5);
+        backdrop-filter: blur(4px);
+      }
+      body.confirm-dialog-open dialog:not(.confirm-dialog)::backdrop {
+        background: transparent;
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+      }
       .action-dialog.confirmation::backdrop {
         background: rgba(9, 9, 11, .5);
         backdrop-filter: blur(4px);
       }
-      :root[data-theme="dark"] .confirm-dialog,
+      :root[data-theme="dark"] .confirm-dialog-card,
       :root[data-theme="dark"] .action-dialog.confirmation {
         box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
       }
       @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) .confirm-dialog,
+        :root:not([data-theme="light"]) .confirm-dialog-card,
         :root:not([data-theme="light"]) .action-dialog.confirmation {
           box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
         }
@@ -4710,8 +4748,14 @@
         .action-dialog.confirmation .dialog-actions button { width: 100%; }
       }
       @media (prefers-reduced-motion: reduce) {
-        .confirm-dialog[open],
+        .confirm-dialog,
+        .confirm-dialog-card.is-entering,
         .action-dialog.confirmation[open] { animation: none; }
+        .confirm-dialog-card { transition: none; }
+        .confirm-dialog-card.is-entering {
+          opacity: 1;
+          transform: none;
+        }
       }
       .dialog-actions {
         display: flex;
@@ -8348,11 +8392,13 @@
       </section>
     </dialog>
     <dialog class="confirm-dialog" id="confirmDialog" role="alertdialog" aria-modal="true" aria-labelledby="confirmDialogTitle" tabindex="-1">
-      <h2 id="confirmDialogTitle"></h2>
-      <p id="confirmDialogMessage" hidden></p>
-      <div class="confirm-dialog-actions">
-        <button class="confirm-cancel" id="confirmDialogCancel" type="button">Cancel</button>
-        <button class="confirm-submit" id="confirmDialogSubmit" type="button">Confirm</button>
+      <div class="confirm-dialog-card">
+        <h2 id="confirmDialogTitle"></h2>
+        <p id="confirmDialogMessage" hidden></p>
+        <div class="confirm-dialog-actions">
+          <button class="confirm-cancel" id="confirmDialogCancel" type="button">Cancel</button>
+          <button class="confirm-submit" id="confirmDialogSubmit" type="button">Confirm</button>
+        </div>
       </div>
     </dialog>
     <dialog class="auth-dialog action-dialog" id="actionDialog" aria-labelledby="actionTitle" aria-describedby="actionDescription">
@@ -14812,7 +14858,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function confirmDialog({ title, message = "", confirmLabel, cancelLabel = "Cancel", danger = false }) {
         const dialog = confirmDialogElement;
         if (dialog.open || confirmDialogState) {
-          throw new Error("A confirmation dialog is already open.");
+          const error = new Error("A confirmation dialog is already open.");
+          console.error("Could not open confirmation dialog", error);
+          return Promise.reject(error);
         }
         $("#confirmDialogTitle").textContent = title;
         const description = $("#confirmDialogMessage");
@@ -14827,38 +14875,39 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         submit.classList.toggle("danger", danger);
         const trigger = document.activeElement;
         const previousBodyOverflow = document.body.style.overflow;
-        return new Promise((resolve) => {
-          confirmDialogState = { resolve, trigger, previousBodyOverflow, closing: false };
-          document.body.style.overflow = "hidden";
-          dialog.showModal();
-          (danger ? cancel : submit).focus({ preventScroll: true });
+        const card = dialog.querySelector(".confirm-dialog-card");
+        return new Promise((resolve, reject) => {
+          confirmDialogState = { resolve, trigger, previousBodyOverflow, closing: false, openedAt: performance.now() };
+          try {
+            if (dialog.parentElement !== document.body) document.body.append(dialog);
+            card.classList.add("is-entering");
+            document.body.classList.add("confirm-dialog-open");
+            document.body.style.overflow = "hidden";
+            dialog.showModal();
+            requestAnimationFrame(() => card.classList.remove("is-entering"));
+            (danger ? cancel : submit).focus({ preventScroll: true });
+          } catch (error) {
+            card.classList.remove("is-entering");
+            if (dialog.open) dialog.close();
+            document.body.classList.remove("confirm-dialog-open");
+            document.body.style.overflow = previousBodyOverflow;
+            confirmDialogState = null;
+            console.error("Could not open confirmation dialog", error);
+            reject(error);
+          }
         });
       }
       function settleConfirmDialog(confirmed) {
         const state = confirmDialogState;
         if (!state || state.closing) return;
         state.closing = true;
-        const finish = () => {
-          if (confirmDialogState !== state) return;
-          confirmDialogElement.close();
-          document.body.style.overflow = state.previousBodyOverflow;
-          confirmDialogState = null;
-          state.resolve(confirmed);
-          requestAnimationFrame(() => {
-            if (state.trigger?.isConnected) state.trigger.focus({ preventScroll: true });
-          });
-        };
-        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches
-          || typeof confirmDialogElement.animate !== "function") {
-          finish();
-          return;
-        }
-        const animation = confirmDialogElement.animate([
-          { opacity: 1, transform: "translateY(0)" },
-          { opacity: 0, transform: "translateY(8px)" },
-        ], { duration: 150, easing: "ease-in", fill: "forwards" });
-        animation.onfinish = finish;
-        animation.oncancel = finish;
+        confirmDialogElement.querySelector(".confirm-dialog-card").classList.remove("is-entering");
+        confirmDialogElement.close();
+        document.body.classList.remove("confirm-dialog-open");
+        document.body.style.overflow = state.previousBodyOverflow;
+        confirmDialogState = null;
+        state.resolve(confirmed);
+        if (state.trigger?.isConnected) state.trigger.focus({ preventScroll: true });
       }
       function openActionDialog(mode, data = {}) {
         actionDialogState = { mode, ...data };
@@ -15769,10 +15818,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           });
           return;
         }
-        const deletePost = e.target.closest("[data-post-delete]");
-        if (deletePost) {
-          const postElement = deletePost.closest(".post");
-          const menuTrigger = deletePost.closest(".post-menu-wrap")?.querySelector("[data-post-menu-toggle]");
+        const deletePostButton = e.target.closest("[data-post-delete]");
+        if (deletePostButton) {
+          const postElement = deletePostButton.closest(".post");
+          const menuTrigger = deletePostButton.closest(".post-menu-wrap")?.querySelector("[data-post-menu-toggle]");
           closePostMenus();
           if (!requireAuth()) return;
           menuTrigger?.focus({ preventScroll: true });
@@ -16281,6 +16330,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       });
       confirmDialogElement.addEventListener("click", (event) => {
         if (event.target !== confirmDialogElement) return;
+        if (performance.now() - (confirmDialogState?.openedAt || 0) < 200) return;
         const bounds = confirmDialogElement.getBoundingClientRect();
         if (event.clientX < bounds.left || event.clientX > bounds.right
           || event.clientY < bounds.top || event.clientY > bounds.bottom) {
@@ -16289,6 +16339,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       });
       confirmDialogElement.addEventListener("keydown", (event) => {
         const buttons = $$("#confirmDialogCancel, #confirmDialogSubmit");
+        if (event.key === "Escape") {
+          event.preventDefault();
+          settleConfirmDialog(false);
+          return;
+        }
         if (event.key === "Enter") {
           if (buttons.includes(document.activeElement)) {
             event.preventDefault();
