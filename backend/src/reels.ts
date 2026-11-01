@@ -214,16 +214,6 @@ router.get("/feed", authOptional, asyncRoute(async (req, res) => {
   const cursor = parseCursor(rawCursor, feedCursorSchema);
   const asOf = cursor ? new Date(cursor.asOf) : new Date();
   const viewerId = req.userId ?? null;
-  const viewerKey = createViewerKey(req);
-  const seenAfter = new Date(Date.now() - 7 * 24 * 60 * 60_000);
-  const seenFilter = Prisma.sql`
-    AND NOT EXISTS (
-      SELECT 1 FROM reel_views seen
-      WHERE seen.reel_id = r."id"
-        AND seen.viewer_key = ${viewerKey}
-        AND seen.first_viewed_at >= ${seenAfter}
-    )
-  `;
   const cursorFilter = cursor
     ? Prisma.sql`
       WHERE "followRank" > ${cursor.followRank}
@@ -299,7 +289,6 @@ router.get("/feed", authOptional, asyncRoute(async (req, res) => {
       WHERE r."status" = 'READY'
         AND r."deletedAt" IS NULL
         AND r."publishedAt" IS NOT NULL
-        ${seenFilter}
     )
     SELECT * FROM ranked
     ${cursorFilter}

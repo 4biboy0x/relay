@@ -11667,7 +11667,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             if (!feedError) {
               renderReelFeedState(!reelItems.length
                 ? "No reels yet"
-                : !reelCursor ? "You're all caught up." : "");
+                : !reelCursor && activeReelId === reelItems.at(-1)?.id ? "You're all caught up." : "");
             }
             positionReelFeedSentinel();
             if (reelCursor && reelItems.length && !feedError) observeReelItems();
@@ -11688,6 +11688,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (!id || id === activeReelId) return;
         activeReelId = id;
         if (reelManualPlayback !== id) reelManualPlayback = "";
+        const status = $("#reelFeedState");
+        if (!reelLoading && !reelCursor && status.dataset.state !== "notice") {
+          renderReelFeedState(
+            reelItems.at(-1)?.id === activeReelId ? "You're all caught up." : "",
+          );
+        }
         if (location.hash.startsWith("#/reels")) {
           history.replaceState(null, "", `#/reels/${encodeURIComponent(id)}`);
         }
