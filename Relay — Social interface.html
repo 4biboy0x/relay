@@ -5822,31 +5822,31 @@
       .message-image-frame {
         width: 100%;
         max-width: 100%;
-        aspect-ratio: 3 / 2;
+        height: auto;
         overflow: hidden;
         border-radius: 14px;
         background: transparent;
       }
-      .message-image-frame.is-portrait {
-        max-height: 400px;
-        aspect-ratio: 3 / 5;
-      }
       .message-image-list[data-count="1"].is-portrait {
         width: min(240px, 100%);
       }
-      .message-image-frame.is-square { aspect-ratio: 1; }
-      .message-image-frame.is-banner { aspect-ratio: 3 / 1; }
       .message-media {
         display: block;
         width: 100%;
-        height: 100%;
+        height: auto;
         max-width: 100%;
-        aspect-ratio: auto;
+        aspect-ratio: 3 / 2;
         border-radius: inherit;
         object-fit: cover;
         object-position: center;
         background: transparent;
       }
+      .message-image-frame.is-portrait .message-media {
+        max-height: 400px;
+        aspect-ratio: 3 / 5;
+      }
+      .message-image-frame.is-square .message-media { aspect-ratio: 1; }
+      .message-image-frame.is-banner .message-media { aspect-ratio: 3 / 1; }
       .message-media-static {
         cursor: default;
         pointer-events: none;
@@ -5855,7 +5855,7 @@
       .message-media-button {
         display: block;
         width: 100%;
-        height: 100%;
+        height: auto;
         max-width: 100%;
         padding: 0;
         border: 0;
@@ -5932,7 +5932,7 @@
         .message-image-list { width: min(220px, 100%); }
         .message-image-list[data-count="1"] { width: min(220px, 100%); }
         .message-image-list[data-count="1"].is-portrait { width: min(168px, 100%); }
-        .message-image-frame.is-portrait { max-height: 280px; }
+        .message-image-frame.is-portrait .message-media { max-height: 280px; }
         .message-bubble.audio-message,
         .relay-voice { width: 220px; max-width: 100%; }
       }
