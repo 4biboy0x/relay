@@ -6261,6 +6261,10 @@
       .explore-filter-tabs {
         padding-bottom: 0;
       }
+      #exp.explore-search-loading [data-search-results] {
+        opacity: 0.55;
+        transition: opacity 140ms ease;
+      }
       .explore-feed-section + .explore-feed-section {
         margin-top: 20px;
       }
@@ -9214,6 +9218,8 @@
       let exploreRequestGeneration = 0;
       let exploreTab = "trending";
       let exploreSearchFilter = "Top";
+      let exploreSearchStatus = "idle";
+      let exploreSearchedQuery = "";
       let lastExploreSearch = "";
       let pendingExploreSearch = null;
       let hasMoreSuggestedPeople = false;
@@ -13835,6 +13841,36 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           $("#exploreTabs").style.setProperty("--explore-indicator-position", `${index * 50}%`);
         }
       }
+      function renderExploreSearchTabs(searchText = $("#exploreSearch").value.trim()) {
+        const searching = !!searchText;
+        $("#exploreTabs").hidden = searching;
+        $("#exploreSearchFilters").hidden = !searching;
+        $("#exploreSearchFilters").innerHTML = searching
+          ? `<nav class="tabs explore-tabs explore-filter-tabs" role="tablist" aria-label="Search results">${["Top", "Latest", "People"].map((filter) => `<button class="tab" type="button" role="tab" data-explore-filter="${filter}" aria-selected="${filter === exploreSearchFilter}">${filter}</button>`).join("")}</nav>`
+          : "";
+      }
+      function setExploreSearchLoading(searchText) {
+        renderExploreSearchTabs(searchText);
+        exploreSearchStatus = "loading";
+        const results = $("#exp");
+        results.dataset.searchStatus = exploreSearchStatus;
+        results.setAttribute("aria-busy", "true");
+        const existingResults = results.querySelector("[data-search-results]");
+        results.querySelector("[data-search-loading]")?.remove();
+        if (existingResults) {
+          results.classList.add("explore-search-loading");
+          const loading = document.createElement("div");
+          loading.dataset.searchLoading = "";
+          const skeletonKind = exploreSearchFilter === "People" ? "person" : "post";
+          loading.innerHTML = skeletonListMarkup(skeletonKind, 1, "search results");
+          results.append(loading);
+        } else {
+          results.classList.remove("explore-search-loading");
+          const skeletonKind = exploreSearchFilter === "People" ? "person" : "post";
+          results.innerHTML = skeletonListMarkup(skeletonKind, 5, "search results");
+        }
+        $("#exploreMore").hidden = true;
+      }
       async function renderExplore(search = "", append = false) {
         const searchText = String(search ?? "").trim();
         const searchTerm = searchText.replace(/^[@#]+/, "").trim();
@@ -13842,8 +13878,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const requestFilter = exploreSearchFilter;
         const requestGeneration = append ? exploreRequestGeneration : ++exploreRequestGeneration;
         const isCurrentRequest = () => requestGeneration === exploreRequestGeneration;
-        const searchFilters = ["Top", "Latest", "People"];
-        const searchTabs = `<nav class="tabs explore-tabs explore-filter-tabs" role="tablist" aria-label="Search results">${searchFilters.map((filter) => `<button class="tab" type="button" role="tab" data-explore-filter="${filter}" aria-selected="${filter === requestFilter}">${filter}</button>`).join("")}</nav>`;
         const skeletonKind = searchText
           ? requestFilter === "People" ? "person" : "post"
           : requestTab === "people" ? "person" : requestTab === "trending" ? "trend" : "post";
@@ -13851,20 +13885,32 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         let removeAppendSkeleton;
         if (!append) {
           exploreCursor = null;
-          $("#exploreTabs").hidden = !!searchText;
-          $("#exploreSearchFilters").hidden = !searchText;
-          $("#exploreSearchFilters").innerHTML = searchText ? searchTabs : "";
+          renderExploreSearchTabs(searchText);
           $("#exploreSearchClear").hidden = !searchText;
           delete $("#exp").dataset.loaded;
           const cached = readViewCache(searchText ? `explore:${searchText}:${requestFilter}` : "explore");
           if (cached) $("#exp").innerHTML = cached;
-          finishSkeleton = showDelayedSkeleton($("#exp"), skeletonKind);
+          if (searchText) {
+            exploreSearchedQuery = searchText;
+            setExploreSearchLoading(searchText);
+          } else {
+            exploreSearchStatus = "idle";
+            exploreSearchedQuery = "";
+            $("#exp").classList.remove("explore-search-loading");
+            $("#exp").removeAttribute("aria-busy");
+            delete $("#exp").dataset.searchStatus;
+            finishSkeleton = showDelayedSkeleton($("#exp"), skeletonKind);
+          }
         } else {
           removeAppendSkeleton = appendSkeleton($("#exp"), skeletonKind, 2, "more results");
         }
         try {
           if (searchText && !searchTerm) {
-            $("#exp").innerHTML = `<div data-search-results>${emptyState(`No results for “${searchText}”.`, "Try a different search or filter.")}</div>`;
+            exploreSearchStatus = "empty";
+            $("#exp").dataset.searchStatus = exploreSearchStatus;
+            $("#exp").classList.remove("explore-search-loading");
+            $("#exp").removeAttribute("aria-busy");
+            $("#exp").innerHTML = `<div data-search-results>${emptyState(`No results for “${exploreSearchedQuery}”.`, "Try a different search or filter.")}</div>`;
             $("#exploreMore").hidden = true;
             finishSkeleton?.();
             return;
@@ -13884,13 +13930,17 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             const people = result.users.map((person) => `<div class="explore-person-row" role="link" tabindex="0" aria-label="View @${esc(person.handle)} profile" data-explore-profile-id="${esc(person.id)}">${avatarMarkup(person)}<div class="explore-person-copy"><strong>${esc(person.displayName)}</strong><small>@${esc(person.handle)} · ${fmt(person.followerCount)} followers</small><span>${esc(person.bio || "")}</span></div>${fbtn(person)}</div>`).join("");
             const posts = explorePostCards(result.posts.items.map((item) => post(normalizePost(item), searchTerm)).join(""));
             const content = requestFilter === "People" ? people : posts;
-            const empty = emptyState(`No results for “${searchText}”.`, "Try a different search or filter.");
             removeAppendSkeleton?.();
             if (append) {
               const results = $("#exp [data-search-results]");
-              if (results) results.insertAdjacentHTML("beforeend", content || empty);
+              if (results && content) results.insertAdjacentHTML("beforeend", content);
             } else {
-              $("#exp").innerHTML = `<div data-search-results>${content || empty}</div>`;
+              exploreSearchStatus = content ? "success" : "empty";
+              $("#exp").dataset.searchStatus = exploreSearchStatus;
+              $("#exp").classList.remove("explore-search-loading");
+              $("#exp").removeAttribute("aria-busy");
+              const resultsContent = content || emptyState(`No results for “${exploreSearchedQuery}”.`, "Try a different search or filter.");
+              $("#exp").innerHTML = `<div data-search-results>${resultsContent}</div>`;
             }
             exploreCursor = result.nextCursor;
             $("#exploreMore").hidden = !exploreCursor;
@@ -13927,7 +13977,19 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         } catch (error) {
           finishSkeleton?.();
           removeAppendSkeleton?.();
-          if (isCurrentRequest()) renderError($("#exp"), error, "explore");
+          if (isCurrentRequest()) {
+            if (searchText) {
+              console.error("Could not search Explore", error);
+              exploreSearchStatus = "error";
+              $("#exp").dataset.searchStatus = exploreSearchStatus;
+              $("#exp").classList.remove("explore-search-loading");
+              $("#exp").removeAttribute("aria-busy");
+              $("#exp").innerHTML = '<div class="relay-load-error" role="status"><span>Something went wrong. Try again.</span><button class="ghost-btn" type="button" data-retry="explore">Retry</button></div>';
+              $("#exploreMore").hidden = true;
+            } else {
+              renderError($("#exp"), error, "explore");
+            }
+          }
         } finally {
           removeAppendSkeleton?.();
         }
@@ -15226,7 +15288,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         lastExploreSearch = query;
         exploreSearchFilter = "Top";
         if ($("#v-explore").hidden) go("explore");
-        else transitionContent(transitionTargetsForView("explore"), () => renderExplore(query));
+        else renderExplore(query);
       }
       function isAutocompleteInput(element) {
         return element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement
@@ -16736,41 +16798,43 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           else button.removeAttribute("aria-current");
         });
         if (activeView) {
-          transitionContent(transitionTargetsForView(v), async () => {
-            if (v === "explore") {
-              const search = pendingExploreSearch ?? $("#exploreSearch").value.trim();
-              pendingExploreSearch = null;
-              await renderExplore(search);
-            }
-            if (v === "profile") await renderProfile();
-            if (v === "settings") renderSettingsPage();
-            if (v === "notifs") await renderNotifications();
-            if (v === "messages") {
-              await renderConversations();
-              if (pendingMessageNavigation) {
-                const pending = pendingMessageNavigation;
-                pendingMessageNavigation = null;
-                const conversation = conversations.find((item) => item.id === pending.conversation.id)
-                  || pending.conversation;
-                await openConversation(conversation, false, pending.messageId);
-                return;
+          if (v === "explore") {
+            clearTimeout(exploreTimer);
+            const search = pendingExploreSearch ?? $("#exploreSearch").value.trim();
+            pendingExploreSearch = null;
+            renderExplore(search);
+          } else {
+            transitionContent(transitionTargetsForView(v), async () => {
+              if (v === "profile") await renderProfile();
+              if (v === "settings") renderSettingsPage();
+              if (v === "notifs") await renderNotifications();
+              if (v === "messages") {
+                await renderConversations();
+                if (pendingMessageNavigation) {
+                  const pending = pendingMessageNavigation;
+                  pendingMessageNavigation = null;
+                  const conversation = conversations.find((item) => item.id === pending.conversation.id)
+                    || pending.conversation;
+                  await openConversation(conversation, false, pending.messageId);
+                  return;
+                }
+                if (pendingConversationRestoreId) {
+                  const conversationId = pendingConversationRestoreId;
+                  pendingConversationRestoreId = "";
+                  const conversation = conversations.find((item) => item.id === conversationId);
+                  if (conversation) await openConversation(conversation, false);
+                  else toast("Could not restore the conversation from this page.");
+                  return;
+                }
               }
-              if (pendingConversationRestoreId) {
-                const conversationId = pendingConversationRestoreId;
-                pendingConversationRestoreId = "";
-                const conversation = conversations.find((item) => item.id === conversationId);
-                if (conversation) await openConversation(conversation, false);
-                else toast("Could not restore the conversation from this page.");
-                return;
+              if (v === "home") {
+                setComposerVisibility(feedTab === "for-you");
+                await renderFeed();
               }
-            }
-            if (v === "home") {
-              setComposerVisibility(feedTab === "for-you");
-              await renderFeed();
-            }
-            if (v === "reels") await renderReels(false, deepLinkedReelId);
-            if (v === "thread") await renderThread();
-          }, true);
+              if (v === "reels") await renderReels(false, deepLinkedReelId);
+              if (v === "thread") await renderThread();
+            }, true);
+          }
         }
         if (v === "directory") $("#directorySearch").focus({ preventScroll: true });
         if (updateRoute) {
@@ -16853,7 +16917,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             }
           }
           if (view === "explore" && exploreTab !== previousExploreTab) {
-            transitionContent(transitionTargetsForView("explore"), () => renderExplore($("#exploreSearch").value.trim()));
+            renderExplore($("#exploreSearch").value.trim());
           }
           return;
         }
@@ -17160,19 +17224,19 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const exploreTabLink = e.target.closest("[data-explore-tab-link]");
         if (exploreTabLink) {
           selectExploreTab(exploreTabLink.dataset.exploreTabLink);
-          transitionContent(transitionTargetsForView("explore"), () => renderExplore());
+          renderExplore();
           return;
         }
         const exploreTabButton = e.target.closest("[data-explore-tab]");
         if (exploreTabButton) {
           selectExploreTab(exploreTabButton.dataset.exploreTab);
-          transitionContent(transitionTargetsForView("explore"), () => renderExplore());
+          renderExplore();
           return;
         }
         const exploreFilter = e.target.closest("[data-explore-filter]");
         if (exploreFilter) {
           exploreSearchFilter = exploreFilter.dataset.exploreFilter;
-          transitionContent(transitionTargetsForView("explore"), () => renderExplore($("#exploreSearch").value.trim()));
+          renderExplore($("#exploreSearch").value.trim());
           return;
         }
         const action = e.target.closest("[data-action]");
@@ -18600,13 +18664,25 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         lastExploreSearch = searchText;
         $("#exploreSearchClear").hidden = !searchText;
         if (!searchText) {
-          transitionContent(transitionTargetsForView("explore"), () => renderExplore(""));
+          exploreRequestGeneration += 1;
+          exploreSearchStatus = "idle";
+          exploreSearchedQuery = "";
+          renderExploreSearchTabs("");
+          $("#exp").classList.remove("explore-search-loading");
+          $("#exp").removeAttribute("aria-busy");
+          delete $("#exp").dataset.searchStatus;
+          $("#exp").innerHTML = skeletonListMarkup(
+            exploreTab === "people" ? "person" : exploreTab === "trending" ? "trend" : "post",
+            5,
+            exploreTab === "people" ? "people" : exploreTab === "trending" ? "trending topics" : "posts",
+          );
+          $("#exploreMore").hidden = true;
+          renderExplore("");
           return;
         }
-        exploreTimer = setTimeout(
-          () => transitionContent(transitionTargetsForView("explore"), () => renderExplore(searchText)),
-          250,
-        );
+        exploreRequestGeneration += 1;
+        setExploreSearchLoading(searchText);
+        exploreTimer = setTimeout(() => renderExplore(searchText), 350);
       });
       $("#settingsEmail")?.addEventListener("input", syncSettingsEmail);
       $("#settingsEmailPassword")?.querySelector("input")?.addEventListener("input", syncSettingsEmail);
