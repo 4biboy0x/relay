@@ -4485,12 +4485,6 @@
           width: 28px;
         }
       }
-      .auth-dialog.action-dialog.confirmation {
-        width: max-content;
-        max-width: min(420px, calc(100vw - 24px));
-        padding: 16px;
-        overflow: visible;
-      }
       .post-lightbox {
         width: 100vw;
         height: 100vh;
@@ -4603,20 +4597,121 @@
       }
       .post-alt-dialog [data-alt-close] { margin: -4px -4px 0 8px; }
       .post-alt-dialog p { margin: 12px 0 0; line-height: 1.5; white-space: pre-wrap; }
-      .confirmation #actionTitle {
-        margin-bottom: 6px;
-        font-size: 18px;
+      .confirm-dialog,
+      .action-dialog.confirmation {
+        z-index: 2147483647;
+        width: min(360px, calc(100vw - 32px));
+        max-width: none;
+        box-sizing: border-box;
+        padding: 20px;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        color: var(--text);
+        background: var(--bg);
+        box-shadow: 0 8px 24px rgba(9, 9, 11, .12);
       }
-      .confirmation #actionDescription {
-        max-width: 340px;
+      .confirm-dialog[open],
+      .action-dialog.confirmation[open] {
+        animation: confirm-dialog-in 150ms ease-out both;
+      }
+      .confirm-dialog::backdrop,
+      .action-dialog.confirmation::backdrop {
+        background: rgba(9, 9, 11, .5);
+        backdrop-filter: blur(4px);
+      }
+      :root[data-theme="dark"] .confirm-dialog,
+      :root[data-theme="dark"] .action-dialog.confirmation {
+        box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) .confirm-dialog,
+        :root:not([data-theme="light"]) .action-dialog.confirmation {
+          box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+        }
+      }
+      @keyframes confirm-dialog-in {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .confirm-dialog h2,
+      .action-dialog.confirmation #actionTitle {
         margin: 0;
+        color: var(--text);
+        font-size: 16px;
+        font-weight: 650;
+        letter-spacing: -.02em;
+      }
+      .confirm-dialog p,
+      .action-dialog.confirmation #actionDescription {
+        margin: 4px 0 0;
+        color: var(--text-2);
+        font-size: 14px;
         line-height: 1.45;
       }
-      .confirmation .dialog-error:empty {
-        display: none;
+      .confirm-dialog p[hidden],
+      .action-dialog.confirmation #actionDescription[hidden] { display: none; }
+      .confirm-dialog-actions,
+      .action-dialog.confirmation .dialog-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 20px;
       }
-      .confirmation .dialog-actions {
-        margin-top: 16px;
+      .confirm-dialog button,
+      .action-dialog.confirmation .dialog-actions button {
+        height: 36px;
+        min-height: 36px;
+        padding: 0 16px;
+        border: 0;
+        border-radius: 10px;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .confirm-dialog .confirm-cancel,
+      .action-dialog.confirmation #actionCancel {
+        border: 1px solid var(--border);
+        color: var(--text);
+        background: transparent;
+      }
+      .confirm-dialog .confirm-cancel:hover,
+      .action-dialog.confirmation #actionCancel:hover { background: var(--surface-2); }
+      .confirm-dialog .confirm-submit,
+      .action-dialog.confirmation #actionSubmit {
+        color: #fff;
+        background: var(--accent);
+      }
+      .confirm-dialog .confirm-submit:hover,
+      .action-dialog.confirmation #actionSubmit:hover { background: var(--accent-h); }
+      .confirm-dialog .confirm-submit.danger,
+      .action-dialog.confirmation.danger #actionSubmit {
+        color: #fff;
+        background: var(--like);
+      }
+      .confirm-dialog .confirm-submit.danger:hover,
+      .action-dialog.confirmation.danger #actionSubmit:hover {
+        background: color-mix(in srgb, var(--like) 88%, black);
+      }
+      .confirm-dialog button:focus-visible,
+      .action-dialog.confirmation .dialog-actions button:focus-visible {
+        outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+        outline-offset: 2px;
+      }
+      .action-dialog.confirmation #actionForm {
+        width: 100%;
+        min-width: 0;
+      }
+      .action-dialog.confirmation .dialog-error:empty { display: none; }
+      @media (max-width: 419px) {
+        .confirm-dialog-actions,
+        .action-dialog.confirmation .dialog-actions { flex-direction: column-reverse; }
+        .confirm-dialog button,
+        .action-dialog.confirmation .dialog-actions button { width: 100%; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .confirm-dialog[open],
+        .action-dialog.confirmation[open] { animation: none; }
       }
       .dialog-actions {
         display: flex;
@@ -8252,6 +8347,14 @@
         </div>
       </section>
     </dialog>
+    <dialog class="confirm-dialog" id="confirmDialog" role="alertdialog" aria-modal="true" aria-labelledby="confirmDialogTitle" tabindex="-1">
+      <h2 id="confirmDialogTitle"></h2>
+      <p id="confirmDialogMessage" hidden></p>
+      <div class="confirm-dialog-actions">
+        <button class="confirm-cancel" id="confirmDialogCancel" type="button">Cancel</button>
+        <button class="confirm-submit" id="confirmDialogSubmit" type="button">Confirm</button>
+      </div>
+    </dialog>
     <dialog class="auth-dialog action-dialog" id="actionDialog" aria-labelledby="actionTitle" aria-describedby="actionDescription">
       <h2 id="actionTitle"></h2>
       <p id="actionDescription"></p>
@@ -11147,7 +11250,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       async function deleteReel(reelId) {
         const reel = reelItems.find((item) => item.id === reelId);
         if (!reel || reel.author?.id !== currentUser?.id) return;
-        if (!confirm("Delete this Reel? This cannot be undone.")) return;
+        if (!await confirmDialog({
+          title: "Delete Reel?",
+          message: "This can't be undone.",
+          confirmLabel: "Delete",
+          cancelLabel: "Cancel",
+          danger: true,
+        })) return;
         try {
           await api(`/reels/${encodeURIComponent(reelId)}`, { method: "DELETE" });
           reelItems = reelItems.filter((item) => item.id !== reelId);
@@ -14322,6 +14431,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       const authDialog = $("#authDialog");
       const actionDialog = $("#actionDialog");
       let actionDialogState = null;
+      const confirmDialogElement = $("#confirmDialog");
+      let confirmDialogState = null;
       let registering = false;
       let showAuthCookieNoticeForCurrentDialog = false;
       function showAuth() {
@@ -14673,8 +14784,81 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             || composerLocation !== editingPostOriginal.location));
       }
       function requestPostEditorClose() {
-        if (postEditorHasChanges() && !window.confirm("Discard your changes to this post?")) return;
-        postEditorDialog.close();
+        if (!postEditorHasChanges()) {
+          postEditorDialog.close();
+          return;
+        }
+        confirmDialog({
+          title: "Discard changes?",
+          confirmLabel: "Discard",
+          cancelLabel: "Keep editing",
+          danger: true,
+        }).then((confirmed) => {
+          if (confirmed) postEditorDialog.close();
+        });
+      }
+      async function deletePost(postId) {
+        try {
+          const result = await api(`/posts/${encodeURIComponent(postId)}`, { method: "DELETE" });
+          receivePostDeleted({
+            postId,
+            deletedPosts: result?.deletedPosts,
+          });
+          toast("Post deleted");
+        } catch (error) {
+          toast(error.message);
+        }
+      }
+      function confirmDialog({ title, message = "", confirmLabel, cancelLabel = "Cancel", danger = false }) {
+        const dialog = confirmDialogElement;
+        if (dialog.open || confirmDialogState) {
+          throw new Error("A confirmation dialog is already open.");
+        }
+        $("#confirmDialogTitle").textContent = title;
+        const description = $("#confirmDialogMessage");
+        description.textContent = message;
+        description.hidden = !message;
+        if (message) dialog.setAttribute("aria-describedby", "confirmDialogMessage");
+        else dialog.removeAttribute("aria-describedby");
+        const cancel = $("#confirmDialogCancel");
+        const submit = $("#confirmDialogSubmit");
+        cancel.textContent = cancelLabel;
+        submit.textContent = confirmLabel;
+        submit.classList.toggle("danger", danger);
+        const trigger = document.activeElement;
+        const previousBodyOverflow = document.body.style.overflow;
+        return new Promise((resolve) => {
+          confirmDialogState = { resolve, trigger, previousBodyOverflow, closing: false };
+          document.body.style.overflow = "hidden";
+          dialog.showModal();
+          (danger ? cancel : submit).focus({ preventScroll: true });
+        });
+      }
+      function settleConfirmDialog(confirmed) {
+        const state = confirmDialogState;
+        if (!state || state.closing) return;
+        state.closing = true;
+        const finish = () => {
+          if (confirmDialogState !== state) return;
+          confirmDialogElement.close();
+          document.body.style.overflow = state.previousBodyOverflow;
+          confirmDialogState = null;
+          state.resolve(confirmed);
+          requestAnimationFrame(() => {
+            if (state.trigger?.isConnected) state.trigger.focus({ preventScroll: true });
+          });
+        };
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          || typeof confirmDialogElement.animate !== "function") {
+          finish();
+          return;
+        }
+        const animation = confirmDialogElement.animate([
+          { opacity: 1, transform: "translateY(0)" },
+          { opacity: 0, transform: "translateY(8px)" },
+        ], { duration: 150, easing: "ease-in", fill: "forwards" });
+        animation.onfinish = finish;
+        animation.oncancel = finish;
       }
       function openActionDialog(mode, data = {}) {
         actionDialogState = { mode, ...data };
@@ -14688,10 +14872,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (mode === "profile") {
           title = "Edit profile";
           body = `${field("Display name", "displayName", currentUser.displayName, 'maxlength="60" data-required')}<label class="dialog-field">Bio<textarea name="bio" maxlength="280">${esc(currentUser.bio || "")}</textarea></label>`;
-        } else if (mode === "delete-post") {
-          title = "Delete this post?";
-          description = "This removes the post from Relay. This action cannot be undone.";
-          submitLabel = "Delete post";
         } else if (mode === "settings") {
           title = "Settings";
           const theme = document.documentElement.dataset.theme || "system";
@@ -14704,9 +14884,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           body = `<label class="dialog-field">Appearance<div class="choice-control" data-choice-control><input type="hidden" name="theme" value="${selectedTheme[0]}"><button class="choice-trigger" type="button" aria-expanded="false" aria-haspopup="listbox" aria-controls="themeChoiceMenu">${selectedTheme[1]}</button><div class="choice-menu select-surface" id="themeChoiceMenu" role="listbox" aria-label="Appearance" hidden>${themes.map(([value, label]) => `<button class="choice-option" type="button" role="option" data-choice-value="${value}" aria-selected="${value === selectedTheme[0]}">${label}</button>`).join("")}</div></div></label>`;
           submitLabel = "Save settings";
         } else if (mode === "delete-account") {
-          title = "Delete your account?";
-          description = "This permanently removes your account and data.";
-          submitLabel = "Delete account";
+          title = "Delete account?";
+          description = "This can't be undone.";
+          submitLabel = "Delete";
           body = field("Type your handle", "handle", "", 'autocomplete="off" data-required');
         }
         $("#actionTitle").textContent = title;
@@ -14717,9 +14897,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         fields.innerHTML = body;
         $("#actionError").textContent = "";
         $("#actionSubmit").textContent = submitLabel;
-        $("#actionSubmit").classList.toggle("btn-dark", mode === "delete-post");
-        $("#actionSubmit").classList.toggle("btn-primary", mode !== "delete-post");
-        actionDialog.classList.toggle("confirmation", mode === "delete-post" || mode === "delete-account");
+        $("#actionSubmit").classList.remove("btn-dark");
+        $("#actionSubmit").classList.toggle("btn-primary", mode !== "delete-account");
+        actionDialog.classList.toggle("confirmation", mode === "delete-account");
         actionDialog.classList.toggle("danger", mode === "delete-account");
         actionDialog.showModal();
         fields.querySelector(".choice-trigger, input:not([type=hidden]), textarea")?.focus();
@@ -15592,9 +15772,19 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const deletePost = e.target.closest("[data-post-delete]");
         if (deletePost) {
           const postElement = deletePost.closest(".post");
+          const menuTrigger = deletePost.closest(".post-menu-wrap")?.querySelector("[data-post-menu-toggle]");
           closePostMenus();
           if (!requireAuth()) return;
-          openActionDialog("delete-post", { postId: postElement.dataset.id });
+          menuTrigger?.focus({ preventScroll: true });
+          confirmDialog({
+            title: "Delete post?",
+            message: "This can't be undone.",
+            confirmLabel: "Delete",
+            cancelLabel: "Cancel",
+            danger: true,
+          }).then((confirmed) => {
+            if (confirmed) deletePost(postElement.dataset.id);
+          });
           return;
         }
         const f = e.target.closest("[data-fol]");
@@ -15952,13 +16142,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               composerMediaUrl = url.href;
               $("#attachImage").setAttribute("aria-pressed", "true");
               toast(`Image attached from ${url.hostname}`);
-            } else if (state.mode === "delete-post") {
-              const result = await api(`/posts/${state.postId}`, { method: "DELETE" });
-              receivePostDeleted({
-                postId: state.postId,
-                deletedPosts: result?.deletedPosts,
-              });
-              toast("Post deleted");
             } else if (state.mode === "settings") {
               applyTheme(value("theme"));
               toast("Settings saved");
@@ -16090,6 +16273,40 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (event.target === $("#profileCropDialog")) $("#profileCropDialog").close();
       });
       $("#actionCancel").addEventListener("click", closeActionDialog);
+      $("#confirmDialogCancel").addEventListener("click", () => settleConfirmDialog(false));
+      $("#confirmDialogSubmit").addEventListener("click", () => settleConfirmDialog(true));
+      confirmDialogElement.addEventListener("cancel", (event) => {
+        event.preventDefault();
+        settleConfirmDialog(false);
+      });
+      confirmDialogElement.addEventListener("click", (event) => {
+        if (event.target !== confirmDialogElement) return;
+        const bounds = confirmDialogElement.getBoundingClientRect();
+        if (event.clientX < bounds.left || event.clientX > bounds.right
+          || event.clientY < bounds.top || event.clientY > bounds.bottom) {
+          settleConfirmDialog(false);
+        }
+      });
+      confirmDialogElement.addEventListener("keydown", (event) => {
+        const buttons = $$("#confirmDialogCancel, #confirmDialogSubmit");
+        if (event.key === "Enter") {
+          if (buttons.includes(document.activeElement)) {
+            event.preventDefault();
+            document.activeElement.click();
+          }
+          return;
+        }
+        if (event.key !== "Tab") return;
+        const first = buttons[0];
+        const last = buttons[buttons.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      });
       actionDialog.addEventListener("click", (e) => {
         if (e.target === actionDialog) closeActionDialog();
       });
