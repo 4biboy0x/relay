@@ -7751,14 +7751,17 @@
         border: 1.5px dashed rgba(255,255,255,.35);
         border-radius: 12px;
         background: #000;
+        color: #fff;
+        transition: border-color 140ms ease, background-color 140ms ease;
       }
-      .reel-upload-preview:hover,
-      .reel-upload-preview.is-dragging { border-color: #fff; background: rgba(255,255,255,.06); }
+      .reel-create-dialog .reel-upload-preview:hover,
+      .reel-create-dialog .reel-upload-preview.is-dragging { border-color: rgba(255,255,255,.8); background: #1a1a1a; }
       .reel-upload-preview:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-      .reel-upload-preview video { width: 100%; height: 100%; object-fit: contain; background: #000; cursor: pointer; }
-      .reel-upload-placeholder { display: grid; width: 100%; height: 100%; align-content: center; justify-items: center; gap: 10px; padding: 20px 12px; border: 0; background: transparent; color: #fff; font: inherit; text-align: center; cursor: pointer; }
-      .reel-upload-preview:hover .reel-upload-placeholder,
-      .reel-upload-preview.is-dragging .reel-upload-placeholder { background: transparent; }
+      .reel-upload-preview video { display: block; width: 100%; height: 100%; object-fit: cover; background: #000; cursor: pointer; }
+      .reel-upload-preview video[hidden] { display: none !important; }
+      .reel-upload-placeholder { display: grid; width: 100%; height: 100%; align-content: center; justify-items: center; gap: 10px; padding: 20px 12px; border: 0; background: transparent !important; color: #fff; font: inherit; text-align: center; cursor: pointer; }
+      .reel-create-dialog .reel-upload-preview:hover .reel-upload-placeholder,
+      .reel-create-dialog .reel-upload-preview.is-dragging .reel-upload-placeholder { background: transparent !important; color: #fff; }
       .reel-upload-placeholder:focus-visible { outline: 2px solid var(--accent) !important; outline-offset: 2px; box-shadow: none !important; }
       .reel-upload-placeholder .i { width: 28px; height: 28px; color: #fff; }
       .reel-upload-placeholder strong { color: #fff; font-size: 15px; font-weight: 600; }
@@ -8871,11 +8874,11 @@
         <div class="reel-upload-layout">
           <div class="reel-upload-media">
             <div class="reel-upload-preview" id="reelUploadPreviewFrame" role="group" aria-label="Reel video preview">
-              <video id="reelUploadPreview" playsinline muted loop tabindex="0" aria-label="Video preview" hidden></video>
+              <video id="reelUploadPreview" playsinline muted loop preload="metadata" tabindex="0" aria-label="Video preview" hidden></video>
               <button class="reel-upload-placeholder" id="reelUploadPlaceholder" type="button" aria-label="Choose a video">
-              <svg class="i reels-symbol" aria-hidden="true"><use href="#reels" /></svg>
-              <strong>Choose a video</strong>
-              <span>MP4, MOV, WebM · up to 60 s · 100 MB</span>
+                <svg class="i reels-symbol" aria-hidden="true"><use href="#reels" /></svg>
+                <strong>Choose a video</strong>
+                <span>MP4, MOV, WebM · up to 60 s · 100 MB</span>
               </button>
               <div class="reel-upload-controls" id="reelUploadControls" hidden>
                 <button class="reel-upload-control" id="reelReplaceVideo" type="button" aria-label="Replace video" title="Replace video">
@@ -12534,13 +12537,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function updateReelUploadButton() {
         $("#reelSubmitUpload").disabled = reelUploadBusy || reelUploadCommitted || !reelUploadFile
-          || !reelUploadMetadataReady || !reelUploadPreuploaded || $("#reelCaption").value.length > 280;
+          || !reelUploadMetadataReady || $("#reelCaption").value.length > 280;
       }
       function selectReelFile(file) {
         if (!file) return;
+        resetReelPreview();
         const validationGeneration = ++reelUploadValidationGeneration;
-        if (reelUploadValidationUrl) URL.revokeObjectURL(reelUploadValidationUrl);
-        reelUploadValidationUrl = "";
         const mime = resolveReelMime(file);
         if (!mime) {
           setReelPreviewError("Choose an MP4, MOV, or WebM video.");
@@ -12616,11 +12618,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         reelUploadPreviewUrl = previewUrl;
         const preview = $("#reelUploadPreview");
         preview.pause();
-        preview.src = previewUrl;
+        preview.preload = "metadata";
+        preview.src = `${previewUrl}#t=0.1`;
         preview.muted = true;
         preview.loop = true;
         preview.playsInline = true;
         preview.hidden = false;
+        preview.load();
         const frame = $("#reelUploadPreviewFrame");
         clearTimeout(reelPreviewFeedbackTimer);
         frame.classList.remove("is-preview-paused", "is-preview-feedback", "is-preview-playing", "is-preview-pause", "is-preview-fading");
@@ -12632,7 +12636,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#reelPreviewMute").setAttribute("aria-pressed", "false");
         $('[data-mute-icon="muted"]', $("#reelPreviewMute")).hidden = false;
         $('[data-mute-icon="unmuted"]', $("#reelPreviewMute")).hidden = true;
-        preview.play().catch(() => {});
         setReelUploadStatus("Uploading… 0%");
         setReelUploadProgress(0);
         startReelPreupload(file, generation);
@@ -13030,7 +13033,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       async function uploadReel(event) {
         event.preventDefault();
         if (!requireAuth() || reelUploadBusy || !reelUploadFile || !reelUploadMetadataReady
-          || !reelUploadPreuploaded || $("#reelCaption").value.length > 280) return;
+          || $("#reelCaption").value.length > 280) return;
         reelUploadBusy = true;
         reelUploadCancellation = false;
         const generation = reelUploadGeneration;
