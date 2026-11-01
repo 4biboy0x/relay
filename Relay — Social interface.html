@@ -5513,18 +5513,52 @@
       }
       .message-row {
         position: relative;
-        display: flex;
+        display: grid;
         width: 100%;
         min-width: 0;
         flex: none;
-        align-items: center;
+        grid-template-columns: minmax(0, 1fr);
       }
       .message-row:empty { display: none; }
-      .message-row.mine { justify-content: flex-end; }
+      .message-row:not(.mine) > * { justify-self: left; }
+      .message-row.mine > * { justify-self: right; }
       .message-row > .message-bubble {
         width: fit-content;
         max-width: min(90%, 720px);
         align-self: auto;
+      }
+      .message-reply-header {
+        display: inline-flex;
+        max-width: min(90%, 720px);
+        align-items: center;
+        gap: 5px;
+        margin: 0 0 2px;
+        padding: 0;
+        border: 0;
+        color: var(--text-3);
+        background: transparent;
+        font: inherit;
+        font-size: 12px;
+        line-height: 16px;
+        text-align: left;
+        direction: ltr;
+        cursor: pointer;
+      }
+      .message-reply-header:hover { color: var(--text-2); }
+      .message-reply-header:focus-visible {
+        border-radius: 3px;
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .message-reply-header .i {
+        width: 13px;
+        height: 13px;
+        flex: none;
+      }
+      .message-reply-header span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .message-tools {
         position: absolute;
@@ -5702,30 +5736,7 @@
         color: var(--text);
         background: color-mix(in srgb, var(--accent) 12%, var(--surface));
       }
-      .message-reply-quote {
-        display: flex;
-        min-width: 0;
-        max-width: 100%;
-        flex-direction: column;
-        gap: 2px;
-        margin: 0 0 6px;
-        padding: 5px 8px;
-        border: 0;
-        border-inline-start: 2px solid var(--accent);
-        border-radius: 4px;
-        color: inherit;
-        background: color-mix(in srgb, currentColor 7%, transparent);
-        text-align: start;
-        cursor: pointer;
-      }
-      .message-reply-quote strong,
-      .message-reply-quote span {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      .message-reply-quote strong { font-size: 11px; font-weight: 650; }
-      .message-reply-quote span { font-size: 12px; opacity: .8; }
+      .message-row > .message-reaction-list { max-width: min(90%, 720px); }
       .message-bubble.message-reply-highlight { animation: message-reply-highlight 700ms ease-out; }
       @keyframes message-reply-highlight {
         0%, 100% { outline: 0 solid transparent; }
@@ -16083,8 +16094,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           downloadLabel: "voice message",
         });
         const bubbleActions = image ? "" : actions;
-        const replyQuote = message.replyTo ? `<button type="button" class="message-reply-quote" data-message-jump="${esc(message.replyTo.id)}"><strong>${esc(message.replyTo.sender?.displayName || "Message")}</strong><span>${esc(messagePreviewText(message.replyTo))}</span></button>` : "";
-        return `<div class="message-row${mine ? " mine" : ""}" data-message-row data-conversation-id="${esc(message.conversationId)}"><div class="message-bubble${mine ? " mine" : ""}${mediaOnly ? " media-message" : ""}${imageOnly ? " image-message" : ""}${audioOnly ? " audio-message" : ""}${stickerOnly ? " sticker-message" : ""}" data-message-id="${esc(message.id)}">${replyQuote}${image}${audio}${sticker}${text}${bubbleActions}${messageReactionsMarkup(message)}</div></div>`;
+        const replyHeader = message.replyTo
+          ? `<button type="button" class="message-reply-header" data-message-jump="${esc(message.replyTo.id)}">${ic("reply")}<span>${esc(message.replyTo.sender?.displayName || "Message")}</span></button>`
+          : "";
+        return `<div class="message-row${mine ? " mine" : ""}" data-message-row data-conversation-id="${esc(message.conversationId)}">${replyHeader}<div class="message-bubble${mine ? " mine" : ""}${mediaOnly ? " media-message" : ""}${imageOnly ? " image-message" : ""}${audioOnly ? " audio-message" : ""}${stickerOnly ? " sticker-message" : ""}" data-message-id="${esc(message.id)}">${image}${audio}${sticker}${text}${bubbleActions}</div>${messageReactionsMarkup(message)}</div>`;
       }
       function bindVoiceMessages(container = document) {
         container.querySelectorAll(".relay-voice audio:not([data-relay-bound])").forEach((audio) => {
