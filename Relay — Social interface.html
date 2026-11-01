@@ -5618,9 +5618,12 @@
         gap: 6px;
       }
       .message-bubble.image-message {
-        width: auto;
+        display: flex;
+        width: fit-content;
         min-width: 0;
-        max-width: 260px;
+        max-width: min(300px, 100%);
+        flex-direction: column;
+        gap: 2px;
         padding: 0;
         overflow: visible;
         border-radius: 14px;
@@ -5650,15 +5653,35 @@
       }
       .message-media-button {
         display: block;
-        width: 260px;
+        width: min(300px, 100%);
         max-width: 100%;
-        aspect-ratio: 4 / 3;
+        aspect-ratio: 3 / 2;
         padding: 0;
         border: 0;
         border-radius: 14px;
         overflow: hidden;
         background: transparent;
         cursor: zoom-in;
+      }
+      .message-media-button.is-portrait {
+        width: min(240px, 100%);
+        max-height: 400px;
+        aspect-ratio: 3 / 5;
+      }
+      .message-media-button.is-square {
+        aspect-ratio: 1;
+      }
+      .message-media-button.is-banner {
+        aspect-ratio: 3 / 1;
+      }
+      .message-media-button .message-media {
+        width: 100%;
+        height: 100%;
+        aspect-ratio: auto;
+        border-radius: inherit;
+        background: transparent;
+        object-fit: cover;
+        object-position: center;
       }
       .message-media-button:focus-visible {
         outline: 2px solid var(--accent);
@@ -14615,11 +14638,21 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function bindMessageMediaScroll(container, followList = true) {
         const list = $("#chatLog");
         container.querySelectorAll(".message-media").forEach((image) => {
-          image.addEventListener("load", () => {
+          const updateImageFrame = () => {
+            const frame = image.closest(".message-media-button");
+            if (frame && image.naturalWidth && image.naturalHeight) {
+              const ratio = image.naturalWidth / image.naturalHeight;
+              frame.classList.remove("is-portrait", "is-square", "is-banner");
+              if (ratio < 0.9) frame.classList.add("is-portrait");
+              else if (ratio <= 1.1) frame.classList.add("is-square");
+              else if (ratio > 2.2) frame.classList.add("is-banner");
+            }
             requestAnimationFrame(() => {
               if (followList) list.scrollTop = list.scrollHeight;
             });
-          }, { once: true });
+          };
+          if (image.complete) updateImageFrame();
+          else image.addEventListener("load", updateImageFrame, { once: true });
         });
       }
       function animateChatMessages(messages) {
