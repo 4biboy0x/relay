@@ -6331,6 +6331,20 @@
       #v-explore #exp {
         min-height: 180px;
       }
+      #v-explore #exp > .explore-search-loading {
+        display: flex;
+        box-sizing: border-box;
+        min-height: 180px;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 32px 12px 16px;
+      }
+      #v-explore .explore-search-spinner {
+        width: clamp(24px, 3.5vw, 32px);
+        height: clamp(24px, 3.5vw, 32px);
+        flex: none;
+        stroke-width: 2.5;
+      }
       .explore-feed-section + .explore-feed-section {
         margin-top: 20px;
       }
@@ -10750,11 +10764,13 @@
         finish.cancel = () => finish(true);
         delayedSkeletons.set(element, finish);
         activeDelayedPlaceholders.add(finish);
-        state.timer = setTimeout(() => {
+        const show = () => {
           if (state.finished || delayedSkeletons.get(element) !== finish || !canShow()) return;
           state.shownAt = performance.now();
           state.remove = render() || (() => {});
-        }, delay);
+        };
+        if (delay === 0) show();
+        else state.timer = setTimeout(show, delay);
         return finish;
       };
       const cancelDelayedPlaceholders = () => {
@@ -14173,7 +14189,18 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         });
       }
       function exploreStatusKey(searchText, tab = exploreTab, filter = exploreSearchFilter) {
-        return searchText ? `search:${searchText}:${filter}` : `default:${tab}`;
+        return searchText
+          ? `search:${searchText.trim().toLowerCase()}:${filter.toLowerCase()}`
+          : `default:${tab}`;
+      }
+      function exploreSearchCacheKey(searchText, filter = exploreSearchFilter) {
+        return `explore:${searchText.trim().toLowerCase()}:${filter.toLowerCase()}`;
+      }
+      function readExploreSearchCache(searchText, filter = exploreSearchFilter) {
+        const cached = readViewCache(exploreSearchCacheKey(searchText, filter));
+        if (cached) return cached;
+        const legacyKey = `explore:${searchText.trim()}:${filter}`;
+        return legacyKey === exploreSearchCacheKey(searchText, filter) ? null : readViewCache(legacyKey);
       }
       function setExploreContentStatus(status, key) {
         exploreSearchStatus = status;
@@ -14205,11 +14232,25 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }, { canShow: () => exploreSearchStatus === "loading"
           && exploreSearchStatusKey === key && !results.childElementCount });
       }
+      function scheduleExploreSearchSpinner(key) {
+        exploreSkeletonFinish?.cancel?.();
+        const results = $("#exp");
+        results.replaceChildren();
+        const spinnerMarkup = '<div class="explore-search-loading" role="status" aria-label="Loading"><svg class="spinner explore-search-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" opacity=".2"></circle><path d="M21 12a9 9 0 0 0-9-9"></path></svg></div>';
+        exploreSkeletonFinish = showDelayedMarkup(results, spinnerMarkup, {
+          delay: 0,
+          minVisible: 300,
+          canShow: () => exploreSearchStatus === "loading"
+            && exploreSearchStatusKey === key && !results.childElementCount,
+        });
+      }
       function setExploreContentLoading(searchText, key, skeletonKind, deferSkeleton = false) {
         renderExploreSearchTabs(searchText);
-        const results = $("#exp");
         setExploreContentStatus("loading", key);
-        if (!deferSkeleton) scheduleExploreSkeleton(key, skeletonKind);
+        if (!deferSkeleton) {
+          if (searchText) scheduleExploreSearchSpinner(key);
+          else scheduleExploreSkeleton(key, skeletonKind);
+        }
         $("#exploreMore").hidden = true;
       }
       async function commitExploreContent(html, status, key, isCurrentRequest, animate = true) {
@@ -14230,9 +14271,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         await transitionContent($("#exp"), commit, true);
       }
       function showCachedExploreSearch(searchText, generation) {
-        const key = exploreStatusKey(searchText);
-        const cached = readViewCache(`explore:${searchText}:${exploreSearchFilter}`);
+        const key = exploreStatusKey(searchText, exploreTab, exploreSearchFilter);
+        const cached = readExploreSearchCache(searchText, exploreSearchFilter);
         if (!cached) return false;
+        exploreSkeletonFinish?.cancel?.();
+        exploreSkeletonFinish = null;
         exploreSearchedQuery = searchText;
         const status = cached.includes('class="empty-state') ? "empty" : "success";
         void commitExploreContent(cached, status, key, () => generation === exploreRequestGeneration);
@@ -14260,7 +14303,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           renderExploreSearchTabs(searchText);
           $("#exploreSearchClear").hidden = !searchText;
           delete $("#exp").dataset.loaded;
-          cached = readViewCache(searchText ? `explore:${searchText}:${requestFilter}` : "explore");
+          cached = searchText
+            ? readExploreSearchCache(searchText, requestFilter)
+            : readViewCache("explore");
           if (searchText) {
             exploreSearchedQuery = searchText;
             if (cached) {
@@ -14268,8 +14313,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 const cachedStatus = cached.includes('class="empty-state') ? "empty" : "success";
                 await commitExploreContent(cached, cachedStatus, requestStatusKey, isCurrentRequest);
               }
-            } else if (exploreSearchStatusKey !== requestStatusKey || exploreSearchStatus !== "loading") {
-              setExploreContentLoading(searchText, requestStatusKey, skeletonKind);
+            } else {
+              setExploreContentLoading(searchText, requestStatusKey, skeletonKind, true);
             }
           } else {
             exploreSearchedQuery = "";
@@ -14298,7 +14343,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             $("#exploreMore").hidden = true;
             return;
           }
-          if (!append && !cached) scheduleExploreSkeleton(requestStatusKey, skeletonKind);
+          if (!append && !cached) {
+            if (searchText) setExploreContentLoading(searchText, requestStatusKey, skeletonKind);
+            else scheduleExploreSkeleton(requestStatusKey, skeletonKind);
+          }
           const query = new URLSearchParams({ limit: searchText ? "10" : "20" });
           if (searchText) {
             query.set("q", searchTerm);
@@ -14330,7 +14378,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             }
             exploreCursor = result.nextCursor;
             $("#exploreMore").hidden = !exploreCursor;
-            writeViewCache(`explore:${searchText}:${requestFilter}`, $("#exp").innerHTML);
+            writeViewCache(exploreSearchCacheKey(searchText, requestFilter), $("#exp").innerHTML);
             if (requestFilter !== "People") joinVisiblePostRooms();
             return;
           }
@@ -19206,6 +19254,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             searchText,
             exploreStatusKey(searchText),
             exploreSearchFilter === "People" ? "person" : "post",
+            true,
           );
         }
         exploreTimer = setTimeout(() => renderExplore(searchText), 350);
