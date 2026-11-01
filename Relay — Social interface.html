@@ -5778,7 +5778,7 @@
       }
       .message-bubble.image-message {
         display: flex;
-        width: fit-content;
+        width: min(300px, 100%);
         min-width: 0;
         max-width: min(300px, 100%);
         flex-direction: column;
@@ -5803,11 +5803,12 @@
       .message-image-item {
         position: relative;
         width: fit-content;
+        min-width: 0;
         max-width: 100%;
       }
       .message-image-list {
         display: grid;
-        width: min(300px, 100%);
+        width: 100%;
         max-width: 100%;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 2px;
@@ -5815,7 +5816,10 @@
       }
       .message-image-list[data-count="1"] {
         display: block;
-        width: min(300px, 100%);
+        width: 100%;
+      }
+      .message-image-list[data-count="1"] .message-image-item {
+        width: 100%;
       }
       .message-image-list:not([data-count="1"]) .message-image-item {
         width: 100%;
@@ -5823,31 +5827,30 @@
       .message-image-frame {
         width: 100%;
         max-width: 100%;
-        height: auto;
+        aspect-ratio: 1;
         overflow: hidden;
         border-radius: 14px;
-        background: transparent;
+        background: var(--surface-2);
       }
       .message-image-list[data-count="1"].is-portrait {
         width: min(240px, 100%);
       }
+      .message-image-frame.is-portrait { aspect-ratio: 3 / 5; }
+      .message-image-frame.is-square { aspect-ratio: 1; }
+      .message-image-frame.is-banner { aspect-ratio: 3 / 1; }
+      .message-image-frame.is-landscape { aspect-ratio: 3 / 2; }
       .message-media {
         display: block;
         width: 100%;
-        height: auto;
+        height: 100%;
         max-width: 100%;
-        aspect-ratio: 3 / 2;
         border-radius: inherit;
         object-fit: cover;
         object-position: center;
-        background: transparent;
+        opacity: 0;
+        transition: opacity 150ms ease;
       }
-      .message-image-frame.is-portrait .message-media {
-        max-height: 400px;
-        aspect-ratio: 3 / 5;
-      }
-      .message-image-frame.is-square .message-media { aspect-ratio: 1; }
-      .message-image-frame.is-banner .message-media { aspect-ratio: 3 / 1; }
+      .message-media.is-loaded { opacity: 1; }
       .message-media-static {
         cursor: default;
         pointer-events: none;
@@ -5856,7 +5859,7 @@
       .message-media-button {
         display: block;
         width: 100%;
-        height: auto;
+        height: 100%;
         max-width: 100%;
         padding: 0;
         border: 0;
@@ -5933,7 +5936,7 @@
         .message-image-list { width: min(220px, 100%); }
         .message-image-list[data-count="1"] { width: min(220px, 100%); }
         .message-image-list[data-count="1"].is-portrait { width: min(168px, 100%); }
-        .message-image-frame.is-portrait .message-media { max-height: 280px; }
+        .message-image-frame.is-portrait { max-height: 280px; }
         .message-bubble.audio-message,
         .relay-voice { width: 220px; max-width: 100%; }
       }
@@ -14832,7 +14835,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         anchor.remove();
         setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
       }
-      function messageMarkup(message) {
+      function messageMarkup(message, { eager = true } = {}) {
         const mine = message.senderId === currentUser?.id;
         const body = String(message.body || "");
         const hasMediaUrls = Array.isArray(message.mediaUrls);
@@ -14840,19 +14843,38 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const rawMediaUrls = hasMediaUrls
           ? message.mediaUrls.filter((url) => typeof url === "string" && url)
           : message.mediaUrl ? [message.mediaUrl] : bodyGifUrl ? [bodyGifUrl] : [];
-        const mediaItems = rawMediaUrls.map((rawUrl) => {
+        const storedDimensions = Array.isArray(message.mediaDimensions) ? message.mediaDimensions : [];
+        const mediaItems = rawMediaUrls.map((rawUrl, index) => {
           const sourceUrl = mediaHref(rawUrl);
           const imageUrl = normalizeGiphyGifUrl(sourceUrl) || sourceUrl;
-          return { sourceUrl, imageUrl, isGif: isGifMediaUrl(imageUrl) };
+          const dimensions = storedDimensions[index]
+            || (rawMediaUrls.length === 1 ? { width: message.mediaWidth, height: message.mediaHeight } : null);
+          const width = Number(dimensions?.width);
+          const height = Number(dimensions?.height);
+          const hasDimensions = Number.isFinite(width) && width > 0 && Number.isFinite(height) && height > 0;
+          const ratio = hasDimensions ? width / height : 1;
+          const aspectClass = !hasDimensions || ratio <= 1.1 && ratio >= 0.9 ? "is-square"
+            : ratio < 0.9 ? "is-portrait"
+              : ratio > 2.2 ? "is-banner" : "is-landscape";
+          return {
+            imageUrl,
+            isGif: isGifMediaUrl(imageUrl),
+            width: hasDimensions ? width : 0,
+            height: hasDimensions ? height : 0,
+            aspectClass,
+            hasDimensions,
+          };
         });
         const bodyIsGifUrl = Boolean(bodyGifUrl && mediaItems.some(({ isGif }) => isGif));
+        const singlePortrait = mediaItems.length === 1 && mediaItems[0].aspectClass === "is-portrait";
+        const mediaLoading = eager ? "eager" : "lazy";
         const image = mediaItems.length
-          ? `<div class="message-image-list" data-count="${mediaItems.length}">${mediaItems.map(({ sourceUrl, imageUrl, isGif }) => `
+          ? `<div class="message-image-list${singlePortrait ? " is-portrait" : ""}" data-count="${mediaItems.length}">${mediaItems.map(({ imageUrl, isGif, width, height, aspectClass, hasDimensions }) => `
             <div class="message-image-item${mine ? " mine" : ""}">
-              <div class="message-image-frame">
+              <div class="message-image-frame ${aspectClass}" data-media-width="${width}" data-media-height="${height}" data-media-dimensions="${hasDimensions ? "stored" : "fallback"}">
                 ${isGif
-                  ? `<img class="message-media message-media-static" src="${esc(imageUrl)}" alt="Shared GIF" loading="lazy" decoding="async" />`
-                  : `<button class="message-media-button" type="button" data-lightbox-image="${esc(imageUrl)}" aria-label="Open shared image"><img class="message-media" src="${esc(imageUrl)}" alt="Shared image" loading="lazy" decoding="async" /></button>`}
+                  ? `<img class="message-media message-media-static" src="${esc(imageUrl)}" alt="Shared GIF" loading="${mediaLoading}" decoding="async" />`
+                  : `<button class="message-media-button" type="button" data-lightbox-image="${esc(imageUrl)}" aria-label="Open shared image"><img class="message-media" src="${esc(imageUrl)}" alt="Shared image" loading="${mediaLoading}" decoding="async" /></button>`}
               </div>
               ${messageToolsMarkup({ downloadUrl: imageUrl, downloadLabel: isGif ? "GIF" : "image", directDownload: true })}
             </div>`).join("")}</div>`
@@ -14935,28 +14957,20 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           });
         });
       }
-      function bindMessageMediaScroll(container, followList = true) {
-        const list = $("#chatLog");
+      function bindMessageMediaScroll(container) {
         container.querySelectorAll(".message-media").forEach((image) => {
-          const updateImageFrame = () => {
+          const markImageLoaded = () => {
             const frame = image.closest(".message-image-frame");
             if (frame && image.naturalWidth && image.naturalHeight) {
-              const ratio = image.naturalWidth / image.naturalHeight;
-              frame.classList.remove("is-portrait", "is-square", "is-banner");
-              const list = frame.closest(".message-image-list");
-              list?.classList.remove("is-portrait");
-              if (ratio < 0.9) {
-                frame.classList.add("is-portrait");
-                if (list?.dataset.count === "1") list.classList.add("is-portrait");
-              } else if (ratio <= 1.1) frame.classList.add("is-square");
-              else if (ratio > 2.2) frame.classList.add("is-banner");
+              if (frame.dataset.mediaDimensions !== "stored") {
+                frame.dataset.mediaWidth = String(image.naturalWidth);
+                frame.dataset.mediaHeight = String(image.naturalHeight);
+              }
+              image.classList.add("is-loaded");
             }
-            requestAnimationFrame(() => {
-              if (followList) list.scrollTop = list.scrollHeight;
-            });
           };
-          if (image.complete) updateImageFrame();
-          else image.addEventListener("load", updateImageFrame, { once: true });
+          if (image.complete) markImageLoaded();
+          else image.addEventListener("load", markImageLoaded, { once: true });
         });
       }
       function animateChatMessages(messages) {
@@ -15881,7 +15895,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversation.id) return;
           activeConversationCursor = result.nextCursor;
           result.items.forEach((message) => receivedMessageIds.add(message.id));
-          $("#chatLog").innerHTML = `${result.items.map(messageMarkup).join("")
+          $("#chatLog").innerHTML = `${result.items.map((message, index) => messageMarkup(message, {
+            eager: index >= result.items.length - 15,
+          })).join("")
             || emptyState("No messages found.", "Send a message to start the conversation.", true)}<div class="typing-status" id="typingStatus" aria-live="polite"></div>`;
           animateChatMessages($$("#chatLog .message-bubble"));
           bindVoiceMessages($("#chatLog"));
@@ -15930,10 +15946,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             if (unseen.length) {
               const anchor = log.querySelector(".message-bubble");
               const anchorTop = anchor?.getBoundingClientRect().top ?? null;
-              log.insertAdjacentHTML("afterbegin", unseen.map(messageMarkup).join(""));
+              log.insertAdjacentHTML("afterbegin", unseen.map((message) => messageMarkup(message, { eager: false })).join(""));
               if (anchor && anchorTop !== null) log.scrollTop += anchor.getBoundingClientRect().top - anchorTop;
               bindVoiceMessages(log);
-              bindMessageMediaScroll(log, false);
+              bindMessageMediaScroll(log);
             }
             activeConversationCursor = result.nextCursor;
           }
@@ -16001,7 +16017,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           unseen.forEach((message) => receivedMessageIds.add(message.id));
           if (unseen.length) {
             const anchorTopBeforeInsert = anchor?.getBoundingClientRect().top ?? null;
-            loader.insertAdjacentHTML("afterend", unseen.map(messageMarkup).join(""));
+            loader.insertAdjacentHTML("afterend", unseen.map((message) => messageMarkup(message, { eager: false })).join(""));
             if (anchor && anchorTopBeforeInsert !== null) {
               anchorShift = anchor.getBoundingClientRect().top - anchorTopBeforeInsert;
             }
@@ -16011,7 +16027,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             }
             animateChatMessages(incomingMessages);
             bindVoiceMessages(log);
-            bindMessageMediaScroll(log, false);
+            bindMessageMediaScroll(log);
           }
           activeConversationCursor = result.nextCursor;
         } catch (error) {
