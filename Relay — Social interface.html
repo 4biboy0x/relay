@@ -6264,7 +6264,7 @@
       #v-explore #exp {
         min-height: 180px;
       }
-      #exp.explore-search-loading [data-search-results] {
+      #exp[data-search-status="loading"] > :not([data-search-loading]) {
         opacity: 0.55;
         transition: opacity 140ms ease;
       }
@@ -9218,10 +9218,13 @@
       let feedLoading = false;
       let feedObserver = null;
       let exploreTimer;
+      let exploreSkeletonTimer;
       let exploreRequestGeneration = 0;
       let exploreTab = "trending";
       let exploreSearchFilter = "Top";
       let exploreSearchStatus = "idle";
+      let exploreSearchStatusKey = "";
+      const exploreTabStatuses = new Map();
       let exploreSearchedQuery = "";
       let lastExploreSearch = "";
       let pendingExploreSearch = null;
@@ -13858,27 +13861,62 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           button.setAttribute("aria-selected", String(button.dataset.exploreFilter === exploreSearchFilter));
         });
       }
-      function setExploreSearchLoading(searchText) {
-        renderExploreSearchTabs(searchText);
-        exploreSearchStatus = "loading";
+      function exploreStatusKey(searchText, tab = exploreTab, filter = exploreSearchFilter) {
+        return searchText ? `search:${searchText}:${filter}` : `default:${tab}`;
+      }
+      function setExploreContentStatus(status, key) {
+        clearTimeout(exploreSkeletonTimer);
+        exploreSearchStatus = status;
+        exploreSearchStatusKey = key;
+        exploreTabStatuses.set(key, status);
+        if (exploreTabStatuses.size > 100) {
+          exploreTabStatuses.delete(exploreTabStatuses.keys().next().value);
+        }
         const results = $("#exp");
-        results.dataset.searchStatus = exploreSearchStatus;
-        results.setAttribute("aria-busy", "true");
-        const existingResults = results.querySelector("[data-search-results]");
-        results.querySelector("[data-search-loading]")?.remove();
-        if (existingResults) {
+        results.dataset.searchStatus = status;
+        results.dataset.searchStateKey = key;
+        if (status === "loading") {
+          results.setAttribute("aria-busy", "true");
           results.classList.add("explore-search-loading");
+        } else {
+          results.removeAttribute("aria-busy");
+          results.querySelector("[data-search-loading]")?.remove();
+          results.classList.remove("explore-search-loading");
+        }
+      }
+      function scheduleExploreSkeleton(key, skeletonKind) {
+        clearTimeout(exploreSkeletonTimer);
+        exploreSkeletonTimer = setTimeout(() => {
+          if (exploreSearchStatus !== "loading" || exploreSearchStatusKey !== key) return;
           const loading = document.createElement("div");
           loading.dataset.searchLoading = "";
-          const skeletonKind = exploreSearchFilter === "People" ? "person" : "post";
-          loading.innerHTML = skeletonListMarkup(skeletonKind, 1, "search results");
-          results.append(loading);
-        } else {
-          results.classList.remove("explore-search-loading");
-          const skeletonKind = exploreSearchFilter === "People" ? "person" : "post";
-          results.innerHTML = skeletonListMarkup(skeletonKind, 5, "search results");
-        }
+          loading.innerHTML = skeletonListMarkup(skeletonKind, 5, "search results");
+          $("#exp").replaceChildren(loading);
+        }, 180);
+      }
+      function setExploreContentLoading(searchText, key, skeletonKind, deferSkeleton = false) {
+        renderExploreSearchTabs(searchText);
+        const results = $("#exp");
+        setExploreContentStatus("loading", key);
+        results.classList.add("explore-search-loading");
+        if (!deferSkeleton) scheduleExploreSkeleton(key, skeletonKind);
         $("#exploreMore").hidden = true;
+      }
+      function commitExploreContent(html, status, key, isCurrentRequest) {
+        return transitionContent($("#exp"), () => {
+          if (!isCurrentRequest()) return;
+          $("#exp").innerHTML = html;
+          setExploreContentStatus(status, key);
+        });
+      }
+      function showCachedExploreSearch(searchText, generation) {
+        const key = exploreStatusKey(searchText);
+        const cached = readViewCache(`explore:${searchText}:${exploreSearchFilter}`);
+        if (!cached) return false;
+        exploreSearchedQuery = searchText;
+        const status = cached.includes('class="empty-state') ? "empty" : "success";
+        void commitExploreContent(cached, status, key, () => generation === exploreRequestGeneration);
+        return true;
       }
       async function renderExplore(search = "", append = false) {
         const searchText = String(search ?? "").trim();
@@ -13887,43 +13925,55 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const requestFilter = exploreSearchFilter;
         const requestGeneration = append ? exploreRequestGeneration : ++exploreRequestGeneration;
         const isCurrentRequest = () => requestGeneration === exploreRequestGeneration;
+        const requestStatusKey = exploreStatusKey(searchText, requestTab, requestFilter);
+        let cached = null;
         const skeletonKind = searchText
           ? requestFilter === "People" ? "person" : "post"
           : requestTab === "people" ? "person" : requestTab === "trending" ? "trend" : "post";
-        let finishSkeleton;
         let removeAppendSkeleton;
         if (!append) {
           exploreCursor = null;
           renderExploreSearchTabs(searchText);
           $("#exploreSearchClear").hidden = !searchText;
           delete $("#exp").dataset.loaded;
-          const cached = readViewCache(searchText ? `explore:${searchText}:${requestFilter}` : "explore");
-          if (cached) $("#exp").innerHTML = cached;
+          cached = readViewCache(searchText ? `explore:${searchText}:${requestFilter}` : "explore");
           if (searchText) {
             exploreSearchedQuery = searchText;
-            setExploreSearchLoading(searchText);
+            if (cached && (exploreSearchStatusKey !== requestStatusKey || exploreSearchStatus === "loading")) {
+              const cachedStatus = cached.includes('class="empty-state') ? "empty" : "success";
+              await commitExploreContent(cached, cachedStatus, requestStatusKey, isCurrentRequest);
+              if (isCurrentRequest()) setExploreContentStatus("loading", requestStatusKey);
+            } else if (exploreSearchStatusKey !== requestStatusKey || exploreSearchStatus !== "loading") {
+              if (cached) setExploreContentStatus("loading", requestStatusKey);
+              else setExploreContentLoading(searchText, requestStatusKey, skeletonKind);
+            }
           } else {
-            exploreSearchStatus = "idle";
             exploreSearchedQuery = "";
-            $("#exp").classList.remove("explore-search-loading");
-            $("#exp").removeAttribute("aria-busy");
-            delete $("#exp").dataset.searchStatus;
-            finishSkeleton = showDelayedSkeleton($("#exp"), skeletonKind);
+            if (cached && exploreSearchStatusKey !== requestStatusKey) {
+              const cachedStatus = cached.includes('class="empty-state') ? "empty" : "success";
+              await commitExploreContent(cached, cachedStatus, requestStatusKey, isCurrentRequest);
+              if (isCurrentRequest()) setExploreContentStatus("loading", requestStatusKey);
+            } else if (exploreSearchStatusKey !== requestStatusKey || exploreSearchStatus !== "loading") {
+              if (cached) setExploreContentStatus("loading", requestStatusKey);
+              else setExploreContentLoading("", requestStatusKey, skeletonKind);
+            }
           }
+          if (!isCurrentRequest()) return;
         } else {
           removeAppendSkeleton = appendSkeleton($("#exp"), skeletonKind, 2, "more results");
         }
         try {
           if (searchText && !searchTerm) {
-            exploreSearchStatus = "empty";
-            $("#exp").dataset.searchStatus = exploreSearchStatus;
-            $("#exp").classList.remove("explore-search-loading");
-            $("#exp").removeAttribute("aria-busy");
-            $("#exp").innerHTML = `<div data-search-results>${emptyState(`No results for “${exploreSearchedQuery}”.`, "Try a different search or filter.")}</div>`;
+            await commitExploreContent(
+              `<div data-search-results>${emptyState(`No results for “${searchText}”.`, "Try a different search or filter.")}</div>`,
+              "empty",
+              requestStatusKey,
+              isCurrentRequest,
+            );
             $("#exploreMore").hidden = true;
-            finishSkeleton?.();
             return;
           }
+          if (!append && !cached) scheduleExploreSkeleton(requestStatusKey, skeletonKind);
           const query = new URLSearchParams({ limit: searchText ? "10" : "20" });
           if (searchText) {
             query.set("q", searchTerm);
@@ -13933,7 +13983,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (searchText) {
             const result = await api(`/search?${query}`);
             if (!isCurrentRequest()) {
-              finishSkeleton?.();
               return;
             }
             const people = result.users.map((person) => `<div class="explore-person-row" role="link" tabindex="0" aria-label="View @${esc(person.handle)} profile" data-explore-profile-id="${esc(person.id)}">${avatarMarkup(person)}<div class="explore-person-copy"><strong>${esc(person.displayName)}</strong><small>@${esc(person.handle)} · ${fmt(person.followerCount)} followers</small><span>${esc(person.bio || "")}</span></div>${fbtn(person)}</div>`).join("");
@@ -13944,59 +13993,70 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               const results = $("#exp [data-search-results]");
               if (results && content) results.insertAdjacentHTML("beforeend", content);
             } else {
-              exploreSearchStatus = content ? "success" : "empty";
-              $("#exp").dataset.searchStatus = exploreSearchStatus;
-              $("#exp").classList.remove("explore-search-loading");
-              $("#exp").removeAttribute("aria-busy");
-              const resultsContent = content || emptyState(`No results for “${exploreSearchedQuery}”.`, "Try a different search or filter.");
-              $("#exp").innerHTML = `<div data-search-results>${resultsContent}</div>`;
+              const resultStatus = content ? "success" : "empty";
+              const resultsContent = content || emptyState(`No results for “${searchText}”.`, "Try a different search or filter.");
+              await commitExploreContent(
+                `<div data-search-results>${resultsContent}</div>`,
+                resultStatus,
+                requestStatusKey,
+                isCurrentRequest,
+              );
             }
             exploreCursor = result.nextCursor;
             $("#exploreMore").hidden = !exploreCursor;
             writeViewCache(`explore:${searchText}:${requestFilter}`, $("#exp").innerHTML);
-            finishSkeleton?.();
             if (requestFilter !== "People") joinVisiblePostRooms();
             return;
           }
           if (requestTab === "trending") {
             const trending = await api("/trending");
             if (!isCurrentRequest()) {
-              finishSkeleton?.();
               return;
             }
             removeAppendSkeleton?.();
-            $("#exp").innerHTML = append ? $("#exp").innerHTML : trending.items.slice(0, 10).map((item) => `<button class="explore-trending-row" type="button" data-search-tag="${esc(item.tag)}"><strong>${esc(item.tag)}</strong><small>${fmt(item.postCount)} posts · ${fmt(item.uniqueUsers)} people</small></button>`).join("");
+            const html = trending.items.slice(0, 10).map((item) => `<button class="explore-trending-row" type="button" data-search-tag="${esc(item.tag)}"><strong>${esc(item.tag)}</strong><small>${fmt(item.postCount)} posts · ${fmt(item.uniqueUsers)} people</small></button>`).join("");
+            if (append) $("#exp").innerHTML += html;
+            else await commitExploreContent(html || emptyState("Nothing to explore yet.", "Try another tab or check back later."), html ? "success" : "empty", requestStatusKey, isCurrentRequest);
             exploreCursor = null;
           } else {
             const result = requestTab === "people" ? await api(`/explore?${query}`) : await api(`/feed?${query}`);
             if (!isCurrentRequest()) {
-              finishSkeleton?.();
               return;
             }
             const html = requestTab === "people"
               ? result.items.map((person) => `<div class="explore-person-row" role="link" tabindex="0" aria-label="View @${esc(person.handle)} profile" data-explore-profile-id="${esc(person.id)}">${avatarMarkup(person)}<div class="explore-person-copy"><strong>${esc(person.displayName)}</strong><small>@${esc(person.handle)} · ${fmt(person.followerCount)} followers</small><span>${esc(person.bio || "")}</span></div>${fbtn(person)}</div>`).join("")
               : explorePostCards(result.items.map((item) => post(normalizePost(item))).join(""));
             removeAppendSkeleton?.();
-            $("#exp").innerHTML = append ? $("#exp").innerHTML + html : html || emptyState("Nothing to explore yet.", "Try another tab or check back later.");
+            if (append) $("#exp").innerHTML += html;
+            else await commitExploreContent(
+              html || emptyState("Nothing to explore yet.", "Try another tab or check back later."),
+              html ? "success" : "empty",
+              requestStatusKey,
+              isCurrentRequest,
+            );
             exploreCursor = result.nextCursor;
           }
           joinVisiblePostRooms();
           $("#exploreMore").hidden = !exploreCursor;
-          finishSkeleton?.();
         } catch (error) {
-          finishSkeleton?.();
           removeAppendSkeleton?.();
           if (isCurrentRequest()) {
+            if (searchText) console.error("Could not search Explore", error);
             if (searchText) {
-              console.error("Could not search Explore", error);
-              exploreSearchStatus = "error";
-              $("#exp").dataset.searchStatus = exploreSearchStatus;
-              $("#exp").classList.remove("explore-search-loading");
-              $("#exp").removeAttribute("aria-busy");
-              $("#exp").innerHTML = '<div class="relay-load-error" role="status"><span>Something went wrong. Try again.</span><button class="ghost-btn" type="button" data-retry="explore">Retry</button></div>';
+              await commitExploreContent(
+                '<div class="relay-load-error" role="status"><span>Something went wrong. Try again.</span><button class="ghost-btn" type="button" data-retry="explore">Retry</button></div>',
+                "error",
+                requestStatusKey,
+                isCurrentRequest,
+              );
               $("#exploreMore").hidden = true;
             } else {
-              renderError($("#exp"), error, "explore");
+              await commitExploreContent(
+                '<div class="relay-load-error"><span>Could not load. Try again</span><button class="ghost-btn" type="button" data-retry="explore">Try again</button></div>',
+                "error",
+                requestStatusKey,
+                isCurrentRequest,
+              );
             }
           }
         } finally {
@@ -16926,9 +16986,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             }
           }
           if (view === "explore" && exploreTab !== previousExploreTab) {
-            transitionContent($("#exp"), () => {
-              void renderExplore($("#exploreSearch").value.trim());
-            });
+            void renderExplore($("#exploreSearch").value.trim());
           }
           return;
         }
@@ -17235,24 +17293,21 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const exploreTabLink = e.target.closest("[data-explore-tab-link]");
         if (exploreTabLink) {
           selectExploreTab(exploreTabLink.dataset.exploreTabLink);
-          return transitionContent($("#exp"), () => {
-            void renderExplore();
-          });
+          void renderExplore();
+          return;
         }
         const exploreTabButton = e.target.closest("[data-explore-tab]");
         if (exploreTabButton) {
           selectExploreTab(exploreTabButton.dataset.exploreTab);
-          return transitionContent($("#exp"), () => {
-            void renderExplore();
-          });
+          void renderExplore();
+          return;
         }
         const exploreFilter = e.target.closest("[data-explore-filter]");
         if (exploreFilter) {
           exploreSearchFilter = exploreFilter.dataset.exploreFilter;
           renderExploreSearchTabs();
-          return transitionContent($("#exp"), () => {
-            void renderExplore($("#exploreSearch").value.trim());
-          });
+          void renderExplore($("#exploreSearch").value.trim());
+          return;
         }
         const action = e.target.closest("[data-action]");
         if (action?.dataset.action === "show-topics") {
@@ -18680,23 +18735,23 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#exploreSearchClear").hidden = !searchText;
         if (!searchText) {
           exploreRequestGeneration += 1;
-          exploreSearchStatus = "idle";
           exploreSearchedQuery = "";
           renderExploreSearchTabs("");
-          $("#exp").classList.remove("explore-search-loading");
-          $("#exp").removeAttribute("aria-busy");
-          delete $("#exp").dataset.searchStatus;
-          $("#exp").innerHTML = skeletonListMarkup(
-            exploreTab === "people" ? "person" : exploreTab === "trending" ? "trend" : "post",
-            5,
-            exploreTab === "people" ? "people" : exploreTab === "trending" ? "trending topics" : "posts",
-          );
-          $("#exploreMore").hidden = true;
-          renderExplore("");
+          const key = exploreStatusKey("", exploreTab);
+          setExploreContentLoading("", key, exploreTab === "people" ? "person" : exploreTab === "trending" ? "trend" : "post");
+          void renderExplore("");
           return;
         }
         exploreRequestGeneration += 1;
-        setExploreSearchLoading(searchText);
+        const generation = exploreRequestGeneration;
+        if (!showCachedExploreSearch(searchText, generation)) {
+          setExploreContentLoading(
+            searchText,
+            exploreStatusKey(searchText),
+            exploreSearchFilter === "People" ? "person" : "post",
+            true,
+          );
+        }
         exploreTimer = setTimeout(() => renderExplore(searchText), 350);
       });
       $("#settingsEmail")?.addEventListener("input", syncSettingsEmail);
