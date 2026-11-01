@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
+    "prestart": "npm run db:deploy",
     "start": "node dist/index.js",
     "reel-worker": "tsx src/reel-worker.ts",
     "test:reels": "tsx --test src/reels.test.ts",

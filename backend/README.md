@@ -18,7 +18,7 @@ Relay is a Node.js 20+ / TypeScript API using Express, PostgreSQL, Prisma, Zod, 
 12. Publish or reply with `@<other-account-handle>` and confirm the mentioned account gets a persistent notification and the mention opens that user's profile. In two sessions, delete a post/reply, unlike, and undo a repost; verify post/reply DOM and interaction counts update without refreshing.
 13. In the Home composer, choose **Add location**, enter a place name, and confirm the location chip can be removed before publishing. Publish with and without a location; verify the place label persists in the feed and on profile/thread views after a reload. The feature stores only the label entered by the user and never requests device geolocation.
 
-For production, build the TypeScript app with `npm run build`, generate the Prisma client during the build, and apply committed migrations with `npm run db:deploy`. A production deployment also needs TLS, a managed PostgreSQL instance, backups, monitoring, and shared Socket.IO pub/sub when running multiple API instances.
+For production, build the TypeScript app with `npm run build` and generate the Prisma client during the build. `npm start` runs `prisma migrate deploy` before starting the API, so the database schema is current before requests are served; make sure the deployment environment has `DATABASE_URL` and the Prisma CLI installed. A production deployment also needs TLS, a managed PostgreSQL instance, backups, monitoring, and shared Socket.IO pub/sub when running multiple API instances.
 
 ## Reels media setup and operations
 
