@@ -6,11 +6,10 @@ import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import { performance } from "node:perf_hooks";
 import { promisify } from "node:util";
-import { NotificationType, ProcessingJobStatus, ReelStatus } from "@prisma/client";
+import { ProcessingJobStatus, ReelStatus } from "@prisma/client";
 import { z } from "zod";
 import { config } from "./config";
 import { prisma } from "./db";
-import { emitToUser } from "./realtime";
 import {
   createReelStorageKey,
   deleteReelObject,
@@ -319,7 +318,7 @@ export const processReelJob = async (jobId: string, reelId: string): Promise<Ree
           return null;
         }
 
-        const saved = await tx.reel.update({
+        await tx.reel.update({
           where: { id: reel.id },
           data: {
             status: ReelStatus.READY,
@@ -333,25 +332,14 @@ export const processReelJob = async (jobId: string, reelId: string): Promise<Ree
             publishedAt: new Date(),
             processingError: null,
           },
-          select: { authorId: true, id: true },
         });
         await tx.processingJob.update({
           where: { id: jobId },
           data: { status: ProcessingJobStatus.COMPLETED, lockedAt: null, lastError: null },
         });
-        const notification = await tx.notification.create({
-          data: {
-            recipientId: saved.authorId,
-            actorId: saved.authorId,
-            reelId: saved.id,
-            type: NotificationType.REEL_READY,
-          },
-          include: { actor: { select: { id: true, handle: true, displayName: true, avatarUrl: true } } },
-        });
-        return { notification, authorId: saved.authorId };
+        return true;
       });
 
-      if (updated) emitToUser(updated.authorId, "notification:new", updated.notification);
       if (!config.REEL_KEEP_ORIGINAL) {
         try {
           await deleteReelObject(reel.originalKey);

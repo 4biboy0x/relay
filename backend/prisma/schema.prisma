@@ -347,8 +347,6 @@ enum NotificationType {
   REEL_LIKE
   REEL_COMMENT
   REEL_REPOST
-  REEL_READY
-  REEL_FAILED
 }
 
 enum ReelStatus {

@@ -1,8 +1,7 @@
 import "dotenv/config";
-import { NotificationType, ProcessingJobStatus, ReelStatus, type Prisma } from "@prisma/client";
+import { ProcessingJobStatus, ReelStatus, type Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "./db";
-import { emitToUser } from "./realtime";
 import { deleteReelObject } from "./reel-storage";
 import {
   checkReelMediaTools,
@@ -19,8 +18,6 @@ type ClaimedJob = {
 };
 
 type StaleJob = ClaimedJob & { lastError: string | null };
-type FailureNotification = NonNullable<Awaited<ReturnType<typeof failReelInTransaction>>>;
-
 const jobPayloadSchema = z.object({ reelId: z.string().uuid() });
 const claimNextJob = async (): Promise<ClaimedJob | null> => prisma.$transaction(async (tx) => {
   const rows = await tx.$queryRaw<Array<{ id: string }>>`
@@ -46,37 +43,20 @@ const claimNextJob = async (): Promise<ClaimedJob | null> => prisma.$transaction
   });
 });
 
-const notificationInclude = {
-  actor: { select: { id: true, handle: true, displayName: true, avatarUrl: true } },
-} as const;
-
 const failReelInTransaction = async (
   tx: Prisma.TransactionClient,
   reelId: string,
   reason: string,
-) => {
+): Promise<void> => {
   const reel = await tx.reel.findFirst({
     where: { id: reelId, status: ReelStatus.PROCESSING, deletedAt: null },
-    select: { id: true, authorId: true },
+    select: { id: true },
   });
-  if (!reel) return null;
+  if (!reel) return;
   await tx.reel.update({
     where: { id: reelId },
     data: { status: ReelStatus.FAILED, processingError: reason },
   });
-  return tx.notification.create({
-    data: {
-      recipientId: reel.authorId,
-      actorId: reel.authorId,
-      reelId,
-      type: NotificationType.REEL_FAILED,
-    },
-    include: notificationInclude,
-  });
-};
-
-const emitFailureNotification = (notification: FailureNotification | null): void => {
-  if (notification) emitToUser(notification.actor.id, "notification:new", notification);
 };
 
 const processingTimings = (error: unknown): ReelProcessingTimings =>
@@ -97,7 +77,7 @@ const handleJobFailure = async (job: ClaimedJob, reelId: string, error: unknown)
   const details = jobErrorDetails(error).replace(/\s+/g, " ").slice(0, 1000);
   const isPermanentFailure = error instanceof ReelProcessingFailure && !error.retryable;
   const isFinalAttempt = isPermanentFailure || job.attempts >= 3;
-  const notification = await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx) => {
     await tx.processingJob.update({
       where: { id: job.id },
       data: {
@@ -107,9 +87,8 @@ const handleJobFailure = async (job: ClaimedJob, reelId: string, error: unknown)
         lastError: details,
       },
     });
-    return isFinalAttempt ? failReelInTransaction(tx, reelId, reason) : null;
+    if (isFinalAttempt) await failReelInTransaction(tx, reelId, reason);
   });
-  emitFailureNotification(notification);
 
   if (isFinalAttempt) {
     console.error(lifecycleLog(reelId, processingTimings(error), "failed", details));
@@ -119,7 +98,6 @@ const handleJobFailure = async (job: ClaimedJob, reelId: string, error: unknown)
 };
 
 const recoverStaleJobs = async (): Promise<void> => {
-  const notifications: FailureNotification[] = [];
   const failed: Array<{ reelId: string; details: string }> = [];
   const recovered = await prisma.$transaction(async (tx) => {
     const staleJobs = await tx.$queryRaw<StaleJob[]>`
@@ -149,15 +127,13 @@ const recoverStaleJobs = async (): Promise<void> => {
       });
       const payload = jobPayloadSchema.safeParse(job.payload);
       if (isFinalAttempt && payload.success) {
-        const notification = await failReelInTransaction(tx, payload.data.reelId, reason);
-        if (notification) notifications.push(notification);
+        await failReelInTransaction(tx, payload.data.reelId, reason);
         failed.push({ reelId: payload.data.reelId, details: lastError });
       }
       count += 1;
     }
     return count;
   });
-  for (const notification of notifications) emitFailureNotification(notification);
   for (const job of failed) {
     console.error(lifecycleLog(job.reelId, processingTimings(null), "failed", job.details.replace(/\s+/g, " ").slice(0, 1000)));
   }

@@ -3201,6 +3201,40 @@
       .notification-row:hover { background: var(--hover, var(--surface-2)); }
       .notification-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
       .notification-row.unread { background: var(--accent-soft); }
+      .notifications-page-status {
+        display: flex;
+        min-height: 0;
+        justify-content: center;
+        align-items: center;
+        padding: 12px 20px;
+        color: var(--text-3);
+        font-size: 13px;
+        text-align: center;
+      }
+      .notifications-page-status:empty { display: none; }
+      .notifications-page-status .notifications-load-spinner {
+        width: 20px;
+        height: 20px;
+        border: 2px solid var(--border);
+        border-top-color: var(--text-3);
+        border-radius: 50%;
+        animation: notifications-spin .8s linear infinite;
+      }
+      @keyframes notifications-spin { to { transform: rotate(360deg); } }
+      .notifications-page-status .notifications-retry {
+        margin-left: 8px;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: var(--text-2);
+        font: inherit;
+        cursor: pointer;
+      }
+      .notifications-page-status .notifications-retry:hover { text-decoration: underline; }
+      .notifications-sentinel { height: 1px; }
+      @media (prefers-reduced-motion: reduce) {
+        .notifications-page-status .notifications-load-spinner { animation: none; }
+      }
       .notification-avatar { position: relative; overflow: visible; width: 40px; height: 40px; }
       .notification-avatar .av { width: 40px; height: 40px; }
       .notification-badge {
@@ -3705,12 +3739,13 @@
       }
       .auth-cookie-prompt[hidden] { display: none; }
       .auth-cookie-prompt p {
-        max-width: 36ch;
+        max-width: 42ch;
         margin: 0 auto;
         color: var(--text-3);
         font-size: 12px;
         line-height: 1.5;
         text-align: center;
+        text-wrap: balance;
       }
       .auth-cookie-prompt-links {
         display: flex;
@@ -3808,17 +3843,22 @@
         border-radius: 16px;
         border-color: var(--border);
         background: var(--bg);
-        box-shadow: 0 8px 32px rgba(9, 9, 11, .16);
+        box-shadow: 0 8px 24px rgba(9, 9, 11, .10);
       }
-      :root[data-theme="dark"] #authDialog { --auth-submit-bg: #555fcf; --auth-submit-hover: #4f59c7; }
+      :root[data-theme="dark"] #authDialog {
+        --auth-submit-bg: #555fcf;
+        --auth-submit-hover: #4f59c7;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, .45);
+      }
       @media (prefers-color-scheme: dark) {
         :root:not([data-theme="light"]) #authDialog {
           --auth-submit-bg: #555fcf;
           --auth-submit-hover: #4f59c7;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, .45);
         }
       }
       #authDialog .auth-title {
-        margin: 0;
+        margin: 0 0 20px;
         text-align: center;
         font-size: 22px;
         font-weight: 600;
@@ -3829,12 +3869,6 @@
         display: inline;
         font-size: 1.12em;
         vertical-align: baseline;
-      }
-      #authDialog .auth-subtitle {
-        margin: 6px 0 24px;
-        color: var(--text-2);
-        font-size: 14px;
-        text-align: center;
       }
       #authDialog form { display: grid; width: 100%; gap: 16px; }
       #authDialog .auth-field { display: grid; min-width: 0; gap: 6px; }
@@ -3855,6 +3889,14 @@
         outline: none;
         border-color: var(--accent);
         box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+      }
+      .auth-dialog input:-webkit-autofill,
+      .auth-dialog input:-webkit-autofill:hover,
+      .auth-dialog input:-webkit-autofill:focus {
+        -webkit-text-fill-color: var(--text);
+        box-shadow: 0 0 0 1000px var(--bg) inset;
+        caret-color: var(--text);
+        transition: background-color 9999s ease-out 0s;
       }
       #authDialog .settings-password-wrap { display: block; }
       #authDialog .settings-password-wrap input { padding-right: 44px; }
@@ -6485,9 +6527,9 @@
         overflow-x: hidden;
         overscroll-behavior-y: contain;
         scroll-snap-type: y mandatory;
-        scrollbar-width: thin;
-        scrollbar-color: var(--border) transparent;
+        scrollbar-width: none;
       }
+      .reel-feed::-webkit-scrollbar { display: none; }
       #reelItems { display: contents; }
       .reel-feed:focus-visible { outline: 2px solid var(--accent) !important; outline-offset: -2px; }
       .reel-item {
@@ -6498,16 +6540,18 @@
         gap: 14px;
         height: 100%;
         min-height: 100%;
-        padding: 14px 8px;
+        padding: 0 8px;
         box-sizing: border-box;
-        scroll-snap-align: start;
+        scroll-snap-align: center;
         scroll-snap-stop: always;
       }
       .reel-stage {
         position: relative;
         isolation: isolate;
-        width: min(360px, calc((100dvh - 106px) * 9 / 16));
-        height: min(640px, calc(100dvh - 106px));
+        width: auto;
+        max-width: 450px;
+        height: min(860px, calc(100dvh - var(--header-h, 81px) - 24px), 100%);
+        max-height: 860px;
         aspect-ratio: 9 / 16;
         flex: none;
         overflow: hidden;
@@ -6661,7 +6705,7 @@
         flex-direction: column;
         align-items: center;
         gap: 16px;
-        width: 52px;
+        width: 44px;
         flex: none;
         color: var(--text);
       }
@@ -6669,13 +6713,13 @@
         display: grid;
         justify-items: center;
         gap: 4px;
-        min-width: 44px;
-        padding: 3px 0;
+        width: 44px;
+        padding: 0;
         border: 0;
         background: transparent;
         color: inherit;
         font: inherit;
-        font-size: 11px;
+        font-size: 12px;
         line-height: 1.15;
         font-weight: 600;
         cursor: pointer;
@@ -6685,13 +6729,15 @@
         height: 44px;
         padding: 12px;
         overflow: visible;
-        border: 1px solid var(--border);
+        border: 0;
         border-radius: 50%;
-        background: var(--bg);
+        background: var(--surface-2);
         stroke-width: 1.8;
         transition: color 140ms ease, background-color 140ms ease, transform 140ms ease;
       }
-      .reel-action:hover svg { transform: translateY(-2px); background: var(--surface-2); }
+      .reel-action:hover svg { background: var(--border); }
+      .reel-action [data-reel-count].is-zero { visibility: hidden; }
+      .reel-action [data-reel-count]:empty { display: none; }
       .reel-action[aria-pressed="true"] svg { color: var(--accent); }
       .reel-action[data-reel-action="like"][aria-pressed="true"] svg { color: #e54864; fill: #e54864; }
       .reel-feed-state {
@@ -6701,12 +6747,32 @@
         text-align: center;
       }
       .reel-feed-state:empty { display: none; }
+      .reel-feed-state[data-state="end"] {
+        display: grid;
+        height: 120px;
+        box-sizing: border-box;
+        place-items: center;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: var(--text-3);
+        font-size: 13px;
+        scroll-snap-align: none;
+      }
       .reel-feed-state .ghost-btn { margin-top: 9px; }
-      .reel-feed-sentinel { height: 1px; scroll-snap-align: none; }
+      .reel-feed-sentinel {
+        display: grid;
+        height: 1px;
+        place-items: center;
+        scroll-snap-align: none;
+      }
+      .reel-feed-sentinel[hidden] { display: none; }
       .reel-skeleton {
-        width: min(360px, calc((100dvh - 106px) * 9 / 16));
-        height: min(640px, calc(100dvh - 106px));
-        margin: 14px auto;
+        width: auto;
+        max-width: 450px;
+        height: min(860px, calc(100dvh - var(--header-h, 81px) - 24px), 100%);
+        aspect-ratio: 9 / 16;
+        margin: 0 auto;
         border-radius: 20px;
         background: linear-gradient(110deg, var(--surface-2) 28%, color-mix(in srgb, var(--surface-2) 70%, var(--text) 6%) 50%, var(--surface-2) 72%);
         background-size: 220% 100%;
@@ -6916,24 +6982,51 @@
           z-index: 6;
           inset: 0 0 auto;
           min-height: 58px;
-          padding: 8px 14px;
+          height: 96px;
+          padding: 8px 16px;
           border: 0;
-          background: linear-gradient(var(--bg), color-mix(in srgb, var(--bg) 72%, transparent), transparent);
+          background: linear-gradient(to bottom, rgba(0,0,0,.55), transparent);
+          color: #fff;
           pointer-events: none;
         }
+        .app.reels-active .reels-top h1 { color: #fff; }
         .app.reels-active .reels-top > * { pointer-events: auto; }
-        .app.reels-active .reels-top .btn { min-height: 34px; font-size: 12px; }
+        .app.reels-active .reels-top #createReelButton {
+          display: grid;
+          width: 36px;
+          min-width: 36px;
+          height: 36px;
+          min-height: 36px;
+          padding: 0;
+          place-items: center;
+          border-radius: 50%;
+          background: var(--accent);
+          color: #fff;
+        }
+        .app.reels-active .reels-top #createReelButton:hover { background: var(--accent-h); }
+        .app.reels-active .reels-top #createReelButton .i { width: 20px; height: 20px; }
+        .app.reels-active .reels-top #createReelButton span {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border: 0;
+        }
         .app.reels-active .reel-feed { position: absolute; inset: 0; }
         .reel-item { height: 100%; min-height: 100%; padding: 0; }
         .reel-stage { width: 100%; height: 100%; max-height: none; aspect-ratio: auto; border: 0; border-radius: 0; box-shadow: none; }
-        .reel-copy { right: 72px; bottom: 24px; left: 16px; }
-        .reel-actions { position: absolute; z-index: 4; right: 12px; bottom: 24px; width: 48px; gap: 13px; color: #fff; }
+        .reel-copy { right: 76px; bottom: 24px; left: 16px; }
+        .reel-actions { position: absolute; z-index: 4; right: 16px; bottom: 24px; width: 44px; gap: 16px; color: #fff; }
         .reel-action { color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
-        .reel-action svg { width: 40px; height: 40px; padding: 10px; border-color: rgba(255,255,255,.55); background: rgba(12,13,16,.48); color: #fff; }
+        .reel-action svg { width: 44px; height: 44px; padding: 12px; border: 0; background: rgba(0,0,0,.35); color: #fff; backdrop-filter: blur(6px); }
+        .reel-action:hover svg { background: rgba(0,0,0,.35); }
         .reel-action[aria-pressed="true"] svg { color: #fff; }
         .reel-action[data-reel-action="like"][aria-pressed="true"] svg { color: #ff6078; fill: #ff6078; }
         .reel-feed-state:not(:empty):not([data-state="end"]) { position: absolute; z-index: 7; top: 58px; left: 12px; right: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); }
-        .reel-feed-state[data-state="end"] { position: relative; inset: auto; border: 0; background: transparent; color: var(--text-3); }
         .reel-feed { scrollbar-width: none; }
         .reel-feed::-webkit-scrollbar { display: none; }
         .reel-skeleton { width: 100%; height: 100%; margin: 0; border-radius: 0; }
@@ -7274,15 +7367,14 @@
             <div>
               <h1>Reels</h1>
             </div>
-            <button class="btn btn-primary" id="createReelButton" type="button">
+            <button class="btn btn-primary" id="createReelButton" type="button" aria-label="Create Reel">
               <svg class="i" aria-hidden="true"><use href="#plus" /></svg>
-              <span>Create Reel</span>
+              <span class="reel-create-label">Create Reel</span>
             </button>
           </header>
           <div class="reel-feed" id="reelFeed" role="feed" aria-label="Reels" tabindex="0">
-            <div id="reelItems"></div>
+            <div id="reelItems"><div class="reel-feed-sentinel" id="reelFeedSentinel" aria-hidden="true" hidden></div></div>
             <div class="reel-feed-state" id="reelFeedState" role="status" aria-live="polite"></div>
-            <div class="reel-feed-sentinel" id="reelFeedSentinel" aria-hidden="true"></div>
           </div>
         </section>
 
@@ -7412,7 +7504,8 @@
             <button class="notifications-mark-all" id="notificationsMarkAll" type="button">Mark all as read</button>
           </header>
           <div id="nl" data-transition-content></div>
-          <button class="more-l" id="notificationsMore" data-transition-content data-more="notifications" hidden>Load more</button>
+          <div id="notificationsPageStatus" class="notifications-page-status" aria-live="polite"></div>
+          <div id="notificationsSentinel" class="notifications-sentinel" aria-hidden="true"></div>
         </section>
 
         <section id="v-settings" data-v hidden>
@@ -7930,9 +8023,8 @@
       <strong>ALT</strong>
       <p id="postAltText"></p>
     </dialog>
-    <dialog class="auth-dialog" id="authDialog" role="dialog" aria-modal="true" aria-labelledby="signin-title" aria-describedby="authSubtitle" tabindex="-1">
+    <dialog class="auth-dialog" id="authDialog" role="dialog" aria-modal="true" aria-labelledby="signin-title" tabindex="-1">
       <h2 id="signin-title" class="auth-title">Welcome to <span class="wordmark">Relay</span></h2>
-      <p class="auth-subtitle" id="authSubtitle">Sign in to continue.</p>
       <form id="authForm" novalidate>
         <div class="auth-field" id="authNameLabel" hidden>
           <label for="authName">Display name</label>
@@ -7940,11 +8032,11 @@
         </div>
         <div class="auth-field" id="authHandleLabel" hidden>
           <label for="authHandle">Username</label>
-          <input id="authHandle" name="handle" maxlength="30" autocomplete="username" />
+          <input id="authHandle" name="username" maxlength="30" autocomplete="off" autocapitalize="none" spellcheck="false" data-lpignore="true" data-1p-ignore="" />
         </div>
         <div class="auth-field">
           <label for="authEmail">Email</label>
-          <input id="authEmail" name="email" type="email" maxlength="254" placeholder="you@example.com" required autocomplete="email" autofocus />
+          <input id="authEmail" name="email" type="email" maxlength="254" placeholder="you@example.com" required autocomplete="username" autofocus />
         </div>
         <div class="auth-field">
           <label for="authPassword">Password</label>
@@ -7956,7 +8048,7 @@
       </form>
       <p class="auth-switch-row"><span id="authSwitchPrompt">New to Relay?</span> <button class="auth-switch" id="authSwitch" type="button">Create an account</button></p>
       <section class="auth-cookie-prompt" id="cookieAuthPrompt" aria-label="Cookie preferences" hidden>
-        <p>Relay uses only necessary cookies for sign-in.</p>
+        <p>Relay uses only necessary cookies for sign‑in.</p>
         <div class="auth-cookie-prompt-links">
           <button type="button" data-open-cookie-settings>Manage cookies</button>
           <button type="button" data-open-legal="terms">Terms</button>
@@ -9479,7 +9571,7 @@
           case "explore": return [$("#exp"), $("#exploreSearchFilters"), $("#exploreMessageSearch"), $("#exploreMore")];
           case "reels": return [$("#reelItems"), $("#reelFeedState")];
           case "messages": return [$("#conversationList"), $("#messageSearchResults"), $("#conversationSearchEmpty"), $("#chatLog")];
-          case "notifs": return [$("#nl"), $("#notificationsMore")];
+          case "notifs": return $("#nl");
           case "settings": return $(".settings-page");
           case "profile": return $("#profileBody");
           case "thread": return [$("#threadContent"), $("#threadMore")];
@@ -10031,8 +10123,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           : action === "bookmark" ? pressed ? "Remove bookmark" : "Save Reel"
             : action === "comment" ? `${formatReelCount(count)} comments`
               : `${formatReelCount(count)} ${reelActionLabels[action]}`;
-        const text = action === "more" ? "More" : action === "bookmark" ? pressed ? "Saved" : "Save" : formatReelCount(count);
-        return `<button class="reel-action" type="button" data-reel-action="${action}" data-reel-id="${esc(reel.id)}" aria-label="${label}"${property ? ` aria-pressed="${pressed}"` : ""}><svg class="i" aria-hidden="true"><use href="#${reelActionIcons[action]}"/></svg><span data-reel-count="${action}">${text}</span></button>`;
+        const text = action === "more" || action === "bookmark" ? "" : formatReelCount(count);
+        const zero = count !== null && Number(count) === 0;
+        return `<button class="reel-action" type="button" data-reel-action="${action}" data-reel-id="${esc(reel.id)}" aria-label="${label}"${property ? ` aria-pressed="${pressed}"` : ""}><svg class="i" aria-hidden="true"><use href="#${reelActionIcons[action]}"/></svg><span data-reel-count="${action}"${zero ? ' class="is-zero"' : ""}>${text}</span></button>`;
       }
       function reelMarkup(reel, index) {
         const author = reel.author || {};
@@ -10069,6 +10162,25 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const markup = items.map((reel) => reelMarkup(reel, reelItems.indexOf(reel))).join("");
         if (append) $("#reelItems").insertAdjacentHTML("beforeend", markup);
         else $("#reelItems").innerHTML = markup;
+        positionReelFeedSentinel();
+      }
+      function positionReelFeedSentinel() {
+        const container = $("#reelItems");
+        let sentinel = $("#reelFeedSentinel");
+        if (!sentinel) {
+          sentinel = document.createElement("div");
+          sentinel.id = "reelFeedSentinel";
+          sentinel.className = "reel-feed-sentinel";
+          sentinel.setAttribute("aria-hidden", "true");
+        }
+        const slides = $$(".reel-item", container);
+        sentinel.hidden = !reelCursor || !slides.length;
+        if (sentinel.hidden) {
+          sentinel.innerHTML = "";
+          container.append(sentinel);
+          return;
+        }
+        container.insertBefore(sentinel, slides[Math.max(0, slides.length - 2)]);
       }
       const reelCacheKey = () => `relay_reels_cache:${currentUser?.id || "anonymous"}`;
       function readReelCache() {
@@ -10092,23 +10204,25 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           console.warn("Unable to cache the Reels feed.", error);
         }
       }
-      function renderReelFeedState(message = "", retry = false) {
+      function renderReelFeedState(message = "", retry = false, retryMore = false) {
         const status = $("#reelFeedState");
-        if (message) status.dataset.state = message === "You’re all caught up." ? "end" : "notice";
+        if (message) status.dataset.state = message === "You're all caught up." ? "end" : "notice";
         else delete status.dataset.state;
-        if (message === "No Reels are available yet. Check back soon.") {
+        if (message === "No reels yet") {
           status.dataset.state = "empty";
-          status.innerHTML = `${esc(message)}<br><button class="ghost-btn" type="button" data-reel-create>Share the first Reel</button>`;
+          status.innerHTML = `${esc(message)}<br><button class="ghost-btn" type="button" data-reel-create>Create Reel</button>`;
           return;
         }
         status.innerHTML = message
-          ? `${esc(message)}${retry ? '<br><button class="ghost-btn" type="button" data-reel-retry>Try again</button>' : ""}`
+          ? `${esc(message)}${retry ? `<br><button class="ghost-btn" type="button" data-reel-retry="${retryMore ? "more" : "feed"}">Try again</button>` : ""}`
           : "";
       }
       async function renderReels(append = false, requestedReelId = "") {
         if (!currentUser || reelLoading || (append && !reelCursor)) return;
         const generation = append ? reelRenderGeneration : ++reelRenderGeneration;
         reelLoading = true;
+        reelFeedObserver?.disconnect();
+        reelFeedObserver = null;
         let cachedShowing = false;
         if (!append && !requestedReelId) {
           const cached = readReelCache();
@@ -10127,6 +10241,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         } else if (append) {
           $("#reelFeedSentinel").innerHTML = '<span class="feed-sentinel-spinner" aria-hidden="true"></span>';
         }
+        let feedError = false;
         try {
           let selected = null;
           let page;
@@ -10159,9 +10274,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             renderReelMarkup();
           }
           reelCursor = page.nextCursor;
-          renderReelFeedState(reelItems.length
-            ? !reelCursor ? "You’re all caught up." : ""
-            : "No Reels are available yet. Check back soon.");
+          positionReelFeedSentinel();
+          renderReelFeedState("");
           writeReelCache();
           if (!append) {
             requestAnimationFrame(() => {
@@ -10178,13 +10292,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             observeReelItems();
           }
         } catch (error) {
+          feedError = true;
           console.error("Unable to load Reels.", error);
           if (generation !== reelRenderGeneration) return;
           if (cachedShowing && reelItems.length) {
             renderReelFeedState("Couldn’t refresh. Showing saved Reels.", true);
           } else if (append && reelItems.length) {
             $("#reelFeedSentinel").innerHTML = "";
-            renderReelFeedState(error.message || "Couldn’t load more Reels.", true);
+            renderReelFeedState(error.message || "Couldn’t load more Reels.", true, true);
           } else {
             $("#reelItems").innerHTML = "";
             renderReelFeedState(error.message || "Couldn’t load Reels.", true);
@@ -10192,7 +10307,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         } finally {
           if (generation === reelRenderGeneration) {
             reelLoading = false;
-            if (reelCursor && reelItems.length) observeReelItems();
+            if (!feedError) {
+              renderReelFeedState(!reelItems.length
+                ? "No reels yet"
+                : !reelCursor ? "You're all caught up." : "");
+            }
+            positionReelFeedSentinel();
+            if (reelCursor && reelItems.length && !feedError) observeReelItems();
           }
         }
       }
@@ -10231,12 +10352,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }, { root: feed, threshold: [.55, .7, .9] });
           slides.forEach((slide) => reelActiveObserver.observe(slide));
           const sentinel = $("#reelFeedSentinel");
-          reelFeedObserver = new IntersectionObserver((entries) => {
-            if (entries.some((entry) => entry.isIntersecting) && reelCursor && !reelLoading) {
-              renderReels(true);
-            }
-          }, { root: feed, rootMargin: "0px 0px 150% 0px" });
-          if (sentinel) reelFeedObserver.observe(sentinel);
+          if (sentinel && reelCursor) {
+            reelFeedObserver = new IntersectionObserver((entries) => {
+              if (entries.some((entry) => entry.isIntersecting) && reelCursor && !reelLoading) {
+                renderReels(true);
+              }
+            }, { root: feed });
+            reelFeedObserver.observe(sentinel);
+          }
         }
       }
       let reelScrollFrame = 0;
@@ -10246,9 +10369,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           reelScrollFrame = 0;
           const feed = $("#reelFeed");
           reelFeedScrollTop = feed.scrollTop;
-          if (feed.scrollTop + feed.clientHeight >= feed.scrollHeight - feed.clientHeight * 1.5) {
-            if (reelCursor && !reelLoading) renderReels(true);
-          }
           const slides = $$(".reel-item", feed);
           const center = feed.scrollTop + feed.clientHeight / 2;
           const active = slides.reduce((best, slide) => {
@@ -10445,9 +10565,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const property = action === "like" ? "liked" : action === "repost" ? "reposted" : action === "bookmark" ? "bookmarked" : "";
         if (property) button.setAttribute("aria-pressed", String(!!reel.viewer[property]));
         const count = action === "comment" ? reel.counts.comments : reel.counts[reelActionLabels[action]];
-        const text = action === "bookmark" ? reel.viewer.bookmarked ? "Saved" : "Save" : formatReelCount(count);
+        const text = action === "bookmark" || action === "more" ? "" : formatReelCount(count);
         const span = button.querySelector("[data-reel-count]");
         if (span) span.textContent = text;
+        if (span && action !== "bookmark" && action !== "more") {
+          span.classList.toggle("is-zero", Number(count) === 0);
+        }
         if (action === "bookmark") button.setAttribute("aria-label", reel.viewer.bookmarked ? "Remove bookmark" : "Save Reel");
         else if (action !== "more") button.setAttribute("aria-label", `${text} ${action === "comment" ? "comments" : reelActionLabels[action] || ""}`.trim());
       }
@@ -11263,7 +11386,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         const retry = event.target.closest("[data-reel-retry]");
         if (retry) {
-          renderReels(false, deepLinkedReelId);
+          const append = retry.dataset.reelRetry === "more";
+          renderReels(append, append ? "" : deepLinkedReelId);
           return;
         }
         const play = event.target.closest("[data-reel-play]");
@@ -12348,17 +12472,41 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
       }, { rootMargin: "320px 0px" });
       feedObserver.observe($("#feedSentinel"));
+      const notificationActions = {
+        FOLLOW: "started following you",
+        LIKE: "liked your post",
+        REPOST: "reposted your post",
+        REPLY: "replied to your post",
+        MENTION: "mentioned you in a post",
+        REEL_LIKE: "liked your Reel",
+        REEL_COMMENT: "commented on your Reel",
+        REEL_REPOST: "reposted your Reel",
+      };
+      const notificationIcons = {
+        FOLLOW: "user",
+        LIKE: "heart",
+        REPOST: "repeat",
+        REPLY: "msg",
+        MENTION: "user",
+        REEL_LIKE: "heart",
+        REEL_COMMENT: "msg",
+        REEL_REPOST: "repeat",
+      };
       const notificationText = (item) => {
-        const actions = { FOLLOW: "started following you", LIKE: "liked your post", REPOST: "reposted your post", REPLY: "replied to your post", MENTION: "mentioned you in a post" };
-        const icons = { FOLLOW: "user", LIKE: "heart", REPOST: "repeat", REPLY: "msg", MENTION: "user" };
+        const action = notificationActions[item.type];
+        if (!action) {
+          console.warn(`Skipping unknown notification type: ${item.type}`);
+          return "";
+        }
+        const icon = notificationIcons[item.type];
         const actors = item.actors?.length ? item.actors : [item.actor];
         const avatar = actors.length > 1
           ? `<span class="notification-avatar-stack">${actors.slice(0, 3).map((actor) => avatarMarkup(actor)).join("")}</span>`
-          : `<span class="notification-avatar">${avatarMarkup(actors[0])}<span class="notification-badge ${item.type === "LIKE" ? "like" : ""}" aria-hidden="true">${ic(icons[item.type] || "bell")}</span></span>`;
+          : `<span class="notification-avatar">${avatarMarkup(actors[0])}<span class="notification-badge ${["LIKE", "REEL_LIKE"].includes(item.type) ? "like" : ""}" aria-hidden="true">${ic(icon)}</span></span>`;
         const others = Math.max(0, actors.length - 1);
         const actorLabel = others
-          ? `<strong>${esc(actors[0].displayName)}</strong><span class="notification-action"> and ${others} ${others === 1 ? "other" : "others"} ${actions[item.type] || "interacted with you"}</span>`
-          : `<strong>${esc(actors[0].displayName)}</strong><span class="notification-action"> ${actions[item.type] || "interacted with you"}</span>`;
+          ? `<strong>${esc(actors[0].displayName)}</strong><span class="notification-action"> and ${others} ${others === 1 ? "other" : "others"} ${action}</span>`
+          : `<strong>${esc(actors[0].displayName)}</strong><span class="notification-action"> ${action}</span>`;
         const notificationTime = `<time class="notification-time" datetime="${esc(item.createdAt)}">${timeAgo(item.createdAt)}</time>`;
         const previewText = item.type === "REPLY" ? item.reply?.body || item.post?.body : item.post?.body;
         const preview = ["LIKE", "REPOST", "REPLY"].includes(item.type) && previewText
@@ -12388,30 +12536,64 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         });
         return groups;
       };
+      let notificationObserver = null;
+      let notificationRequestInFlight = false;
+      function setNotificationPageStatus(state) {
+        const status = $("#notificationsPageStatus");
+        if (state === "loading") {
+          status.innerHTML = '<span class="notifications-load-spinner" role="status" aria-label="Loading notifications"></span>';
+        } else if (state === "error") {
+          status.innerHTML = 'Couldn’t load more <button class="notifications-retry" type="button" id="notificationsRetry">Try again</button>';
+        } else {
+          status.replaceChildren();
+        }
+      }
+      function observeNotificationSentinel() {
+        if (!notificationCursor || notificationRequestInFlight || $("#v-notifs").hidden) return;
+        notificationObserver?.disconnect();
+        notificationObserver = new IntersectionObserver((entries) => {
+          if (entries.some((entry) => entry.isIntersecting)
+            && notificationCursor && !notificationRequestInFlight && !$("#v-notifs").hidden) {
+            void renderNotifications(true);
+          }
+        }, { rootMargin: "300px 0px" });
+        notificationObserver.observe($("#notificationsSentinel"));
+      }
+      function disconnectNotificationObserver() {
+        notificationObserver?.disconnect();
+        notificationObserver = null;
+      }
+      $("#notificationsPageStatus").addEventListener("click", (event) => {
+        if (event.target.closest("#notificationsRetry")) void renderNotifications(true);
+      });
       async function renderNotifications(append = false) {
+        if (notificationRequestInFlight || (append && !notificationCursor)) return;
+        notificationRequestInFlight = true;
         let finishSkeleton;
-        let removeAppendSkeleton;
         if (!append) {
           notificationCursor = null;
+          disconnectNotificationObserver();
           delete $("#nl").dataset.loaded;
           const cached = readViewCache("notifications");
           if (cached) $("#nl").innerHTML = cached;
           finishSkeleton = showDelayedSkeleton($("#nl"), "notification");
-        } else {
-          removeAppendSkeleton = appendSkeleton($("#nl"), "notification", 2, "more notifications");
         }
+        setNotificationPageStatus("loading");
         try {
           const query = new URLSearchParams({ limit: "20" });
           if (append && notificationCursor) query.set("cursor", notificationCursor);
           const result = await api(`/notifications?${query}`);
           result.items.forEach((item) => seenNotificationIds.add(item.id));
           const visibleItems = groupedNotifications(result.items);
-          const html = visibleItems.map(notificationText).join("") || emptyState("No notifications yet.", "New activity will appear here.");
-          removeAppendSkeleton?.();
-          $("#nl").innerHTML = append ? $("#nl").innerHTML + html : html;
+          const html = visibleItems.map(notificationText).filter(Boolean).join("");
+          if (append) {
+            if (html) $("#nl").insertAdjacentHTML("beforeend", html);
+          } else {
+            $("#nl").innerHTML = html || emptyState("No notifications yet.", "New activity will appear here.");
+          }
           if (!append) writeViewCache("notifications", $("#nl").innerHTML);
           notificationCursor = result.nextCursor;
-          $("#notificationsMore").hidden = !notificationCursor;
+          setNotificationPageStatus("");
           const badge = $("#nbadge");
           setUnreadBadge(badge, result.unreadCount, "notifications");
           $("#notificationsMarkAll").disabled = result.unreadCount === 0;
@@ -12431,14 +12613,26 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               toast("Notifications loaded, but could not mark them as read.");
             }
           }
+          if (notificationCursor) observeNotificationSentinel();
+          else disconnectNotificationObserver();
           if (!append) startNotificationStream();
         } catch (error) {
           finishSkeleton?.();
-          removeAppendSkeleton?.();
-          renderError($("#nl"), error, "notifications");
-          const detail = document.createElement("span");
-          detail.textContent = error.message || "An unexpected error occurred.";
-          $("#nl .relay-load-error")?.append(detail);
+          if (append) {
+            disconnectNotificationObserver();
+            setNotificationPageStatus("error");
+          } else {
+            setNotificationPageStatus("");
+            renderError($("#nl"), error, "notifications");
+            const detail = document.createElement("span");
+            detail.textContent = error.message || "An unexpected error occurred.";
+            $("#nl .relay-load-error")?.append(detail);
+          }
+        } finally {
+          notificationRequestInFlight = false;
+          if (notificationCursor && !$("#v-notifs").hidden && $("#notificationsRetry") === null) {
+            observeNotificationSentinel();
+          }
         }
       }
       const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -12473,16 +12667,18 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 if (!data) continue;
                 if (id) lastNotificationId = id;
                 const item = JSON.parse(data);
+                const markup = notificationText(item);
+                if (!markup) continue;
                 if (seenNotificationIds.has(item.id)) continue;
                 seenNotificationIds.add(item.id);
                 const badge = $("#nbadge");
                 setUnreadBadge(badge, getUnreadBadgeCount(badge) + 1, "notifications");
                 if (!$("#v-notifs").hidden) {
-                  $("#nl").insertAdjacentHTML("afterbegin", notificationText(item));
+                  $("#nl").insertAdjacentHTML("afterbegin", markup);
                   await api("/notifications/read", { method: "PATCH", body: JSON.stringify({ ids: [item.id] }) });
                   setUnreadBadge(badge, getUnreadBadgeCount(badge) - 1, "notifications");
                 } else {
-                  toast(`${item.actor.displayName} interacted with you`);
+                  toast(`${item.actor.displayName} ${notificationActions[item.type]}`);
                 }
               }
             }
@@ -12520,27 +12716,18 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         return Math.max(0, Number(element.dataset.unreadCount) || 0);
       }
       function receiveNotification(item) {
-        if (activeReelStatusSession?.reelId === item.reelId) {
-          if (item.type === "REEL_READY") {
-            stopReelStatusPoller(item.reelId, { status: "READY" });
-          } else if (item.type === "REEL_FAILED") {
-            stopReelStatusPoller(item.reelId, null, new Error("Relay could not process this video."));
-          }
-        }
+        const markup = notificationText(item);
+        if (!markup) return;
         if (seenNotificationIds.has(item.id)) return;
         seenNotificationIds.add(item.id);
         const badge = $("#nbadge");
         const viewing = !$("#v-notifs").hidden;
         if (!viewing) {
           setUnreadBadge(badge, getUnreadBadgeCount(badge) + 1, "notifications");
-          const actions = {
-            MENTION: "mentioned you in a post",
-            REPLY: "replied to your post",
-          };
-          toast(`${item.actor.displayName} ${actions[item.type] || "interacted with you"}`);
+          toast(`${item.actor.displayName} ${notificationActions[item.type]}`);
           return;
         }
-        $("#nl").insertAdjacentHTML("afterbegin", notificationText(item));
+        $("#nl").insertAdjacentHTML("afterbegin", markup);
         api("/notifications/read", { method: "PATCH", body: JSON.stringify({ ids: [item.id] }) })
           .then(() => refreshNotificationBadge())
           .catch((error) => console.error("Could not mark real-time notification as read", error));
@@ -14322,12 +14509,15 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#signin-title").innerHTML = registering
           ? 'Create your <span class="wordmark">Relay</span> account'
           : 'Welcome to <span class="wordmark">Relay</span>';
-        $("#authSubtitle").textContent = registering ? "Create your account to get started." : "Sign in to continue.";
         $("#authNameLabel").hidden = !registering;
         $("#authHandleLabel").hidden = !registering;
         $("#authForgot").hidden = registering;
         $("#authName").required = registering;
         $("#authHandle").required = registering;
+        $("#authHandle").autocomplete = "off";
+        $("#authHandle").autocapitalize = "none";
+        $("#authHandle").spellcheck = false;
+        $("#authEmail").autocomplete = registering ? "email" : "username";
         $("#authPassword").minLength = registering ? 12 : 1;
         $("#authPassword").autocomplete = registering ? "new-password" : "current-password";
         $("#authSubmit").textContent = registering ? "Create account" : "Sign in";
@@ -14368,6 +14558,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function go(v, updateRoute = true, preserveProfile = false, restoreConversationId = "") {
         if (!requireAuth()) return;
+        if (v !== "notifs") disconnectNotificationObserver();
         if (v === "reels" && updateRoute) deepLinkedReelId = "";
         if (v !== "reels") deepLinkedReelId = "";
         if (v !== "reels" && !$("#v-reels").hidden) {
@@ -14873,7 +15064,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const more = e.target.closest("[data-more]");
         if (more) {
           if (more.dataset.more === "explore") renderExplore($("#exploreSearch").value.trim(), true);
-          if (more.dataset.more === "notifications") renderNotifications(true);
           if (more.dataset.more === "profile") renderProfile(profileTab, true);
           return;
         }
