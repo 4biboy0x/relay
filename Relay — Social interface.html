@@ -6331,10 +6331,6 @@
       #v-explore #exp {
         min-height: 180px;
       }
-      #exp[data-search-status="loading"] > :not([data-search-loading]) {
-        opacity: 0.55;
-        transition: opacity 140ms ease;
-      }
       .explore-feed-section + .explore-feed-section {
         margin-top: 20px;
       }
@@ -13973,11 +13969,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         results.dataset.searchStateKey = key;
         if (status === "loading") {
           results.setAttribute("aria-busy", "true");
-          results.classList.add("explore-search-loading");
         } else {
           results.removeAttribute("aria-busy");
           results.querySelector("[data-search-loading]")?.remove();
-          results.classList.remove("explore-search-loading");
         }
       }
       function scheduleExploreSkeleton(key, skeletonKind) {
@@ -13994,16 +13988,20 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         renderExploreSearchTabs(searchText);
         const results = $("#exp");
         setExploreContentStatus("loading", key);
-        results.classList.add("explore-search-loading");
         if (!deferSkeleton) scheduleExploreSkeleton(key, skeletonKind);
         $("#exploreMore").hidden = true;
       }
-      function commitExploreContent(html, status, key, isCurrentRequest) {
-        return transitionContent($("#exp"), () => {
+      function commitExploreContent(html, status, key, isCurrentRequest, animate = true) {
+        const commit = () => {
           if (!isCurrentRequest()) return;
           $("#exp").innerHTML = html;
           setExploreContentStatus(status, key);
-        });
+        };
+        if (!animate) {
+          commit();
+          return Promise.resolve();
+        }
+        return transitionContent($("#exp"), commit, true);
       }
       function showCachedExploreSearch(searchText, generation) {
         const key = exploreStatusKey(searchText);
@@ -14035,23 +14033,23 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           cached = readViewCache(searchText ? `explore:${searchText}:${requestFilter}` : "explore");
           if (searchText) {
             exploreSearchedQuery = searchText;
-            if (cached && (exploreSearchStatusKey !== requestStatusKey || exploreSearchStatus === "loading")) {
-              const cachedStatus = cached.includes('class="empty-state') ? "empty" : "success";
-              await commitExploreContent(cached, cachedStatus, requestStatusKey, isCurrentRequest);
-              if (isCurrentRequest()) setExploreContentStatus("loading", requestStatusKey);
+            if (cached) {
+              if (exploreSearchStatusKey !== requestStatusKey || exploreSearchStatus === "loading") {
+                const cachedStatus = cached.includes('class="empty-state') ? "empty" : "success";
+                await commitExploreContent(cached, cachedStatus, requestStatusKey, isCurrentRequest);
+              }
             } else if (exploreSearchStatusKey !== requestStatusKey || exploreSearchStatus !== "loading") {
-              if (cached) setExploreContentStatus("loading", requestStatusKey);
-              else setExploreContentLoading(searchText, requestStatusKey, skeletonKind);
+              setExploreContentLoading(searchText, requestStatusKey, skeletonKind);
             }
           } else {
             exploreSearchedQuery = "";
-            if (cached && exploreSearchStatusKey !== requestStatusKey) {
-              const cachedStatus = cached.includes('class="empty-state') ? "empty" : "success";
-              await commitExploreContent(cached, cachedStatus, requestStatusKey, isCurrentRequest);
-              if (isCurrentRequest()) setExploreContentStatus("loading", requestStatusKey);
+            if (cached) {
+              if (exploreSearchStatusKey !== requestStatusKey) {
+                const cachedStatus = cached.includes('class="empty-state') ? "empty" : "success";
+                await commitExploreContent(cached, cachedStatus, requestStatusKey, isCurrentRequest);
+              }
             } else if (exploreSearchStatusKey !== requestStatusKey || exploreSearchStatus !== "loading") {
-              if (cached) setExploreContentStatus("loading", requestStatusKey);
-              else setExploreContentLoading("", requestStatusKey, skeletonKind);
+              setExploreContentLoading("", requestStatusKey, skeletonKind);
             }
           }
           if (!isCurrentRequest()) return;
@@ -14065,6 +14063,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               "empty",
               requestStatusKey,
               isCurrentRequest,
+              !cached,
             );
             $("#exploreMore").hidden = true;
             return;
@@ -14096,6 +14095,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 resultStatus,
                 requestStatusKey,
                 isCurrentRequest,
+                !cached,
               );
             }
             exploreCursor = result.nextCursor;
@@ -14112,7 +14112,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             removeAppendSkeleton?.();
             const html = trending.items.slice(0, 10).map((item) => `<button class="explore-trending-row" type="button" data-search-tag="${esc(item.tag)}"><strong>${esc(item.tag)}</strong><small>${fmt(item.postCount)} posts · ${fmt(item.uniqueUsers)} people</small></button>`).join("");
             if (append) $("#exp").innerHTML += html;
-            else await commitExploreContent(html || emptyState("Nothing to explore yet.", "Try another tab or check back later."), html ? "success" : "empty", requestStatusKey, isCurrentRequest);
+            else await commitExploreContent(
+              html || emptyState("Nothing to explore yet.", "Try another tab or check back later."),
+              html ? "success" : "empty",
+              requestStatusKey,
+              isCurrentRequest,
+              !cached,
+            );
             exploreCursor = null;
           } else {
             const result = requestTab === "people" ? await api(`/explore?${query}`) : await api(`/feed?${query}`);
@@ -14129,6 +14135,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               html ? "success" : "empty",
               requestStatusKey,
               isCurrentRequest,
+              !cached,
             );
             exploreCursor = result.nextCursor;
           }
@@ -14137,6 +14144,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         } catch (error) {
           removeAppendSkeleton?.();
           if (isCurrentRequest()) {
+            if (cached) {
+              console.error("Could not refresh Explore content; keeping cached results", error);
+              return;
+            }
             if (searchText) console.error("Could not search Explore", error);
             if (searchText) {
               await commitExploreContent(
