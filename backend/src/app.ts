@@ -44,6 +44,29 @@ const publicUser = {
   lastSeen: true,
   createdAt: true,
 } as const;
+const messageReactionEmojiSchema = z.enum(["❤️", "😂", "😮", "😢", "👍", "🙏", "🔥", "🎉"]);
+
+const summarizeMessageReactions = (reactions: Array<{ emoji: string; userId: string }>, viewerId: string) => {
+  const grouped = new Map<string, Set<string>>();
+  for (const reaction of reactions) {
+    const users = grouped.get(reaction.emoji) ?? new Set<string>();
+    users.add(reaction.userId);
+    grouped.set(reaction.emoji, users);
+  }
+  return [...grouped].map(([emoji, users]) => ({
+    emoji,
+    count: users.size,
+    reactedByMe: users.has(viewerId),
+  }));
+};
+
+const serializeMessage = <T extends { reactions: Array<{ emoji: string; userId: string }> }>(
+  message: T,
+  viewerId: string,
+) => ({
+  ...message,
+  reactions: summarizeMessageReactions(message.reactions, viewerId),
+});
 
 async function withNotificationFollowState<T extends { actor: { id: string } }>(viewerId: string, notifications: T[]): Promise<T[]> {
   const actorIds = [...new Set(notifications.map((notification) => notification.actor.id))];
@@ -1760,7 +1783,11 @@ api.get("/conversations/:conversationId/messages", authRequired, asyncRoute(asyn
         ],
       } : {}),
     },
-    include: { sender: { select: publicUser } },
+    include: {
+      sender: { select: publicUser },
+      replyTo: { include: { sender: { select: publicUser } } },
+      reactions: { select: { emoji: true, userId: true } },
+    },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: page.limit + 1,
   });
@@ -1769,7 +1796,7 @@ api.get("/conversations/:conversationId/messages", authRequired, asyncRoute(asyn
   const items = records.slice(0, page.limit).reverse();
   const oldest = items[0];
   res.json({
-    items,
+    items: items.map((message) => serializeMessage(message, req.userId!)),
     nextCursor: hasMore && oldest ? encodeCursor(oldest.createdAt, oldest.id) : null,
   });
 }));
@@ -1782,22 +1809,87 @@ api.post("/conversations/:conversationId/messages", authRequired, messageLimiter
     select: { userId: true },
   });
   if (!members.some((member) => member.userId === req.userId)) throw new HttpError(404, "Conversation not found");
+  if (messageInput.replyToId) {
+    const replyTarget = await prisma.message.findFirst({
+      where: { id: messageInput.replyToId, conversationId },
+      select: { id: true },
+    });
+    if (!replyTarget) throw new HttpError(404, "Reply target not found");
+  }
   const message = await prisma.$transaction(async (tx) => {
     const created = await tx.message.create({
       data: { conversationId, senderId: req.userId!, ...messageInput },
-      include: { sender: { select: publicUser } },
+      include: {
+        sender: { select: publicUser },
+        replyTo: { include: { sender: { select: publicUser } } },
+        reactions: { select: { emoji: true, userId: true } },
+      },
     });
     await tx.conversation.update({ where: { id: conversationId }, data: { updatedAt: created.createdAt } });
     return created;
   });
-  emitToConversation(conversationId, "message:new", message);
+  const response = serializeMessage(message, req.userId!);
+  emitToConversation(conversationId, "message:new", response);
   for (const member of members) {
     if (member.userId !== req.userId) {
-      emitToUser(member.userId, "message:new", message);
+      emitToUser(member.userId, "message:new", response);
       emitToUser(member.userId, "messages:unread-increment", { conversationId });
     }
   }
-  res.status(201).json(message);
+  res.status(201).json(response);
+}));
+
+const updateMessageReaction = async (req: express.Request, res: express.Response, active: boolean): Promise<void> => {
+  const messageId = z.string().cuid().parse(req.params.messageId);
+  const emoji = messageReactionEmojiSchema.parse(active ? req.body?.emoji : req.query.emoji);
+  const result = await prisma.$transaction(async (tx) => {
+    const message = await tx.message.findFirst({
+      where: { id: messageId, conversation: { members: { some: { userId: req.userId! } } } },
+      select: { id: true, conversationId: true },
+    });
+    if (!message) throw new HttpError(404, "Message not found");
+    const changed = active
+      ? (await tx.messageReaction.createMany({
+          data: { messageId, userId: req.userId!, emoji },
+          skipDuplicates: true,
+        })).count
+      : (await tx.messageReaction.deleteMany({ where: { messageId, userId: req.userId!, emoji } })).count;
+    const reactionRows = await tx.messageReaction.findMany({
+      where: { messageId },
+      select: { emoji: true, userId: true },
+    });
+    return {
+      ...message,
+      changed,
+      reactions: summarizeMessageReactions(reactionRows, req.userId!),
+    };
+  });
+  if (result.changed) {
+    emitToConversation(result.conversationId, "message:reaction", {
+      messageId,
+      conversationId: result.conversationId,
+      userId: req.userId!,
+      emoji,
+      active,
+      reactions: result.reactions.map(({ emoji: reactionEmoji, count }) => ({
+        emoji: reactionEmoji,
+        count,
+      })),
+    });
+  }
+  res.json({
+    messageId,
+    conversationId: result.conversationId,
+    reactions: result.reactions,
+  });
+};
+
+api.post("/messages/:messageId/reactions", authRequired, messageLimiter, asyncRoute(async (req, res) => {
+  await updateMessageReaction(req, res, true);
+}));
+
+api.delete("/messages/:messageId/reactions", authRequired, messageLimiter, asyncRoute(async (req, res) => {
+  await updateMessageReaction(req, res, false);
 }));
 
 api.get("/notifications", authRequired, asyncRoute(async (req, res) => {

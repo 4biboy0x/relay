@@ -78,6 +78,7 @@ export const messageSchema = z.object({
   audioUrl: z.string().startsWith("/uploads/").max(2048).nullable().optional(),
   waveform: z.array(z.number().int().min(0).max(100)).min(40).max(64).optional(),
   stickerId: z.string().trim().regex(/^[a-z0-9_-]{1,64}$/).nullable().optional(),
+  replyToId: z.string().cuid().nullable().optional(),
 }).refine((value) => !value.waveform || Boolean(value.audioUrl), {
   message: "A waveform requires an audio message",
 }).refine((value) => value.body || value.mediaUrl || value.audioUrl || value.stickerId, {

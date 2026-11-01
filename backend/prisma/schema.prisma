@@ -6,6 +6,7 @@ generator client {
 datasource db {
   provider   = "postgresql"
   url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
   extensions = [pg_trgm]
 }
 
@@ -40,6 +41,7 @@ model User {
   refreshTokens RefreshToken[]
   conversations ConversationMember[]
   sentMessages  Message[]
+  messageReactions MessageReaction[]
   realtimeDemos RealtimeDemo[]
 
   @@index([createdAt])
@@ -340,13 +342,30 @@ model Message {
   audioUrl       String?
   waveform       Int[]        @default([])
   stickerId      String?      @db.VarChar(64)
+  replyToId      String?
   createdAt      DateTime     @default(now())
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo        Message?     @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies        Message[]    @relation("MessageReplies")
+  reactions      MessageReaction[]
 
   @@index([conversationId, createdAt(sort: Desc), id(sort: Desc)])
   @@index([senderId, createdAt(sort: Desc)])
+  @@index([replyToId])
   @@index([body(ops: raw("gin_trgm_ops"))], type: Gin)
+}
+
+model MessageReaction {
+  messageId String
+  userId    String
+  emoji     String   @db.VarChar(16)
+  createdAt DateTime @default(now())
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, userId, emoji])
+  @@index([messageId, emoji])
 }
 
 enum InteractionType {

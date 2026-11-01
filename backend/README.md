@@ -4,7 +4,7 @@ Relay is a Node.js 20+ / TypeScript API using Express, PostgreSQL, Prisma, Zod, 
 
 ## Start locally
 
-1. Copy `.env.example` to `.env` and set `DATABASE_URL`, a random `JWT_ACCESS_SECRET`, and a separate random `POST_VIEW_HMAC_SECRET` (each at least 32 characters). Set `CLIENT_ORIGIN=http://localhost:5173` to match the local frontend origin. Keep `.env` out of source control.
+1. Copy `.env.example` to `.env` and set `DATABASE_URL`, `DIRECT_URL`, a random `JWT_ACCESS_SECRET`, and a separate random `POST_VIEW_HMAC_SECRET` (each at least 32 characters). Locally, both database URLs can use the same direct connection. Set `CLIENT_ORIGIN=http://localhost:5173` to match the local frontend origin. Keep `.env` out of source control.
 2. From this directory run `npm install`, `npm run db:generate`, and `npm run db:migrate` to apply the database migrations.
 3. Run `npm run dev`. The API and Socket.IO server listen on `PORT` (default `3000`); REST endpoints are under `/api`.
 4. From a second terminal at the workspace root, run `py -m http.server 5173`, then open `http://localhost:5173/Relay%20%E2%80%94%20Social%20interface.html`. Use the same `localhost` hostname on both frontend and API; do not switch one side to `127.0.0.1`, which changes cookie behavior.
@@ -18,7 +18,7 @@ Relay is a Node.js 20+ / TypeScript API using Express, PostgreSQL, Prisma, Zod, 
 12. Publish or reply with `@<other-account-handle>` and confirm the mentioned account gets a persistent notification and the mention opens that user's profile. In two sessions, delete a post/reply, unlike, and undo a repost; verify post/reply DOM and interaction counts update without refreshing.
 13. In the Home composer, choose **Add location**, enter a place name, and confirm the location chip can be removed before publishing. Publish with and without a location; verify the place label persists in the feed and on profile/thread views after a reload. The feature stores only the label entered by the user and never requests device geolocation.
 
-For production, build the TypeScript app with `npm run build` and generate the Prisma client during the build. `npm start` runs `prisma migrate deploy` before starting the API, so the database schema is current before requests are served; make sure the deployment environment has `DATABASE_URL` and the Prisma CLI installed. A production deployment also needs TLS, a managed PostgreSQL instance, backups, monitoring, and shared Socket.IO pub/sub when running multiple API instances.
+For production, build the TypeScript app with `npm run build` and generate the Prisma client during the build. Set `DATABASE_URL` to the Neon pooled URL for application traffic and `DIRECT_URL` to the matching unpooled URL (the hostname must not contain `-pooler`) for Prisma migrations. `npm start` runs `prisma migrate deploy` before starting the API, so the deployment environment must provide both URLs and the Prisma CLI. A production deployment also needs TLS, a managed PostgreSQL instance, backups, monitoring, and shared Socket.IO pub/sub when running multiple API instances.
 
 ## Reels media setup and operations
 
