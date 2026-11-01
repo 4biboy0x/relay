@@ -15165,6 +15165,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function renderMessageSearchItems(items, append = false) {
         const list = $("#messageSearchResults");
         list.querySelector(".message-search-sentinel")?.remove();
+        if (!append) list.replaceChildren();
         if (!items.length && !append) {
           list.innerHTML = conversationSearchState.query
             ? emptyState("No messages found", "Try a different search.", true)
