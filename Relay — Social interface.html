@@ -5430,6 +5430,21 @@
         color: #fff;
         background: var(--accent);
       }
+      .message-row {
+        position: relative;
+        display: flex;
+        width: 100%;
+        min-width: 0;
+        flex: none;
+        align-items: center;
+      }
+      .message-row:empty { display: none; }
+      .message-row.mine { justify-content: flex-end; }
+      .message-row > .message-bubble {
+        width: fit-content;
+        max-width: min(90%, 720px);
+        align-self: auto;
+      }
       .message-tools {
         position: absolute;
         top: 50%;
@@ -5437,27 +5452,26 @@
         display: flex;
         align-items: center;
         gap: 2px;
+        margin-top: -16px;
         opacity: 0;
         pointer-events: none;
-        transform: translateY(-50%);
-        transition: opacity 100ms ease;
+        transition: opacity 120ms ease;
       }
       .message-bubble:not(.mine) > .message-tools,
       .message-image-item:not(.mine) > .message-tools {
-        left: calc(100% + 4px);
+        inset-inline-start: calc(100% + 6px);
       }
       .message-bubble.mine > .message-tools,
       .message-image-item.mine > .message-tools {
-        right: calc(100% + 4px);
+        inset-inline-end: calc(100% + 6px);
+        flex-direction: row-reverse;
       }
-      .message-bubble:hover > .message-tools,
-      .message-image-item:hover > .message-tools,
-      .message-bubble:focus-within > .message-tools,
-      .message-image-item:focus-within > .message-tools,
-      .message-bubble.has-open-menu > .message-tools,
-      .message-image-item.has-open-menu > .message-tools,
-      .message-bubble.tools-visible > .message-tools,
-      .message-image-item.tools-visible > .message-tools {
+      [dir="rtl"] .message-bubble.mine > .message-tools,
+      [dir="rtl"] .message-image-item.mine > .message-tools { flex-direction: row; }
+      .message-row:hover .message-tools,
+      .message-row:focus-within .message-tools,
+      .message-row.has-message-popover .message-tools,
+      .message-tools:focus-within {
         opacity: 1;
         pointer-events: auto;
       }
@@ -5473,15 +5487,21 @@
         color: var(--text-2);
         background: transparent;
         cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
       }
       .message-tool-button:hover,
       .message-tool-button:focus-visible,
       .message-tool-button[aria-expanded="true"] {
         color: var(--text);
-        background: var(--surface-2);
+        background: var(--hover, var(--surface-2));
       }
+      .message-tool-button:disabled {
+        opacity: 1;
+        cursor: default;
+      }
+      .message-tool-button:focus { outline: none; }
       .message-tool-button:focus-visible {
-        outline: 2px solid var(--accent);
+        outline: 1px solid var(--border);
         outline-offset: 1px;
       }
       .message-tool-button .i {
@@ -5491,79 +5511,80 @@
       .message-action-menu {
         position: fixed;
         z-index: 100;
-        width: 196px;
+        width: max-content;
+        min-width: min(220px, calc(100vw - 16px));
         max-width: calc(100vw - 16px);
         max-height: calc(100dvh - 16px);
         overflow: auto;
-        padding: 5px;
+        padding: 4px 0;
         border: 1px solid var(--border);
-        border-radius: 12px;
+        border-radius: 16px;
         color: var(--text);
         background: var(--surface);
-        box-shadow: var(--shadow);
+        box-shadow: var(--shadow, 0 4px 20px rgba(0,0,0,.12));
       }
       .message-action-menu[hidden] { display: none; }
       .message-action-menu button {
         display: flex;
         width: 100%;
-        min-height: 38px;
+        min-height: 40px;
         align-items: center;
-        gap: 10px;
-        padding: 0 10px;
+        gap: 12px;
+        padding: 0 16px;
         border: 0;
-        border-radius: 8px;
+        border-radius: 0;
         color: var(--text);
         background: transparent;
         font: inherit;
-        text-align: left;
+        font-size: 15px;
+        font-weight: 500;
+        text-align: start;
         cursor: pointer;
       }
-      .message-action-menu button:hover,
-      .message-action-menu button:focus-visible {
-        background: var(--surface-2);
+      .message-action-menu button:hover {
+        background: var(--hover, var(--surface-2));
       }
+      .message-action-menu button:focus { outline: none; }
       .message-action-menu button:focus-visible {
-        outline: 2px solid var(--accent);
+        background: var(--hover, var(--surface-2));
+        outline: 1px solid var(--border);
         outline-offset: -2px;
       }
+      .message-action-menu button:disabled {
+        color: var(--text);
+        opacity: 1;
+        cursor: default;
+      }
       .message-action-menu .i {
-        width: 17px;
-        height: 17px;
+        width: 20px;
+        height: 20px;
         flex: none;
       }
       @media (hover: none) {
-        .message-bubble:hover > .message-tools,
-        .message-image-item:hover > .message-tools {
+        .message-tool-button { width: 40px; height: 40px; }
+        .message-tools { margin-top: -20px; }
+        .message-action-menu button { min-height: 44px; }
+        .message-row:hover:not(.tools-visible):not(.has-message-popover) .message-tools {
           opacity: 0;
           pointer-events: none;
         }
-        .message-bubble:focus-within > .message-tools,
-        .message-image-item:focus-within > .message-tools,
-        .message-bubble.has-open-menu > .message-tools,
-        .message-image-item.has-open-menu > .message-tools,
-        .message-bubble.tools-visible > .message-tools,
-        .message-image-item.tools-visible > .message-tools {
-          opacity: 1;
-          pointer-events: auto;
-        }
-        .message-tool-button { width: 40px; height: 40px; }
       }
       @media (max-width: 640px) {
         .message-bubble:not(.mine) > .message-tools,
         .message-image-item:not(.mine) > .message-tools {
           top: auto;
-          right: auto;
+          inset-inline-start: auto;
+          inset-inline-end: 0;
           bottom: calc(100% + 4px);
-          left: 0;
-          transform: none;
+          margin-top: 0;
         }
         .message-bubble.mine > .message-tools,
         .message-image-item.mine > .message-tools {
           top: auto;
-          right: 0;
+          inset-inline-start: 0;
+          inset-inline-end: auto;
           bottom: calc(100% + 4px);
-          left: auto;
-          transform: none;
+          margin-top: 0;
         }
       }
       .message-bubble.search-message-highlight {
@@ -8015,6 +8036,14 @@
         <symbol id="copy" viewBox="0 0 24 24">
           <rect x="8" y="8" width="13" height="13" rx="2" />
           <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" />
+        </symbol>
+        <symbol id="reply" viewBox="0 0 24 24">
+          <path d="m9 14-5-5 5-5" />
+          <path d="M4 9h9a6 6 0 0 1 6 6v2" />
+        </symbol>
+        <symbol id="heart-plus" viewBox="0 0 24 24">
+          <path d="M19.5 13.5 12 20l-7-6.2C2 11 2 6.5 5 4.5c2.2-1.5 5-.8 7 1.4 1.4-1.5 3.2-2.2 5-2" />
+          <path d="M19 3v6M16 6h6" />
         </symbol>
         <symbol id="contrast" viewBox="0 0 24 24">
           <circle cx="12" cy="12" r="10" />
@@ -14717,40 +14746,57 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const downloadAction = downloadUrl
           ? `<button type="button" role="menuitem" data-message-menu-action="download" data-message-download="${esc(downloadUrl)}">${ic("download")}<span>Download</span></button>`
           : "";
-        if (!copyAction && !downloadAction) return "";
+        const replyAction = `<button type="button" role="menuitem" disabled aria-label="Reply unavailable">${ic("reply")}<span>Reply</span></button>`;
         const downloadButton = directDownload && downloadUrl
           ? `<button class="message-tool-button" type="button" data-message-download="${esc(downloadUrl)}" aria-label="Download ${esc(downloadLabel)}" title="Download">${ic("download")}</button>`
           : "";
-        return `<div class="message-tools"><button class="message-tool-button" type="button" data-message-more aria-expanded="false" aria-haspopup="menu" aria-label="More message actions" title="More">${ic("dots")}</button>${downloadButton}<div class="message-action-menu" role="menu" hidden>${copyAction}${downloadAction}</div></div>`;
+        return `<div class="message-tools"><button class="message-tool-button" type="button" disabled aria-label="Reply to message (unavailable)" title="Reply isn't available for chat messages yet">${ic("reply")}</button>${downloadButton}<button class="message-tool-button" type="button" data-message-more aria-expanded="false" aria-haspopup="menu" aria-label="More message actions" title="More">${ic("dots")}</button><div class="message-action-menu" role="menu" hidden>${replyAction}${copyAction}${downloadAction}</div></div>`;
       }
       function revealMessageTools(owner) {
+        document.querySelectorAll(".message-row.tools-visible").forEach((row) => {
+          if (row !== owner && !row.classList.contains("has-message-popover")) row.classList.remove("tools-visible");
+        });
         owner.classList.add("tools-visible");
-        clearTimeout(owner._messageToolsTimer);
-        owner._messageToolsTimer = setTimeout(() => {
-          if (!owner.querySelector(".message-action-menu:not([hidden])")) owner.classList.remove("tools-visible");
-        }, 4000);
       }
       function closeMessageActionMenus(restoreFocus = false) {
         document.querySelectorAll(".message-action-menu:not([hidden])").forEach((menu) => {
           menu.hidden = true;
-          const owner = menu.closest(".message-bubble, .message-image-item");
-          owner?.classList.remove("has-open-menu");
-          const trigger = owner?.querySelector("[data-message-more]");
+          const owner = menu._messageRow;
+          const trigger = menu._messageTrigger;
+          const tools = menu._messageTools;
+          if (tools && menu.parentElement !== tools) tools.append(menu);
+          menu.removeAttribute("dir");
+          menu._messageRow = null;
+          menu._messageTools = null;
+          menu._messageTrigger = null;
+          menu.style.removeProperty("left");
+          menu.style.removeProperty("top");
           trigger?.setAttribute("aria-expanded", "false");
+          owner?.classList.remove("has-message-popover");
           if (restoreFocus) trigger?.focus();
         });
       }
       function positionMessageActionMenu(trigger, menu) {
+        const tools = trigger.closest(".message-tools");
+        const owner = trigger.closest(".message-row");
+        if (!tools || !owner) return;
+        menu._messageRow = owner;
+        menu._messageTools = tools;
+        menu._messageTrigger = trigger;
+        trigger._messageActionMenu = menu;
+        menu.dir = getComputedStyle(trigger).direction;
+        document.body.append(menu);
         menu.hidden = false;
         const triggerRect = trigger.getBoundingClientRect();
         const menuRect = menu.getBoundingClientRect();
-        const left = Math.max(8, Math.min(window.innerWidth - menuRect.width - 8, triggerRect.right - menuRect.width));
-        const preferredTop = triggerRect.bottom + 6;
-        const top = preferredTop + menuRect.height <= window.innerHeight - 8
-          ? preferredTop
-          : Math.max(8, triggerRect.top - menuRect.height - 6);
+        const rtl = getComputedStyle(trigger).direction === "rtl";
+        const alignedLeft = rtl ? triggerRect.right - menuRect.width : triggerRect.left;
+        const left = Math.max(8, Math.min(window.innerWidth - menuRect.width - 8, alignedLeft));
+        const above = triggerRect.top - menuRect.height - 8;
+        const top = above >= 8 ? above : Math.min(window.innerHeight - menuRect.height - 8, triggerRect.bottom + 8);
         menu.style.left = `${left}px`;
         menu.style.top = `${top}px`;
+        owner.classList.add("has-message-popover");
       }
       async function copyMessageText(text) {
         if (navigator.clipboard?.writeText) {
@@ -14825,7 +14871,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           downloadUrl: audioUrl,
           downloadLabel: "voice message",
         });
-        return `<div class="message-bubble${mine ? " mine" : ""}${mediaOnly ? " media-message" : ""}${imageOnly ? " image-message" : ""}${audioOnly ? " audio-message" : ""}${stickerOnly ? " sticker-message" : ""}" data-message-id="${esc(message.id)}">${image}${audio}${sticker}${text}${actions}</div>`;
+        const bubbleActions = image ? "" : actions;
+        return `<div class="message-row${mine ? " mine" : ""}" data-message-row><div class="message-bubble${mine ? " mine" : ""}${mediaOnly ? " media-message" : ""}${imageOnly ? " image-message" : ""}${audioOnly ? " audio-message" : ""}${stickerOnly ? " sticker-message" : ""}" data-message-id="${esc(message.id)}">${image}${audio}${sticker}${text}${bubbleActions}</div></div>`;
       }
       function bindVoiceMessages(container = document) {
         container.querySelectorAll(".relay-voice audio:not([data-relay-bound])").forEach((audio) => {
@@ -14949,7 +14996,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (typingStatus) typingStatus.insertAdjacentHTML("beforebegin", messageMarkup(message));
           else list.insertAdjacentHTML("beforeend", messageMarkup(message));
           const insertedMessage = typingStatus?.previousElementSibling || list.lastElementChild;
-          if (insertedMessage?.matches(".message-bubble")) animateChatMessages([insertedMessage]);
+          if (insertedMessage?.matches(".message-row")) animateChatMessages([insertedMessage]);
           bindVoiceMessages($("#chatLog"));
           bindMessageMediaScroll($("#chatLog"));
           scrollMessageListToBottom(shouldFollow);
@@ -15958,7 +16005,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             }
             const incomingMessages = [];
             for (let message = loader.nextElementSibling; message && message !== anchor; message = message.nextElementSibling) {
-              if (message.matches(".message-bubble")) incomingMessages.push(message);
+              if (message.matches(".message-row")) incomingMessages.push(message);
             }
             animateChatMessages(incomingMessages);
             bindVoiceMessages(log);
@@ -16841,27 +16888,31 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       });
       document.addEventListener("pointerdown", (event) => {
         if (!matchMedia("(hover: none)").matches) return;
-        const owner = event.target.closest(".message-image-item, .message-bubble");
-        if (event.target.closest(".message-tools")) return;
+        const target = event.target instanceof Element ? event.target : event.target.parentElement;
+        const owner = target?.closest(".message-row");
+        if (target?.closest(".message-tools, .message-action-menu")) return;
         if (!owner) {
+          closeMessageActionMenus();
           document.querySelectorAll(".message-bubble.tools-visible, .message-image-item.tools-visible")
             .forEach((item) => item.classList.remove("tools-visible"));
+          document.querySelectorAll(".message-row.tools-visible").forEach((row) => row.classList.remove("tools-visible"));
           return;
         }
-        const firstImageTap = owner.matches(".message-image-item") && !owner.classList.contains("tools-visible");
+        const imageItem = target?.closest(".message-image-item");
+        const firstImageTap = imageItem && !owner.classList.contains("tools-visible");
         revealMessageTools(owner);
-        if (firstImageTap && event.target.closest("[data-lightbox-image]")) event.preventDefault();
+        if (firstImageTap && target.closest("[data-lightbox-image]")) event.preventDefault();
       }, true);
       document.addEventListener("keydown", (event) => {
-        const menu = event.target instanceof Element
-          ? event.target.closest(".message-action-menu:not([hidden])")
-          : null;
-        if (!menu) return;
-        if (event.key === "Escape") {
+        if (event.key === "Escape" && document.querySelector(".message-action-menu:not([hidden])")) {
           event.preventDefault();
           closeMessageActionMenus(true);
           return;
         }
+        const menu = event.target instanceof Element
+          ? event.target.closest(".message-action-menu:not([hidden])")
+          : null;
+        if (!menu) return;
         const items = $$("[role='menuitem']", menu);
         if (!items.length || !["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
         event.preventDefault();
@@ -16878,21 +16929,21 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         const moreTrigger = e.target.closest("[data-message-more]");
         if (moreTrigger) {
-          const menu = moreTrigger.parentElement.querySelector(".message-action-menu");
+          const menu = moreTrigger._messageActionMenu || moreTrigger.parentElement.querySelector(".message-action-menu");
           const opening = menu.hidden;
           closeMessageActionMenus();
           if (opening) {
             positionMessageActionMenu(moreTrigger, menu);
             moreTrigger.setAttribute("aria-expanded", "true");
-            moreTrigger.closest(".message-bubble, .message-image-item")?.classList.add("has-open-menu");
-            menu.querySelector("[role='menuitem']")?.focus();
+            if (e.detail === 0) menu.querySelector("[role='menuitem']:not(:disabled)")?.focus({ preventScroll: true });
           }
           return;
         }
         const menuAction = e.target.closest("[data-message-menu-action]");
         if (menuAction) {
-          const owner = menuAction.closest(".message-bubble, .message-image-item");
-          const trigger = owner?.querySelector("[data-message-more]");
+          const menu = menuAction.closest(".message-action-menu");
+          const owner = menu?._messageRow;
+          const trigger = menu?._messageTrigger;
           const action = menuAction.dataset.messageMenuAction;
           const copyText = menuAction.dataset.messageCopy;
           const downloadUrl = menuAction.dataset.messageDownload;
@@ -18411,6 +18462,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         rows[nextIndex].scrollIntoView({ block: "nearest" });
       });
       $("#chatLog").addEventListener("scroll", () => {
+        closeMessageActionMenus();
         if ($("#chatLog").scrollTop <= 24) loadOlderMessages();
       }, { passive: true });
       $("#messageInput").addEventListener("input", () => {
