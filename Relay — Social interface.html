@@ -5633,9 +5633,9 @@
         background: transparent;
       }
       .message-bubble.audio-message {
-        width: min(340px, 100%);
-        max-width: min(340px, 90%);
-        min-width: 306px;
+        width: min(300px, 100%);
+        max-width: min(320px, 90%);
+        min-width: 0;
         padding: 0;
         background: transparent;
       }
@@ -5679,16 +5679,16 @@
       .message-sticker { display: block; width: 32px; height: 32px; font-size: 32px; line-height: 32px; text-align: center; }
       .relay-voice {
         position: relative;
-        width: min(340px, 100%);
+        width: 100%;
         max-width: 100%;
-        min-width: 306px;
+        min-width: 0;
         height: 52px;
         display: grid;
-        grid-template-columns: 36px minmax(190px, 1fr) 34px;
+        grid-template-columns: 36px minmax(0, 1fr) 34px;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
         box-sizing: border-box;
-        padding: 8px 12px;
+        padding: 7px 10px;
         border: 1px solid var(--border);
         border-radius: 999px;
         background: var(--bg);
@@ -5733,8 +5733,8 @@
       .relay-voice-play-icons .relay-voice-pause-icon { transform: scale(.85); opacity: 0; }
       .relay-voice.playing .relay-voice-play-icon { transform: translateX(1px) scale(.85); opacity: 0; }
       .relay-voice.playing .relay-voice-pause-icon { transform: scale(1); opacity: 1; }
-      .relay-waveform { width: min(220px, 100%); min-width: 190px; height: 24px; display: flex; align-items: center; justify-content: center; touch-action: pan-y; cursor: pointer; }
-      .relay-waveform svg { width: 190px; min-width: 190px; height: 24px; overflow: visible; pointer-events: none; }
+      .relay-waveform { width: 100%; min-width: 0; height: 24px; display: flex; align-items: center; justify-content: center; touch-action: pan-y; cursor: pointer; }
+      .relay-waveform svg { width: 100%; min-width: 0; height: 24px; overflow: visible; pointer-events: none; }
       .relay-waveform rect { fill: var(--voice-unplayed); }
       .relay-waveform rect.is-played { fill: var(--voice-played); }
       .relay-waveform:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 5px; }
@@ -5744,8 +5744,8 @@
         #messageAudioButton.recording { animation: none; }
       }
       @media (max-width: 380px) {
-        .message-bubble.audio-message { min-width: 290px; max-width: 100%; }
-        .relay-voice { min-width: 290px; gap: 6px; padding-inline: 8px; }
+        .message-bubble.audio-message { max-width: min(320px, 90%); }
+        .relay-voice { gap: 6px; padding-inline: 8px; }
       }
       .typing-status {
         display: flex;
@@ -6805,6 +6805,73 @@
       .relay-skeleton-bar.short { width: 58%; }
       .relay-skeleton-media { height: 180px; border-radius: 16px; }
       .relay-skeleton-list { display: block; }
+      .relay-skeleton-conversation {
+        width: calc(100% - 32px);
+        min-height: 72px;
+        align-items: center;
+        grid-template-columns: 48px minmax(0, 1fr);
+        gap: 16px;
+        margin: 2px 16px;
+        padding: 10px 8px;
+        border: 0;
+        border-radius: 16px;
+        background: transparent;
+      }
+      .relay-skeleton-conversation-avatar {
+        position: relative;
+        width: 48px;
+        height: 48px;
+      }
+      .relay-skeleton-conversation-avatar .relay-skeleton-avatar {
+        width: 48px;
+        height: 48px;
+      }
+      .relay-skeleton-presence-dot {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        width: 10px;
+        height: 10px;
+        box-sizing: border-box;
+        border: 2px solid var(--bg);
+        border-radius: 50%;
+        background: var(--surface-2);
+      }
+      .relay-skeleton-conversation-copy {
+        display: grid;
+        min-width: 0;
+        gap: 4px;
+      }
+      .relay-skeleton-conversation-heading {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .relay-skeleton-conversation-name {
+        width: 42%;
+        height: 14px;
+        flex: none;
+        border-radius: 5px;
+      }
+      .relay-skeleton-conversation-time {
+        width: 30px;
+        height: 10px;
+        flex: none;
+        border-radius: 5px;
+      }
+      .relay-skeleton-conversation-preview {
+        width: 68%;
+        height: 11px;
+        border-radius: 5px;
+      }
+      @media (max-width: 640px) {
+        .relay-skeleton-conversation {
+          padding-right: 16px;
+          padding-left: 16px;
+        }
+      }
       .relay-skeleton-trend {
         min-height: 62px;
         padding: 10px 16px;
@@ -10266,9 +10333,11 @@
           console.warn("Could not clear cached views after deleting a post", error);
         }
       };
-      const listSkeleton = (kind = "post", count = 5) => Array.from({ length: count }, () => kind === "trend"
-        ? `<div class="relay-skeleton relay-skeleton-trend" aria-hidden="true"><span class="relay-skeleton-copy"><span class="relay-skeleton-bar relay-skeleton-shimmer"></span><span class="relay-skeleton-bar short relay-skeleton-shimmer"></span></span></div>`
-        : kind === "notification" || kind === "message"
+      const listSkeleton = (kind = "post", count = 5) => Array.from({ length: count }, () => kind === "conversation"
+        ? `<div class="relay-skeleton relay-skeleton-conversation" aria-hidden="true"><span class="relay-skeleton-conversation-avatar"><span class="relay-skeleton-avatar relay-skeleton-shimmer"></span><span class="relay-skeleton-presence-dot"></span></span><span class="relay-skeleton-conversation-copy"><span class="relay-skeleton-conversation-heading"><span class="relay-skeleton-bar relay-skeleton-conversation-name relay-skeleton-shimmer"></span><span class="relay-skeleton-bar relay-skeleton-conversation-time relay-skeleton-shimmer"></span></span><span class="relay-skeleton-bar relay-skeleton-conversation-preview relay-skeleton-shimmer"></span></span></div>`
+        : kind === "trend"
+          ? `<div class="relay-skeleton relay-skeleton-trend" aria-hidden="true"><span class="relay-skeleton-copy"><span class="relay-skeleton-bar relay-skeleton-shimmer"></span><span class="relay-skeleton-bar short relay-skeleton-shimmer"></span></span></div>`
+          : kind === "notification" || kind === "message"
           ? `<div class="relay-skeleton" aria-hidden="true"><span class="relay-skeleton-avatar relay-skeleton-shimmer"></span><span class="relay-skeleton-copy"><span class="relay-skeleton-bar relay-skeleton-shimmer"></span><span class="relay-skeleton-bar short relay-skeleton-shimmer"></span></span></div>`
           : kind === "person"
             ? `<div class="relay-skeleton relay-skeleton-person" aria-hidden="true"><span class="relay-skeleton-avatar relay-skeleton-shimmer"></span><span class="relay-skeleton-copy"><span class="relay-skeleton-bar relay-skeleton-shimmer"></span><span class="relay-skeleton-bar short relay-skeleton-shimmer"></span></span></div>`
@@ -15238,7 +15307,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#conversationSearchTabs").hidden = false;
         $("#messageSearchTab").textContent = "Messages (…)";
         $("#conversationSearchEmpty").hidden = true;
-        $("#conversationList").innerHTML = skeletonListMarkup("message", 3, "conversation search results");
+        $("#conversationList").innerHTML = skeletonListMarkup("conversation", 3, "conversation search results");
         $("#messageSearchResults").innerHTML = skeletonListMarkup("message", 3, "message search results");
         $("#messageSearchResults").scrollTop = 0;
         setConversationSearchMode(conversationSearchState.tab);
@@ -15291,7 +15360,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             $("#conversationList").innerHTML = cached;
             syncConversationSelection(selectedConversationId || activeConversation?.id || "");
           }
-          finishSkeleton = showDelayedSkeleton($("#conversationList"), "message");
+          finishSkeleton = showDelayedSkeleton($("#conversationList"), "conversation");
           const result = await api("/conversations");
           conversations = result.items;
           renderConversationItems(conversations);
