@@ -534,6 +534,7 @@ router.get("/:id/status", authRequired, statusLimiter, asyncRoute(async (req, re
 
 router.get("/:id/media/:kind", asyncRoute(async (req, res) => {
   const reelId = reelIdFrom(req.params.id);
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
   const kind = mediaKindSchema.parse(req.params.kind);
   const reel = await prisma.reel.findFirst({
     where: { id: reelId, status: ReelStatus.READY, deletedAt: null },
@@ -562,11 +563,20 @@ router.get("/:id/media/:kind", asyncRoute(async (req, res) => {
   } catch (error) {
     const invalidRange = error instanceof RangeError
       || (typeof error === "object" && error !== null && "name" in error && error.name === "InvalidRange");
-    if (!invalidRange) throw error;
-    const head = await getReelObjectHead(key);
-    res.setHeader("Content-Range", `bytes */${head?.contentLength ?? 0}`);
-    res.status(416).end();
-    return;
+    if (invalidRange) {
+      const head = await getReelObjectHead(key);
+      res.setHeader("Content-Range", `bytes */${head?.contentLength ?? 0}`);
+      res.status(416).end();
+      return;
+    }
+    const missingObject = typeof error === "object" && error !== null
+      && (("code" in error && ["ENOENT", "NotFound", "NoSuchKey", "NoSuchObject"].includes(String(error.code)))
+        || ("name" in error && ["NotFound", "NoSuchKey", "NoSuchObject"].includes(String(error.name))));
+    if (missingObject) {
+      console.warn(`Reel ${kind} object is missing for Reel ${reelId}.`);
+      throw new HttpError(404, "Reel media not found");
+    }
+    throw error;
   }
   res.setHeader("Accept-Ranges", "bytes");
   res.setHeader("Cache-Control", "private, max-age=3600");

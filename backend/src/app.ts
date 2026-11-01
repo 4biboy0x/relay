@@ -81,7 +81,8 @@ app.use(cors({
   origin: clientOrigins,
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "Range"],
+  exposedHeaders: ["Accept-Ranges", "Content-Length", "Content-Range"],
 }));
 app.use(express.json({ limit: "32kb" }));
 app.use("/uploads", express.static(uploadDirectory, {
