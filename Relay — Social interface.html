@@ -7768,7 +7768,7 @@
       .reel-upload-placeholder span { color: rgba(255,255,255,.72); font-size: 13px; line-height: 1.4; }
       .reel-upload-preview[data-has-video="true"] { border-style: solid; }
       .reel-upload-preview[data-has-video="true"] .reel-upload-placeholder { display: none; }
-      .reel-upload-controls { position: absolute; z-index: 3; top: 10px; right: 10px; display: flex; flex-direction: row-reverse; gap: 8px; }
+      .reel-upload-controls { position: absolute; z-index: 3; top: 10px; inset-inline-end: 10px; display: flex; flex-direction: row-reverse; gap: 8px; }
       .reel-upload-controls[hidden] { display: none; }
       .reel-upload-control,
       .reel-upload-mute {
@@ -7784,7 +7784,18 @@
         cursor: pointer;
         -webkit-backdrop-filter: blur(6px);
         backdrop-filter: blur(6px);
-        transition: background-color 140ms ease, transform 140ms ease;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(-4px) scale(.9);
+        transition: opacity 180ms ease, background-color 140ms ease, transform 180ms ease;
+      }
+      .reel-upload-controls .reel-upload-control:nth-child(2) { transition-delay: 35ms; }
+      .reel-upload-mute { transform: translateY(4px) scale(.9); transition-delay: 70ms; }
+      .reel-upload-preview:is(:hover, :focus-within) .reel-upload-control,
+      .reel-upload-preview:is(:hover, :focus-within) .reel-upload-mute {
+        opacity: 1;
+        pointer-events: auto;
+        transform: none;
       }
       .reel-upload-control:hover,
       .reel-upload-mute:hover { background: rgba(0,0,0,.65); }
@@ -7794,8 +7805,17 @@
       .reel-upload-mute:focus-visible { outline: 2px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 4px rgba(0,0,0,.65); }
       .reel-upload-control svg,
       .reel-upload-mute svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
-      .reel-upload-mute { position: absolute; z-index: 3; right: 10px; bottom: 10px; }
+      .reel-upload-mute { position: absolute; z-index: 3; inset-inline-end: 10px; bottom: 10px; }
       .reel-upload-mute[hidden] { display: none; }
+      @media (hover: none) {
+        .reel-upload-preview[data-has-video="true"] .reel-upload-control,
+        .reel-upload-preview[data-has-video="true"] .reel-upload-mute {
+          opacity: 1;
+          pointer-events: auto;
+          transform: none;
+          transition-delay: 0ms;
+        }
+      }
       .reel-upload-play-overlay {
         position: absolute;
         z-index: 2;
@@ -8017,10 +8037,12 @@
         .profile-reel-card img,
         .reel-action .reel-action-icon,
         .reel-action .reel-action-icon > svg { transition: none; }
-        .reel-upload-control,
-        .reel-upload-mute,
         .reel-upload-progress,
         .reel-upload-progress > span { transition: none; }
+        .reel-upload-control,
+        .reel-upload-mute { transition: opacity 100ms ease; transform: none; }
+        .reel-upload-control:active,
+        .reel-upload-mute:active { transform: none; }
         .reel-upload-play-overlay,
         .reel-upload-preview.is-preview-paused .reel-upload-play-overlay,
         .reel-upload-preview.is-preview-feedback .reel-upload-play-overlay { transform: translate(-50%, -50%); transition: none; }
@@ -9352,6 +9374,7 @@
       let reelFeedScrollTop = 0;
       let reelUploadPreviewUrl = "";
       let reelUploadValidationUrl = "";
+      let reelPreviewMuted = true;
       let reelUploadRequest = null;
       let reelUploadCancellation = false;
       let reelUploadCreatedId = "";
@@ -12625,17 +12648,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         preview.playsInline = true;
         preview.hidden = false;
         preview.load();
+        setReelPreviewMuted(true);
         const frame = $("#reelUploadPreviewFrame");
         clearTimeout(reelPreviewFeedbackTimer);
         frame.classList.remove("is-preview-paused", "is-preview-feedback", "is-preview-playing", "is-preview-pause", "is-preview-fading");
         frame.dataset.hasVideo = "true";
         $("#reelUploadControls").hidden = false;
         $("#reelPreviewMute").hidden = false;
-        $("#reelPreviewMute").setAttribute("aria-label", "Unmute video");
-        $("#reelPreviewMute").title = "Unmute video";
-        $("#reelPreviewMute").setAttribute("aria-pressed", "false");
-        $('[data-mute-icon="muted"]', $("#reelPreviewMute")).hidden = false;
-        $('[data-mute-icon="unmuted"]', $("#reelPreviewMute")).hidden = true;
         setReelUploadStatus("Uploading… 0%");
         setReelUploadProgress(0);
         startReelPreupload(file, generation);
@@ -12668,6 +12687,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const preview = $("#reelUploadPreview");
         clearTimeout(reelPreviewFeedbackTimer);
         preview.pause();
+        setReelPreviewMuted(true);
         preview.removeAttribute("src");
         preview.load();
         preview.hidden = true;
@@ -13135,16 +13155,28 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           setReelPreviewError("Could not play this video preview.");
         }
       }
+      function syncReelPreviewMute(preview = $("#reelUploadPreview")) {
+        reelPreviewMuted = preview.muted;
+        const button = $("#reelPreviewMute");
+        button.setAttribute("aria-label", `${reelPreviewMuted ? "Unmute" : "Mute"} video`);
+        button.title = `${reelPreviewMuted ? "Unmute" : "Mute"} video`;
+        button.setAttribute("aria-pressed", String(!reelPreviewMuted));
+        $('[data-mute-icon="muted"]', button).hidden = !reelPreviewMuted;
+        $('[data-mute-icon="unmuted"]', button).hidden = reelPreviewMuted;
+      }
+      function setReelPreviewMuted(muted) {
+        const preview = $("#reelUploadPreview");
+        reelPreviewMuted = muted;
+        preview.muted = reelPreviewMuted;
+        syncReelPreviewMute(preview);
+      }
       function toggleReelPreviewMute() {
         const preview = $("#reelUploadPreview");
-        preview.muted = !preview.muted;
-        const muted = preview.muted;
-        const button = $("#reelPreviewMute");
-        button.setAttribute("aria-label", `${muted ? "Unmute" : "Mute"} video`);
-        button.title = `${muted ? "Unmute" : "Mute"} video`;
-        button.setAttribute("aria-pressed", String(!muted));
-        $('[data-mute-icon="muted"]', button).hidden = !muted;
-        $('[data-mute-icon="unmuted"]', button).hidden = muted;
+        const unmuting = reelPreviewMuted;
+        setReelPreviewMuted(!reelPreviewMuted);
+        if (unmuting && preview.paused) {
+          preview.play().catch(() => setReelPreviewError("Could not play this video preview."));
+        }
       }
       function handleReelFeedDoubleClick(event) {
         const media = event.target.closest(".reel-video, .reel-poster");
@@ -13232,6 +13264,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const dropzone = $("#reelUploadPreviewFrame");
         $("#reelUploadPlaceholder").addEventListener("click", () => $("#reelFileInput").click());
         $("#reelUploadPreview").addEventListener("click", toggleReelPreviewPlayback);
+        $("#reelUploadPreview").addEventListener("volumechange", () => syncReelPreviewMute());
         $("#reelUploadPreview").addEventListener("keydown", (event) => {
           if (![" ", "Enter"].includes(event.key)) return;
           event.preventDefault();
@@ -13249,7 +13282,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             toast("Could not remove this video.");
           });
         });
-        $("#reelPreviewMute").addEventListener("click", toggleReelPreviewMute);
+        $("#reelPreviewMute").addEventListener("click", (event) => {
+          event.stopPropagation();
+          toggleReelPreviewMute();
+        });
         $("#reelFileInput").addEventListener("change", (event) => {
           selectReelFile(event.target.files?.[0]);
           event.target.value = "";
@@ -13289,6 +13325,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const preview = $("#reelUploadPreview");
           clearTimeout(reelPreviewFeedbackTimer);
           preview.pause();
+          setReelPreviewMuted(true);
           preview.removeAttribute("src");
           preview.load();
           preview.hidden = true;
