@@ -10498,6 +10498,7 @@
         activeComposerPopover = { popover, trigger };
         if (popover === $("#locationPopover")) positionLocationPopover(popover, trigger);
         else positionComposerPopover(popover, trigger);
+        if (popover === $("#emojiPicker")) void loadEmojiChoices();
       }
       function repositionComposerPopover() {
         if (activeComposerPopover) {
@@ -19379,6 +19380,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         "flags": "🏳️",
       };
       let emojiRecords = fallbackEmojiChoices.map((emoji) => ({ emoji, name: emoji, category: "smileys and people" }));
+      let emojiChoicesLoadStarted = false;
       let selectedEmojiCategory = "smileys and people";
       let emojiCategoryInteraction = false;
       let emojiInsertTarget = $("#ct");
@@ -19496,6 +19498,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         return codePoints.length ? String.fromCodePoint(...codePoints) : "";
       }
       async function loadEmojiChoices() {
+        if (emojiChoicesLoadStarted) return;
+        emojiChoicesLoadStarted = true;
         renderEmojiCategories(["smileys and people"]);
         renderEmojiChoices();
         try {
@@ -19523,7 +19527,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             animateEmojiCategoryChange(renderEmojiChoices);
           }
       }
-      loadEmojiChoices();
       $("#emojiSearch").addEventListener("input", () => renderEmojiChoices());
       $("#emojiCategories").addEventListener("click", (event) => {
         const category = event.target.closest("[data-emoji-category]")?.dataset.emojiCategory;

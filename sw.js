@@ -24,8 +24,10 @@ self.addEventListener("fetch", (event) => {
   const requestUrl = new URL(request.url);
   const isSameOriginUpload = requestUrl.origin === self.location.origin
     && requestUrl.pathname.startsWith("/uploads/");
-  const isSignedStorageObject = [...requestUrl.searchParams.keys()]
-    .some((name) => name.toLowerCase().startsWith("x-amz-"));
+  const isSignedStorageObject = requestUrl.protocol === "https:"
+    && requestUrl.searchParams.has("X-Amz-Algorithm")
+    && requestUrl.searchParams.has("X-Amz-Credential")
+    && requestUrl.searchParams.has("X-Amz-Signature");
   if (!isSameOriginUpload && !isSignedStorageObject) return;
 
   const cacheUrl = new URL(requestUrl);
@@ -35,18 +37,28 @@ self.addEventListener("fetch", (event) => {
   const cacheKey = new Request(cacheUrl.href, { method: "GET" });
 
   event.respondWith((async () => {
-    const cache = await caches.open(CACHE_NAME);
-    const cached = await cache.match(cacheKey);
-    if (cached) return cached;
+    let cache;
+    try {
+      cache = await caches.open(CACHE_NAME);
+      const cached = await cache.match(cacheKey);
+      if (cached) return cached;
+    } catch (error) {
+      console.warn("Image cache is unavailable; using the network.", error);
+      return fetch(request);
+    }
 
     const response = await fetch(request);
     if (response.status === 200 || response.type === "opaque") {
       event.waitUntil((async () => {
-        await cache.put(cacheKey, response.clone());
-        const keys = await cache.keys();
-        const excess = keys.length - MAX_CACHE_ENTRIES;
-        if (excess > 0) {
-          await Promise.all(keys.slice(0, excess).map((key) => cache.delete(key)));
+        try {
+          await cache.put(cacheKey, response.clone());
+          const keys = await cache.keys();
+          const excess = keys.length - MAX_CACHE_ENTRIES;
+          if (excess > 0) {
+            await Promise.all(keys.slice(0, excess).map((key) => cache.delete(key)));
+          }
+        } catch (error) {
+          console.warn("Could not save an image in the service-worker cache.", error);
         }
       })());
     }
