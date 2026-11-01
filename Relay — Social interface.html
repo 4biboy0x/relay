@@ -2212,33 +2212,99 @@
         stroke-width: 2;
       }
       .gif-picker-search {
-        display: flex;
         flex: none;
-        gap: 8px;
         margin-bottom: 8px;
       }
+      .gif-picker-search-field {
+        position: relative;
+        width: 100%;
+      }
       .gif-picker-search input {
+        display: block;
+        width: 100%;
         min-width: 0;
-        flex: 1;
         height: 40px;
-        padding: 0 12px;
+        padding: 0 38px;
         border: 1px solid var(--border);
         border-radius: 10px;
         color: var(--text);
         background: var(--surface);
         font: inherit;
       }
-      .gif-picker-search .btn { flex: none; }
+      .gif-picker-search input:focus-visible {
+        outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+        outline-offset: 1px;
+      }
+      .gif-picker-search input::-webkit-search-cancel-button {
+        display: none;
+      }
+      .gif-picker-search-icon {
+        position: absolute;
+        inset-inline-start: 11px;
+        top: 50%;
+        width: 18px;
+        height: 18px;
+        color: var(--text-3);
+        pointer-events: none;
+        transform: translateY(-50%);
+      }
+      .gif-picker-search-clear {
+        position: absolute;
+        inset-inline-end: 7px;
+        top: 50%;
+        display: grid;
+        width: 26px;
+        height: 26px;
+        place-items: center;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        color: var(--text-2);
+        background: var(--surface-2);
+        cursor: pointer;
+        transform: translateY(-50%);
+      }
+      .gif-picker-search-clear[hidden] { display: none; }
+      .gif-picker-search-clear:hover { color: var(--text); }
+      .gif-picker-search-clear:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .gif-picker-search-clear svg {
+        width: 14px;
+        height: 14px;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 2;
+      }
       .gif-picker-status {
+        display: flex;
         flex: none;
         min-height: 18px;
+        align-items: center;
+        gap: 7px;
         margin: 0 0 6px;
         color: var(--text-2);
         font-size: 13px;
       }
       .gif-picker-status:empty { display: none; }
+      .gif-picker-status.is-loading::before {
+        width: 12px;
+        height: 12px;
+        flex: none;
+        border: 2px solid color-mix(in srgb, var(--text-3) 24%, transparent);
+        border-top-color: var(--text-3);
+        border-radius: 50%;
+        content: "";
+        animation: spin .8s linear infinite;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .gif-picker-status.is-loading::before { animation: none; }
+      }
       .gif-picker-results-scroll {
-        min-height: 0;
+        min-height: min(230px, 40dvh);
         max-height: min(52dvh, 430px);
         flex: 0 1 auto;
         overflow-x: hidden;
@@ -2256,6 +2322,7 @@
       .gif-picker-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(min(112px, 100%), 1fr));
+        min-height: min(230px, 40dvh);
         align-content: start;
         gap: 8px;
       }
@@ -8920,9 +8987,14 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>
         </button>
       </header>
-      <form class="gif-picker-search" id="gifPickerSearchForm">
-        <input id="gifPickerSearch" type="search" maxlength="80" placeholder="Search GIPHY" aria-label="Search GIPHY GIFs">
-        <button class="btn btn-primary" type="submit">Search</button>
+      <form class="gif-picker-search" id="gifPickerSearchForm" role="search">
+        <div class="gif-picker-search-field">
+          <svg class="i gif-picker-search-icon" aria-hidden="true"><use href="#search" /></svg>
+          <input id="gifPickerSearch" type="search" maxlength="80" placeholder="Search GIPHY" aria-label="Search GIFs" autocomplete="off">
+          <button class="gif-picker-search-clear" id="gifPickerSearchClear" type="button" aria-label="Clear search" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#close" /></svg>
+          </button>
+        </div>
       </form>
       <p class="gif-picker-status" id="gifPickerStatus" role="status" aria-live="polite"></p>
       <div class="gif-picker-results-scroll" role="region" aria-label="GIF search results" tabindex="0">
@@ -9132,6 +9204,7 @@
       let gifPickerOpener = null;
       let gifSearchController = null;
       let gifSearchGeneration = 0;
+      let gifSearchDebounceTimer = null;
       let giphyResultsById = new Map();
       let profileCropInput = null;
       let profileCropObjectUrl = "";
@@ -10163,32 +10236,51 @@
         updatePostButton();
       }
       function openGifPicker(target, opener) {
+        cancelGiphySearch();
         gifPickerTarget = target;
         gifPickerOpener = opener;
         opener.setAttribute("aria-expanded", "true");
         $("#gifPickerSearch").value = "";
+        $("#gifPickerSearchClear").hidden = true;
         $("#gifPickerResults").replaceChildren();
+        giphyResultsById.clear();
+        $("#gifPickerStatus").textContent = "";
         $("#gifPickerDialog").showModal();
-        $("#gifPickerSearch").focus();
+        $("#gifPickerSearch").focus({ preventScroll: true });
         loadGiphyResults("");
       }
+      function cancelGiphySearch() {
+        clearTimeout(gifSearchDebounceTimer);
+        gifSearchDebounceTimer = null;
+        gifSearchController?.abort();
+        gifSearchController = null;
+        gifSearchGeneration += 1;
+        $("#gifPickerResults").removeAttribute("aria-busy");
+        $("#gifPickerStatus").classList.remove("is-loading");
+      }
       async function loadGiphyResults(query) {
+        query = String(query ?? "").trim();
         const status = $("#gifPickerStatus");
         const results = $("#gifPickerResults");
-        results.replaceChildren();
-        results.removeAttribute("aria-busy");
-        giphyResultsById.clear();
-        if (!GIPHY_API_KEY) {
-          status.textContent = "GIF search is not configured. Add VITE_GIPHY_API_KEY to the frontend build environment.";
-          return;
-        }
         gifSearchController?.abort();
         const controller = new AbortController();
         gifSearchController = controller;
         const generation = ++gifSearchGeneration;
+        if (!GIPHY_API_KEY) {
+          status.textContent = "GIF search is not configured. Add VITE_GIPHY_API_KEY to the frontend build environment.";
+          status.classList.remove("is-loading");
+          results.replaceChildren();
+          results.removeAttribute("aria-busy");
+          giphyResultsById.clear();
+          if (gifSearchController === controller) gifSearchController = null;
+          return;
+        }
         status.textContent = query ? "Searching GIPHY…" : "Loading trending GIFs…";
+        status.classList.add("is-loading");
         results.setAttribute("aria-busy", "true");
-        results.innerHTML = Array.from({ length: 8 }, () => '<span class="gif-picker-skeleton relay-skeleton-shimmer" aria-hidden="true"></span>').join("");
+        if (!results.childElementCount) {
+          results.innerHTML = Array.from({ length: 8 }, () => '<span class="gif-picker-skeleton relay-skeleton-shimmer" aria-hidden="true"></span>').join("");
+        }
         const params = new URLSearchParams({
           api_key: GIPHY_API_KEY,
           bundle: "messaging_non_clips",
@@ -10208,6 +10300,7 @@
           if (!Array.isArray(payload.data)) throw new Error("GIPHY returned an invalid response.");
           results.replaceChildren();
           results.removeAttribute("aria-busy");
+          giphyResultsById.clear();
           for (const gif of payload.data) {
             if (typeof gif.id !== "string") continue;
             giphyResultsById.set(gif.id, gif);
@@ -10234,11 +10327,14 @@
             results.append(button);
           }
           status.textContent = results.childElementCount ? "" : "No GIFs found.";
+          status.classList.remove("is-loading");
         } catch (error) {
           if (error.name === "AbortError" || generation !== gifSearchGeneration) return;
-          results.replaceChildren();
           results.removeAttribute("aria-busy");
           status.textContent = error.message || "Could not load GIFs from GIPHY.";
+          status.classList.remove("is-loading");
+        } finally {
+          if (gifSearchController === controller) gifSearchController = null;
         }
       }
       async function selectGiphyGif(id) {
@@ -18044,13 +18140,42 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         if (e.target.matches("[data-profile-upload]")) selectProfileImage(e.target);
       });
+      $("#gifPickerSearch").addEventListener("input", (event) => {
+        const input = event.currentTarget;
+        const query = input.value.trim();
+        $("#gifPickerSearchClear").hidden = !input.value.length;
+        cancelGiphySearch();
+        if (!query) {
+          $("#gifPickerStatus").textContent = "";
+          loadGiphyResults("");
+          return;
+        }
+        $("#gifPickerStatus").textContent = "";
+        gifSearchDebounceTimer = setTimeout(() => loadGiphyResults(query), 350);
+      });
+      $("#gifPickerSearch").addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        clearTimeout(gifSearchDebounceTimer);
+        gifSearchDebounceTimer = null;
+        loadGiphyResults(event.currentTarget.value);
+      });
       $("#gifPickerSearchForm").addEventListener("submit", (event) => {
         event.preventDefault();
-        loadGiphyResults($("#gifPickerSearch").value.trim());
+        clearTimeout(gifSearchDebounceTimer);
+        gifSearchDebounceTimer = null;
+        loadGiphyResults($("#gifPickerSearch").value);
+      });
+      $("#gifPickerSearchClear").addEventListener("click", () => {
+        $("#gifPickerSearch").value = "";
+        $("#gifPickerSearchClear").hidden = true;
+        cancelGiphySearch();
+        $("#gifPickerStatus").textContent = "";
+        loadGiphyResults("");
+        $("#gifPickerSearch").focus({ preventScroll: true });
       });
       $("#gifPickerDialog").addEventListener("close", () => {
-        gifSearchController?.abort();
-        gifSearchGeneration += 1;
+        cancelGiphySearch();
         giphyResultsById.clear();
         $("#gifPickerResults").replaceChildren();
         $("#gifPickerStatus").textContent = "";
@@ -18061,6 +18186,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       });
       $("#gifPickerDialog").addEventListener("click", (event) => {
         if (event.target === $("#gifPickerDialog")) $("#gifPickerDialog").close();
+      });
+      $("#gifPickerDialog").addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+        event.preventDefault();
+        $("#gifPickerDialog").close();
       });
       $("#profileCropZoom").addEventListener("input", (event) => {
         profileCropZoom = Number(event.target.value);
