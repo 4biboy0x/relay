@@ -967,6 +967,7 @@
       #v-home #pb:disabled { opacity: .45; }
       #v-home .composer { border-bottom: 1px solid var(--border); }
       .c-bar {
+        position: relative;
         display: flex;
         align-items: center;
         gap: 2px;
@@ -1051,40 +1052,87 @@
       }
       .location-popover label {
         display: block;
-        margin: 0 0 3px;
+        margin: 0;
+        font-size: 14px;
         font-weight: 600;
       }
-      .location-popover p {
-        margin: 0 0 9px;
-        color: var(--text-2);
-        font-size: 12px;
-        line-height: 1.4;
+      .composer-popover.location-popover {
+        position: absolute;
+        z-index: 10001;
+        top: calc(100% + 8px);
+        right: auto;
+        left: 0;
+        box-sizing: border-box;
+        width: min(340px, calc(100vw - 32px));
+        max-width: none;
+        max-height: min(320px, calc(100dvh - 32px));
+        overflow-y: auto;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        color: var(--text);
+        background: var(--bg);
+        box-shadow: 0 8px 24px rgba(9, 9, 11, .12);
       }
+      .composer-popover.location-popover.is-fixed-anchor { position: fixed; }
+      :root[data-theme="dark"] .composer-popover.location-popover {
+        box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) .composer-popover.location-popover {
+          box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+        }
+      }
+      .reply-composer-footer,
+      .thread-reply-toolbar { position: relative; }
       .location-entry {
         display: flex;
         align-items: center;
         gap: 8px;
+        margin-top: 10px;
       }
       .location-entry input {
         flex: 1;
         width: 100%;
         min-width: 0;
-        height: 34px;
-        padding: 0 9px;
+        height: 36px;
+        padding: 0 12px;
         border: 1px solid var(--border);
-        border-radius: 7px;
+        border-radius: 8px;
         color: var(--text);
-        background: var(--surface);
+        background: var(--bg);
         font: inherit;
-        font-size: 13px;
+        font-size: 14px;
       }
-      .location-entry .btn {
-        min-width: 58px;
+      .location-entry .location-add-button {
+        height: 36px;
+        min-height: 36px;
         flex: none;
+        padding: 0 14px;
+        border: 0;
+        border-radius: 8px;
+        color: #fff;
+        background: var(--accent);
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
       }
-      .location-entry input:focus {
+      .location-entry .location-add-button:hover:not(:disabled) {
+        background: var(--accent-h);
+      }
+      .location-entry .location-add-button:disabled {
+        cursor: not-allowed;
+        opacity: .45;
+      }
+      .location-entry input:focus-visible {
         outline: none;
         border-color: var(--accent);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+      }
+      .location-entry input::placeholder {
+        color: var(--text-3);
+        opacity: 1;
       }
       .location-results {
         display: grid;
@@ -1236,6 +1284,20 @@
         pointer-events: none;
         animation: composer-popover-out 120ms cubic-bezier(.4, 0, 1, 1) forwards;
       }
+      .composer-popover.location-popover:not([hidden]) {
+        animation: location-popover-in 150ms ease-out;
+      }
+      .composer-popover.location-popover.is-closing[hidden] {
+        animation: location-popover-out 120ms ease-in forwards;
+      }
+      @keyframes location-popover-in {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes location-popover-out {
+        from { opacity: 1; }
+        to { opacity: 0; }
+      }
       @keyframes composer-popover-in {
         from {
           opacity: 0;
@@ -1264,6 +1326,8 @@
       @media (prefers-reduced-motion: reduce) {
         .composer-popover:not([hidden]),
         .composer-popover.is-closing[hidden],
+        .composer-popover.location-popover:not([hidden]),
+        .composer-popover.location-popover.is-closing[hidden],
         .emoji-picker .emoji-results.is-switching,
         .emoji-picker .emoji-results.is-switching .emoji-grid button {
           animation: none;
@@ -2010,12 +2074,12 @@
       .cookie-banner-actions {
         display: flex;
         flex-wrap: wrap;
-        justify-content: flex-end;
+        justify-content: center;
         gap: 8px;
         margin-top: 14px;
       }
       .cookie-banner-actions button {
-        min-height: 34px;
+        min-height: 40px;
         padding: 0 11px;
         border: 1px solid var(--border);
         border-radius: 8px;
@@ -2040,7 +2104,7 @@
           width: calc(100vw - 20px);
           padding: 14px;
         }
-        .cookie-banner-actions { justify-content: flex-start; }
+        .cookie-banner-actions button { min-height: 44px; }
       }
       @media (max-width: 719px) {
         .legal-heading { padding-inline: 20px; }
@@ -7409,12 +7473,11 @@
                   <div class="emoji-grid" id="emojiGrid"></div>
                 </div>
               </div>
-              <div class="composer-popover location-popover" id="locationPopover" data-preferred-width="320" role="dialog" aria-label="Add a location to your post" hidden>
+              <div class="composer-popover location-popover" id="locationPopover" role="dialog" aria-label="Add a place" hidden>
                 <label for="locationInput">Add a place</label>
-                <p>Share a place name, city, or venue. Your device location is never collected.</p>
                 <div class="location-entry">
-                  <input id="locationInput" type="text" maxlength="80" autocomplete="off" placeholder="e.g. Brooklyn, NY" />
-                  <button class="btn btn-primary btn-sm" id="saveLocation" type="button">Add</button>
+                  <input id="locationInput" type="text" maxlength="80" autocomplete="off" aria-description="Your device location is never collected." placeholder="e.g. Brooklyn, NY" />
+                  <button class="location-add-button" id="saveLocation" type="button" disabled>Add</button>
                 </div>
                 <div class="location-results" id="locationResults" role="listbox" aria-label="Place suggestions" hidden></div>
                 <p class="location-status" id="locationStatus" role="status" hidden></p>
@@ -7430,7 +7493,7 @@
                 <button class="icon-btn" id="emojiToggle" aria-label="Add emoji" aria-expanded="false">
                   <svg class="i" aria-hidden="true"><use href="#smile" /></svg>
                 </button>
-                <button class="icon-btn" id="addLocation" aria-label="Add location" aria-expanded="false" aria-haspopup="dialog" aria-pressed="false">
+                <button class="icon-btn" id="addLocation" aria-label="Add location" aria-expanded="false" aria-controls="locationPopover" aria-haspopup="dialog" aria-pressed="false">
                   <svg class="i" aria-hidden="true"><use href="#pin" /></svg>
                 </button>
                 <span class="c-bar-spacer" aria-hidden="true"></span>
@@ -7831,7 +7894,7 @@
     <div class="toast" id="toast" role="status"></div>
     <section class="cookie-banner" id="cookieBanner" aria-labelledby="cookieBannerTitle" aria-describedby="cookieBannerDescription" hidden>
       <h2 id="cookieBannerTitle">Your privacy choices</h2>
-      <p id="cookieBannerDescription">Relay uses a necessary session cookie to keep your account secure. Optional analytics and advertising cookies are not currently active. Choose whether Relay may use optional analytics if introduced, or review your preferences.</p>
+      <p id="cookieBannerDescription">Relay uses a necessary session cookie. Optional analytics are currently off.</p>
       <div class="cookie-banner-actions">
         <button type="button" data-open-cookie-settings>Settings</button>
         <button type="button" data-cookie-choice="essential">Essential only</button>
@@ -8255,7 +8318,7 @@
               <button class="reply-composer-attach" id="replyComposerEmojiButton" type="button" aria-label="Add emoji" aria-expanded="false">
                 <svg aria-hidden="true" viewBox="0 0 24 24"><use href="#smile" /></svg>
               </button>
-              <button class="reply-composer-attach" id="replyComposerLocationButton" type="button" aria-label="Add location" aria-expanded="false" aria-haspopup="dialog" aria-pressed="false">
+              <button class="reply-composer-attach" id="replyComposerLocationButton" type="button" aria-label="Add location" aria-expanded="false" aria-controls="locationPopover" aria-haspopup="dialog" aria-pressed="false">
                 <svg aria-hidden="true" viewBox="0 0 24 24"><use href="#pin" /></svg>
               </button>
             </div>
@@ -8817,6 +8880,7 @@
         $("#locationStatus").hidden = true;
         $("#composerLocationChip").hidden = true;
         $("#composerLocationLabel").textContent = "";
+        $("#saveLocation").disabled = true;
         $("#addLocation").setAttribute("aria-pressed", "false");
         updatePostButton();
       }
@@ -8889,6 +8953,51 @@
         $("#composerLocationChip").hidden = false;
         updatePostButton();
         $("#addLocation").setAttribute("aria-pressed", "true");
+      }
+      function positionLocationPopover(popover, trigger) {
+        const host = popover.parentElement;
+        if (!host) return;
+        const fixedAnchor = trigger.closest(".post-editor-dialog, .reply-composer-dialog");
+        popover.classList.toggle("is-fixed-anchor", Boolean(fixedAnchor));
+        if (fixedAnchor) {
+          const triggerBounds = trigger.getBoundingClientRect();
+          const popoverBounds = popover.getBoundingClientRect();
+          const width = popoverBounds.width;
+          const left = Math.max(16, Math.min(triggerBounds.left, window.innerWidth - width - 16));
+          const top = triggerBounds.bottom + 8;
+          popover.style.removeProperty("max-height");
+          popover.style.right = "auto";
+          const transform = getComputedStyle(fixedAnchor).transform;
+          if (transform !== "none") {
+            const anchorBounds = fixedAnchor.getBoundingClientRect();
+            const scaleX = anchorBounds.width / (fixedAnchor.offsetWidth || anchorBounds.width);
+            const scaleY = anchorBounds.height / (fixedAnchor.offsetHeight || anchorBounds.height);
+            let localLeft = (left - anchorBounds.left) / scaleX;
+            let localTop = (top - anchorBounds.top) / scaleY;
+            popover.style.left = `${localLeft}px`;
+            popover.style.top = `${localTop}px`;
+            const renderedBounds = popover.getBoundingClientRect();
+            localLeft += (left - renderedBounds.left) / scaleX;
+            localTop += (top - renderedBounds.top) / scaleY;
+            popover.style.left = `${localLeft}px`;
+            popover.style.top = `${localTop}px`;
+          } else {
+            popover.style.left = `${left}px`;
+            popover.style.top = `${top}px`;
+          }
+          return;
+        }
+        const hostBounds = host.getBoundingClientRect();
+        const triggerBounds = trigger.getBoundingClientRect();
+        popover.style.removeProperty("width");
+        popover.style.removeProperty("max-height");
+        popover.style.removeProperty("top");
+        popover.style.left = `${triggerBounds.left - hostBounds.left}px`;
+        popover.style.right = "auto";
+        if (popover.getBoundingClientRect().right > window.innerWidth - 16) {
+          popover.style.left = "auto";
+          popover.style.right = "0";
+        }
       }
       let locationSearchTimer = null;
       let locationSearchGeneration = 0;
@@ -8981,6 +9090,10 @@
       }
       function positionComposerPopover(popover, trigger) {
         if (popover.hidden) return;
+        if (popover === $("#locationPopover")) {
+          positionLocationPopover(popover, trigger);
+          return;
+        }
         const bounds = trigger.getBoundingClientRect();
         if (popover.classList.contains("is-reply-modal-popover")) {
           if (bounds.bottom <= 0 || bounds.top >= window.innerHeight) {
@@ -9091,7 +9204,10 @@
         popover.hidden = true;
         trigger?.setAttribute("aria-expanded", "false");
         if (activeComposerPopover?.popover === popover) activeComposerPopover = null;
-        if (popover === $("#locationPopover")) replyLocationTarget = null;
+        if (popover === $("#locationPopover")) {
+          replyLocationTarget = null;
+          popover.classList.remove("is-fixed-anchor");
+        }
         composerPopoverCloseTimers.set(popover, setTimeout(() => {
           popover.classList.remove("is-closing");
           composerPopoverCloseTimers.delete(popover);
@@ -9099,7 +9215,9 @@
           if (home && popover.parentElement !== home) home.append(popover);
           popover.classList.remove("is-reply-modal-popover");
           if (popover === $("#locationPopover")) {
-            popover.setAttribute("aria-label", "Add a location to your post");
+            ["left", "right", "top", "width", "max-height"].forEach((property) => {
+              popover.style.removeProperty(property);
+            });
           }
         }, 130));
       }
@@ -9150,7 +9268,8 @@
         popover.hidden = false;
         trigger.setAttribute("aria-expanded", "true");
         activeComposerPopover = { popover, trigger };
-        positionComposerPopover(popover, trigger);
+        if (popover === $("#locationPopover")) positionLocationPopover(popover, trigger);
+        else positionComposerPopover(popover, trigger);
       }
       function repositionComposerPopover() {
         if (activeComposerPopover) {
@@ -9168,6 +9287,13 @@
         });
       }
       window.addEventListener("resize", repositionComposerPopover);
+      document.addEventListener("animationend", (event) => {
+        const active = activeComposerPopover;
+        if (event.target.matches?.(".post-editor-dialog")
+          && active?.popover === $("#locationPopover")) {
+          positionLocationPopover(active.popover, active.trigger);
+        }
+      });
       document.addEventListener("scroll", repositionComposerPopover, true);
       function insertAtCaret(input, text) {
         const start = input.selectionStart ?? input.value.length;
@@ -11990,7 +12116,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                   <button class="thread-reply-action" type="button" data-thread-reply-emoji aria-label="Add emoji" aria-expanded="false">
                     ${ic("smile")}
                   </button>
-                  <button class="thread-reply-action" type="button" data-thread-reply-location aria-label="Add location" aria-expanded="false" aria-haspopup="dialog" aria-pressed="false">
+                  <button class="thread-reply-action" type="button" data-thread-reply-location aria-label="Add location" aria-expanded="false" aria-controls="locationPopover" aria-haspopup="dialog" aria-pressed="false">
                     ${ic("pin")}
                   </button>
                 </div>
@@ -15261,14 +15387,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           return;
         }
         if (e.target.closest("#addLocation")) {
-          replyLocationTarget = null;
-          restoreComposerPopoverHome($("#locationPopover"));
-          $("#locationPopover").setAttribute("aria-label", "Add a location to your post");
-          toggleComposerPopover($("#locationPopover"), $("#addLocation"));
-          if (!$("#locationPopover").hidden) {
-            $("#locationInput").focus({ preventScroll: true });
-            $("#locationInput").select();
-          }
+          openLocationPicker($("#addLocation"));
           return;
         }
         const locationResult = e.target.closest("[data-location]");
@@ -16021,9 +16140,18 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (event.key === "Enter") {
           event.preventDefault();
           $("#saveLocation").click();
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          const trigger = activeComposerPopover?.popover === $("#locationPopover")
+            ? activeComposerPopover.trigger
+            : $("#addLocation");
+          closeComposerPopover($("#locationPopover"), trigger);
+          trigger?.focus({ preventScroll: true });
         }
       });
       $("#locationInput").addEventListener("input", (event) => {
+        $("#saveLocation").disabled = !event.currentTarget.value.trim();
         searchPlaces(event.target.value);
       });
       $("#feed").addEventListener("keydown", (e) => {
@@ -16161,30 +16289,32 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           : $("input[aria-label='Write your reply']", form);
         toggleComposerPopover(picker, trigger);
       }
-      function openReplyLocationPicker(trigger) {
-        const form = trigger.closest("#replyComposerForm, [data-thread-reply]");
-        if (!form) return;
-        replyLocationTarget = {
-          kind: form.id === "replyComposerForm" ? "modal" : "thread",
-          form,
-        };
+      function openLocationPicker(trigger, target = null) {
         const popover = $("#locationPopover");
-        const isModal = form.id === "replyComposerForm";
-        const host = isModal ? replyComposerOverlay : form;
-        popover.classList.toggle("is-reply-modal-popover", isModal);
+        const host = trigger.closest(".c-bar, .reply-composer-footer, .thread-reply-toolbar");
+        if (!host) return;
         if (popover.parentElement !== host) host.append(popover);
-        $("#locationInput").value = replyLocationValue(replyLocationTarget);
+        $("#locationInput").value = target ? replyLocationValue(target) : composerLocation;
+        $("#saveLocation").disabled = !$("#locationInput").value.trim();
         $("#locationResults").replaceChildren();
         $("#locationResults").hidden = true;
         $("#locationStatus").hidden = true;
-        popover.setAttribute("aria-label", "Add a location to your reply");
         toggleComposerPopover(popover, trigger);
         if (!popover.hidden) {
+          replyLocationTarget = target;
           $("#locationInput").focus({ preventScroll: true });
           $("#locationInput").select();
         } else {
           replyLocationTarget = null;
         }
+      }
+      function openReplyLocationPicker(trigger) {
+        const form = trigger.closest("#replyComposerForm, [data-thread-reply]");
+        if (!form) return;
+        openLocationPicker(trigger, {
+          kind: form.id === "replyComposerForm" ? "modal" : "thread",
+          form,
+        });
       }
       function emojiCategoryLabel(category) {
         return category.replace(/\b\w/g, (letter) => letter.toUpperCase());
