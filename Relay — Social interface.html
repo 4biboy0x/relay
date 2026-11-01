@@ -8,6 +8,7 @@
     />
     <meta name="relay-api-base" content="/api" />
     <meta name="relay-giphy-api-key" content="" />
+    <link rel="preload" href="assets/fonts/Piazzolla-Light.woff2" as="font" type="font/woff2" crossorigin />
     <title>Relay — Social</title>
     <script>
       (() => {
@@ -312,10 +313,9 @@
         padding: 8px 12px 16px;
         color: var(--text);
       }
-      .brand .wordmark {
+      .wordmark {
         display: block;
-        font-family: "Piazzolla", "Bodoni 72", Didot, "Times New Roman", serif;
-        font-size: clamp(23px, 2.55vw, 30px);
+        font-family: "Piazzolla", Georgia, serif;
         font-weight: 300;
         font-optical-sizing: auto;
         white-space: nowrap;
@@ -324,6 +324,10 @@
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         text-rendering: optimizeLegibility;
+      }
+      .brand .wordmark {
+        font-family: "Piazzolla", "Bodoni 72", Didot, "Times New Roman", serif;
+        font-size: clamp(23px, 2.55vw, 30px);
       }
       .brand .mark { display: none; }
       .mark {
@@ -3694,18 +3698,28 @@
         background: rgba(9, 9, 11, 0.42);
       }
       .auth-cookie-prompt {
-        margin-top: 16px;
-        padding-top: 12px;
+        margin-top: 20px;
+        padding-top: 16px;
         border-top: 1px solid var(--border);
+        text-align: center;
       }
       .auth-cookie-prompt[hidden] { display: none; }
       .auth-cookie-prompt p {
-        margin: 0;
+        max-width: 36ch;
+        margin: 0 auto;
         color: var(--text-3);
         font-size: 12px;
         line-height: 1.5;
+        text-align: center;
       }
-      .auth-cookie-prompt button {
+      .auth-cookie-prompt-links {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 4px 0;
+        margin-top: 8px;
+      }
+      .auth-cookie-prompt-links button {
         padding: 0;
         border: 0;
         color: var(--text-2);
@@ -3714,7 +3728,12 @@
         font-size: 12px;
         cursor: pointer;
       }
-      .auth-cookie-prompt button:hover { text-decoration: underline; }
+      .auth-cookie-prompt-links button + button::before {
+        content: "·";
+        margin-inline: 8px;
+        color: var(--text-3);
+      }
+      .auth-cookie-prompt-links button:hover { text-decoration: underline; }
       .reply-composer-overlay {
         position: fixed;
         z-index: 9999;
@@ -3798,14 +3817,18 @@
           --auth-submit-hover: #4f59c7;
         }
       }
-      #authDialog .auth-brand { display: flex; justify-content: center; margin-bottom: 16px; }
-      #authDialog .auth-brand .mark { width: 28px; height: 28px; border-radius: 8px; }
-      #authDialog h2 {
+      #authDialog .auth-title {
         margin: 0;
         text-align: center;
         font-size: 22px;
-        font-weight: 650;
+        font-weight: 600;
         letter-spacing: -0.02em;
+        line-height: 1.2;
+      }
+      #authDialog .auth-title .wordmark {
+        display: inline;
+        font-size: 1.12em;
+        vertical-align: baseline;
       }
       #authDialog .auth-subtitle {
         margin: 6px 0 24px;
@@ -7907,9 +7930,8 @@
       <strong>ALT</strong>
       <p id="postAltText"></p>
     </dialog>
-    <dialog class="auth-dialog" id="authDialog" role="dialog" aria-modal="true" aria-labelledby="authTitle" aria-describedby="authSubtitle" tabindex="-1">
-      <div class="auth-brand" aria-hidden="true"><span class="mark"><svg class="i"><use href="#relay" /></svg></span></div>
-      <h2 id="authTitle">Welcome to Relay</h2>
+    <dialog class="auth-dialog" id="authDialog" role="dialog" aria-modal="true" aria-labelledby="signin-title" aria-describedby="authSubtitle" tabindex="-1">
+      <h2 id="signin-title" class="auth-title">Welcome to <span class="wordmark">Relay</span></h2>
       <p class="auth-subtitle" id="authSubtitle">Sign in to continue.</p>
       <form id="authForm" novalidate>
         <div class="auth-field" id="authNameLabel" hidden>
@@ -7934,7 +7956,12 @@
       </form>
       <p class="auth-switch-row"><span id="authSwitchPrompt">New to Relay?</span> <button class="auth-switch" id="authSwitch" type="button">Create an account</button></p>
       <section class="auth-cookie-prompt" id="cookieAuthPrompt" aria-label="Cookie preferences" hidden>
-        <p>Relay uses only necessary cookies for sign-in. <button type="button" data-open-cookie-settings>Manage cookies</button> · <button type="button" data-open-legal="terms">Terms</button> · <button type="button" data-open-legal="privacy">Privacy</button></p>
+        <p>Relay uses only necessary cookies for sign-in.</p>
+        <div class="auth-cookie-prompt-links">
+          <button type="button" data-open-cookie-settings>Manage cookies</button>
+          <button type="button" data-open-legal="terms">Terms</button>
+          <button type="button" data-open-legal="privacy">Privacy</button>
+        </div>
       </section>
     </dialog>
     <dialog class="auth-dialog action-dialog" id="actionDialog" aria-labelledby="actionTitle" aria-describedby="actionDescription">
@@ -14292,7 +14319,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function setAuthMode(createAccount) {
         registering = createAccount;
         $("#authError").textContent = "";
-        $("#authTitle").textContent = registering ? "Create your Relay account" : "Welcome to Relay";
+        $("#signin-title").innerHTML = registering
+          ? 'Create your <span class="wordmark">Relay</span> account'
+          : 'Welcome to <span class="wordmark">Relay</span>';
         $("#authSubtitle").textContent = registering ? "Create your account to get started." : "Sign in to continue.";
         $("#authNameLabel").hidden = !registering;
         $("#authHandleLabel").hidden = !registering;
