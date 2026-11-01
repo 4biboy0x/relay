@@ -6903,28 +6903,75 @@
         top: 50%;
         left: 50%;
         display: grid;
-        width: 58px;
-        height: 58px;
+        width: 64px;
+        height: 64px;
         padding: 0;
         place-items: center;
-        border: 1px solid rgba(255,255,255,.36);
+        border: 0;
         border-radius: 50%;
-        background: rgba(15, 16, 20, .58);
+        background: rgba(0,0,0,.5);
         color: #fff;
         opacity: 0;
         pointer-events: none;
-        transform: translate(-50%, -50%);
-        transition: opacity 150ms ease;
-        backdrop-filter: blur(8px);
+        transform: translate(-50%, -50%) scale(.9);
+        transition: opacity 180ms ease, transform 180ms ease;
       }
-      .reel-play-overlay svg { width: 22px; height: 22px; fill: currentColor; stroke: none; transform: translateX(1px); }
+      @supports ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
+        .reel-play-overlay {
+          background: rgba(0,0,0,.35);
+          -webkit-backdrop-filter: blur(10px) saturate(1.2);
+          backdrop-filter: blur(10px) saturate(1.2);
+        }
+      }
+      .reel-play-overlay svg {
+        width: 28px;
+        height: 28px;
+        fill: #fff;
+        stroke: #fff;
+        stroke-width: 1.75;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .reel-play-overlay [data-indicator="play"] { transform: translateX(1.5px); }
       .reel-play-overlay [data-indicator="pause"] { display: none; }
-      .reel-stage.is-user-paused .reel-play-overlay,
-      .reel-stage.is-playback-feedback .reel-play-overlay { opacity: 1; }
-      .reel-stage.is-playback-feedback.is-feedback-pause .reel-play-overlay [data-indicator="play"],
-      .reel-stage.is-playback-feedback.is-feedback-play .reel-play-overlay [data-indicator="pause"] { display: none; }
-      .reel-stage.is-playback-feedback.is-feedback-pause .reel-play-overlay [data-indicator="pause"],
-      .reel-stage.is-playback-feedback.is-feedback-play .reel-play-overlay [data-indicator="play"] { display: block; }
+      .reel-stage.is-feedback-pause .reel-play-overlay [data-indicator="play"],
+      .reel-stage.is-feedback-play .reel-play-overlay [data-indicator="pause"] { display: none; }
+      .reel-stage.is-feedback-pause .reel-play-overlay [data-indicator="pause"],
+      .reel-stage.is-feedback-play .reel-play-overlay [data-indicator="play"] { display: block; }
+      .reel-stage.is-user-paused:not(.is-loading) .reel-play-overlay,
+      .reel-stage.is-playback-feedback:not(.is-feedback-fading):not(.is-loading) .reel-play-overlay {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+      .reel-stage.is-playback-feedback.is-feedback-fading .reel-play-overlay {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1.08);
+        transition-duration: 220ms;
+      }
+      .reel-stage.is-loading .reel-play-overlay {
+        visibility: hidden;
+      }
+      .reel-like-burst {
+        position: absolute;
+        z-index: 4;
+        left: 0;
+        top: 0;
+        width: 72px;
+        height: 72px;
+        color: #fff;
+        filter: drop-shadow(0 3px 12px rgba(0,0,0,.3));
+        pointer-events: none;
+        animation: reel-big-heart 900ms ease-out both;
+        transform: translate3d(var(--reel-tap-x), var(--reel-tap-y), 0) translate(-50%, -50%) scale(.6);
+      }
+      .reel-like-burst svg { width: 100%; height: 100%; fill: currentColor; stroke: currentColor; stroke-width: 1.25; }
+      @keyframes reel-big-heart {
+        0% { opacity: 0; transform: translate3d(var(--reel-tap-x), var(--reel-tap-y), 0) translate(-50%, -50%) scale(.6); }
+        18% { opacity: 1; transform: translate3d(var(--reel-tap-x), var(--reel-tap-y), 0) translate(-50%, -50%) scale(1.1); }
+        32% { opacity: 1; transform: translate3d(var(--reel-tap-x), var(--reel-tap-y), 0) translate(-50%, -50%) scale(1); }
+        78% { opacity: 1; }
+        100% { opacity: 0; transform: translate3d(var(--reel-tap-x), var(--reel-tap-y), 0) translate(-50%, -50%) scale(1); }
+      }
       .reel-stage { cursor: pointer; }
       .reel-stage-control,
       .reel-progress-track,
@@ -7038,33 +7085,82 @@
         font-weight: 600;
         cursor: pointer;
       }
-      .reel-action svg {
-        display: block;
+      .reel-action:active { transform: scale(.94); }
+      .reel-action-icon {
+        position: relative;
+        display: grid;
         width: 44px;
         height: 44px;
         flex: 0 0 44px;
-        padding: 12px;
+        place-items: center;
         overflow: visible;
-        border: 0;
         border-radius: 50%;
         background: var(--surface-2);
-        stroke-width: 1.8;
-        transition: color 140ms ease, background-color 140ms ease, transform 140ms ease;
+        transition: background-color 140ms ease;
       }
-      .reel-action:hover svg { background: var(--border); }
+      .reel-action-icon > svg {
+        display: block;
+        width: 20px;
+        height: 20px;
+        overflow: visible;
+        fill: none;
+        color: inherit;
+        stroke-width: 1.8;
+        transition: color 140ms ease, fill 140ms ease;
+      }
+      .reel-action:hover .reel-action-icon { background: var(--border); }
       .reel-action [data-reel-count] {
-        display: grid;
+        position: relative;
+        display: block;
         width: 100%;
         height: 16px;
         flex: 0 0 16px;
-        place-items: center;
+        overflow: hidden;
         line-height: 16px;
         visibility: visible;
       }
+      .reel-count-current,
+      .reel-count-old,
+      .reel-count-new {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        white-space: nowrap;
+      }
+      .reel-count-old { animation: reel-count-out 180ms ease-in both; }
+      .reel-count-new { animation: reel-count-in 180ms ease-out both; }
+      @keyframes reel-count-out { to { opacity: 0; transform: translateY(-6px); } }
+      @keyframes reel-count-in { from { opacity: 0; transform: translateY(6px); } }
       .reel-action [data-reel-count].is-zero,
       .reel-action [data-reel-count]:empty { visibility: hidden; }
-      .reel-action[aria-pressed="true"] svg { color: var(--accent); }
-      .reel-action[data-reel-action="like"][aria-pressed="true"] svg { color: #e54864; fill: #e54864; }
+      .reel-action[aria-pressed="true"] .reel-action-icon > svg { color: var(--accent); }
+      .reel-action[data-reel-action="like"][aria-pressed="true"] .reel-action-icon > svg { color: var(--like); fill: var(--like); }
+      .reel-action[data-reel-action="repost"][aria-pressed="true"] .reel-action-icon > svg { color: var(--ok); }
+      .reel-action[data-reel-action="bookmark"][aria-pressed="true"] .reel-action-icon > svg { color: var(--text); fill: currentColor; }
+      .reel-action.is-like-pop .reel-action-icon > svg { animation: reel-like-pop 320ms cubic-bezier(.2,.9,.3,1.4); }
+      .reel-action.is-like-unlike .reel-action-icon > svg { animation: reel-like-unlike 160ms ease-out; }
+      .reel-action.is-reposting .reel-action-icon > svg { animation: reel-repost 320ms ease-out; }
+      .reel-action.is-bookmarking .reel-action-icon > svg { animation: reel-bookmark 240ms ease-out; }
+      .reel-action.is-pressing .reel-action-icon > svg { animation: reel-action-press 180ms ease-out; }
+      .reel-action.is-shaking { animation: reel-action-shake 260ms ease-out; }
+      .reel-like-dots { position: absolute; inset: 50% auto auto 50%; width: 1px; height: 1px; pointer-events: none; }
+      .reel-like-dots i { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: var(--like); opacity: 0; }
+      .reel-like-dots i:nth-child(1) { --burst-x: 0px; --burst-y: -14px; }
+      .reel-like-dots i:nth-child(2) { --burst-x: 12px; --burst-y: -7px; }
+      .reel-like-dots i:nth-child(3) { --burst-x: 12px; --burst-y: 7px; }
+      .reel-like-dots i:nth-child(4) { --burst-x: 0px; --burst-y: 14px; }
+      .reel-like-dots i:nth-child(5) { --burst-x: -12px; --burst-y: 7px; }
+      .reel-like-dots i:nth-child(6) { --burst-x: -12px; --burst-y: -7px; }
+      .reel-action.is-like-burst .reel-like-dots i { animation: reel-like-burst 400ms ease-out both; }
+      @keyframes reel-like-pop { 0% { transform: scale(1); } 55% { transform: scale(1.35); } 100% { transform: scale(1); } }
+      @keyframes reel-like-unlike { 50% { transform: scale(.85); } }
+      @keyframes reel-like-burst { 15% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--burst-x), var(--burst-y)); } }
+      @keyframes reel-repost { to { transform: rotate(180deg); } }
+      @keyframes reel-bookmark { 35% { transform: translateY(-3px) scale(1.2); } 70% { transform: translateY(0) scale(1.2); } }
+      @keyframes reel-action-press { 50% { transform: scale(.88); } }
+      @keyframes reel-action-shake { 20% { transform: translateX(-4px); } 40% { transform: translateX(4px); } 70% { transform: translateX(-2px); } }
+      @media (hover: none) { .reel-action:hover .reel-action-icon { background: var(--surface-2); } }
       .reel-feed-state {
         padding: 14px;
         color: var(--text-2);
@@ -7302,6 +7398,7 @@
       @media (max-width: 640px) {
         .app.reels-active main { height: 100dvh; padding-bottom: var(--mobile-nav-height); box-sizing: border-box; }
         .app.reels-active #v-reels { position: relative; min-height: 0; }
+        .reel-play-overlay { width: 56px; height: 56px; }
         .app.reels-active .reels-top {
           position: relative;
           z-index: 6;
@@ -7347,10 +7444,13 @@
         .reel-copy { right: 76px; bottom: 24px; left: 16px; }
         .reel-actions { position: absolute; z-index: 4; right: 16px; bottom: 24px; width: 44px; gap: 8px; color: #fff; }
         .reel-action { color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
-        .reel-action svg { width: 44px; height: 44px; padding: 12px; border: 0; background: rgba(0,0,0,.35); color: #fff; backdrop-filter: blur(6px); }
-        .reel-action:hover svg { background: rgba(0,0,0,.35); }
-        .reel-action[aria-pressed="true"] svg { color: #fff; }
-        .reel-action[data-reel-action="like"][aria-pressed="true"] svg { color: #ff6078; fill: #ff6078; }
+        .reel-action-icon { background: rgba(0,0,0,.35); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+        .reel-action:hover .reel-action-icon { background: rgba(0,0,0,.35); }
+        .reel-action .reel-action-icon > svg { width: 20px; height: 20px; padding: 0; border: 0; background: transparent; color: #fff; }
+        .reel-action[aria-pressed="true"] .reel-action-icon > svg { color: #fff; }
+        .reel-action[data-reel-action="like"][aria-pressed="true"] .reel-action-icon > svg { color: #ff6078; fill: #ff6078; }
+        .reel-action[data-reel-action="repost"][aria-pressed="true"] .reel-action-icon > svg { color: var(--ok); }
+        .reel-action[data-reel-action="bookmark"][aria-pressed="true"] .reel-action-icon > svg { color: #fff; fill: currentColor; }
         .reel-feed-state:not(:empty):not([data-state="end"]) { position: absolute; z-index: 7; top: 58px; left: 12px; right: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); }
         .reel-feed { scrollbar-width: none; }
         .reel-feed::-webkit-scrollbar { display: none; }
@@ -7364,9 +7464,23 @@
       @media (prefers-reduced-motion: reduce) {
         .reel-stage.is-loading::before,
         .reel-skeleton { animation: none; }
-        .reel-play-overlay { transition: none; }
+        .reel-play-overlay { transition: opacity 80ms ease; transform: translate(-50%, -50%); }
+        .reel-stage.is-playback-feedback.is-feedback-fading .reel-play-overlay { transform: translate(-50%, -50%); transition-duration: 80ms; }
+        .reel-like-burst { display: none; animation: none; }
+        .reel-action.is-like-pop .reel-action-icon > svg,
+        .reel-action.is-like-unlike .reel-action-icon > svg,
+        .reel-action.is-reposting .reel-action-icon > svg,
+        .reel-action.is-bookmarking .reel-action-icon > svg,
+        .reel-action.is-pressing .reel-action-icon > svg,
+        .reel-action.is-shaking,
+        .reel-action.is-like-burst .reel-like-dots i { animation: none; }
+        .reel-action [data-reel-count],
+        .reel-count-old,
+        .reel-count-new { animation: none; transition: opacity 100ms ease; }
+        .reel-action [data-reel-count].is-count-changing { opacity: 0; }
         .profile-reel-card img,
-        .reel-action svg { transition: none; }
+        .reel-action .reel-action-icon,
+        .reel-action .reel-action-icon > svg { transition: none; }
         .reel-feed { scroll-behavior: auto; }
       }
     </style>
@@ -10582,7 +10696,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               : `${formatReelCount(count)} ${reelActionLabels[action]}`;
         const text = action === "more" || action === "bookmark" ? "" : formatReelCount(count);
         const zero = count !== null && Number(count) === 0;
-        return `<button class="reel-action" type="button" data-reel-action="${action}" data-reel-id="${esc(reel.id)}" aria-label="${label}"${property ? ` aria-pressed="${pressed}"` : ""}><svg class="i" aria-hidden="true"><use href="#${reelActionIcons[action]}"/></svg><span data-reel-count="${action}"${zero ? ' class="is-zero"' : ""}>${text}</span></button>`;
+        return `<button class="reel-action" type="button" data-reel-action="${action}" data-reel-id="${esc(reel.id)}" aria-label="${label}"${property ? ` aria-pressed="${pressed}"` : ""}><span class="reel-action-icon"><svg class="i" aria-hidden="true"><use href="#${reelActionIcons[action]}"/></svg>${action === "like" ? '<span class="reel-like-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>' : ""}</span><span data-reel-count="${action}"${zero ? ' class="is-zero"' : ""}><span class="reel-count-current">${text}</span></span></button>`;
       }
       function reelMarkup(reel, index) {
         const author = reel.author || {};
@@ -10594,9 +10708,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           <div class="reel-stage${hasVideo && index === 0 && shouldAutoplayReels() ? " is-loading" : " is-paused"}" data-reel-stage="${esc(reel.id)}" role="button" tabindex="0" aria-label="Play reel">
             ${poster ? `<img class="reel-poster" src="${esc(poster)}" alt="" loading="${index < 2 ? "eager" : "lazy"}">` : ""}
             <div class="reel-play-overlay" aria-hidden="true">
-              <svg data-indicator="play" viewBox="0 0 24 24"><path d="M7 4.5a1 1 0 0 1 1.5-.86l11 6.5a1 1 0 0 1 0 1.72l-11 6.5A1 1 0 0 1 7 17.5z"/></svg>
-              <svg data-indicator="pause" viewBox="0 0 24 24"><path d="M7 5h4v14H7zM15 5h4v14h-4z"/></svg>
+              <svg data-indicator="play" viewBox="0 0 24 24"><path d="M8 5.6v12.8a.8.8 0 0 0 1.2.7l10.4-6.4a.8.8 0 0 0 0-1.4L9.2 4.9A.8.8 0 0 0 8 5.6z"/></svg>
+              <svg data-indicator="pause" viewBox="0 0 24 24"><rect x="6" y="4.5" width="4" height="15" rx="1.5"/><rect x="14" y="4.5" width="4" height="15" rx="1.5"/></svg>
             </div>
+            <div class="reel-like-burst" data-reel-like-burst aria-hidden="true" hidden><svg viewBox="0 0 24 24"><use href="#heart"/></svg></div>
             <button class="reel-stage-control" type="button" data-reel-mute aria-label="${reelMuted ? "Unmute" : "Mute"} Reel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path class="reel-sound-wave" d="M15.5 8.5a5 5 0 0 1 0 7"/><path class="reel-muted-mark" d="m17 9 5 6m0-6-5 6"/></svg></button>
             <div class="reel-copy">
               <div class="reel-author-line">
@@ -10877,6 +10992,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           stage.classList.add("is-playing");
           stage.classList.remove("is-user-paused");
           stage.setAttribute("aria-label", "Pause reel");
+          if (reelPlaybackFeedbackPending.get(stage) === "play") {
+            reelPlaybackFeedbackPending.delete(stage);
+            showReelPlaybackFeedback(stage, "play");
+          }
         });
         video.addEventListener("pause", () => {
           stage.classList.remove("is-playing", "is-loading");
@@ -10894,20 +11013,101 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         return video;
       }
       const reelPlaybackFeedbackTimers = new WeakMap();
-      const reelAutoplayFeedbackShown = new Set();
+      const reelPlaybackFeedbackPending = new WeakMap();
+      const reelLastTouchTap = new WeakMap();
+      const reelLastDoubleTap = new WeakMap();
+      const reelActionRequests = new WeakSet();
       function clearReelPlaybackFeedback(stage) {
         clearTimeout(reelPlaybackFeedbackTimers.get(stage));
         reelPlaybackFeedbackTimers.delete(stage);
-        stage.classList.remove("is-playback-feedback", "is-feedback-play", "is-feedback-pause");
+        stage.classList.remove("is-playback-feedback", "is-feedback-play", "is-feedback-pause", "is-feedback-fading");
       }
       function showReelPlaybackFeedback(stage, action) {
         clearReelPlaybackFeedback(stage);
         stage.classList.add("is-playback-feedback", `is-feedback-${action}`);
+        if (action === "pause") return;
         const timer = setTimeout(() => {
-          stage.classList.remove("is-playback-feedback", "is-feedback-play", "is-feedback-pause");
-          reelPlaybackFeedbackTimers.delete(stage);
-        }, 600);
+          stage.classList.add("is-feedback-fading");
+          const fadeTimer = setTimeout(() => {
+            stage.classList.remove("is-playback-feedback", "is-feedback-play", "is-feedback-pause", "is-feedback-fading");
+            reelPlaybackFeedbackTimers.delete(stage);
+          }, reelReducedMotion.matches ? 80 : 220);
+          reelPlaybackFeedbackTimers.set(stage, fadeTimer);
+        }, 450);
         reelPlaybackFeedbackTimers.set(stage, timer);
+      }
+      function showReelLikeBurst(stage, clientX, clientY) {
+        if (!stage || reelReducedMotion.matches) return;
+        const burst = stage.querySelector("[data-reel-like-burst]");
+        if (!burst) return;
+        const bounds = stage.getBoundingClientRect();
+        burst.style.setProperty("--reel-tap-x", `${clientX - bounds.left}px`);
+        burst.style.setProperty("--reel-tap-y", `${clientY - bounds.top}px`);
+        burst.hidden = false;
+        burst.addEventListener("animationend", () => { burst.hidden = true; }, { once: true });
+      }
+      function animateReelAction(button, animationClass) {
+        if (reelReducedMotion.matches) return;
+        button.classList.remove("is-like-pop", "is-like-burst", "is-like-unlike", "is-reposting", "is-bookmarking", "is-pressing", "is-shaking");
+        requestAnimationFrame(() => {
+          button.classList.add(animationClass);
+          if (animationClass === "is-like-pop") {
+            button.classList.add("is-like-burst");
+            const lastDot = button.querySelector(".reel-like-dots i:last-child");
+            lastDot?.addEventListener("animationend", () => button.classList.remove("is-like-burst"), { once: true });
+          }
+          const clearAnimation = (event) => {
+            if (event.target !== button && !event.target.matches(".reel-action-icon > svg")) return;
+            button.removeEventListener("animationend", clearAnimation);
+            button.classList.remove(animationClass);
+          };
+          button.addEventListener("animationend", clearAnimation);
+        });
+      }
+      function animateReelCount(span, text) {
+        const current = span.querySelector(".reel-count-current");
+        if (!current) {
+          span.textContent = text;
+          return;
+        }
+        if (current.textContent === text) return;
+        if (reelReducedMotion.matches) {
+          span.classList.add("is-count-changing");
+          span.textContent = text;
+          requestAnimationFrame(() => span.classList.remove("is-count-changing"));
+          return;
+        }
+        const oldValue = document.createElement("span");
+        oldValue.className = "reel-count-old";
+        oldValue.textContent = current.textContent;
+        const newValue = document.createElement("span");
+        newValue.className = "reel-count-new";
+        newValue.textContent = text;
+        let finished = false;
+        let fallback;
+        const finish = () => {
+          if (finished || !newValue.isConnected) return;
+          finished = true;
+          clearTimeout(fallback);
+          newValue.className = "reel-count-current";
+          span.replaceChildren(newValue);
+        };
+        newValue.addEventListener("animationend", finish, { once: true });
+        span.replaceChildren(oldValue, newValue);
+        fallback = setTimeout(finish, 220);
+      }
+      function animateReelActionFailure(button) {
+        animateReelAction(button, "is-shaking");
+        toast("Couldn't update. Try again.");
+      }
+      function handleReelDoubleTap(stage, clientX, clientY) {
+        const now = performance.now();
+        if (now - (reelLastDoubleTap.get(stage) || 0) < 100) return;
+        reelLastDoubleTap.set(stage, now);
+        const button = stage.closest(".reel-item")?.querySelector('[data-reel-action="like"]');
+        if (!button || !requireAuth()) return;
+        showReelLikeBurst(stage, clientX, clientY);
+        void toggleReelRelation(button, true);
       }
       async function playReelVideo(reel, stage, video) {
         try {
@@ -10948,10 +11148,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 stage.classList.remove("is-loading");
                 stage.classList.add("is-paused");
                 stage.setAttribute("aria-label", "Play reel");
-                if (!reelAutoplayFeedbackShown.has(reel.id)) {
-                  reelAutoplayFeedbackShown.add(reel.id);
-                  showReelPlaybackFeedback(stage, "play");
-                }
+                reelPlaybackFeedbackPending.delete(stage);
                 console.warn(`Autoplay was blocked for Reel ${reel.id}.`, error);
               });
             } else {
@@ -11030,21 +11227,26 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         reelManualPlayback = reelId;
         stage.classList.remove("is-user-paused");
         clearReelPlaybackFeedback(stage);
+        reelPlaybackFeedbackPending.set(stage, "play");
         let video = existing || ensureReelVideo(reel, stage);
         if (!video) {
+          reelPlaybackFeedbackPending.delete(stage);
           renderReelFeedState("This Reel’s video is unavailable.");
           return;
         }
         video.muted = reelMuted;
         try {
           await playReelVideo(reel, stage, video);
-          showReelPlaybackFeedback(stage, "play");
+          if (reelPlaybackFeedbackPending.get(stage) === "play" && !stage.classList.contains("is-loading") && !video.paused) {
+            reelPlaybackFeedbackPending.delete(stage);
+            showReelPlaybackFeedback(stage, "play");
+          }
         } catch (error) {
+          reelPlaybackFeedbackPending.delete(stage);
           if (error.name === "AbortError") return;
           stage.classList.remove("is-loading");
           stage.classList.add("is-paused");
           stage.setAttribute("aria-label", "Play reel");
-          showReelPlaybackFeedback(stage, "play");
           console.warn(`Could not start Reel ${reel.id}.`, error);
           toast("Could not load this Reel. Check your connection and try again.");
         }
@@ -11061,7 +11263,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           location.hash = route;
         }
       }
-      function syncReelActionUI(reel, action) {
+      function syncReelActionUI(reel, action, animateCount = false) {
         const item = $(`.reel-item[data-reel-id="${CSS.escape(reel.id)}"]`, $("#reelFeed"));
         const button = item?.querySelector(`[data-reel-action="${action}"]`);
         if (!button) return;
@@ -11070,36 +11272,48 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const count = action === "comment" ? reel.counts.comments : reel.counts[reelActionLabels[action]];
         const text = action === "bookmark" || action === "more" ? "" : formatReelCount(count);
         const span = button.querySelector("[data-reel-count]");
-        if (span) span.textContent = text;
+        if (span) {
+          if (animateCount) animateReelCount(span, text);
+          else span.textContent = text;
+        }
         if (span && action !== "bookmark" && action !== "more") {
           span.classList.toggle("is-zero", Number(count) === 0);
         }
         if (action === "bookmark") button.setAttribute("aria-label", reel.viewer.bookmarked ? "Remove bookmark" : "Save Reel");
+        else if (action === "like") button.setAttribute("aria-label", `${reel.viewer.liked ? "Unlike" : "Like"} · ${text} likes`);
+        else if (action === "repost") button.setAttribute("aria-label", `${reel.viewer.reposted ? "Undo repost" : "Repost"} · ${text} reposts`);
         else if (action !== "more") button.setAttribute("aria-label", `${text} ${action === "comment" ? "comments" : reelActionLabels[action] || ""}`.trim());
       }
-      async function toggleReelRelation(button) {
+      async function toggleReelRelation(button, desiredState = null) {
+        if (reelActionRequests.has(button)) return;
         if (!requireAuth()) return;
         const reel = reelItems.find((item) => item.id === button.dataset.reelId);
         const action = button.dataset.reelAction;
         const relation = action === "like" ? "liked" : action === "repost" ? "reposted" : action === "bookmark" ? "bookmarked" : "";
         const endpoint = action === "like" ? "like" : action === "repost" ? "repost" : "bookmark";
         if (!reel || !relation) return;
-        const next = !reel.viewer[relation];
+        const next = desiredState === null ? !reel.viewer[relation] : desiredState;
+        if (next === reel.viewer[relation]) {
+          if (action === "like" && next) animateReelAction(button, "is-like-pop");
+          return;
+        }
         const countName = action === "like" ? "likes" : action === "repost" ? "reposts" : "";
         const previousCount = countName ? reel.counts[countName] || 0 : 0;
         reel.viewer[relation] = next;
         if (countName) reel.counts[countName] = Math.max(0, previousCount + (next ? 1 : -1));
-        syncReelActionUI(reel, action);
-        setPendingButton(button, true);
+        syncReelActionUI(reel, action, true);
+        animateReelAction(button, action === "like" ? next ? "is-like-pop" : "is-like-unlike"
+          : action === "repost" ? "is-reposting" : "is-bookmarking");
+        reelActionRequests.add(button);
         try {
           await api(`/reels/${encodeURIComponent(reel.id)}/${endpoint}`, { method: next ? "POST" : "DELETE" });
         } catch (error) {
           reel.viewer[relation] = !next;
           if (countName) reel.counts[countName] = previousCount;
-          syncReelActionUI(reel, action);
-          toast(error.message);
+          syncReelActionUI(reel, action, true);
+          animateReelActionFailure(button);
         } finally {
-          setPendingButton(button, false);
+          reelActionRequests.delete(button);
         }
       }
       async function toggleReelFollow(button) {
@@ -11125,8 +11339,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           setPendingButton(button, false);
         }
       }
-      function openReelComments(reelId) {
+      function openReelComments(reelId, actionButton = null) {
         if (!reelItems.some((item) => item.id === reelId)) return;
+        if (actionButton && reelActionRequests.has(actionButton)) return;
+        if (actionButton) reelActionRequests.add(actionButton);
         reelCommentsReelId = reelId;
         reelCommentsCursor = null;
         reelCommentReplyToId = "";
@@ -11138,7 +11354,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#reelCommentsCount").textContent = "";
         $("#reelCommentList").innerHTML = '<div class="relay-load-error">Loading comments…</div>';
         $("#reelCommentsDialog").showModal();
-        loadReelComments();
+        const request = loadReelComments();
+        if (actionButton) void request.finally(() => reelActionRequests.delete(actionButton));
       }
       function reelCommentMarkup(comment, depth = 0) {
         const author = comment.author || {};
@@ -11226,21 +11443,35 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           setPendingButton(submit, false);
         }
       }
-      async function shareReel(reelId) {
+      async function shareReel(reelId, actionButton = null) {
         const reel = reelItems.find((item) => item.id === reelId);
         if (!reel) return;
+        if (actionButton && (reelActionRequests.has(actionButton) || !requireAuth())) return;
         const url = new URL(location.href);
         url.hash = `#/reels/${encodeURIComponent(reelId)}`;
+        const previousCount = reel.counts.shares || 0;
+        if (actionButton) {
+          reelActionRequests.add(actionButton);
+          reel.counts.shares = previousCount + 1;
+          syncReelActionUI(reel, "share", true);
+          animateReelAction(actionButton, "is-pressing");
+        }
         try {
           if (navigator.share) await navigator.share({ title: "Relay Reel", text: reel.caption || "Watch this Reel on Relay", url: url.href });
           else if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(url.href);
           else throw new Error("Sharing isn’t available in this browser.");
           const result = await api(`/reels/${encodeURIComponent(reelId)}/share`, { method: "POST", body: JSON.stringify({}) });
-          if (result?.counts) reel.counts = { ...reel.counts, shares: result.counts.shareCount };
-          syncReelActionUI(reel, "share");
+          if (Number.isFinite(result?.counts?.shareCount)) reel.counts.shares = result.counts.shareCount;
+          syncReelActionUI(reel, "share", Boolean(actionButton));
           if (!navigator.share) toast("Reel link copied");
         } catch (error) {
-          if (error.name !== "AbortError") toast(error.message);
+          if (actionButton) {
+            reel.counts.shares = previousCount;
+            syncReelActionUI(reel, "share", true);
+            if (error.name !== "AbortError") animateReelActionFailure(actionButton);
+          } else if (error.name !== "AbortError") toast(error.message);
+        } finally {
+          if (actionButton) reelActionRequests.delete(actionButton);
         }
       }
       function openReelActions(reelId) {
@@ -11887,6 +12118,26 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           renderReels(false, deepLinkedReelId);
         }
       }
+      function handleReelFeedDoubleClick(event) {
+        const media = event.target.closest(".reel-video, .reel-poster");
+        const stage = media?.closest("[data-reel-stage]");
+        if (stage) handleReelDoubleTap(stage, event.clientX, event.clientY);
+      }
+      function handleReelFeedPointerUp(event) {
+        if (event.pointerType !== "touch") return;
+        const media = event.target.closest(".reel-video, .reel-poster");
+        const stage = media?.closest("[data-reel-stage]");
+        if (!stage) return;
+        const previousTap = reelLastTouchTap.get(stage);
+        const now = performance.now();
+        if (previousTap && now - previousTap.time < 320
+          && Math.hypot(event.clientX - previousTap.x, event.clientY - previousTap.y) < 40) {
+          reelLastTouchTap.delete(stage);
+          handleReelDoubleTap(stage, event.clientX, event.clientY);
+        } else {
+          reelLastTouchTap.set(stage, { time: now, x: event.clientX, y: event.clientY });
+        }
+      }
       function handleReelFeedClick(event) {
         const create = event.target.closest("[data-reel-create]");
         if (create) {
@@ -11925,8 +12176,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const action = event.target.closest("[data-reel-action]");
         if (action) {
           if (action.dataset.reelAction === "more") openReelActions(action.dataset.reelId);
-          else if (action.dataset.reelAction === "comment") openReelComments(action.dataset.reelId);
-          else if (action.dataset.reelAction === "share") shareReel(action.dataset.reelId);
+          else if (action.dataset.reelAction === "comment") {
+            if (reelActionRequests.has(action)) return;
+            animateReelAction(action, "is-pressing");
+            openReelComments(action.dataset.reelId, action);
+          } else if (action.dataset.reelAction === "share") void shareReel(action.dataset.reelId, action);
           else toggleReelRelation(action);
           return;
         }
@@ -11990,6 +12244,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
         });
         $("#reelFeed").addEventListener("click", handleReelFeedClick);
+        $("#reelFeed").addEventListener("dblclick", handleReelFeedDoubleClick);
+        $("#reelFeed").addEventListener("pointerup", handleReelFeedPointerUp);
         $("#reelFeed").addEventListener("scroll", onReelFeedScroll, { passive: true });
         $("#reelCommentForm").addEventListener("submit", submitReelComment);
         $("#reelCommentMore").addEventListener("click", () => loadReelComments(true));
