@@ -1,4 +1,5 @@
 import express from "express";
+import compression from "compression";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
@@ -79,6 +80,7 @@ app.use(helmet({
     },
   },
 }));
+app.use(compression({ threshold: 1024 }));
 app.use(cors({
   origin: clientOrigins,
   credentials: true,
@@ -101,7 +103,12 @@ const mediaUrlFields = new Set([
 ]);
 const normalizeMediaResponse = async (value: unknown, field = ""): Promise<unknown> => {
   if (typeof value === "string" && mediaUrlFields.has(field) && /^\/uploads\//i.test(value)) {
-    return createUploadReadUrl(value);
+    try {
+      return await createUploadReadUrl(value);
+    } catch (error) {
+      console.error("Could not sign media URL for API response.", error);
+      return value;
+    }
   }
   if (Array.isArray(value)) return Promise.all(value.map((item) => normalizeMediaResponse(item, field)));
   if (!value || typeof value !== "object" || Object.getPrototypeOf(value) !== Object.prototype) return value;
