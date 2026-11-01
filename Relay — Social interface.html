@@ -7818,6 +7818,10 @@
       .reel-upload-mute:focus-visible { outline: 2px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 4px rgba(0,0,0,.65); }
       .reel-upload-control svg,
       .reel-upload-mute svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+      .reel-upload-mute[data-muted="true"] [data-mute-icon="unmuted"],
+      .reel-upload-mute[data-muted="false"] [data-mute-icon="muted"] { display: none !important; }
+      .reel-upload-mute[data-muted="true"] [data-mute-icon="muted"],
+      .reel-upload-mute[data-muted="false"] [data-mute-icon="unmuted"] { display: block !important; }
       .reel-upload-mute { position: absolute; z-index: 3; inset-inline-end: 10px; bottom: 10px; }
       .reel-upload-mute[hidden] { display: none; }
       @media (hover: none) {
@@ -8923,7 +8927,7 @@
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12"/></svg>
                 </button>
               </div>
-              <button class="reel-upload-mute" id="reelPreviewMute" type="button" aria-label="Unmute video" title="Unmute video" hidden>
+              <button class="reel-upload-mute" id="reelPreviewMute" type="button" data-muted="true" aria-label="Unmute video" title="Unmute video" aria-pressed="false" hidden>
                 <svg data-mute-icon="muted" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m17 9 5 6m0-6-5 6"/></svg>
                 <svg data-mute-icon="unmuted" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a10 10 0 0 1 0 13"/></svg>
               </button>
@@ -13377,6 +13381,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         button.setAttribute("aria-label", `${reelPreviewMuted ? "Unmute" : "Mute"} video`);
         button.title = `${reelPreviewMuted ? "Unmute" : "Mute"} video`;
         button.setAttribute("aria-pressed", String(!reelPreviewMuted));
+        button.dataset.muted = String(reelPreviewMuted);
         $('[data-mute-icon="muted"]', button).hidden = !reelPreviewMuted;
         $('[data-mute-icon="unmuted"]', button).hidden = reelPreviewMuted;
       }
