@@ -9359,6 +9359,7 @@
       let currentUser = null;
       let gifPickerTarget = null;
       let gifPickerOpener = null;
+      let gifPickerConversationId = "";
       let gifSearchController = null;
       let gifSearchGeneration = 0;
       let gifSearchDebounceTimer = null;
@@ -9409,6 +9410,7 @@
       let conversations = [];
       let activeConversation = null;
       let selectedConversationId = "";
+      const conversationDrafts = new Map();
       let activeConversationCursor = null;
       let activeConversationLoadGeneration = 0;
       let conversationSearchTimer = null;
@@ -10564,6 +10566,7 @@
         cancelGiphySearch();
         gifPickerTarget = target;
         gifPickerOpener = opener;
+        gifPickerConversationId = target === "message" ? activeConversation?.id || "" : "";
         opener.setAttribute("aria-expanded", "true");
         $("#gifPickerSearch").value = "";
         $("#gifPickerSearchClear").hidden = true;
@@ -10677,6 +10680,7 @@
       async function selectGiphyGif(id) {
         const gif = giphyResultsById.get(id);
         const gifUrl = giphyGifUrl(gif);
+        const messageConversationId = gifPickerConversationId;
         if (!gifUrl) {
           $("#gifPickerStatus").textContent = "This GIF is unavailable as a direct image. Choose another result.";
           return;
@@ -10702,7 +10706,7 @@
           }
           setThreadReplyMedia(form, gifUrl);
         } else if (gifPickerTarget === "message") {
-          if (!activeConversation) {
+          if (!messageConversationId) {
             $("#gifPickerStatus").textContent = "Choose a conversation before sending a GIF.";
             return;
           }
@@ -10710,7 +10714,7 @@
           sendButton.disabled = true;
           $("#gifPickerStatus").textContent = "Sending GIF…";
           try {
-            await sendMessageAttachment({ mediaUrl: gifUrl });
+            await sendMessageAttachment({ mediaUrl: gifUrl }, messageConversationId);
             sendButton.disabled = false;
           } catch (error) {
             sendButton.disabled = false;
@@ -15354,6 +15358,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         });
       }
       let voiceRecorder = null;
+      let voiceRecordingFinalizing = false;
       let voiceChunks = [];
       let voiceRecordingCanceled = false;
       let voiceRecordingTimer = null;
@@ -15569,25 +15574,37 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#messageEmptyActions").classList.toggle("is-hidden", hasText);
         $("#sendMessage").disabled = !hasText;
       }
-      async function sendMessageAttachment(payload) {
-        if (!activeConversation) return;
-        const conversationId = activeConversation.id;
+      async function sendMessageAttachment(payload, conversationId = activeConversation?.id) {
+        if (!conversationId) return;
         const message = await api(`/conversations/${conversationId}/messages`, {
           method: "POST",
           body: JSON.stringify(payload),
         });
+        if (message.conversationId !== conversationId) {
+          throw new Error("The message was returned for a different conversation.");
+        }
         receiveMessage(message);
         return message;
       }
       async function toggleVoiceRecording() {
         if (voiceRecorder?.state === "recording") {
+          voiceRecordingFinalizing = true;
           voiceRecorder.stop();
           return;
         }
+        if (voiceRecordingFinalizing) return;
+        const conversationId = activeConversation?.id;
+        if (!conversationId || $("#messageForm").dataset.conversationId !== conversationId) return;
         let stream = null;
         try {
           stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          if (activeConversation?.id !== conversationId
+            || $("#messageForm").dataset.conversationId !== conversationId) {
+            stream.getTracks().forEach((track) => track.stop());
+            return;
+          }
           voiceRecorder = new MediaRecorder(stream);
+          const recorder = voiceRecorder;
           voiceRecordingAudioContext = new (window.AudioContext || window.webkitAudioContext)();
           if (voiceRecordingAudioContext.state === "suspended") await voiceRecordingAudioContext.resume();
           voiceRecordingAnalyser = voiceRecordingAudioContext.createAnalyser();
@@ -15598,8 +15615,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           voiceRecordingSamples = [];
           voiceRecordingPeak = 0;
           $("#messageRecordingWaveform").innerHTML = voiceWaveformSvg(Array(voiceWaveformBarCount).fill(0));
-          voiceRecorder.addEventListener("dataavailable", (event) => { if (event.data.size) voiceChunks.push(event.data); });
-          voiceRecorder.addEventListener("stop", async () => {
+          recorder.addEventListener("dataavailable", (event) => { if (event.data.size) voiceChunks.push(event.data); });
+          recorder.addEventListener("stop", async () => {
+            voiceRecordingFinalizing = true;
             $("#messageAudioButton").classList.remove("recording");
             stream.getTracks().forEach((track) => track.stop());
             clearInterval(voiceRecordingTimer);
@@ -15612,11 +15630,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               console.warn("Could not close the voice recording audio context.", error);
             }
             voiceRecordingAudioContext = null;
+            voiceRecordingFinalizing = false;
             $("#messageComposeField").hidden = false;
             $("#messageRecording").classList.remove("is-active");
             $("#messageComposePill").classList.remove("is-recording");
             $("#messageAudioButton").innerHTML = '<svg class="i" aria-hidden="true"><use href="#mic" /></svg>';
-            const type = voiceRecorder.mimeType || "audio/webm";
+            const type = recorder.mimeType || "audio/webm";
             const blob = new Blob(voiceChunks, { type });
             if (voiceRecordingCanceled || !blob.size) {
               voiceRecordingCanceled = false;
@@ -15630,11 +15649,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             form.append("file", blob, `voice.${extension}`);
             try {
               const uploaded = await api("/uploads/audio", { method: "POST", body: form });
-              const sent = await sendMessageAttachment({ audioUrl: uploaded.url, waveform });
+              const sent = await sendMessageAttachment({ audioUrl: uploaded.url, waveform }, conversationId);
               if (sent?.id) cacheVoiceWaveform(sent.id, waveform);
             } catch (error) { toast(error.message); }
           });
-          voiceRecorder.start();
+          recorder.start();
           $("#messageAudioButton").classList.add("recording");
           voiceRecordingCanceled = false;
           voiceRecordingStartedAt = Date.now();
@@ -15768,6 +15787,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
       }
       function messageMarkup(message, { eager = true } = {}) {
+        if (!message?.conversationId
+          || message.conversationId !== activeConversation?.id
+          || message.conversationId !== $("#chatLog").dataset.conversationId) return "";
         const mine = message.senderId === currentUser?.id;
         const body = String(message.body || "");
         const hasMediaUrls = Array.isArray(message.mediaUrls);
@@ -15828,7 +15850,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           downloadLabel: "voice message",
         });
         const bubbleActions = image ? "" : actions;
-        return `<div class="message-row${mine ? " mine" : ""}" data-message-row><div class="message-bubble${mine ? " mine" : ""}${mediaOnly ? " media-message" : ""}${imageOnly ? " image-message" : ""}${audioOnly ? " audio-message" : ""}${stickerOnly ? " sticker-message" : ""}" data-message-id="${esc(message.id)}">${image}${audio}${sticker}${text}${bubbleActions}</div></div>`;
+        return `<div class="message-row${mine ? " mine" : ""}" data-message-row data-conversation-id="${esc(message.conversationId)}"><div class="message-bubble${mine ? " mine" : ""}${mediaOnly ? " media-message" : ""}${imageOnly ? " image-message" : ""}${audioOnly ? " audio-message" : ""}${stickerOnly ? " sticker-message" : ""}" data-message-id="${esc(message.id)}">${image}${audio}${sticker}${text}${bubbleActions}</div></div>`;
       }
       function bindVoiceMessages(container = document) {
         container.querySelectorAll(".relay-voice audio:not([data-relay-bound])").forEach((audio) => {
@@ -15936,17 +15958,19 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function receiveMessage(message) {
         if (receivedMessageIds.has(message.id)) return;
         receivedMessageIds.add(message.id);
-        if (activeConversation?.id === message.conversationId && !$("#v-messages").hidden) {
-          const list = $("#chatLog");
-          const shouldFollow = list.scrollHeight - list.scrollTop - list.clientHeight <= 80;
-          const typingStatus = $("#typingStatus");
+        const chatLog = $("#chatLog");
+        if (activeConversation?.id === message.conversationId
+          && chatLog.dataset.conversationId === message.conversationId
+          && !$("#v-messages").hidden) {
+          const shouldFollow = chatLog.scrollHeight - chatLog.scrollTop - chatLog.clientHeight <= 80;
+          const typingStatus = $("#typingStatus", chatLog);
           clearEmptyMessagesState();
           if (typingStatus) typingStatus.insertAdjacentHTML("beforebegin", messageMarkup(message));
-          else list.insertAdjacentHTML("beforeend", messageMarkup(message));
-          const insertedMessage = typingStatus?.previousElementSibling || list.lastElementChild;
+          else chatLog.insertAdjacentHTML("beforeend", messageMarkup(message));
+          const insertedMessage = typingStatus?.previousElementSibling || chatLog.lastElementChild;
           if (insertedMessage?.matches(".message-row")) animateChatMessages([insertedMessage]);
-          bindVoiceMessages($("#chatLog"));
-          bindMessageMediaScroll($("#chatLog"));
+          bindVoiceMessages(chatLog);
+          bindMessageMediaScroll(chatLog);
           scrollMessageListToBottom(shouldFollow);
           if (message.senderId !== currentUser?.id) {
             api(`/conversations/${message.conversationId}/messages?limit=1`).catch((error) =>
@@ -16785,8 +16809,39 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (updateRoute || location.hash !== route) location.hash = route;
         return loadConversation(conversation, targetMessageId);
       }
+      function saveActiveConversationDraft() {
+        if (activeConversation) {
+          conversationDrafts.set(activeConversation.id, $("#messageInput").value);
+        }
+      }
+      function clearConversationTransientUi() {
+        closeMessageActionMenus();
+        toggleRecipientMenu(false);
+        clearTimeout(typingStopTimer);
+        typingStopTimer = null;
+        const chatLog = $("#chatLog");
+        chatLog.querySelectorAll(".relay-voice audio").forEach((audio) => audio.pause());
+        $("#messageStickerPicker").hidden = true;
+        $("#messageStickerPicker").setAttribute("aria-hidden", "true");
+        $("#messageStickerButton").setAttribute("aria-expanded", "false");
+        if (activeComposerPopover?.popover === $("#emojiPicker")
+          && $("#chatLog").parentElement.contains(activeComposerPopover.trigger)) {
+          closeComposerPopover(activeComposerPopover.popover, activeComposerPopover.trigger);
+          if (emojiInsertTarget === $("#messageInput")) emojiInsertTarget = $("#ct");
+        }
+        if (gifPickerTarget === "message" && $("#gifPickerDialog").open) {
+          $("#gifPickerDialog").close();
+        }
+        if (voiceRecorder?.state === "recording") {
+          voiceRecordingCanceled = true;
+          voiceRecordingFinalizing = true;
+          voiceRecorder.stop();
+        }
+      }
       function resetActiveConversation() {
         sendTyping(false);
+        saveActiveConversationDraft();
+        clearConversationTransientUi();
         conversationSelectionGeneration += 1;
         activeConversationLoadGeneration += 1;
         activeConversation = null;
@@ -16807,8 +16862,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         setPresenceAvatar($("#chatAvatar"), null);
         $("#chatProfileLink").disabled = true;
         $("#chatProfileLink").removeAttribute("data-profile-id");
+        $("#chatProfileLink").removeAttribute("data-conversation-id");
         $("#chatProfileLink").setAttribute("aria-label", "Conversation profile unavailable");
         $("#chatLog").innerHTML = `${conversationStartMarkup()}<div class="typing-status" id="typingStatus" aria-live="polite"></div>`;
+        delete $("#chatLog").dataset.conversationId;
+        delete $("#messageForm").dataset.conversationId;
         $("#messageInput").disabled = true;
         $("#messageInput").value = "";
         syncMessageComposer();
@@ -16842,6 +16900,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       async function loadConversation(conversation, targetMessageId = "") {
         sendTyping(false);
+        saveActiveConversationDraft();
+        clearConversationTransientUi();
         const loadGeneration = ++activeConversationLoadGeneration;
         activeConversation = conversation;
         syncConversationSelection(conversation.id);
@@ -16858,6 +16918,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         setPresenceAvatar($("#chatAvatar"), other);
         const chatProfileLink = $("#chatProfileLink");
         chatProfileLink.disabled = !other?.id;
+        chatProfileLink.dataset.conversationId = conversation.id;
         if (other?.id) {
           chatProfileLink.dataset.profileId = other.id;
           chatProfileLink.setAttribute("aria-label", `View ${other.displayName || other.handle}'s profile`);
@@ -16866,12 +16927,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           chatProfileLink.setAttribute("aria-label", "Conversation profile unavailable");
         }
         const chatLog = $("#chatLog");
+        chatLog.dataset.conversationId = conversation.id;
+        $("#messageForm").dataset.conversationId = conversation.id;
+        $("#messageInput").value = conversationDrafts.get(conversation.id) || "";
+        syncMessageComposer();
         cancelDelayedPlaceholder(chatLog);
-        const hadChatContent = Boolean(chatLog.querySelector(".message-row, .empty-state, .relay-load-error"));
-        if (!hadChatContent) chatLog.replaceChildren();
-        const finishChatSkeleton = hadChatContent
-          ? () => Promise.resolve()
-          : showDelayedSkeleton(chatLog, "message", { count: 4, label: "messages" });
+        chatLog.replaceChildren();
+        const finishChatSkeleton = showDelayedSkeleton(chatLog, "message", { count: 4, label: "messages" });
         $("#messageInput").disabled = false;
         ["#messageImageButton", "#messageGifButton", "#messageStickerButton", "#messageAudioButton"].forEach((selector) => $(selector).disabled = false);
         syncMessageComposer();
@@ -16882,9 +16944,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           await finishChatSkeleton();
           if (loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversation.id) return;
           activeConversationCursor = result.nextCursor;
-          result.items.forEach((message) => receivedMessageIds.add(message.id));
-          $("#chatLog").innerHTML = `${result.items.map((message, index) => messageMarkup(message, {
-            eager: index >= result.items.length - 15,
+          const conversationMessages = result.items.filter((message) => message.conversationId === conversation.id);
+          conversationMessages.forEach((message) => receivedMessageIds.add(message.id));
+          $("#chatLog").innerHTML = `${conversationMessages.map((message, index) => messageMarkup(message, {
+            eager: index >= conversationMessages.length - 15,
           })).join("")
             || emptyState("No messages found.", "Send a message to start the conversation.", true)}<div class="typing-status" id="typingStatus" aria-live="polite"></div>`;
           animateChatMessages($$("#chatLog .message-bubble"));
@@ -16919,20 +16982,23 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const log = $("#chatLog");
         const findTarget = () => $$(".message-bubble", log).find((bubble) => bubble.dataset.messageId === targetMessageId);
         while (loadingOlderMessages && loadGeneration === activeConversationLoadGeneration
-          && activeConversation?.id === conversationId) {
+          && activeConversation?.id === conversationId && log.dataset.conversationId === conversationId) {
           await new Promise((resolve) => setTimeout(resolve, 24));
         }
-        if (loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversationId) return null;
+        if (loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversationId
+          || log.dataset.conversationId !== conversationId) return null;
         loadingOlderMessages = true;
         try {
           while (!findTarget() && activeConversationCursor
             && loadGeneration === activeConversationLoadGeneration
-            && activeConversation?.id === conversationId) {
+            && activeConversation?.id === conversationId && log.dataset.conversationId === conversationId) {
             const cursor = activeConversationCursor;
             const query = new URLSearchParams({ limit: "40", cursor });
             const result = await api(`/conversations/${encodeURIComponent(conversationId)}/messages?${query}`);
-            if (loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversationId) return null;
-            const unseen = result.items.filter((message) => !receivedMessageIds.has(message.id));
+            if (loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversationId
+              || log.dataset.conversationId !== conversationId) return null;
+            const unseen = result.items.filter((message) =>
+              message.conversationId === conversationId && !receivedMessageIds.has(message.id));
             unseen.forEach((message) => receivedMessageIds.add(message.id));
             if (unseen.length) {
               const anchor = log.querySelector(".message-bubble");
@@ -16988,7 +17054,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const log = $("#chatLog");
         const conversationId = activeConversation?.id;
         const cursor = activeConversationCursor;
-        if (!conversationId || !cursor || loadingOlderMessages || log.scrollTop > 24) return;
+        if (!conversationId || log.dataset.conversationId !== conversationId
+          || !cursor || loadingOlderMessages || log.scrollTop > 24) return;
         loadingOlderMessages = true;
         const loadGeneration = activeConversationLoadGeneration;
         const anchor = log.querySelector("[data-message-id]");
@@ -17007,10 +17074,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         try {
           const query = new URLSearchParams({ limit: "40", cursor });
           const result = await api(`/conversations/${encodeURIComponent(conversationId)}/messages?${query}`);
-          if (loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversationId) return;
+          if (loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversationId
+            || log.dataset.conversationId !== conversationId) return;
           await finishHistorySkeleton();
-          if (loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversationId) return;
-          const unseen = result.items.filter((message) => !receivedMessageIds.has(message.id));
+          if (loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversationId
+            || log.dataset.conversationId !== conversationId) return;
+          const unseen = result.items.filter((message) =>
+            message.conversationId === conversationId && !receivedMessageIds.has(message.id));
           unseen.forEach((message) => receivedMessageIds.add(message.id));
           if (unseen.length) {
             const anchorTopBeforeInsert = anchor?.getBoundingClientRect().top ?? null;
@@ -17039,7 +17109,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
       }
       function sendTyping(active) {
-        if (!socket?.connected || !activeConversation) return;
+        if (!socket?.connected || !activeConversation
+          || $("#messageForm").dataset.conversationId !== activeConversation.id) return;
         if (typingSent === active) return;
         typingSent = active;
         socket.emit(active ? "typing:start" : "typing:stop", { conversationId: activeConversation.id });
@@ -17709,6 +17780,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (v === "messages") {
           if (restoreConversationId) {
             pendingConversationRestoreId = restoreConversationId;
+            if (activeConversation?.id !== restoreConversationId) resetActiveConversation();
             syncConversationSelection(restoreConversationId);
           } else {
             pendingConversationRestoreId = "";
@@ -18709,7 +18781,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         if (e.target.id === "messageForm") {
           e.preventDefault();
-          if (!activeConversation || !requireAuth()) return;
+          if (!activeConversation || !requireAuth()
+            || $("#messageForm").dataset.conversationId !== activeConversation.id
+            || $("#chatLog").dataset.conversationId !== activeConversation.id) return;
           const input = $("#messageInput");
           const body = input.value.trim();
           if (!body) return;
@@ -18732,6 +18806,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const pendingMessage = typingStatus?.previousElementSibling || $("#chatLog").lastElementChild;
           if (pendingMessage) animateChatMessages([pendingMessage]);
           input.value = "";
+          conversationDrafts.set(conversationId, "");
           syncMessageComposer();
           sendTyping(false);
           try {
@@ -18740,12 +18815,19 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               body: JSON.stringify({ body }),
             });
             $(`[data-message-id="${CSS.escape(pendingId)}"]`)?.remove();
+            if (message.conversationId !== conversationId) {
+              throw new Error("The message was returned for a different conversation.");
+            }
             receiveMessage(message);
           } catch (error) {
             $(`[data-message-id="${CSS.escape(pendingId)}"]`)?.remove();
-            restoreEmptyMessagesState();
-            input.value = body;
-            syncMessageComposer();
+            conversationDrafts.set(conversationId, body);
+            if (activeConversation?.id === conversationId
+              && $("#messageForm").dataset.conversationId === conversationId) {
+              restoreEmptyMessagesState();
+              input.value = body;
+              syncMessageComposer();
+            }
             toast(error.message);
           }
           return;
@@ -18898,12 +18980,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (e.target.id === "messageImageInput") {
           const file = e.target.files?.[0];
           e.target.value = "";
-          if (!file || !activeConversation) return;
+          const conversationId = activeConversation?.id;
+          if (!file || !conversationId
+            || $("#messageForm").dataset.conversationId !== conversationId) return;
           const form = new FormData();
           form.append("file", file);
           try {
             const uploaded = await api("/uploads/message", { method: "POST", body: form });
-            await sendMessageAttachment({ mediaUrl: uploaded.url });
+            await sendMessageAttachment({ mediaUrl: uploaded.url }, conversationId);
           } catch (error) { toast(error.message); }
           return;
         }
@@ -18953,6 +19037,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#gifPickerResults").replaceChildren();
         $("#gifPickerStatus").textContent = "";
         gifPickerTarget = null;
+        gifPickerConversationId = "";
         gifPickerOpener?.setAttribute("aria-expanded", "false");
         if (gifPickerOpener?.isConnected) gifPickerOpener.focus({ preventScroll: true });
         gifPickerOpener = null;
@@ -19522,6 +19607,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }, { passive: true });
       $("#messageInput").addEventListener("input", () => {
         if (!activeConversation) return;
+        if ($("#messageForm").dataset.conversationId !== activeConversation.id) return;
+        conversationDrafts.set(activeConversation.id, $("#messageInput").value);
         if ($("#messageInput").value.trim()) sendTyping(true);
         else sendTyping(false);
         clearTimeout(typingStopTimer);
@@ -19533,11 +19620,15 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       $("#messageRecordingCancel").addEventListener("click", () => {
         if (voiceRecorder?.state === "recording") {
           voiceRecordingCanceled = true;
+          voiceRecordingFinalizing = true;
           voiceRecorder.stop();
         }
       });
       $("#messageRecordingSend").addEventListener("click", () => {
-        if (voiceRecorder?.state === "recording") voiceRecorder.stop();
+        if (voiceRecorder?.state === "recording") {
+          voiceRecordingFinalizing = true;
+          voiceRecorder.stop();
+        }
       });
       $("#messageInput").addEventListener("keydown", (event) => {
         if (event.key === "Enter" && !event.shiftKey) {
