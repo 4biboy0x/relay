@@ -5525,14 +5525,19 @@
         flex: 1;
         display: none;
         align-items: center;
-        gap: 10px;
-        padding: 0 4px;
+        gap: 8px;
+        padding: 0 2px;
         color: var(--text);
         font-size: 14px;
       }
       .message-recording.is-active { display: flex; }
       .message-recording-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--danger, #e5484d); }
-      .message-recording button { margin-left: auto; border: 0; padding: 6px 8px; border-radius: 8px; color: var(--danger, #e5484d); background: transparent; cursor: pointer; }
+      .message-recording-waveform { width: min(112px, 30%); height: 24px; flex: 1; }
+      .message-recording-waveform rect { fill: color-mix(in srgb, var(--text) 42%, transparent); }
+      .message-recording button { display: grid; width: 34px; height: 34px; flex: none; place-items: center; border: 0; padding: 0; border-radius: 50%; color: var(--text-2); background: transparent; cursor: pointer; }
+      .message-recording button:hover { color: var(--text); background: var(--surface-2); }
+      .message-recording button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .message-recording button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
       @media (prefers-reduced-motion: reduce) {
         .chat-compose-pill, .message-empty-actions, .message-send-text { transition: none; }
       }
@@ -5561,6 +5566,9 @@
         background: transparent;
       }
       .message-bubble.audio-message {
+        width: min(340px, 100%);
+        max-width: min(340px, 90%);
+        min-width: 306px;
         padding: 0;
         background: transparent;
       }
@@ -5604,44 +5612,74 @@
       .message-sticker { display: block; width: 32px; height: 32px; font-size: 32px; line-height: 32px; text-align: center; }
       .relay-voice {
         position: relative;
-        width: 192px;
+        width: min(340px, 100%);
         max-width: 100%;
-        height: 44px;
+        min-width: 306px;
+        height: 52px;
         display: grid;
-        grid-template-columns: 30px minmax(0, 1fr) auto;
+        grid-template-columns: 36px minmax(190px, 1fr) 34px;
         align-items: center;
-        gap: 6px;
+        gap: 10px;
         box-sizing: border-box;
-        padding: 5px 8px 5px 5px;
-        border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
-        border-radius: 14px;
-        background: var(--surface);
+        padding: 8px 12px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--bg);
+        --voice-played: var(--text);
+        --voice-unplayed: rgba(0,0,0,.28);
+        --voice-control-bg: var(--text);
+        --voice-control-fg: var(--bg);
+        --voice-time: var(--text-2);
+      }
+      :root[data-theme="dark"] .relay-voice {
+        --voice-unplayed: rgba(255,255,255,.35);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) .relay-voice { --voice-unplayed: rgba(255,255,255,.35); }
+      }
+      .message-bubble.mine.audio-message .relay-voice {
+        border-color: rgba(0,0,0,.12);
+        background: #fff;
+        --voice-played: #111;
+        --voice-unplayed: rgba(0,0,0,.28);
+        --voice-control-bg: #111;
+        --voice-control-fg: #fff;
+        --voice-time: #333;
       }
       .relay-voice-play {
-        width: 30px;
-        height: 30px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        width: 36px;
+        height: 36px;
+        display: grid;
+        place-items: center;
         border: 0;
         border-radius: 50%;
-        background: var(--text);
-        color: var(--bg);
-        font-size: 11px;
+        background: var(--voice-control-bg);
+        color: var(--voice-control-fg);
         padding: 0;
+        transition: transform 120ms ease;
       }
-      .relay-voice-play svg { display: block; }
-      .relay-voice-play .relay-voice-play-icon { transform: translateX(1px); }
-      .relay-waveform { height: 18px; min-width: 0; overflow: hidden; display: flex; align-items: center; gap: 2px; }
-      .relay-waveform i { width: 2px; border-radius: 2px; background: color-mix(in srgb, var(--text) 26%, transparent); }
-      .relay-waveform i.heard { background: var(--text); }
-      .relay-waveform i:nth-child(4n+1) { height: 7px; }
-      .relay-waveform i:nth-child(4n+2) { height: 14px; }
-      .relay-waveform i:nth-child(4n+3) { height: 20px; }
-      .relay-waveform i:nth-child(4n) { height: 10px; }
-      .relay-voice.playing .relay-waveform i:nth-child(3n) { animation: voice-wave 0.65s ease-in-out infinite alternate; }
-      @keyframes voice-wave { to { transform: scaleY(.45); } }
-      .relay-voice-duration { min-width: 25px; color: var(--text-3); font-size: 10px; font-variant-numeric: tabular-nums; line-height: 1; text-align: right; pointer-events: none; }
+      .relay-voice-play:active { transform: scale(.94); }
+      .relay-voice-play:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .relay-voice-play-icons { position: relative; display: grid; width: 18px; height: 18px; place-items: center; }
+      .relay-voice-play-icons svg { position: absolute; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: opacity 120ms ease, transform 120ms ease; }
+      .relay-voice-play-icons .relay-voice-play-icon { fill: currentColor; stroke: none; transform: translateX(1px) scale(.85); opacity: 1; }
+      .relay-voice-play-icons .relay-voice-pause-icon { transform: scale(.85); opacity: 0; }
+      .relay-voice.playing .relay-voice-play-icon { transform: translateX(1px) scale(.85); opacity: 0; }
+      .relay-voice.playing .relay-voice-pause-icon { transform: scale(1); opacity: 1; }
+      .relay-waveform { width: min(220px, 100%); min-width: 190px; height: 24px; display: flex; align-items: center; justify-content: center; touch-action: pan-y; cursor: pointer; }
+      .relay-waveform svg { width: 190px; min-width: 190px; height: 24px; overflow: visible; pointer-events: none; }
+      .relay-waveform rect { fill: var(--voice-unplayed); }
+      .relay-waveform rect.is-played { fill: var(--voice-played); }
+      .relay-waveform:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 5px; }
+      .relay-voice-duration { min-width: 34px; color: var(--voice-time); font-size: 12px; font-variant-numeric: tabular-nums; line-height: 1; text-align: right; pointer-events: none; }
+      @media (prefers-reduced-motion: reduce) {
+        .relay-voice-play, .relay-voice-play-icons svg { transition: none; }
+        #messageAudioButton.recording { animation: none; }
+      }
+      @media (max-width: 380px) {
+        .message-bubble.audio-message { min-width: 290px; max-width: 100%; }
+        .relay-voice { min-width: 290px; gap: 6px; padding-inline: 8px; }
+      }
       .typing-status {
         display: flex;
         width: 100%;
@@ -6548,7 +6586,7 @@
           width: min(260px, 100%);
         }
         .relay-voice {
-          width: min(192px, 100%);
+          width: min(340px, 100%);
         }
         .chat-compose {
           margin-bottom: 12px;
@@ -7998,7 +8036,9 @@
                   <div class="message-recording" id="messageRecording" aria-live="polite">
                     <span class="message-recording-dot" aria-hidden="true"></span>
                     <span id="messageRecordingTime">0:00</span>
-                    <button id="messageRecordingCancel" type="button">Cancel</button>
+                    <svg class="message-recording-waveform" id="messageRecordingWaveform" viewBox="0 0 190 24" preserveAspectRatio="none" aria-hidden="true"></svg>
+                    <button id="messageRecordingCancel" type="button" aria-label="Discard recording" title="Discard recording"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg></button>
+                    <button id="messageRecordingSend" type="button" aria-label="Send voice message" title="Send voice message"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
                   </div>
                   <div class="message-empty-actions" id="messageEmptyActions">
                     <button class="message-action chat-compose-icon" id="messageAudioButton" type="button" aria-label="Record voice message" disabled>
@@ -14035,6 +14075,207 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       let voiceRecordingCanceled = false;
       let voiceRecordingTimer = null;
       let voiceRecordingStartedAt = 0;
+      let voiceRecordingSamples = [];
+      let voiceRecordingPeak = 0;
+      let voiceRecordingAnalyser = null;
+      let voiceRecordingAudioContext = null;
+      let voiceRecordingSampleTimer = null;
+      const voiceWaveformCache = new Map();
+      const voiceWaveformBarCount = 48;
+      const voiceWaveformCacheKey = (id) => `relay_voice_waveform_${id}`;
+      function normalizeVoiceWaveform(samples) {
+        const values = Array.from(samples || []).map((value) => Math.max(0, Number(value) || 0));
+        if (!values.length) return Array(voiceWaveformBarCount).fill(0);
+        const peaks = Array.from({ length: voiceWaveformBarCount }, (_, index) => {
+          const start = Math.floor(index * values.length / voiceWaveformBarCount);
+          const end = Math.max(start + 1, Math.floor((index + 1) * values.length / voiceWaveformBarCount));
+          return values.slice(start, end).reduce((sum, value) => sum + value, 0) / Math.max(1, end - start);
+        });
+        const loudest = Math.max(...peaks, 0);
+        return peaks.map((value) => {
+          const normalized = loudest ? value / loudest : 0;
+          return normalized < .08 ? 0 : Math.round(normalized * 100);
+        });
+      }
+      function validVoiceWaveform(waveform) {
+        return Array.isArray(waveform) && waveform.length >= 40 && waveform.length <= 64
+          && waveform.every((value) => Number.isInteger(value) && value >= 0 && value <= 100);
+      }
+      function voiceWaveformSvg(waveform) {
+        const values = validVoiceWaveform(waveform) ? waveform : Array(voiceWaveformBarCount).fill(0);
+        return values.map((value, index) => {
+          const height = Math.max(3, Number(value) / 100 * 24);
+          const y = (24 - height) / 2;
+          return `<rect data-wave-index="${index}" x="${index * 4}" y="${y.toFixed(2)}" width="2" height="${height.toFixed(2)}" rx="1"/>`;
+        }).join("");
+      }
+      function updateRecordingWaveform(amplitude) {
+        const waveform = $("#messageRecordingWaveform");
+        if (!waveform) return;
+        if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          const last = waveform.lastElementChild;
+          if (last) {
+            const height = Math.max(3, amplitude * 24);
+            last.setAttribute("height", height.toFixed(2));
+            last.setAttribute("y", ((24 - height) / 2).toFixed(2));
+          }
+          return;
+        }
+        const bars = Array.from(waveform.children);
+        if (bars.length) {
+          bars[0].remove();
+          bars.slice(1).forEach((bar, index) => bar.setAttribute("x", String(index * 4)));
+        }
+        const bar = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        const height = Math.max(3, amplitude * 24);
+        bar.setAttribute("x", "188");
+        bar.setAttribute("y", ((24 - height) / 2).toFixed(2));
+        bar.setAttribute("width", "2");
+        bar.setAttribute("height", height.toFixed(2));
+        bar.setAttribute("rx", "1");
+        waveform.append(bar);
+      }
+      function voiceWaveformFromCache(messageId) {
+        try {
+          const cached = JSON.parse(localStorage.getItem(voiceWaveformCacheKey(messageId)) || "null");
+          return validVoiceWaveform(cached) ? cached : null;
+        } catch (error) {
+          console.warn("Could not read the voice waveform cache.", error);
+          return null;
+        }
+      }
+      function cacheVoiceWaveform(messageId, waveform) {
+        if (!messageId || !validVoiceWaveform(waveform)) return;
+        voiceWaveformCache.set(messageId, waveform);
+        try {
+          localStorage.setItem(voiceWaveformCacheKey(messageId), JSON.stringify(waveform));
+        } catch (error) {
+          console.warn("Could not save the voice waveform cache.", error);
+        }
+      }
+      function setVoiceWaveform(voice, waveform) {
+        if (!validVoiceWaveform(waveform)) return;
+        voice.dataset.waveform = JSON.stringify(waveform);
+        voice.querySelector(".relay-waveform svg").innerHTML = voiceWaveformSvg(waveform);
+        updateVoiceProgress(voice, $("audio", voice));
+      }
+      async function decodeVoiceWaveform(voice) {
+        const messageId = voice.dataset.messageId;
+        if (!messageId || voice.dataset.waveformReady === "true") return;
+        const cached = voiceWaveformCache.get(messageId);
+        const existing = validVoiceWaveform(cached) ? cached : voiceWaveformFromCache(messageId);
+        if (existing) {
+          setVoiceWaveform(voice, existing);
+          voice.dataset.waveformReady = "true";
+          return;
+        }
+        if (!voiceWaveformCache.has(messageId)) {
+          const promise = (async () => {
+            const response = await fetch(voice.dataset.voiceUrl);
+            if (!response.ok) throw new Error(`Audio fetch failed (${response.status}).`);
+            const buffer = await response.arrayBuffer();
+            const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextConstructor) throw new Error("Audio decoding is not supported.");
+            const context = new AudioContextConstructor();
+            let decoded;
+            try {
+              decoded = await context.decodeAudioData(buffer.slice(0));
+            } finally {
+              await context.close();
+            }
+            const channel = decoded.getChannelData(0);
+            const samplesPerPeak = Math.max(1, Math.floor(channel.length / voiceWaveformBarCount));
+            const peaks = Array.from({ length: voiceWaveformBarCount }, (_, index) => {
+              const start = index * samplesPerPeak;
+              const end = Math.min(channel.length, index === voiceWaveformBarCount - 1 ? channel.length : start + samplesPerPeak);
+              let sum = 0;
+              for (let cursor = start; cursor < end; cursor += 1) sum += channel[cursor] * channel[cursor];
+              return Math.sqrt(sum / Math.max(1, end - start));
+            });
+            return normalizeVoiceWaveform(peaks);
+          })();
+          voiceWaveformCache.set(messageId, promise);
+          try {
+            const waveform = await promise;
+            cacheVoiceWaveform(messageId, waveform);
+          } catch (error) {
+            console.warn("Could not decode a legacy voice message waveform.", error);
+            const flatWaveform = Array(voiceWaveformBarCount).fill(0);
+            cacheVoiceWaveform(messageId, flatWaveform);
+            setVoiceWaveform(voice, flatWaveform);
+            voice.dataset.waveformReady = "true";
+            return;
+          }
+        }
+        const waveform = voiceWaveformCache.get(messageId);
+        if (Array.isArray(waveform)) {
+          setVoiceWaveform(voice, waveform);
+          voice.dataset.waveformReady = "true";
+          return;
+        }
+        const pending = voiceWaveformCache.get(messageId);
+        if (pending && typeof pending.then === "function") {
+          try {
+            const decoded = await pending;
+            cacheVoiceWaveform(messageId, decoded);
+            setVoiceWaveform(voice, decoded);
+            voice.dataset.waveformReady = "true";
+          } catch (error) {
+            console.warn("Could not decode a legacy voice message waveform.", error);
+            const flatWaveform = Array(voiceWaveformBarCount).fill(0);
+            cacheVoiceWaveform(messageId, flatWaveform);
+            setVoiceWaveform(voice, flatWaveform);
+            voice.dataset.waveformReady = "true";
+          }
+        }
+      }
+      function formatVoiceTime(seconds) {
+        const safe = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+        return `${Math.floor(safe / 60)}:${String(Math.floor(safe % 60)).padStart(2, "0")}`;
+      }
+      function updateVoiceProgress(voice, audio) {
+        const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+        const currentTime = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+        const progress = duration ? currentTime / duration : 0;
+        voice.querySelectorAll(".relay-waveform rect").forEach((bar, index) =>
+          bar.classList.toggle("is-played", index < progress * voiceWaveformBarCount));
+        const slider = voice.querySelector(".relay-waveform");
+        voice.setAttribute("aria-label", `Voice message, ${formatVoiceTime(duration)}`);
+        const now = performance.now();
+        if (!voice.classList.contains("playing") || now - (voice._relayTimeUpdate || 0) >= 250) {
+          slider.setAttribute("aria-valuemax", String(Math.max(0, Math.round(duration))));
+          slider.setAttribute("aria-valuenow", String(Math.max(0, Math.floor(currentTime))));
+          slider.setAttribute("aria-valuetext", `${formatVoiceTime(currentTime)} of ${formatVoiceTime(duration)}`);
+          voice.querySelector(".relay-voice-duration").textContent = voice.classList.contains("playing")
+            ? formatVoiceTime(currentTime)
+            : formatVoiceTime(duration);
+          voice._relayTimeUpdate = now;
+        }
+      }
+      function seekVoiceMessage(voice, audio, clientX) {
+        if (!Number.isFinite(audio.duration) || !audio.duration) return;
+        const rect = voice.querySelector(".relay-waveform svg").getBoundingClientRect();
+        audio.currentTime = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) * audio.duration;
+        updateVoiceProgress(voice, audio);
+      }
+      function stopVoiceProgress(audio) {
+        if (audio._relayProgressFrame) cancelAnimationFrame(audio._relayProgressFrame);
+        audio._relayProgressFrame = 0;
+      }
+      function startVoiceProgress(audio) {
+        stopVoiceProgress(audio);
+        const voice = audio.closest(".relay-voice");
+        const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const update = () => {
+          if (audio.paused || audio.ended) {
+            stopVoiceProgress(audio);
+            return;
+          }
+          updateVoiceProgress(voice, audio);
+          if (!reducedMotion) audio._relayProgressFrame = requestAnimationFrame(update);
+        };
+        update();
+      }
       function syncMessageComposer() {
         const input = $("#messageInput");
         input.style.height = "24px";
@@ -14053,21 +14294,41 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           body: JSON.stringify(payload),
         });
         receiveMessage(message);
+        return message;
       }
       async function toggleVoiceRecording() {
         if (voiceRecorder?.state === "recording") {
           voiceRecorder.stop();
           return;
         }
+        let stream = null;
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           voiceRecorder = new MediaRecorder(stream);
+          voiceRecordingAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+          if (voiceRecordingAudioContext.state === "suspended") await voiceRecordingAudioContext.resume();
+          voiceRecordingAnalyser = voiceRecordingAudioContext.createAnalyser();
+          voiceRecordingAnalyser.fftSize = 256;
+          voiceRecordingAudioContext.createMediaStreamSource(stream).connect(voiceRecordingAnalyser);
+          const sampleBuffer = new Float32Array(voiceRecordingAnalyser.fftSize);
           voiceChunks = [];
+          voiceRecordingSamples = [];
+          voiceRecordingPeak = 0;
+          $("#messageRecordingWaveform").innerHTML = voiceWaveformSvg(Array(voiceWaveformBarCount).fill(0));
           voiceRecorder.addEventListener("dataavailable", (event) => { if (event.data.size) voiceChunks.push(event.data); });
           voiceRecorder.addEventListener("stop", async () => {
             $("#messageAudioButton").classList.remove("recording");
             stream.getTracks().forEach((track) => track.stop());
             clearInterval(voiceRecordingTimer);
+            clearInterval(voiceRecordingSampleTimer);
+            voiceRecordingSampleTimer = null;
+            voiceRecordingAnalyser = null;
+            try {
+              await voiceRecordingAudioContext?.close();
+            } catch (error) {
+              console.warn("Could not close the voice recording audio context.", error);
+            }
+            voiceRecordingAudioContext = null;
             $("#messageComposeField").hidden = false;
             $("#messageRecording").classList.remove("is-active");
             $("#messageComposePill").classList.remove("is-recording");
@@ -14080,12 +14341,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               return;
             }
             syncMessageComposer();
+            const waveform = normalizeVoiceWaveform(voiceRecordingSamples);
             const extension = type.includes("ogg") ? "ogg" : type.includes("mp4") ? "m4a" : "webm";
             const form = new FormData();
             form.append("file", blob, `voice.${extension}`);
             try {
               const uploaded = await api("/uploads/audio", { method: "POST", body: form });
-              await sendMessageAttachment({ audioUrl: uploaded.url });
+              const sent = await sendMessageAttachment({ audioUrl: uploaded.url, waveform });
+              if (sent?.id) cacheVoiceWaveform(sent.id, waveform);
             } catch (error) { toast(error.message); }
           });
           voiceRecorder.start();
@@ -14095,19 +14358,40 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           $("#messageComposeField").hidden = true;
           $("#messageRecording").classList.add("is-active");
           $("#messageComposePill").classList.add("is-recording");
+          $("#messageRecordingTime").textContent = "0:00";
           $("#messageAudioButton").innerHTML = '<svg class="i" aria-hidden="true"><use href="#square" /></svg>';
+          clearInterval(voiceRecordingSampleTimer);
+          voiceRecordingSampleTimer = setInterval(() => {
+            if (!voiceRecordingAnalyser) return;
+            voiceRecordingAnalyser.getFloatTimeDomainData(sampleBuffer);
+            let sum = 0;
+            for (const sample of sampleBuffer) sum += sample * sample;
+            const amplitude = Math.sqrt(sum / sampleBuffer.length);
+            voiceRecordingSamples.push(amplitude);
+            voiceRecordingPeak = Math.max(voiceRecordingPeak, amplitude);
+            updateRecordingWaveform(voiceRecordingPeak ? amplitude / voiceRecordingPeak : 0);
+          }, 50);
           clearInterval(voiceRecordingTimer);
           voiceRecordingTimer = setInterval(() => {
             const elapsed = Math.floor((Date.now() - voiceRecordingStartedAt) / 1000);
             $("#messageRecordingTime").textContent = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, "0")}`;
           }, 250);
-        } catch (error) { toast("Microphone access is unavailable."); }
+        } catch (error) {
+          stream?.getTracks().forEach((track) => track.stop());
+          clearInterval(voiceRecordingSampleTimer);
+          voiceRecordingSampleTimer = null;
+          voiceRecordingAnalyser = null;
+          try {
+            await voiceRecordingAudioContext?.close();
+          } catch (closeError) {
+            console.warn("Could not close the voice recording audio context.", closeError);
+          }
+          voiceRecordingAudioContext = null;
+          toast(`Microphone access is unavailable: ${error.message}`);
+        }
       }
       function relayVoicePlayIcon() {
-        return `<svg class="relay-voice-play-icon" width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true"><path d="M4 1.8 12 7 4 12.2Z"/></svg>`;
-      }
-      function relayVoicePauseIcon() {
-        return `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true"><rect x="2.5" y="1" width="3" height="12" rx="1"/><rect x="8.5" y="1" width="3" height="12" rx="1"/></svg>`;
+        return `<span class="relay-voice-play-icons" aria-hidden="true"><svg class="relay-voice-play-icon" viewBox="0 0 24 24"><path d="M9 5.6v12.8a.8.8 0 0 0 1.2.7l10.4-6.4a.8.8 0 0 0 0-1.4L10.2 4.9A.8.8 0 0 0 9 5.6z"/></svg><svg class="relay-voice-pause-icon" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1.5"/><rect x="14" y="5" width="4" height="14" rx="1.5"/></svg></span>`;
       }
       function messageMarkup(message) {
         const mine = message.senderId === currentUser?.id;
@@ -14122,8 +14406,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             ? `<img class="message-media message-media-static" src="${esc(imageUrl)}" alt="Shared GIF" width="260" height="195" loading="lazy" decoding="async" />`
             : `<button class="message-media-button" type="button" data-lightbox-image="${esc(imageUrl)}" aria-label="Open shared image"><img class="message-media" src="${esc(imageUrl)}" alt="Shared image" width="260" height="195" loading="lazy" decoding="async" /></button>`
           : "";
-        const wave = Array.from({ length: 28 }, (_, index) => `<i></i>`).join("");
-        const audio = message.audioUrl ? `<div class="relay-voice" data-voice-url="${esc(mediaHref(message.audioUrl))}"><button class="relay-voice-play" type="button" aria-label="Play voice message">${relayVoicePlayIcon()}</button><div class="relay-waveform" aria-hidden="true">${wave}</div><span class="relay-voice-duration">0:00</span><audio preload="metadata" src="${esc(mediaHref(message.audioUrl))}" hidden></audio></div>` : "";
+        const waveform = validVoiceWaveform(message.waveform) ? message.waveform : Array(voiceWaveformBarCount).fill(0);
+        const waveformReady = validVoiceWaveform(message.waveform);
+        const audioUrl = message.audioUrl ? mediaHref(message.audioUrl) : "";
+        const audio = audioUrl ? `<div class="relay-voice" role="group" aria-label="Voice message" data-message-id="${esc(message.id)}" data-voice-url="${esc(audioUrl)}" data-waveform="${esc(JSON.stringify(waveform))}" data-waveform-ready="${waveformReady}"><button class="relay-voice-play" type="button" aria-label="Play voice message">${relayVoicePlayIcon()}</button><div class="relay-waveform" role="slider" tabindex="0" aria-label="Seek voice message" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" aria-valuetext="0:00 of 0:00"><svg viewBox="0 0 190 24" preserveAspectRatio="none" aria-hidden="true">${voiceWaveformSvg(waveform)}</svg></div><span class="relay-voice-duration">0:00</span><audio preload="metadata" src="${esc(audioUrl)}" hidden></audio></div>` : "";
         const stickers = { heart: "❤️", wave: "👋", laugh: "😂", party: "🎉", fire: "🔥", thumbsup: "👍", sparkles: "✨", relax: "😊" };
         const sticker = message.stickerId && stickers[message.stickerId] ? `<span class="message-sticker" aria-label="Sticker">${stickers[message.stickerId]}</span>` : "";
         const text = body && !bodyIsGifUrl ? `<span>${esc(body)}</span>` : "";
@@ -14136,26 +14422,59 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function bindVoiceMessages(container = document) {
         container.querySelectorAll(".relay-voice audio:not([data-relay-bound])").forEach((audio) => {
           audio.dataset.relayBound = "true";
-          const formatVoiceTime = (seconds) => {
-            const safe = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
-            return `${Math.floor(safe / 60)}:${String(Math.floor(safe % 60)).padStart(2, "0")}`;
-          };
+          const voice = audio.closest(".relay-voice");
+          const waveform = voice.querySelector(".relay-waveform");
+          try {
+            const stored = JSON.parse(voice.dataset.waveform || "[]");
+            if (validVoiceWaveform(stored)) voiceWaveformCache.set(voice.dataset.messageId, stored);
+          } catch (error) {
+            console.warn("Could not read the voice message waveform.", error);
+          }
+          updateVoiceProgress(voice, audio);
+          if (voice.dataset.waveformReady !== "true") decodeVoiceWaveform(voice);
           audio.addEventListener("loadedmetadata", () => {
-            audio.closest(".relay-voice").querySelector(".relay-voice-duration").textContent = formatVoiceTime(audio.duration);
+            updateVoiceProgress(voice, audio);
           });
-          audio.addEventListener("timeupdate", () => {
-            const voice = audio.closest(".relay-voice");
-            const progress = audio.duration ? audio.currentTime / audio.duration : 0;
-            voice.querySelectorAll(".relay-waveform i").forEach((bar, index, bars) =>
-              bar.classList.toggle("heard", index / bars.length <= progress));
-            voice.querySelector(".relay-voice-duration").textContent = formatVoiceTime(Math.max(0, audio.duration - audio.currentTime));
+          audio.addEventListener("timeupdate", () => updateVoiceProgress(voice, audio));
+          audio.addEventListener("play", () => {
+            voice.classList.add("playing");
+            voice.querySelector(".relay-voice-play").setAttribute("aria-label", "Pause voice message");
+            startVoiceProgress(audio);
+          });
+          audio.addEventListener("pause", () => {
+            voice.classList.remove("playing");
+            voice.querySelector(".relay-voice-play").setAttribute("aria-label", "Play voice message");
+            stopVoiceProgress(audio);
+            updateVoiceProgress(voice, audio);
           });
           audio.addEventListener("ended", () => {
-            const voice = audio.closest(".relay-voice");
             voice.classList.remove("playing");
-            voice.querySelector(".relay-voice-play").innerHTML = relayVoicePlayIcon();
-            voice.querySelectorAll(".relay-waveform i").forEach((bar) => bar.classList.remove("heard"));
-            voice.querySelector(".relay-voice-duration").textContent = formatVoiceTime(audio.duration);
+            voice.querySelector(".relay-voice-play").setAttribute("aria-label", "Play voice message");
+            stopVoiceProgress(audio);
+            audio.currentTime = 0;
+            updateVoiceProgress(voice, audio);
+          });
+          let seeking = false;
+          waveform.addEventListener("pointerdown", (event) => {
+            seeking = true;
+            waveform.focus({ preventScroll: true });
+            waveform.setPointerCapture(event.pointerId);
+            seekVoiceMessage(voice, audio, event.clientX);
+          });
+          waveform.addEventListener("pointermove", (event) => {
+            if (seeking) seekVoiceMessage(voice, audio, event.clientX);
+          });
+          waveform.addEventListener("pointerup", (event) => {
+            seeking = false;
+            if (waveform.hasPointerCapture(event.pointerId)) waveform.releasePointerCapture(event.pointerId);
+          });
+          waveform.addEventListener("pointercancel", () => { seeking = false; });
+          waveform.addEventListener("keydown", (event) => {
+            if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+            event.preventDefault();
+            const direction = event.key === "ArrowRight" ? 1 : -1;
+            audio.currentTime = Math.max(0, Math.min(audio.duration || 0, audio.currentTime + direction * 5));
+            updateVoiceProgress(voice, audio);
           });
         });
       }
@@ -16041,18 +16360,21 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const voice = voicePlay.closest(".relay-voice");
           const audio = $("audio", voice);
           document.querySelectorAll(".relay-voice audio").forEach((other) => {
-            if (other !== audio) {
-              other.pause();
-              const otherVoice = other.closest(".relay-voice");
-              otherVoice?.classList.remove("playing");
-              const otherPlay = otherVoice?.querySelector(".relay-voice-play");
-              if (otherPlay) otherPlay.innerHTML = relayVoicePlayIcon();
-            }
+            if (other !== audio && !other.paused) other.pause();
           });
           if (audio.paused) {
-            try { await audio.play(); voicePlay.innerHTML = relayVoicePauseIcon(); voice.classList.add("playing"); }
-            catch { toast("Voice message could not be played."); }
-          } else { audio.pause(); voicePlay.innerHTML = relayVoicePlayIcon(); voice.classList.remove("playing"); }
+            voice.classList.add("playing");
+            voicePlay.setAttribute("aria-label", "Pause voice message");
+            audio.play().catch((error) => {
+              voice.classList.remove("playing");
+              voicePlay.setAttribute("aria-label", "Play voice message");
+              toast(`Voice message could not be played: ${error.message}`);
+            });
+          } else {
+            audio.pause();
+            voice.classList.remove("playing");
+            voicePlay.setAttribute("aria-label", "Play voice message");
+          }
           return;
         }
         if (e.target.closest("#messageImageButton")) {
@@ -17454,6 +17776,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           voiceRecordingCanceled = true;
           voiceRecorder.stop();
         }
+      });
+      $("#messageRecordingSend").addEventListener("click", () => {
+        if (voiceRecorder?.state === "recording") voiceRecorder.stop();
       });
       $("#messageInput").addEventListener("keydown", (event) => {
         if (event.key === "Enter" && !event.shiftKey) {

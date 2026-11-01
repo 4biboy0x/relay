@@ -127,6 +127,7 @@ CREATE TABLE "Message" (
   "body" varchar(2000) NOT NULL DEFAULT '',
   "mediaUrl" text,
   "audioUrl" text,
+  "waveform" integer[] NOT NULL DEFAULT ARRAY[]::integer[],
   "stickerId" varchar(64),
   "createdAt" timestamptz(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

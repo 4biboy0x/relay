@@ -326,6 +326,7 @@ model Message {
   body           String       @default("") @db.VarChar(2000)
   mediaUrl       String?
   audioUrl       String?
+  waveform       Int[]        @default([])
   stickerId      String?      @db.VarChar(64)
   createdAt      DateTime     @default(now())
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
