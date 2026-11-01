@@ -1466,10 +1466,11 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
 
 api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (req, res) => {
   const rawQuery = z.string().trim().min(1).max(100).parse(req.query.q);
-  const limit = z.coerce.number().int().min(1).max(50).default(50).parse(req.query.limit);
-  const offset = z.coerce.number().int().min(0).max(100000).default(0).parse(req.query.offset);
   const requestedConversationId = z.string().cuid().optional().parse(req.query.conversationId);
   const searchMode = z.enum(["all", "conversations", "messages"]).default("all").parse(req.query.mode);
+  const limit = z.coerce.number().int().min(1).max(searchMode === "messages" ? 30 : 50)
+    .default(searchMode === "messages" ? 30 : 50).parse(req.query.limit);
+  const cursor = decodeCursor(z.string().optional().parse(req.query.cursor));
   const normalizedQuery = rawQuery.normalize("NFKC").toLowerCase();
   const terms = [...new Set(normalizedQuery.split(/\s+/).filter(Boolean))]
     .map((term) => term.replace(/[\\%_]/g, "\\$&"));
@@ -1505,25 +1506,30 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
         `), " AND ")}
     )
   `;
-  const messageCountRows = searchMode === "messages"
+  const messageCountRows = searchMode === "messages" && !cursor
     ? await prisma.$queryRaw<Array<{ count: number }>>(Prisma.sql`
       SELECT COUNT(*)::int AS "count"
-      FROM "Message" AS message
-      JOIN "ConversationMember" AS viewer
-        ON viewer."conversationId" = message."conversationId"
-        AND viewer."userId" = ${req.userId!}
-      WHERE ${Prisma.join(terms.map((term) => Prisma.sql`
-        message."body" ILIKE ${`%${term}%`} ESCAPE '\\'
-      `), " AND ")}
-      ${requestedConversationId
-        ? Prisma.sql`AND message."conversationId" = ${requestedConversationId}`
-        : Prisma.empty}
+      FROM (
+        SELECT message."id"
+        FROM "Message" AS message
+        JOIN "ConversationMember" AS viewer
+          ON viewer."conversationId" = message."conversationId"
+          AND viewer."userId" = ${req.userId!}
+        WHERE ${Prisma.join(terms.map((term) => Prisma.sql`
+          message."body" ILIKE ${`%${term}%`} ESCAPE '\\'
+        `), " AND ")}
+        ${requestedConversationId
+          ? Prisma.sql`AND message."conversationId" = ${requestedConversationId}`
+          : Prisma.empty}
+        LIMIT 100
+      ) AS counted_messages
     `)
     : [];
   const messageCount = messageCountRows[0]?.count ?? 0;
+  const messageCountCapped = messageCount >= 100;
   const searchedMessages = searchMode === "messages"
-    ? await prisma.$queryRaw<Array<{ id: string; conversationId: string }>>(Prisma.sql`
-      SELECT message."id", message."conversationId"
+    ? await prisma.$queryRaw<Array<{ id: string; conversationId: string; createdAt: Date }>>(Prisma.sql`
+      SELECT message."id", message."conversationId", message."createdAt"
       FROM "Message" AS message
       JOIN "ConversationMember" AS viewer
         ON viewer."conversationId" = message."conversationId"
@@ -1534,11 +1540,15 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
       ${requestedConversationId
         ? Prisma.sql`AND message."conversationId" = ${requestedConversationId}`
         : Prisma.empty}
-      ORDER BY message."createdAt" ASC, message."id" ASC
-      LIMIT ${limit}
-      OFFSET ${offset}
+      ${cursor
+        ? Prisma.sql`AND (message."createdAt", message."id") < (${new Date(cursor.createdAt)}, ${cursor.id})`
+        : Prisma.empty}
+      ORDER BY message."createdAt" DESC, message."id" DESC
+      LIMIT ${limit + 1}
     `)
     : [];
+  const messageHasNextPage = searchMode === "messages" && searchedMessages.length > limit;
+  const matchingMessagePage = messageHasNextPage ? searchedMessages.slice(0, limit) : searchedMessages;
   const termConditions = searchMode === "messages"
     ? [matchingAllMessageTerms]
     : terms.map((term) => searchMode === "conversations"
@@ -1566,7 +1576,7 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
     LIMIT ${limit}
   `);
   const matchingMessages = searchMode === "messages"
-    ? searchedMessages
+    ? matchingMessagePage
     : searchMode === "conversations" || !rankedConversations.length
       ? []
       : await prisma.$queryRaw<Array<{ id: string; conversationId: string }>>(Prisma.sql`
@@ -1592,7 +1602,12 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
     ? [...new Set(matchingMessages.map(({ conversationId }) => conversationId))]
     : rankedConversations.map(({ id }) => id);
   if (!conversationIds.length) {
-    res.json({ items: [], count: messageCount });
+    res.json({
+      items: [],
+      count: cursor ? undefined : messageCount,
+      countCapped: cursor ? undefined : messageCountCapped,
+      nextCursor: null,
+    });
     return;
   }
   const matchedMessageIds = matchingMessages.map(({ id }) => id);
@@ -1647,8 +1662,13 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
       unreadCount: unread.get(row.id) ?? 0,
     };
   };
+  const lastMessageMatch = matchingMessagePage.at(-1);
   res.json({
-    count: messageCount,
+    count: cursor ? undefined : messageCount,
+    countCapped: cursor ? undefined : messageCountCapped,
+    nextCursor: messageHasNextPage && lastMessageMatch
+      ? encodeCursor(lastMessageMatch.createdAt, lastMessageMatch.id)
+      : null,
     items: searchMode === "messages"
       ? matchingMessages.flatMap(({ conversationId, id }) => {
         const item = serializeConversation(conversationId, id);

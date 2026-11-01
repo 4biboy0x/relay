@@ -4947,19 +4947,6 @@
       .conversation-search-results[hidden] {
         display: none;
       }
-      .message-search-load-more {
-        align-self: center;
-        margin: 8px 0 14px;
-        padding: 8px 20px;
-        border-radius: 999px;
-        color: var(--text-2);
-        font-size: 12px;
-        font-weight: 600;
-      }
-      .message-search-load-more:disabled {
-        cursor: wait;
-        opacity: 0.65;
-      }
       .recipient-picker {
         position: relative;
       }
@@ -5112,6 +5099,71 @@
       }
       .conversation-item.is-search-result[aria-selected="true"] {
         background: var(--accent-soft);
+      }
+      #messageSearchResults .message-search-result {
+        min-height: 0;
+        padding: 12px 16px;
+        border-radius: 0;
+        background: transparent;
+        transition: background-color 120ms ease;
+      }
+      #messageSearchResults .message-search-result:hover {
+        background: var(--hover);
+      }
+      #messageSearchResults .message-search-result[aria-selected="true"] {
+        background: var(--surface-2);
+      }
+      #conversationList mark,
+      #messageSearchResults mark {
+        border-radius: 4px;
+        margin: 0 -1px;
+        padding: 0 2px;
+        color: var(--accent);
+        background: var(--accent-soft);
+        font-weight: 600;
+        -webkit-box-decoration-break: clone;
+        box-decoration-break: clone;
+      }
+      :root[data-theme="dark"] #conversationList mark,
+      :root[data-theme="dark"] #messageSearchResults mark {
+        color: var(--accent-h);
+        background: rgba(124,134,242,.22);
+      }
+      #messageSearchResults .message-search-time {
+        flex: none;
+        margin-left: auto;
+        color: var(--text-3);
+        font-size: 11px;
+        font-variant-numeric: tabular-nums;
+      }
+      #messageSearchResults .message-search-sentinel {
+        display: flex;
+        min-height: 40px;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-3);
+        font-size: 12px;
+      }
+      #messageSearchResults .message-search-spinner {
+        width: 20px;
+        height: 20px;
+        border: 2px solid color-mix(in srgb, var(--text-3) 24%, transparent);
+        border-top-color: var(--text-3);
+        border-radius: 50%;
+        animation: spin .8s linear infinite;
+      }
+      #messageSearchResults .message-search-retry {
+        border: 0;
+        padding: 0;
+        color: var(--accent);
+        background: transparent;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #messageSearchResults .message-search-spinner { animation: none; }
       }
       .conversation-item-heading {
         display: flex;
@@ -5378,8 +5430,23 @@
         background: var(--accent);
       }
       .message-bubble.search-message-highlight {
-        background: var(--accent-soft);
-        transition: background-color 160ms ease;
+        animation: message-search-shake 420ms ease-in-out,
+          message-search-highlight 1500ms ease-out;
+      }
+      @keyframes message-search-shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-4px); }
+        75% { transform: translateX(4px); }
+      }
+      @keyframes message-search-highlight {
+        0%, 65% { background-color: var(--accent-soft); }
+        100% { background-color: transparent; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .message-bubble.search-message-highlight {
+          animation: none;
+          background-color: var(--accent-soft);
+        }
       }
       .chat-compose {
         position: sticky;
@@ -8834,9 +8901,13 @@
         tab: "conversations",
         results: { conversations: [], messages: [] },
         generation: 0,
-        messageOffset: 0,
+        messageCursor: "",
         messageCount: 0,
+        messageCountCapped: false,
+        messageHasNextPage: false,
         messageLoading: false,
+        messageError: false,
+        messageObserver: null,
       };
       const messageSearchHighlightTimers = new WeakMap();
       let pendingConversationRestoreId = "";
@@ -14862,22 +14933,61 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function normalizedConversationQuery(value) {
         return value.normalize("NFKC").trim().toLowerCase().split(/\s+/).filter(Boolean);
       }
-      function emphasizeConversationMatch(text, query) {
+      function appendConversationMatch(target, text, query) {
+        target.textContent = "";
         const terms = [...new Set(normalizedConversationQuery(query))]
           .sort((left, right) => right.length - left.length);
-        if (!terms.length) return esc(text);
+        if (!terms.length) {
+          target.append(document.createTextNode(text));
+          return;
+        }
         const pattern = new RegExp(
           `(${terms.map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`,
           "giu",
         );
-        let output = "";
         let cursor = 0;
         for (const match of text.matchAll(pattern)) {
           const index = match.index ?? 0;
-          output += `${esc(text.slice(cursor, index))}<strong>${esc(match[0])}</strong>`;
+          target.append(document.createTextNode(text.slice(cursor, index)));
+          const mark = document.createElement("mark");
+          mark.textContent = match[0];
+          target.append(mark);
           cursor = index + match[0].length;
         }
-        return output + esc(text.slice(cursor));
+        target.append(document.createTextNode(text.slice(cursor)));
+      }
+      function conversationMessageSnippet(text, query) {
+        const terms = [...new Set(normalizedConversationQuery(query))]
+          .sort((left, right) => right.length - left.length);
+        if (!terms.length) return { text, clippedStart: false, clippedEnd: false };
+        const pattern = new RegExp(terms.map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "iu");
+        const match = pattern.exec(text);
+        if (!match) return { text, clippedStart: false, clippedEnd: false };
+        const start = Math.max(0, match.index - 40);
+        const end = Math.min(text.length, match.index + match[0].length + 60);
+        return {
+          text: text.slice(start, end),
+          clippedStart: start > 0,
+          clippedEnd: end < text.length,
+        };
+      }
+      function messageSearchTime(value) {
+        const date = new Date(value);
+        if (!Number.isFinite(date.getTime())) return { label: "", title: "" };
+        const age = Date.now() - date.getTime();
+        if (age < 60_000) return { label: "Now", title: date.toLocaleString() };
+        if (age < 60 * 60_000) return { label: `${Math.floor(age / 60_000)}m`, title: date.toLocaleString() };
+        if (age < 24 * 60 * 60_000) return { label: `${Math.floor(age / 3_600_000)}h`, title: date.toLocaleString() };
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const sameDate = (left, right) => left.getFullYear() === right.getFullYear()
+          && left.getMonth() === right.getMonth() && left.getDate() === right.getDate();
+        const label = sameDate(date, yesterday)
+          ? "Yesterday"
+          : age < 7 * 24 * 60 * 60_000
+            ? new Intl.DateTimeFormat(undefined, { weekday: "long" }).format(date)
+            : new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" }).format(date);
+        return { label, title: date.toLocaleString() };
       }
       function conversationSearchText(item) {
         const otherMembers = item.members.filter((member) => member.id !== currentUser?.id);
@@ -14908,7 +15018,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const matchingLastMessage = queryTerms.length > 0
             && queryTerms.every((term) => (lastMessage?.body || "").normalize("NFKC").toLowerCase().includes(term));
           const message = searchMode === "messages" ? item.matchedMessage : lastMessage;
-          const highlightMessage = Boolean(searchQuery && (searchMode === "messages" ? item.matchedMessage : matchingLastMessage));
           let preview = "Start a conversation";
           let messageTime = "";
           if (message) {
@@ -14924,9 +15033,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               : sender;
             const body = message.body?.trim()
               || (message.mediaUrl ? (normalizeGiphyGifUrl(mediaHref(message.mediaUrl)) ? "GIF" : "Photo") : message.audioUrl ? "Voice message" : message.stickerId ? "Sticker" : "");
-            const previewText = body
-              ? `${esc(shortSender)}: ${highlightMessage ? emphasizeConversationMatch(body, searchQuery) : esc(body)}`
-              : esc(shortSender);
+            const previewText = body ? `${esc(shortSender)}: ${esc(body)}` : esc(shortSender);
             if (message.createdAt && Number.isFinite(new Date(message.createdAt).getTime())) {
               const createdAt = new Date(message.createdAt).toISOString();
               messageTime = `<time class="conversation-preview-time" datetime="${esc(createdAt)}" title="${esc(new Date(createdAt).toLocaleString())}">${esc(timeAgo(createdAt))}</time>`;
@@ -14945,27 +15052,118 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }).join("");
         if (append) resultList.insertAdjacentHTML("beforeend", markup);
         else resultList.innerHTML = markup;
+        const rows = Array.from(resultList.querySelectorAll(".conversation-item"));
+        const renderedRows = append ? rows.slice(-items.length) : rows;
+        renderedRows.forEach((row, index) => {
+          const item = items[index];
+          const other = item.members.find((member) => member.id !== currentUser?.id);
+          const name = row.querySelector(".conversation-item-heading b");
+          if (searchQuery && name) appendConversationMatch(name, other?.displayName || "Relay user", searchQuery);
+          const preview = row.querySelector(".conversation-preview-text");
+          if (searchQuery && preview) appendConversationMatch(preview, preview.textContent, searchQuery);
+        });
       }
-      function updateMessageSearchLoadMore() {
+      function updateMessageSearchSentinel() {
         const list = $("#messageSearchResults");
-        list.querySelector(".message-search-load-more")?.remove();
+        conversationSearchState.messageObserver?.disconnect();
+        conversationSearchState.messageObserver = null;
+        list.querySelector(".message-search-sentinel")?.remove();
+        if (!conversationSearchState.messageHasNextPage && !conversationSearchState.messageLoading
+          && !conversationSearchState.messageError) return;
+        const sentinel = document.createElement("div");
+        sentinel.className = "message-search-sentinel";
+        sentinel.setAttribute("aria-live", "polite");
         if (conversationSearchState.messageLoading) {
-          list.insertAdjacentHTML("beforeend", `<button class="message-search-load-more" type="button" disabled aria-live="polite">Loading more messages…</button>`);
-        } else if (conversationSearchState.messageOffset < conversationSearchState.messageCount) {
-          list.insertAdjacentHTML("beforeend", `<button class="message-search-load-more" type="button">Load more messages</button>`);
+          sentinel.innerHTML = '<span class="message-search-spinner" role="status" aria-label="Loading more messages"></span>';
+        } else if (conversationSearchState.messageError) {
+          sentinel.append(document.createTextNode("Couldn't load more "));
+          const retry = document.createElement("button");
+          retry.type = "button";
+          retry.className = "message-search-retry";
+          retry.dataset.messageSearchRetry = "";
+          retry.textContent = "Try again";
+          sentinel.append(retry);
         }
+        list.append(sentinel);
+        if (conversationSearchState.messageHasNextPage && !conversationSearchState.messageLoading
+          && !conversationSearchState.messageError && "IntersectionObserver" in window) {
+          conversationSearchState.messageObserver = new IntersectionObserver((entries) => {
+            if (entries.some((entry) => entry.isIntersecting)) loadMoreMessageSearchResults();
+          }, { root: list, rootMargin: "300px" });
+          conversationSearchState.messageObserver.observe(sentinel);
+        }
+      }
+      function renderMessageSearchItems(items, append = false) {
+        const list = $("#messageSearchResults");
+        list.querySelector(".message-search-sentinel")?.remove();
+        if (!items.length && !append) {
+          list.innerHTML = conversationSearchState.query
+            ? emptyState("No messages found", "Try a different search.", true)
+            : "";
+          return;
+        }
+        const fragment = document.createDocumentFragment();
+        items.forEach((item) => {
+          const other = item.members.find((member) => member.id !== currentUser?.id);
+          const message = item.matchedMessage;
+          if (!message) return;
+          const row = document.createElement("button");
+          row.type = "button";
+          row.className = "conversation-item is-search-result message-search-result";
+          row.dataset.conversation = item.id;
+          row.dataset.searchMessageId = message.id;
+          row.setAttribute("aria-current", "false");
+          row.setAttribute("aria-selected", "false");
+          const avatar = document.createElement("span");
+          avatar.innerHTML = presenceAvatarMarkup(other, "sm");
+          row.append(avatar.firstElementChild);
+          const copy = document.createElement("span");
+          copy.className = "grow";
+          const heading = document.createElement("span");
+          heading.className = "conversation-item-heading";
+          const name = document.createElement("b");
+          appendConversationMatch(name, other?.displayName || "Relay user", conversationSearchState.query);
+          heading.append(name);
+          const timestamp = messageSearchTime(message.createdAt);
+          const time = document.createElement("time");
+          time.className = "message-search-time";
+          time.dateTime = message.createdAt;
+          time.title = timestamp.title;
+          time.textContent = timestamp.label;
+          heading.append(time);
+          const preview = document.createElement("small");
+          const sender = message.senderId === currentUser?.id
+            ? "You"
+            : message.sender?.displayName || other?.displayName || "Relay user";
+          const body = message.body?.trim()
+            || (message.mediaUrl ? "Photo" : message.audioUrl ? "Voice message" : message.stickerId ? "Sticker" : "");
+          const snippet = conversationMessageSnippet(body, conversationSearchState.query);
+          if (snippet.clippedStart) preview.append(document.createTextNode("…"));
+          const prefix = document.createElement("span");
+          prefix.className = "message-search-sender";
+          prefix.textContent = `${sender}: `;
+          const snippetContent = document.createElement("span");
+          appendConversationMatch(snippetContent, snippet.text, conversationSearchState.query);
+          preview.append(prefix, snippetContent);
+          if (snippet.clippedEnd) preview.append(document.createTextNode("…"));
+          copy.append(heading, preview);
+          row.append(copy);
+          fragment.append(row);
+        });
+        list.append(fragment);
       }
       async function loadMoreMessageSearchResults() {
         const { query, generation } = conversationSearchState;
         if (!query || conversationSearchState.messageLoading
-          || conversationSearchState.messageOffset >= conversationSearchState.messageCount) return;
+          || !conversationSearchState.messageHasNextPage) return;
         conversationSearchState.messageLoading = true;
-        updateMessageSearchLoadMore();
+        conversationSearchState.messageError = false;
+        updateMessageSearchSentinel();
         try {
           const params = new URLSearchParams({
             q: query,
-            limit: "50",
-            offset: String(conversationSearchState.messageOffset),
+            limit: "30",
+            cursor: conversationSearchState.messageCursor,
             mode: "messages",
           });
           const result = await api(`/conversations/search?${params}`);
@@ -14973,17 +15171,18 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             || $("#conversationSearch").value.trim().replace(/\s+/g, " ") !== query) return;
           const items = JSON.parse(JSON.stringify(result.items));
           conversationSearchState.results.messages.push(...items);
-          conversationSearchState.messageOffset += items.length;
-          conversationSearchState.messageCount = result.count || 0;
-          renderConversationItems(items, query, "messages", true);
+          conversationSearchState.messageCursor = result.nextCursor || "";
+          conversationSearchState.messageHasNextPage = Boolean(result.nextCursor);
+          renderMessageSearchItems(items, true);
         } catch (error) {
           if (generation === conversationSearchState.generation) {
-            toast(`Could not load more matching messages: ${error.message}`);
+            console.error("Could not load more matching messages.", error);
+            conversationSearchState.messageError = true;
           }
         } finally {
           if (generation === conversationSearchState.generation) {
             conversationSearchState.messageLoading = false;
-            updateMessageSearchLoadMore();
+            updateMessageSearchSentinel();
           }
         }
       }
@@ -15016,15 +15215,21 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         clearTimeout(conversationSearchTimer);
         const query = $("#conversationSearch").value.trim().replace(/\s+/g, " ");
         const generation = ++conversationSearchState.generation;
+        conversationSearchState.messageObserver?.disconnect();
+        conversationSearchState.messageObserver = null;
         conversationSearchState.query = query;
         conversationSearchState.results = { conversations: [], messages: [] };
-        conversationSearchState.messageOffset = 0;
+        conversationSearchState.messageCursor = "";
         conversationSearchState.messageCount = 0;
+        conversationSearchState.messageCountCapped = false;
+        conversationSearchState.messageHasNextPage = false;
         conversationSearchState.messageLoading = false;
+        conversationSearchState.messageError = false;
         if (!query) {
           $("#conversationSearchTabs").hidden = true;
           $("#messageSearchResults").hidden = true;
-          $("#messageSearchTab").textContent = "Messages (0)";
+          $("#messageSearchResults").replaceChildren();
+          $("#messageSearchTab").textContent = "Messages";
           setConversationSearchMode("conversations");
           renderConversationItems(conversations);
           filterConversations();
@@ -15039,10 +15244,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         setConversationSearchMode(conversationSearchState.tab);
         conversationSearchTimer = setTimeout(async () => {
           try {
-            const params = new URLSearchParams({ q: query, limit: "50" });
+            const conversationParams = new URLSearchParams({ q: query, limit: "50", mode: "conversations" });
+            const messageParams = new URLSearchParams({ q: query, limit: "30", mode: "messages" });
             const [conversationResult, messageResult] = await Promise.all([
-              api(`/conversations/search?${params}&mode=conversations`),
-              api(`/conversations/search?${params}&mode=messages`),
+              api(`/conversations/search?${conversationParams}`),
+              api(`/conversations/search?${messageParams}`),
             ]);
             if (generation !== conversationSearchState.generation
               || $("#conversationSearch").value.trim().replace(/\s+/g, " ") !== query) return;
@@ -15056,17 +15262,21 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               messages: messageItems,
             };
             renderConversationItems(conversationSearchState.results.conversations, query, "conversations");
-            renderConversationItems(messageItems, query, "messages");
-            conversationSearchState.messageOffset = messageItems.length;
-            conversationSearchState.messageCount = messageResult.count || 0;
-            $("#messageSearchTab").textContent = `Messages (${fmt(messageResult.count || 0)})`;
-            updateMessageSearchLoadMore();
+            renderMessageSearchItems(messageItems);
+            conversationSearchState.messageCursor = messageResult.nextCursor || "";
+            conversationSearchState.messageHasNextPage = Boolean(messageResult.nextCursor);
+            conversationSearchState.messageCount = messageResult.count;
+            conversationSearchState.messageCountCapped = Boolean(messageResult.countCapped);
+            $("#messageSearchTab").textContent = messageResult.count === undefined
+              ? "Messages"
+              : `Messages (${conversationSearchState.messageCountCapped ? "99+" : fmt(messageResult.count)})`;
+            updateMessageSearchSentinel();
             setConversationSearchMode(conversationSearchState.tab);
           } catch (error) {
             if (generation !== conversationSearchState.generation) return;
             $("#conversationList").innerHTML = emptyState("Couldn’t search conversations.", error.message, true);
             $("#messageSearchResults").innerHTML = emptyState("Couldn’t search messages.", error.message, true);
-            $("#messageSearchTab").textContent = "Messages (0)";
+            $("#messageSearchTab").textContent = "Messages";
             toast(`Conversation search failed: ${error.message}`);
           }
         }, 500);
@@ -16694,7 +16904,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           setConversationSearchMode(searchModeButton.dataset.conversationSearchMode);
           return;
         }
-        if (e.target.closest(".message-search-load-more")) {
+        if (e.target.closest("[data-message-search-retry]")) {
           loadMoreMessageSearchResults();
           return;
         }
@@ -17752,12 +17962,26 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#conversationSearch").value = "";
         $("#conversationSearch").dispatchEvent(new Event("input", { bubbles: true }));
       });
-      $("#messageSearchResults").addEventListener("scroll", () => {
-        const list = $("#messageSearchResults");
-        if (list.scrollHeight - list.scrollTop - list.clientHeight < 120) {
-          loadMoreMessageSearchResults();
+      $("#messageSearchResults").addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          const row = event.target.closest(".message-search-result");
+          if (row) {
+            event.preventDefault();
+            row.click();
+          }
+          return;
         }
-      }, { passive: true });
+        if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+        const rows = $$(".message-search-result", $("#messageSearchResults"));
+        if (!rows.length) return;
+        event.preventDefault();
+        const currentIndex = rows.indexOf(event.target.closest(".message-search-result"));
+        const nextIndex = currentIndex < 0
+          ? (event.key === "ArrowDown" ? 0 : rows.length - 1)
+          : Math.max(0, Math.min(rows.length - 1, currentIndex + (event.key === "ArrowDown" ? 1 : -1)));
+        rows[nextIndex].focus();
+        rows[nextIndex].scrollIntoView({ block: "nearest" });
+      });
       $("#chatLog").addEventListener("scroll", () => {
         if ($("#chatLog").scrollTop <= 24) loadOlderMessages();
       }, { passive: true });
