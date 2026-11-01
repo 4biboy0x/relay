@@ -9,6 +9,7 @@ const optionalEnvString = z.preprocess(
 const configSchema = z.object({
   DATABASE_URL: z.string().url(),
   JWT_ACCESS_SECRET: z.string().min(32),
+  POST_VIEW_HMAC_SECRET: z.string().min(32),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   CLIENT_ORIGIN: z.string().url()
     .transform((value) => new URL(value).origin)

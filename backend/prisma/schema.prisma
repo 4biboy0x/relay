@@ -28,6 +28,7 @@ model User {
   sentNotifs    Notification[]       @relation("NotificationActor")
   notifications Notification[]       @relation("NotificationRecipient")
   postViews     PostView[]
+  reelViews     ReelView[]
   reels         Reel[]
   reelLikes     ReelLike[]
   reelReposts   ReelRepost[]
@@ -71,7 +72,7 @@ model Post {
   replyTo       Post?          @relation("PostReplies", fields: [replyToId], references: [id], onDelete: Cascade)
   replies       Post[]         @relation("PostReplies")
   hashtags      PostHashtag[]
-  views         Int            @default(0)
+  views         Int            @default(0) @map("view_count")
 
   @@index([createdAt(sort: Desc), id(sort: Desc)])
   @@index([authorId, createdAt(sort: Desc), id(sort: Desc)])
@@ -79,16 +80,16 @@ model Post {
 }
 
 model PostView {
-  id        String   @id @default(cuid())
-  userId    String
-  postId    String
-  sessionId String   @db.Uuid
-  createdAt DateTime @default(now())
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId        String   @map("post_id")
+  viewerKey     String   @map("viewer_key")
+  userId        String?  @map("user_id")
+  firstViewedAt DateTime @default(now()) @map("first_viewed_at") @db.Timestamptz(6)
+  post          Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user          User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, postId, sessionId])
-  @@index([postId, createdAt(sort: Desc)])
+  @@id([postId, viewerKey])
+  @@index([postId], map: "post_views_post_id_idx")
+  @@map("post_views")
 }
 
 model Reel {
@@ -163,14 +164,16 @@ model ReelRepost {
 }
 
 model ReelView {
-  reelId    String   @db.Uuid
-  viewerKey String   @db.VarChar(128)
-  day       DateTime @db.Date
-  createdAt DateTime @default(now())
-  reel      Reel     @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  reelId        String   @db.Uuid @map("reel_id")
+  viewerKey     String   @map("viewer_key")
+  userId        String?  @map("user_id")
+  firstViewedAt DateTime @default(now()) @map("first_viewed_at") @db.Timestamptz(6)
+  reel          Reel     @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  user          User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@id([reelId, viewerKey, day])
-  @@index([reelId, createdAt])
+  @@id([reelId, viewerKey])
+  @@index([reelId, firstViewedAt], map: "reel_views_reel_id_first_viewed_at_idx")
+  @@map("reel_views")
 }
 
 model ReelComment {

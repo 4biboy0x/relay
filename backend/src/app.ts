@@ -6,7 +6,7 @@ import bcrypt from "bcryptjs";
 import { randomBytes, randomUUID } from "node:crypto";
 import { NotificationType, Prisma, type InteractionType, type NotificationType as NotificationTypeValue } from "@prisma/client";
 import { z } from "zod";
-import { authRequired, createAccessToken, hashPassword, hashRefreshToken, issueRefreshToken, verifyPassword } from "./auth";
+import { authOptional, authRequired, createAccessToken, hashPassword, hashRefreshToken, issueRefreshToken, verifyPassword } from "./auth";
 import { clientOrigins, config } from "./config";
 import { prisma } from "./db";
 import { getNeonRealtime } from "./neon-realtime";
@@ -15,6 +15,7 @@ import { getReelStorageOrigins } from "./reel-storage";
 import { reelProfileRouter, reelsRouter } from "./reels";
 import { emitToAuthenticated, emitToConversation, emitToPost, emitToUser } from "./realtime";
 import { audioUpload, imageUpload, readStoredUpload, saveAudio, saveImage, uploadDirectory } from "./uploads";
+import { createViewerKey, viewRateLimiter, viewRequestGuard } from "./view-tracking";
 import {
   loginSchema,
   messageSchema,
@@ -119,6 +120,39 @@ const uploadLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 30, standardH
 const searchLimiter = rateLimit({ windowMs: 60 * 1000, limit: 120, standardHeaders: true, legacyHeaders: false });
 const messageLimiter = rateLimit({ windowMs: 60 * 1000, limit: 60, standardHeaders: true, legacyHeaders: false });
 const placesLimiter = rateLimit({ windowMs: 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false });
+
+type PostViewResult = { id: string; views: number | null; recorded: boolean };
+async function recordPostView(
+  tx: Prisma.TransactionClient,
+  postId: string,
+  viewerKey: string,
+  userId: string | undefined,
+): Promise<PostViewResult> {
+  const [post] = await tx.$queryRaw<Array<{ id: string; authorId: string; views: number }>>(Prisma.sql`
+    SELECT "id", "authorId", "view_count" AS "views"
+    FROM "Post"
+    WHERE "id" = ${postId} AND "deletedAt" IS NULL
+    FOR UPDATE
+  `);
+  if (!post) return { id: postId, views: null, recorded: false };
+  if (post.authorId === userId) return { id: postId, views: post.views, recorded: false };
+
+  const inserted = await tx.$queryRaw<Array<{ post_id: string }>>(Prisma.sql`
+    INSERT INTO post_views (post_id, viewer_key, user_id)
+    VALUES (${postId}, ${viewerKey}, ${userId ?? null})
+    ON CONFLICT (post_id, viewer_key) DO NOTHING
+    RETURNING post_id
+  `);
+  if (!inserted.length) return { id: postId, views: post.views, recorded: false };
+
+  const [updated] = await tx.$queryRaw<Array<{ views: number }>>(Prisma.sql`
+    UPDATE "Post"
+    SET "view_count" = "view_count" + 1
+    WHERE "id" = ${postId} AND "deletedAt" IS NULL
+    RETURNING "view_count" AS "views"
+  `);
+  return { id: postId, views: updated?.views ?? null, recorded: Boolean(updated) };
+}
 
 type Cursor = { createdAt: string; id: string; likes?: number; followers?: number };
 const encodeCursor = (createdAt: Date, id: string): string =>
@@ -906,33 +940,36 @@ api.get("/posts/:postId", authRequired, asyncRoute(async (req, res) => {
   res.json(postResponse(post, counts.get(post.id)));
 }));
 
-api.post("/posts/:postId/view", authRequired, asyncRoute(async (req, res) => {
+api.post("/posts/:postId/view", authOptional, viewRequestGuard, viewRateLimiter, asyncRoute(async (req, res) => {
   const postId = z.string().cuid().parse(req.params.postId);
-  const { sessionId } = z.object({ sessionId: z.string().uuid() }).parse(req.body);
-  const result = await prisma.$transaction(async (tx) => {
-    const post = await tx.post.findFirst({
-      where: { id: postId, deletedAt: null },
-      select: { id: true, views: true },
-    });
-    if (!post) throw new HttpError(404, "Post not found");
-    const inserted = await tx.postView.createMany({
-      data: { userId: req.userId!, postId, sessionId },
-      skipDuplicates: true,
-    });
-    const views = inserted.count
-      ? (await tx.post.update({
-          where: { id: postId },
-          data: { views: { increment: 1 } },
-          select: { views: true },
-        })).views
-      : (await tx.post.findUniqueOrThrow({
-          where: { id: postId },
-          select: { views: true },
-        })).views;
-    return { views, recorded: inserted.count > 0 };
-  });
-  if (result.recorded) emitToAuthenticated("post:view-count", { postId, views: result.views });
+  z.object({}).strict().parse(req.body ?? {});
+  const viewerKey = createViewerKey(req);
+  const result = await prisma.$transaction((tx) => recordPostView(tx, postId, viewerKey, req.userId));
+  if (result.recorded && result.views !== null) {
+    emitToAuthenticated("post:view-count", { postId, views: result.views });
+  }
   res.json(result);
+}));
+
+api.post("/posts/views", authOptional, viewRequestGuard, viewRateLimiter, asyncRoute(async (req, res) => {
+  const { ids } = z.object({
+    ids: z.array(z.string().cuid()).min(1).max(20),
+  }).strict().parse(req.body);
+  const viewerKey = createViewerKey(req);
+  const uniqueIds = [...new Set(ids)].sort();
+  const results = await prisma.$transaction(async (tx) => {
+    const items: PostViewResult[] = [];
+    for (const postId of uniqueIds) {
+      items.push(await recordPostView(tx, postId, viewerKey, req.userId));
+    }
+    return items;
+  });
+  results.forEach((result) => {
+    if (result.recorded && result.views !== null) {
+      emitToAuthenticated("post:view-count", { postId: result.id, views: result.views });
+    }
+  });
+  res.json({ items: results });
 }));
 
 api.get("/posts/:postId/replies", authRequired, asyncRoute(async (req, res) => {

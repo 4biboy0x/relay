@@ -40,10 +40,21 @@ CREATE TABLE "Post" (
   "location" varchar(80),
   "replyToId" text REFERENCES "Post"("id") ON DELETE CASCADE,
   "replyCount" integer NOT NULL DEFAULT 0 CHECK ("replyCount" >= 0),
+  "view_count" integer NOT NULL DEFAULT 0,
   "createdAt" timestamptz(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" timestamptz(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "deletedAt" timestamptz(3)
 );
+
+CREATE TABLE post_views (
+  post_id text NOT NULL REFERENCES "Post"("id") ON DELETE CASCADE,
+  viewer_key text NOT NULL,
+  user_id text REFERENCES "User"("id") ON DELETE CASCADE,
+  first_viewed_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (post_id, viewer_key)
+);
+
+CREATE INDEX post_views_post_id_idx ON post_views (post_id);
 
 CREATE TABLE "Interaction" (
   "id" text PRIMARY KEY,
@@ -167,12 +178,12 @@ CREATE TABLE "ReelRepost" (
   PRIMARY KEY ("userId", "reelId")
 );
 
-CREATE TABLE "ReelView" (
-  "reelId" uuid NOT NULL REFERENCES "Reel"("id") ON DELETE CASCADE,
-  "viewerKey" varchar(128) NOT NULL,
-  "day" date NOT NULL,
-  "createdAt" timestamptz(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY ("reelId", "viewerKey", "day")
+CREATE TABLE reel_views (
+  reel_id uuid NOT NULL REFERENCES "Reel"("id") ON DELETE CASCADE,
+  viewer_key text NOT NULL,
+  user_id text REFERENCES "User"("id") ON DELETE CASCADE,
+  first_viewed_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (reel_id, viewer_key)
 );
 
 CREATE TABLE "ReelComment" (
@@ -234,7 +245,7 @@ CREATE INDEX "Reel_storageDeletedAt_deletedAt_idx" ON "Reel" ("storageDeletedAt"
 CREATE INDEX "ReelLike_userId_createdAt_idx" ON "ReelLike" ("userId", "createdAt" DESC);
 CREATE INDEX "ReelBookmark_userId_createdAt_idx" ON "ReelBookmark" ("userId", "createdAt" DESC);
 CREATE INDEX "ReelRepost_userId_createdAt_idx" ON "ReelRepost" ("userId", "createdAt" DESC);
-CREATE INDEX "ReelView_reelId_createdAt_idx" ON "ReelView" ("reelId", "createdAt");
+CREATE INDEX reel_views_reel_id_first_viewed_at_idx ON reel_views (reel_id, first_viewed_at);
 CREATE INDEX "ReelComment_reelId_createdAt_id_idx" ON "ReelComment" ("reelId", "createdAt" DESC, "id" DESC);
 CREATE INDEX "ReelComment_replyToId_createdAt_idx" ON "ReelComment" ("replyToId", "createdAt" DESC);
 CREATE INDEX "ReelReport_status_createdAt_idx" ON "ReelReport" ("status", "createdAt");
@@ -247,6 +258,7 @@ GRANT SELECT ("id", "handle", "displayName", "bio", "avatarUrl", "bannerUrl", "c
 
 ALTER TABLE "User" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Post" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE post_views ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Interaction" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Follow" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Notification" ENABLE ROW LEVEL SECURITY;
@@ -260,13 +272,14 @@ ALTER TABLE "Reel" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "ReelLike" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "ReelBookmark" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "ReelRepost" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "ReelView" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reel_views ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "ReelComment" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "ReelReport" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "ProcessingJob" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "User" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "Post" FORCE ROW LEVEL SECURITY;
+ALTER TABLE post_views FORCE ROW LEVEL SECURITY;
 ALTER TABLE "Interaction" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "Follow" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "Notification" FORCE ROW LEVEL SECURITY;
@@ -280,7 +293,7 @@ ALTER TABLE "Reel" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "ReelLike" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "ReelBookmark" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "ReelRepost" FORCE ROW LEVEL SECURITY;
-ALTER TABLE "ReelView" FORCE ROW LEVEL SECURITY;
+ALTER TABLE reel_views FORCE ROW LEVEL SECURITY;
 ALTER TABLE "ReelComment" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "ReelReport" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "ProcessingJob" FORCE ROW LEVEL SECURITY;
@@ -299,6 +312,9 @@ CREATE POLICY "posts_owner_update" ON "Post" FOR UPDATE
   USING (auth.uid() = "authorId") WITH CHECK (auth.uid() = "authorId");
 CREATE POLICY "posts_owner_delete" ON "Post" FOR DELETE
   USING (auth.uid() = "authorId");
+
+CREATE POLICY "post_views_insert" ON post_views FOR INSERT
+  WITH CHECK (true);
 
 CREATE POLICY "interactions_public_select" ON "Interaction" FOR SELECT USING (true);
 CREATE POLICY "interactions_owner_insert" ON "Interaction" FOR INSERT
@@ -428,7 +444,7 @@ CREATE POLICY "reel_reposts_owner_insert" ON "ReelRepost" FOR INSERT
 CREATE POLICY "reel_reposts_owner_delete" ON "ReelRepost" FOR DELETE
   USING (auth.uid() = "userId");
 
-CREATE POLICY "reel_views_insert" ON "ReelView" FOR INSERT
+CREATE POLICY "reel_views_insert" ON reel_views FOR INSERT
   WITH CHECK (true);
 
 CREATE POLICY "reel_comments_public_select" ON "ReelComment" FOR SELECT

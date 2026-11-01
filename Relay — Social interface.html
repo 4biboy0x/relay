@@ -952,7 +952,11 @@
       #v-home .c-bar .icon-btn {
         width: 36px;
         height: 36px;
+        box-sizing: border-box;
+        padding: 8px;
+        border-radius: 50%;
       }
+      #v-home .c-bar > #attachImage { margin-left: -8px; }
       #v-home #pb {
         height: 34px;
         padding: 0 16px;
@@ -975,10 +979,13 @@
       .c-bar .icon-btn {
         color: var(--accent);
       }
-      .c-bar #gifButton {
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: -0.04em;
+      #gifButton .i,
+      #messageGifButton .i,
+      #replyComposerGifButton .i,
+      [data-thread-reply-gif] .i {
+        width: 20px;
+        height: 20px;
+        stroke-width: 1.9;
       }
       .c-bar .icon-btn:hover {
         background: var(--accent-soft);
@@ -2620,14 +2627,6 @@
         stroke-linejoin: round;
         stroke-width: 1.8;
       }
-      .thread-reply-action[data-reply-action="gif"] {
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: -0.04em;
-      }
-      .thread-reply-gif-icon {
-        display: none;
-      }
       .thread-reply-media-preview {
         grid-column: 2;
         display: flex;
@@ -3030,12 +3029,6 @@
         stroke-linecap: round;
         stroke-linejoin: round;
         stroke-width: 1.8;
-      }
-      .reply-toolbar .reply-gif-icon {
-        width: 21px;
-        height: 21px;
-        fill: currentColor;
-        stroke: none;
       }
       .reply-submit {
         grid-column: 3;
@@ -3963,23 +3956,151 @@
         overflow: auto;
       }
       .post-editor-dialog {
-        width: min(640px, calc(100vw - 24px));
+        display: flex;
+        width: min(600px, calc(100% - 32px));
         max-width: none;
-        max-height: min(90vh, 840px);
-        overflow-x: hidden;
-        overflow-y: auto;
+        height: auto;
+        max-height: calc(100dvh - 48px);
+        flex-direction: column;
+        overflow: hidden;
         padding: 0;
+        border-radius: 16px;
       }
+      .post-editor-dialog:not([open]) { display: none; }
       .post-editor-heading {
-        padding: 18px 20px 0;
+        display: flex;
+        flex: none;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 56px;
+        padding: 0 16px 0 20px;
       }
       .post-editor-heading h2 {
         margin: 0;
-        font-size: 18px;
+        font-size: 17px;
+        font-weight: 650;
       }
-      .post-editor-heading p {
-        margin: 4px 0 0;
-        font-size: 13px;
+      .post-editor-close {
+        display: grid;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        place-items: center;
+        border: 0;
+        border-radius: 50%;
+        background: transparent;
+        color: var(--text-2);
+        cursor: pointer;
+      }
+      .post-editor-close:hover { background: var(--surface-2); color: var(--text); }
+      .post-editor-close svg { width: 16px; height: 16px; }
+      .post-editor-body {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 16px 20px;
+        scrollbar-width: thin;
+        scrollbar-color: var(--border) transparent;
+        scrollbar-gutter: stable;
+      }
+      .post-editor-footer {
+        position: sticky;
+        z-index: 1;
+        bottom: 0;
+        display: flex;
+        flex: none;
+        justify-content: flex-end;
+        gap: 8px;
+        padding: 12px 20px;
+        border-top: 1px solid var(--border);
+        background: var(--bg);
+      }
+      .post-editor-footer .btn {
+        height: 36px;
+        min-height: 36px;
+        padding: 0 14px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .post-editor-footer #cancelPostEdit {
+        border: 0;
+        background: transparent;
+        color: var(--text-2);
+      }
+      .post-editor-footer #cancelPostEdit:hover { background: var(--surface-2); color: var(--text); }
+      #postEditorMount #composer { gap: 0; padding: 0; border: 0; }
+      #postEditorMount #composerAvatar,
+      #postEditorMount .c-bar-spacer,
+      #postEditorMount #pb { display: none; }
+      #postEditorMount .composer .box { width: 100%; }
+      #postEditorMount #ct { min-height: 72px; max-height: none; overflow-y: hidden; }
+      #postEditorMount .c-bar {
+        min-height: 36px;
+        gap: 4px;
+        margin-top: 12px;
+        padding: 0;
+        border: 0;
+      }
+      #postEditorMount .c-bar .icon-btn {
+        display: grid;
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        place-items: center;
+        border: 0;
+        border-radius: 9px;
+        background: transparent;
+        color: var(--accent);
+      }
+      #postEditorMount .c-bar .icon-btn:hover { background: var(--surface-2); }
+      #postEditorMount #attachImage[aria-pressed="true"] { color: var(--accent); }
+      #postEditorMount #attachImage[aria-pressed="true"]::after { display: none; }
+      #postEditorMount #addLocation[aria-pressed="true"] { color: var(--accent); }
+      #postEditorMount #cc { margin-left: auto; color: var(--text-3); font-size: 12px; }
+      #postEditorMount #cc.over { color: var(--like); }
+      #postEditorMount #mediaPreview {
+        position: relative;
+        top: auto;
+        right: auto;
+        left: auto;
+        width: 100%;
+        min-height: 0;
+        margin-top: 12px;
+        padding: 0;
+        border-radius: 12px;
+        box-shadow: none;
+      }
+      #postEditorMount #mediaPreview[hidden] { display: none !important; }
+      #postEditorMount .media-preview-visual {
+        display: grid;
+        width: 100%;
+        max-height: 360px;
+        aspect-ratio: auto;
+        place-items: center;
+        border: 0;
+        border-radius: 12px;
+        background: transparent;
+      }
+      #postEditorMount .media-preview-visual img {
+        width: 100%;
+        height: auto;
+        max-height: 360px;
+        object-fit: contain;
+      }
+      #postEditorMount #mediaPreview .grow { display: none; }
+      #postEditorMount #removeMedia {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        z-index: 1;
+      }
+      @media (max-width: 640px) {
+        .post-editor-dialog {
+          width: 100%;
+          margin: auto 0 0;
+          border-radius: 16px 16px 0 0;
+        }
       }
       .reply-composer-dialog {
         display: flex;
@@ -4195,12 +4316,6 @@
         stroke-linecap: round;
         stroke-linejoin: round;
         stroke-width: 1.8;
-      }
-      .reply-composer-attach .reply-composer-gif-icon {
-        width: 22px;
-        height: 22px;
-        fill: currentColor;
-        stroke: none;
       }
       .reply-composer-attach:hover {
         background: var(--accent-soft);
@@ -4638,22 +4753,6 @@
       .message-search-load-more:disabled {
         cursor: wait;
         opacity: 0.65;
-      }
-      .explore-message-search {
-        margin-top: 12px;
-        border-top: 1px solid var(--border);
-      }
-      .explore-message-search[hidden] {
-        display: none;
-      }
-      .explore-message-search h2 {
-        margin: 0;
-        padding: 14px 16px 6px;
-        font-size: 14px;
-        font-weight: 650;
-      }
-      .explore-message-search .conversation-list {
-        max-height: 330px;
       }
       .recipient-picker {
         position: relative;
@@ -5213,7 +5312,7 @@
       .message-send-text svg { display: block; width: 22px; height: 22px; transform: none; margin: 0; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
       #messageAudioButton { width: 36px; height: 36px; color: var(--text-2); }
       #messageImageButton { width: 36px; height: 36px; }
-      #messageGifButton { width: 36px; height: 36px; font-size: 11px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; }
+      #messageGifButton { width: 36px; height: 36px; }
       #messageAudioButton.recording { color: var(--danger, #e5484d); animation: relay-recording-pulse 1.2s ease-in-out infinite; }
       @keyframes relay-recording-pulse { 50% { opacity: .35; } }
       .message-recording {
@@ -5476,13 +5575,6 @@
         height: 1px;
         margin: 4px 8px;
         background: var(--border);
-      }
-      .global-search-section-title {
-        padding: 8px 9px 4px;
-        color: var(--text-3);
-        font-size: 11px;
-        font-weight: 650;
-        letter-spacing: 0.02em;
       }
       .global-search-option {
         display: flex;
@@ -6609,16 +6701,26 @@
         border-radius: 50%;
         background: rgba(15, 16, 20, .58);
         color: #fff;
+        opacity: 0;
+        pointer-events: none;
         transform: translate(-50%, -50%);
-        cursor: pointer;
+        transition: opacity 150ms ease;
         backdrop-filter: blur(8px);
       }
       .reel-play-overlay svg { width: 22px; height: 22px; fill: currentColor; stroke: none; transform: translateX(1px); }
-      .reel-stage.is-playing .reel-play-overlay { opacity: 0; pointer-events: none; }
-      .reel-stage:focus-within .reel-play-overlay,
-      .reel-stage:hover .reel-play-overlay { opacity: 1; pointer-events: auto; }
-      .reel-stage.is-playing:not(:hover):not(:focus-within) .reel-play-overlay { opacity: 0; pointer-events: none; }
-      .reel-stage.is-paused .reel-play-overlay { opacity: 1; pointer-events: auto; }
+      .reel-play-overlay [data-indicator="pause"] { display: none; }
+      .reel-stage.is-user-paused .reel-play-overlay,
+      .reel-stage.is-playback-feedback .reel-play-overlay { opacity: 1; }
+      .reel-stage.is-playback-feedback.is-feedback-pause .reel-play-overlay [data-indicator="play"],
+      .reel-stage.is-playback-feedback.is-feedback-play .reel-play-overlay [data-indicator="pause"] { display: none; }
+      .reel-stage.is-playback-feedback.is-feedback-pause .reel-play-overlay [data-indicator="pause"],
+      .reel-stage.is-playback-feedback.is-feedback-play .reel-play-overlay [data-indicator="play"] { display: block; }
+      .reel-stage { cursor: pointer; }
+      .reel-stage-control,
+      .reel-progress-track,
+      .reel-author-link,
+      .reel-follow-button,
+      .reel-caption-more { cursor: pointer; }
       .reel-stage-control {
         position: absolute;
         z-index: 4;
@@ -6704,16 +6806,18 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 16px;
+        gap: 8px;
         width: 44px;
         flex: none;
         color: var(--text);
       }
       .reel-action {
-        display: grid;
-        justify-items: center;
-        gap: 4px;
+        display: flex;
+        height: 60px;
         width: 44px;
+        flex: none;
+        flex-direction: column;
+        align-items: center;
         padding: 0;
         border: 0;
         background: transparent;
@@ -6725,8 +6829,10 @@
         cursor: pointer;
       }
       .reel-action svg {
+        display: block;
         width: 44px;
         height: 44px;
+        flex: 0 0 44px;
         padding: 12px;
         overflow: visible;
         border: 0;
@@ -6736,8 +6842,17 @@
         transition: color 140ms ease, background-color 140ms ease, transform 140ms ease;
       }
       .reel-action:hover svg { background: var(--border); }
-      .reel-action [data-reel-count].is-zero { visibility: hidden; }
-      .reel-action [data-reel-count]:empty { display: none; }
+      .reel-action [data-reel-count] {
+        display: grid;
+        width: 100%;
+        height: 16px;
+        flex: 0 0 16px;
+        place-items: center;
+        line-height: 16px;
+        visibility: visible;
+      }
+      .reel-action [data-reel-count].is-zero,
+      .reel-action [data-reel-count]:empty { visibility: hidden; }
       .reel-action[aria-pressed="true"] svg { color: var(--accent); }
       .reel-action[data-reel-action="like"][aria-pressed="true"] svg { color: #e54864; fill: #e54864; }
       .reel-feed-state {
@@ -6978,19 +7093,18 @@
         .app.reels-active main { height: 100dvh; padding-bottom: var(--mobile-nav-height); box-sizing: border-box; }
         .app.reels-active #v-reels { position: relative; min-height: 0; }
         .app.reels-active .reels-top {
-          position: absolute;
+          position: relative;
           z-index: 6;
-          inset: 0 0 auto;
-          min-height: 58px;
-          height: 96px;
-          padding: 8px 16px;
+          inset: auto;
+          height: calc(56px + env(safe-area-inset-top, 0px));
+          min-height: calc(56px + env(safe-area-inset-top, 0px));
+          box-sizing: border-box;
+          padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 8px;
           border: 0;
           background: linear-gradient(to bottom, rgba(0,0,0,.55), transparent);
           color: #fff;
-          pointer-events: none;
         }
         .app.reels-active .reels-top h1 { color: #fff; }
-        .app.reels-active .reels-top > * { pointer-events: auto; }
         .app.reels-active .reels-top #createReelButton {
           display: grid;
           width: 36px;
@@ -7016,11 +7130,12 @@
           white-space: nowrap;
           border: 0;
         }
-        .app.reels-active .reel-feed { position: absolute; inset: 0; }
+        .app.reels-active .reel-feed { position: relative; inset: auto; flex: 1; min-height: 0; }
         .reel-item { height: 100%; min-height: 100%; padding: 0; }
         .reel-stage { width: 100%; height: 100%; max-height: none; aspect-ratio: auto; border: 0; border-radius: 0; box-shadow: none; }
+        .reel-stage-control { top: 12px; right: 12px; border: 0; background: rgba(0,0,0,.4); backdrop-filter: blur(6px); }
         .reel-copy { right: 76px; bottom: 24px; left: 16px; }
-        .reel-actions { position: absolute; z-index: 4; right: 16px; bottom: 24px; width: 44px; gap: 16px; color: #fff; }
+        .reel-actions { position: absolute; z-index: 4; right: 16px; bottom: 24px; width: 44px; gap: 8px; color: #fff; }
         .reel-action { color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
         .reel-action svg { width: 44px; height: 44px; padding: 12px; border: 0; background: rgba(0,0,0,.35); color: #fff; backdrop-filter: blur(6px); }
         .reel-action:hover svg { background: rgba(0,0,0,.35); }
@@ -7039,6 +7154,7 @@
       @media (prefers-reduced-motion: reduce) {
         .reel-stage.is-loading::before,
         .reel-skeleton { animation: none; }
+        .reel-play-overlay { transition: none; }
         .profile-reel-card img,
         .reel-action svg { transition: none; }
         .reel-feed { scroll-behavior: auto; }
@@ -7122,6 +7238,12 @@
           <rect width="18" height="18" x="3" y="3" rx="2" />
           <circle cx="9" cy="9" r="2" />
           <path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21" />
+        </symbol>
+        <symbol id="gif" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="6" />
+          <path d="M10.6 10.2a2.1 2.1 0 1 0 0 3.6V12.3H9.3" />
+          <path d="M12.6 9.8v4.4" />
+          <path d="M15 14.2V9.8h2.6M15 12h1.9" />
         </symbol>
         <symbol id="pin" viewBox="0 0 24 24">
           <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
@@ -7301,11 +7423,10 @@
                 <button class="icon-btn" id="attachImage" aria-label="Attach image" aria-pressed="false">
                   <svg class="i" aria-hidden="true"><use href="#image" /></svg>
                 </button>
-                <button class="icon-btn" id="createReelFromComposer" type="button" aria-label="Create a Reel" title="Create a Reel">
-                  <svg class="i reels-symbol" aria-hidden="true"><use href="#reels" /></svg>
-                </button>
                 <input id="postFileInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden />
-                <button class="icon-btn" id="gifButton" type="button" aria-label="Choose a GIF" aria-haspopup="dialog" aria-controls="gifPickerDialog" aria-expanded="false">GIF</button>
+                <button class="icon-btn" id="gifButton" type="button" aria-label="Add a GIF" aria-haspopup="dialog" aria-controls="gifPickerDialog" aria-expanded="false">
+                  <svg class="i" aria-hidden="true"><use href="#gif" /></svg>
+                </button>
                 <button class="icon-btn" id="emojiToggle" aria-label="Add emoji" aria-expanded="false">
                   <svg class="i" aria-hidden="true"><use href="#smile" /></svg>
                 </button>
@@ -7355,10 +7476,6 @@
           </nav>
           <div id="exploreSearchFilters" hidden></div>
           <div id="exp" data-transition-content></div>
-          <section class="explore-message-search" id="exploreMessageSearch" data-transition-content aria-labelledby="exploreMessageSearchHeading" hidden>
-            <h2 id="exploreMessageSearchHeading">Messages (0)</h2>
-            <div class="conversation-list" id="exploreMessageResults" role="list" aria-label="Matching messages"></div>
-          </section>
             <button class="more-l" id="exploreMore" data-transition-content data-more="explore" hidden>Load more</button>
         </section>
 
@@ -7483,7 +7600,9 @@
                     <button class="chat-compose-icon" id="messageImageButton" type="button" aria-label="Send image" disabled>
                       <svg class="i" aria-hidden="true"><use href="#image" /></svg>
                     </button>
-                    <button class="chat-compose-icon" id="messageGifButton" type="button" aria-label="Send a GIF" aria-haspopup="dialog" aria-controls="gifPickerDialog" aria-expanded="false" disabled>GIF</button>
+                    <button class="chat-compose-icon" id="messageGifButton" type="button" aria-label="Send a GIF" aria-haspopup="dialog" aria-controls="gifPickerDialog" aria-expanded="false" disabled>
+                      <svg class="i" aria-hidden="true"><use href="#gif" /></svg>
+                    </button>
                   </div>
                   <button class="message-send-text is-hidden" id="sendMessage" type="submit" aria-label="Send message" disabled>
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -7531,6 +7650,13 @@
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>Dark
                 </button>
               </div>
+            </section>
+            <section class="settings-card" aria-labelledby="settingsCookieTitle">
+              <div class="settings-card-heading">
+                <h2 id="settingsCookieTitle">Privacy</h2>
+                <p>Review your cookie preferences.</p>
+              </div>
+              <button class="btn btn-line" type="button" data-open-cookie-settings>Cookie settings</button>
             </section>
             <section class="settings-card" aria-labelledby="reelPlaybackTitle">
               <div class="settings-card-heading">
@@ -8068,15 +8194,17 @@
         </div>
       </form>
     </dialog>
-    <dialog class="auth-dialog post-editor-dialog" id="postEditorDialog" aria-labelledby="postEditorTitle" aria-describedby="postEditorDescription">
+    <dialog class="auth-dialog post-editor-dialog" id="postEditorDialog" role="dialog" aria-modal="true" aria-labelledby="postEditorTitle" tabindex="-1">
       <header class="post-editor-heading">
         <h2 id="postEditorTitle">Edit post</h2>
-        <p id="postEditorDescription">Update your post, image, or place.</p>
+        <button class="post-editor-close" id="closePostEditor" type="button" aria-label="Close edit post">
+          <svg class="i" aria-hidden="true"><use href="#close" /></svg>
+        </button>
       </header>
-      <div class="post-editor-mount" id="postEditorMount"></div>
-      <div class="post-editor-cancel">
+      <div class="post-editor-body" id="postEditorBody"><div class="post-editor-mount" id="postEditorMount"></div></div>
+      <footer class="post-editor-footer" id="postEditorFooter">
         <button class="btn btn-line btn-sm" type="button" id="cancelPostEdit">Cancel</button>
-      </div>
+      </footer>
     </dialog>
     <div class="reply-composer-overlay" id="replyComposerOverlay" hidden>
       <section class="auth-dialog reply-composer-dialog" id="replyComposerDialog" role="dialog" aria-modal="true" aria-label="Reply to post" aria-describedby="replyComposerDescription" tabindex="-1">
@@ -8122,7 +8250,7 @@
               </button>
               <input id="replyComposerImageInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
               <button class="reply-composer-attach" id="replyComposerGifButton" type="button" aria-label="Choose a GIF" title="Choose a GIF" aria-haspopup="dialog" aria-controls="gifPickerDialog" aria-expanded="false">
-                <svg class="reply-composer-gif-icon" aria-hidden="true" viewBox="0 0 24 24"><text x="2" y="17" font-size="12" font-weight="700">GIF</text></svg>
+                <svg class="i" aria-hidden="true"><use href="#gif" /></svg>
               </button>
               <button class="reply-composer-attach" id="replyComposerEmojiButton" type="button" aria-label="Add emoji" aria-expanded="false">
                 <svg aria-hidden="true" viewBox="0 0 24 24"><use href="#smile" /></svg>
@@ -8205,6 +8333,7 @@
       let postPlaceholderQueue = [];
       let currentPostPlaceholder = "";
       let editingPostId = null;
+      let editingPostOriginal = null;
       let replyComposerTargetId = null;
       let replyComposerMediaUrl = "";
       let replyComposerLocation = "";
@@ -8252,7 +8381,6 @@
       let feedObserver = null;
       let exploreTimer;
       let exploreRequestGeneration = 0;
-      let exploreMessageSearchGeneration = 0;
       let exploreTab = "trending";
       let exploreSearchFilter = "Top";
       let lastExploreSearch = "";
@@ -8690,6 +8818,7 @@
         $("#composerLocationChip").hidden = true;
         $("#composerLocationLabel").textContent = "";
         $("#addLocation").setAttribute("aria-pressed", "false");
+        updatePostButton();
       }
       function getCompactLocationLabel(location) {
         const parts = location
@@ -8758,6 +8887,7 @@
         $("#composerLocationLabel").title = location;
         $("#composerLocationChip").setAttribute("aria-label", `Location: ${location}`);
         $("#composerLocationChip").hidden = false;
+        updatePostButton();
         $("#addLocation").setAttribute("aria-pressed", "true");
       }
       let locationSearchTimer = null;
@@ -8805,11 +8935,14 @@
       }
       function updatePostButton() {
         const remaining = 280 - $("#ct").value.length;
+        const editing = Boolean(editingPostId);
+        const editChanged = postEditorHasChanges();
         $("#cc").textContent = remaining;
         $("#cc").className = `count${remaining < 0 ? " over" : remaining < 20 ? " warn" : ""}`;
-        $("#cc").hidden = remaining === 280;
-        $("#cc").style.color = remaining < 0 ? "var(--like)" : remaining <= 40 ? "var(--accent)" : "var(--text-3)";
-        $("#pb").disabled = !$("#ct").value.trim() || remaining < 0 || Boolean(composerUploadPromise);
+        $("#cc").hidden = editing ? remaining > 40 : remaining === 280;
+        $("#cc").style.color = remaining < 0 ? "var(--like)" : editing ? "var(--text-3)" : remaining <= 40 ? "var(--accent)" : "var(--text-3)";
+        $("#pb").disabled = !$("#ct").value.trim() || remaining < 0 || Boolean(composerUploadPromise)
+          || (editing && !editChanged);
       }
       function stopPostPlaceholder() {
         $("#ct").placeholder = "";
@@ -8844,7 +8977,7 @@
         try {
           sessionStorage.setItem(queueKey, JSON.stringify(postPlaceholderQueue));
         } catch {}
-        $("#pb").textContent = editingPostId ? "Save changes" : "Post";
+        $("#pb").textContent = editingPostId ? "Save" : "Post";
       }
       function positionComposerPopover(popover, trigger) {
         if (popover.hidden) return;
@@ -9568,7 +9701,7 @@
       function transitionTargetsForView(view) {
         switch (view) {
           case "home": return $("#homeTimeline");
-          case "explore": return [$("#exp"), $("#exploreSearchFilters"), $("#exploreMessageSearch"), $("#exploreMore")];
+          case "explore": return [$("#exp"), $("#exploreSearchFilters"), $("#exploreMore")];
           case "reels": return [$("#reelItems"), $("#reelFeedState")];
           case "messages": return [$("#conversationList"), $("#messageSearchResults"), $("#conversationSearchEmpty"), $("#chatLog")];
           case "notifs": return $("#nl");
@@ -9740,7 +9873,7 @@
           : "";
         if (p.replyToId) {
           const parent = p.replyTo;
-          return `<article class="post reply-card" data-id="${esc(p.id)}" data-reply-to="${esc(p.replyToId)}" tabindex="0">
+          return `<article class="post reply-card" data-id="${esc(p.id)}" data-author-id="${esc(p.author.id)}" data-reply-to="${esc(p.replyToId)}" tabindex="0">
 ${avatarMarkup(p.author, "sm")}
 <div class="p-body">
 <div class="reply-context">Replying to ${parent ? profileLink(parent.author, `@${parent.author.handle}`) : "a post that is no longer available"}</div>
@@ -9756,7 +9889,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
 <div class="post-actions-right"><button class="act" data-a="bookmark" aria-label="Bookmark">${ic("bookmark")}</button><button class="act" data-a="share" aria-label="Share">${ic("share")}</button></div></div>
 </div></article>`;
         }
-        return `<article class="post" data-id="${esc(p.id)}" tabindex="0"><button class="profile-avatar-link" type="button" data-profile-id="${esc(p.author.id)}" aria-label="View @${esc(p.u)} profile">${avatarMarkup(p.author)}</button><div class="p-body">
+        return `<article class="post" data-id="${esc(p.id)}" data-author-id="${esc(p.author.id)}" tabindex="0"><button class="profile-avatar-link" type="button" data-profile-id="${esc(p.author.id)}" aria-label="View @${esc(p.u)} profile">${avatarMarkup(p.author)}</button><div class="p-body">
 <div class="p-head"><b>${profileLink(p.author, p.n)}</b><span class="m">@${esc(p.u)} · ${p.t}</span>${postMenu}</div>
 ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class="i" aria-hidden="true"><use href="#pin" /></svg><span>${esc(getCompactLocationLabel(p.location))}</span></div>` : ""}<p class="p-text">${renderPostText(p.x, searchTerm)}</p>${homePostMedia(p)}
 <div class="acts post-actions" role="group" aria-label="Post actions">
@@ -9771,36 +9904,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       };
       const postViewTimers = new WeakMap();
       const observedPostCards = new WeakSet();
-      const pendingPostViews = new Set();
-      const recordedPostViews = new Map();
-      let postViewSessionId = null;
-      function getPostViewSessionId() {
-        if (postViewSessionId) return postViewSessionId;
-        try {
-          postViewSessionId = sessionStorage.getItem("relay_post_view_session");
-          if (!postViewSessionId) {
-            postViewSessionId = crypto.randomUUID();
-            sessionStorage.setItem("relay_post_view_session", postViewSessionId);
-          }
-          return postViewSessionId;
-        } catch (error) {
-          postViewSessionId = null;
-          console.error("Could not initialize post view session tracking", error);
-          return null;
-        }
-      }
-      function getRecordedPostViews(storageKey) {
-        if (recordedPostViews.has(storageKey)) return recordedPostViews.get(storageKey);
-        try {
-          const storedIds = JSON.parse(sessionStorage.getItem(storageKey) || "[]");
-          const ids = new Set(Array.isArray(storedIds) ? storedIds.filter((id) => typeof id === "string") : []);
-          recordedPostViews.set(storageKey, ids);
-          return ids;
-        } catch (error) {
-          console.error("Could not read post view deduplication state", error);
-          return null;
-        }
-      }
+      const visiblePostCards = new Set();
+      const requestedPostViewIds = new Set();
+      const queuedPostViewIds = new Set();
+      let postViewFlushTimer = null;
+      let postViewFlushInFlight = false;
       function syncPostViewCount(postId, views) {
         const countValue = Number(views);
         if (!postId || !Number.isFinite(countValue) || countValue < 0) return;
@@ -9824,52 +9932,66 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           syncActionCount(counter, count, { alwaysVisible: true });
         });
       }
-      async function recordPostView(postId) {
-        if (!postId || !currentUser || !accessToken) return;
-        const sessionId = getPostViewSessionId();
-        if (!sessionId) return;
-        const storageKey = `relay_post_views:${currentUser.id}:${sessionId}`;
-        const viewedIds = getRecordedPostViews(storageKey);
-        if (!viewedIds || viewedIds.has(postId)) return;
-        const pendingKey = `${storageKey}:${postId}`;
-        if (pendingPostViews.has(pendingKey)) return;
-        pendingPostViews.add(pendingKey);
+      function canTrackPostView(card) {
+        if (!card.isConnected || !card.dataset.id || !card.getClientRects().length) return false;
+        if (card.closest("dialog, .composer, [data-post-preview]")) return false;
+        if (card.closest("[data-v][hidden]")) return false;
+        if (currentUser && card.dataset.authorId === currentUser.id
+          && card.closest("#v-profile") && viewedProfileId === null) return false;
+        return true;
+      }
+      function schedulePostViewFlush() {
+        if (postViewFlushTimer !== null || !queuedPostViewIds.size) return;
+        postViewFlushTimer = setTimeout(() => {
+          postViewFlushTimer = null;
+          void flushPostViews();
+        }, 2000);
+      }
+      async function flushPostViews() {
+        if (postViewFlushInFlight || !queuedPostViewIds.size) return;
+        const ids = [...queuedPostViewIds].slice(0, 20);
+        ids.forEach((id) => queuedPostViewIds.delete(id));
+        postViewFlushInFlight = true;
         try {
-          const result = await api(`/posts/${encodeURIComponent(postId)}/view`, {
+          const result = await api("/posts/views", {
             method: "POST",
-            body: JSON.stringify({ sessionId }),
+            body: JSON.stringify({ ids }),
           });
-          viewedIds.add(postId);
-          try {
-            sessionStorage.setItem(storageKey, JSON.stringify([...viewedIds]));
-          } catch (error) {
-            console.error("Could not persist post view deduplication state", error);
-          }
-          syncPostViewCount(postId, result.views);
+          result.items.forEach((item) => syncPostViewCount(item.id, item.views));
         } catch (error) {
-          console.error(`Could not record a view for post ${postId}`, error);
+          console.warn("Could not record post views.", error);
         } finally {
-          pendingPostViews.delete(pendingKey);
+          postViewFlushInFlight = false;
+          schedulePostViewFlush();
         }
+      }
+      function queuePostView(postId) {
+        if (!postId || requestedPostViewIds.has(postId)) return;
+        requestedPostViewIds.add(postId);
+        queuedPostViewIds.add(postId);
+        schedulePostViewFlush();
       }
       const postViewObserver = typeof IntersectionObserver === "function"
         ? new IntersectionObserver((entries) => {
             entries.forEach((entry) => {
               const card = entry.target;
-              if (!entry.isIntersecting || entry.intersectionRatio < 0.5) {
+              if (!entry.isIntersecting || entry.intersectionRatio < 0.5 || document.visibilityState !== "visible") {
+                visiblePostCards.delete(card);
                 clearTimeout(postViewTimers.get(card));
                 postViewTimers.delete(card);
                 return;
               }
+              visiblePostCards.add(card);
               if (postViewTimers.has(card)) return;
               const timer = setTimeout(() => {
                 postViewTimers.delete(card);
-                if (!card.isConnected || document.visibilityState !== "visible") return;
-                recordPostView(card.dataset.id);
-              }, 1500);
+                if (!visiblePostCards.has(card) || !canTrackPostView(card)
+                  || document.visibilityState !== "visible") return;
+                queuePostView(card.dataset.id);
+              }, 1000);
               postViewTimers.set(card, timer);
             });
-          }, { threshold: [0, 0.5, 1] })
+          }, { threshold: 0.5 })
         : null;
       function observePostViewCards(root = document) {
         if (!postViewObserver) return;
@@ -9893,7 +10015,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         });
         postViewMutationObserver.observe(document.body, { childList: true, subtree: true });
         document.addEventListener("visibilitychange", () => {
-          if (document.visibilityState !== "visible") return;
+          if (document.visibilityState !== "visible") {
+            visiblePostCards.forEach((card) => {
+              clearTimeout(postViewTimers.get(card));
+              postViewTimers.delete(card);
+            });
+            visiblePostCards.clear();
+            return;
+          }
           $$(".post[data-id]").forEach((card) => {
             postViewObserver.unobserve(card);
             postViewObserver.observe(card);
@@ -10134,9 +10263,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const showFollow = author.id && author.id !== currentUser?.id;
         const hasVideo = Boolean(reel.videoUrl);
         return `<article class="reel-item" data-reel-id="${esc(reel.id)}" role="article" aria-label="Reel by @${esc(author.handle || "user")}, ${index + 1} of ${reelItems.length}">
-          <div class="reel-stage${hasVideo && index === 0 && shouldAutoplayReels() ? " is-loading" : " is-paused"}" data-reel-stage="${esc(reel.id)}">
+          <div class="reel-stage${hasVideo && index === 0 && shouldAutoplayReels() ? " is-loading" : " is-paused"}" data-reel-stage="${esc(reel.id)}" role="button" tabindex="0" aria-label="Play reel">
             ${poster ? `<img class="reel-poster" src="${esc(poster)}" alt="" loading="${index < 2 ? "eager" : "lazy"}">` : ""}
-            <button class="reel-play-overlay" type="button" data-reel-play="${esc(reel.id)}" aria-label="Play Reel by @${esc(author.handle || "user")}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5a1 1 0 0 1 1.5-.86l11 6.5a1 1 0 0 1 0 1.72l-11 6.5A1 1 0 0 1 7 17.5z"/></svg></button>
+            <div class="reel-play-overlay" aria-hidden="true">
+              <svg data-indicator="play" viewBox="0 0 24 24"><path d="M7 4.5a1 1 0 0 1 1.5-.86l11 6.5a1 1 0 0 1 0 1.72l-11 6.5A1 1 0 0 1 7 17.5z"/></svg>
+              <svg data-indicator="pause" viewBox="0 0 24 24"><path d="M7 5h4v14H7zM15 5h4v14h-4z"/></svg>
+            </div>
             <button class="reel-stage-control" type="button" data-reel-mute aria-label="${reelMuted ? "Unmute" : "Mute"} Reel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path class="reel-sound-wave" d="M15.5 8.5a5 5 0 0 1 0 7"/><path class="reel-muted-mark" d="m17 9 5 6m0-6-5 6"/></svg></button>
             <div class="reel-copy">
               <div class="reel-author-line">
@@ -10386,6 +10518,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         video.load();
         video.remove();
       }
+      const reelStageKeyHandlers = new WeakSet();
       function ensureReelVideo(reel, stage) {
         if (!reel?.videoUrl || !stage) return null;
         let video = stage.querySelector(".reel-video");
@@ -10400,14 +10533,27 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         video.src = mediaHref(reel.videoUrl);
         stage.append(video);
         stage.classList.add("is-loading", "is-paused");
+        stage.setAttribute("aria-label", "Play reel");
+        if (!reelStageKeyHandlers.has(stage)) {
+          stage.addEventListener("keydown", (event) => {
+            if (![" ", "Enter", "k", "K"].includes(event.key)) return;
+            event.preventDefault();
+            event.stopPropagation();
+            void toggleReelPlayback(reel.id);
+          });
+          reelStageKeyHandlers.add(stage);
+        }
         video.addEventListener("canplay", () => stage.classList.remove("is-loading"));
         video.addEventListener("playing", () => {
           stage.classList.remove("is-loading", "is-paused");
           stage.classList.add("is-playing");
+          stage.classList.remove("is-user-paused");
+          stage.setAttribute("aria-label", "Pause reel");
         });
         video.addEventListener("pause", () => {
           stage.classList.remove("is-playing", "is-loading");
           stage.classList.add("is-paused");
+          stage.setAttribute("aria-label", "Play reel");
         });
         video.addEventListener("waiting", () => stage.classList.add("is-loading"));
         video.addEventListener("timeupdate", () => updateReelProgress(reel, video));
@@ -10418,6 +10564,22 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           console.warn(`Could not play Reel ${reel.id}.`);
         });
         return video;
+      }
+      const reelPlaybackFeedbackTimers = new WeakMap();
+      const reelAutoplayFeedbackShown = new Set();
+      function clearReelPlaybackFeedback(stage) {
+        clearTimeout(reelPlaybackFeedbackTimers.get(stage));
+        reelPlaybackFeedbackTimers.delete(stage);
+        stage.classList.remove("is-playback-feedback", "is-feedback-play", "is-feedback-pause");
+      }
+      function showReelPlaybackFeedback(stage, action) {
+        clearReelPlaybackFeedback(stage);
+        stage.classList.add("is-playback-feedback", `is-feedback-${action}`);
+        const timer = setTimeout(() => {
+          stage.classList.remove("is-playback-feedback", "is-feedback-play", "is-feedback-pause");
+          reelPlaybackFeedbackTimers.delete(stage);
+        }, 600);
+        reelPlaybackFeedbackTimers.set(stage, timer);
       }
       async function playReelVideo(reel, stage, video) {
         try {
@@ -10457,6 +10619,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 if (error.name === "AbortError") return;
                 stage.classList.remove("is-loading");
                 stage.classList.add("is-paused");
+                stage.setAttribute("aria-label", "Play reel");
+                if (!reelAutoplayFeedbackShown.has(reel.id)) {
+                  reelAutoplayFeedbackShown.add(reel.id);
+                  showReelPlaybackFeedback(stage, "play");
+                }
                 console.warn(`Autoplay was blocked for Reel ${reel.id}.`, error);
               });
             } else {
@@ -10527,9 +10694,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (existing && !existing.paused) {
           existing.pause();
           reelManualPlayback = "";
+          stage.classList.add("is-user-paused");
+          stage.setAttribute("aria-label", "Play reel");
+          showReelPlaybackFeedback(stage, "pause");
           return;
         }
         reelManualPlayback = reelId;
+        stage.classList.remove("is-user-paused");
+        clearReelPlaybackFeedback(stage);
         let video = existing || ensureReelVideo(reel, stage);
         if (!video) {
           renderReelFeedState("This Reel’s video is unavailable.");
@@ -10538,10 +10710,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         video.muted = reelMuted;
         try {
           await playReelVideo(reel, stage, video);
+          showReelPlaybackFeedback(stage, "play");
         } catch (error) {
           if (error.name === "AbortError") return;
           stage.classList.remove("is-loading");
           stage.classList.add("is-paused");
+          stage.setAttribute("aria-label", "Play reel");
+          showReelPlaybackFeedback(stage, "play");
           console.warn(`Could not start Reel ${reel.id}.`, error);
           toast("Could not load this Reel. Check your connection and try again.");
         }
@@ -11438,7 +11613,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function initializeReels() {
         $("#createReelButton").addEventListener("click", showReelCreateDialog);
-        $("#createReelFromComposer").addEventListener("click", showReelCreateDialog);
         const dropzone = $(".reel-upload-preview");
         dropzone.addEventListener("click", (event) => {
           if (!event.target.closest("video")) $("#reelFileInput").click();
@@ -11810,7 +11984,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                   <button class="thread-reply-action" type="button" data-thread-reply-image aria-label="Attach image">
                     ${ic("image")}
                   </button>
-                  <button class="thread-reply-action" type="button" data-thread-reply-gif aria-label="Choose a GIF" title="Choose a GIF" aria-haspopup="dialog" aria-controls="gifPickerDialog" aria-expanded="false">GIF</button>
+                  <button class="thread-reply-action" type="button" data-thread-reply-gif aria-label="Choose a GIF" title="Choose a GIF" aria-haspopup="dialog" aria-controls="gifPickerDialog" aria-expanded="false">
+                    <svg class="i" aria-hidden="true"><use href="#gif" /></svg>
+                  </button>
                   <button class="thread-reply-action" type="button" data-thread-reply-emoji aria-label="Add emoji" aria-expanded="false">
                     ${ic("smile")}
                   </button>
@@ -12321,51 +12497,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           $("#exploreTabs").style.setProperty("--explore-indicator-position", `${index * 50}%`);
         }
       }
-      async function searchExploreMessages(query) {
-        const section = $("#exploreMessageSearch");
-        const results = $("#exploreMessageResults");
-        const generation = ++exploreMessageSearchGeneration;
-        if (!query) {
-          section.hidden = true;
-          results.replaceChildren();
-          return;
-        }
-        section.hidden = false;
-        section.setAttribute("aria-busy", "true");
-        $("#exploreMessageSearchHeading").textContent = "Messages";
-        results.innerHTML = skeletonListMarkup("message", 2, "message search results");
-        try {
-          const params = new URLSearchParams({ q: query, limit: "5", mode: "messages" });
-          const result = await api(`/conversations/search?${params}`);
-          if (generation !== exploreMessageSearchGeneration
-            || $("#exploreSearch").value.trim().replace(/^[@#]+/, "").trim() !== query) return;
-          conversations = [...new Map([...conversations, ...result.items].map((item) => [item.id, item])).values()];
-          $("#exploreMessageSearchHeading").textContent = `Messages (${fmt(result.count || 0)})`;
-          if (!result.items.length) {
-            results.innerHTML = emptyState("No matching messages.", "Try another search term.", true);
-            return;
-          }
-          results.innerHTML = result.items.map((item, index) => {
-            const other = item.members.find((member) => member.id !== currentUser?.id);
-            const message = item.matchedMessage;
-            const sender = message?.senderId === currentUser?.id
-              ? "You"
-              : message?.sender?.displayName || other?.displayName || "Relay user";
-            const body = message?.body?.trim()
-              || (message?.mediaUrl ? "Photo" : message?.audioUrl ? "Voice message" : message?.stickerId ? "Sticker" : "Message");
-            return `<button class="conversation-item message-search-result" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search-message-id="${esc(message?.id || "")}" data-search-message-candidate="false" aria-current="${item.id === selectedConversationId || (!selectedConversationId && item.id === activeConversation?.id)}">${presenceAvatarMarkup(other, "sm")}<span class="grow"><b>${esc(other?.displayName || "Relay user")}</b><small><span class="conversation-preview-text">${esc(sender)}: ${emphasizeConversationMatch(body, query)}</span></small></span></button>`;
-          }).join("");
-        } catch (error) {
-          if (generation !== exploreMessageSearchGeneration) return;
-          results.innerHTML = emptyState("Couldn’t search messages.", error.message || "Search failed.", true);
-        } finally {
-          if (generation === exploreMessageSearchGeneration) section.removeAttribute("aria-busy");
-        }
-      }
       async function renderExplore(search = "", append = false) {
         const searchText = String(search ?? "").trim();
         const searchTerm = searchText.replace(/^[@#]+/, "").trim();
-        if (!append) void searchExploreMessages(searchTerm);
         const requestTab = exploreTab;
         const requestFilter = exploreSearchFilter;
         const requestGeneration = append ? exploreRequestGeneration : ++exploreRequestGeneration;
@@ -13226,15 +13360,15 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         globalSearchDropdown.innerHTML = "";
         $("#sideSearch").setAttribute("aria-expanded", "false");
       }
-      function globalSearchOption(type, value, content, extraClass = "", messageId = "") {
-        return `<button type="button" class="global-search-option${extraClass ? ` ${extraClass}` : ""}" role="option" aria-selected="false" data-global-search-type="${type}" data-global-search-value="${esc(value)}"${messageId ? ` data-global-search-message-id="${esc(messageId)}"` : ""}>${content}</button>`;
+      function globalSearchOption(type, value, content, extraClass = "") {
+        return `<button type="button" class="global-search-option${extraClass ? ` ${extraClass}` : ""}" role="option" aria-selected="false" data-global-search-type="${type}" data-global-search-value="${esc(value)}">${content}</button>`;
       }
-      function renderGlobalSearchDropdown(query, trends, users, messages, messageCount = 0, errorMessage = "") {
+      function renderGlobalSearchDropdown(query, trends, users, errorMessage = "") {
         if (!globalSearchState) return;
         globalSearchDropdown.removeAttribute("aria-busy");
         const options = [];
         let markup = "";
-        const hasMatches = trends.length > 0 || users.length > 0 || messages.length > 0;
+        const hasMatches = trends.length > 0 || users.length > 0;
         if (!hasMatches) {
           options.push({ type: "search", value: query });
           markup += globalSearchOption(
@@ -13253,29 +13387,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             );
           }
         }
-        if (users.length || messages.length || errorMessage || !hasMatches) {
+        if (users.length || errorMessage || !hasMatches) {
           markup += `<div class="global-search-divider" aria-hidden="true"></div>`;
-        }
-        if (messages.length) {
-          markup += `<div class="global-search-section-title">Messages (${fmt(messageCount)})</div>`;
-          for (const conversation of messages.slice(0, 3)) {
-            const other = conversation.members.find((member) => member.id !== currentUser?.id);
-            const message = conversation.matchedMessage;
-            const body = message?.body?.trim() || (message?.mediaUrl ? "Photo" : message?.audioUrl ? "Voice message" : message?.stickerId ? "Sticker" : "Message");
-            options.push({
-              type: "message",
-              value: conversation.id,
-              messageId: message?.id || "",
-              conversation,
-            });
-            markup += globalSearchOption(
-              "message",
-              conversation.id,
-              `${presenceAvatarMarkup(other, "sm")}<span class="grow user-search-copy"><b>${esc(other?.displayName || "Relay user")}</b><small>${emphasizeConversationMatch(body, query)}</small></span>`,
-              "",
-              message?.id || "",
-            );
-          }
         }
         for (const person of users.slice(0, 10)) {
           options.push({ type: "person", value: person.id });
@@ -13287,7 +13400,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         if (errorMessage) {
           markup += `<div class="global-search-status" role="status">${esc(errorMessage)}</div>`;
-        } else if (!users.length && !messages.length) {
+        } else if (!users.length) {
           markup += `<div class="global-search-status" role="status">No matching accounts.</div>`;
         }
         globalSearchState.options = options;
@@ -13320,22 +13433,18 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         positionGlobalSearchDropdown();
         globalSearchTimer = setTimeout(async () => {
           try {
-            const params = new URLSearchParams({ q: normalizedQuery, limit: "3", mode: "messages" });
-            const [trendingResult, peopleResult, messageResult] = await Promise.all([
+            const [trendingResult, peopleResult] = await Promise.all([
               trendingSearchItems ? Promise.resolve({ items: trendingSearchItems }) : api("/trending"),
               api(`/search?q=${encodeURIComponent(normalizedQuery)}&limit=10&mode=users`),
-              api(`/conversations/search?${params}`),
             ]);
             if (generation !== globalSearchGeneration || !globalSearchState) return;
             const trends = trendingResult.items
               .filter((item) => item.tag.toLowerCase().includes(normalizedQuery.toLowerCase()))
               .slice(0, 3);
-            const messageItems = messageResult.items || [];
-            conversations = [...new Map([...conversations, ...messageItems].map((item) => [item.id, item])).values()];
-            renderGlobalSearchDropdown(query, trends, peopleResult.users.slice(0, 10), messageItems, messageResult.count || 0);
+            renderGlobalSearchDropdown(query, trends, peopleResult.users.slice(0, 10));
           } catch (error) {
             if (generation !== globalSearchGeneration || !globalSearchState) return;
-            renderGlobalSearchDropdown(query, [], [], [], 0, error.message || "Search suggestions could not be loaded.");
+            renderGlobalSearchDropdown(query, [], [], error.message || "Search suggestions could not be loaded.");
           }
         }, 120);
       }
@@ -13345,10 +13454,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (option.type === "person") {
           closeGlobalSearchDropdown();
           openPublicProfile(option.value);
-          return;
-        }
-        if (option.type === "message") {
-          navigateToSearchedMessage(option.conversation, option.messageId);
           return;
         }
         if (option.type === "topic") {
@@ -14020,13 +14125,16 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       const actionDialog = $("#actionDialog");
       let actionDialogState = null;
       let registering = false;
+      let showAuthCookieNoticeForCurrentDialog = false;
       function showAuth() {
         closeActionDialog();
         if (!authDialog.open) {
+          showAuthCookieNoticeForCurrentDialog = !hasSeenCookieNotice();
+          if (showAuthCookieNoticeForCurrentDialog) markCookieNoticeSeen();
           authDialog.showModal();
           $("#authEmail").focus({ preventScroll: true });
         }
-        updateCookieConsentVisibility();
+        updateCookieConsentVisibility(showAuthCookieNoticeForCurrentDialog);
       }
       function updateAccountUI() {
         $("#navName").textContent = currentUser?.displayName || "Sign in to Relay";
@@ -14096,6 +14204,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         showAuth();
       }
       const postEditorDialog = $("#postEditorDialog");
+      let postEditorReturnFocus = null;
       const replyComposerOverlay = $("#replyComposerOverlay");
       const replyComposerDialog = $("#replyComposerDialog");
       const replyComposerForm = $("#replyComposerForm");
@@ -14309,7 +14418,15 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           location: composerLocation,
         };
         editingPostId = data.postId;
+        editingPostOriginal = {
+          body: data.body || "",
+          mediaUrl: data.mediaUrl || "",
+          location: getCompactLocationLabel(data.location || ""),
+        };
+        postEditorReturnFocus = { element: data.returnFocus || document.activeElement, postId: data.postId };
         $("#ct").value = data.body || "";
+        $("#ct").style.height = "auto";
+        $("#ct").style.height = `${Math.max(72, $("#ct").scrollHeight)}px`;
         clearComposerMedia();
         setComposerMedia(data.mediaUrl || "");
         clearComposerLocation();
@@ -14320,22 +14437,46 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#composer").inert = false;
         $("#composer").removeAttribute("aria-hidden");
         $("#postEditorMount").append($("#composer"));
+        $("#postEditorFooter").append($("#pb"));
+        $("#pb").textContent = "Save";
         updatePostButton();
         postEditorDialog.showModal();
         $("#ct").focus({ preventScroll: true });
       }
       function restoreComposerAfterEdit() {
+        $("#composer .c-bar").append($("#pb"));
+        $("#pb").textContent = "Post";
         $("#homeComposerSlot").append($("#composer"));
         setComposerVisibility(feedTab === "for-you");
         editingPostId = null;
+        editingPostOriginal = null;
         const draft = composerDraftBeforeEdit;
         composerDraftBeforeEdit = null;
         $("#ct").value = draft?.body || "";
+        $("#ct").style.height = "auto";
+        $("#ct").style.height = `${Math.min(120, Math.max(44, $("#ct").scrollHeight))}px`;
         clearComposerMedia();
         if (draft?.mediaUrl) setComposerMedia(draft.mediaUrl);
         clearComposerLocation();
         if (draft?.location) setComposerLocation(draft.location);
         updatePostButton();
+        const returnFocusTarget = postEditorReturnFocus?.element?.isConnected
+          ? postEditorReturnFocus.element
+          : postEditorReturnFocus?.postId
+            ? $(`.post[data-id="${CSS.escape(postEditorReturnFocus.postId)}"] [data-post-menu-toggle]`)
+            : null;
+        returnFocusTarget?.focus({ preventScroll: true });
+        postEditorReturnFocus = null;
+      }
+      function postEditorHasChanges() {
+        return Boolean(editingPostOriginal
+          && ($("#ct").value !== editingPostOriginal.body
+            || composerMediaUrl !== editingPostOriginal.mediaUrl
+            || composerLocation !== editingPostOriginal.location));
+      }
+      function requestPostEditorClose() {
+        if (postEditorHasChanges() && !window.confirm("Discard your changes to this post?")) return;
+        postEditorDialog.close();
       }
       function openActionDialog(mode, data = {}) {
         actionDialogState = { mode, ...data };
@@ -14523,6 +14664,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#authSubmit").textContent = registering ? "Create account" : "Sign in";
         $("#authSwitchPrompt").textContent = registering ? "Already have an account?" : "New to Relay?";
         $("#authSwitch").textContent = registering ? "Sign in" : "Create an account";
+        updateCookieConsentVisibility();
       }
       async function loadSession() {
         const splashStartedAt = performance.now();
@@ -15252,6 +15394,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             body: editPost.dataset.postBody,
             mediaUrl: editPost.dataset.postMedia,
             location: editPost.dataset.postLocation,
+            returnFocus: editPost.closest(".post-menu-wrap")?.querySelector("[data-post-menu-toggle]"),
           });
           return;
         }
@@ -15763,9 +15906,35 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         actionDialogState = null;
         $("#actionError").textContent = "";
       });
-      $("#cancelPostEdit").addEventListener("click", () => postEditorDialog.close());
+      $("#cancelPostEdit").addEventListener("click", requestPostEditorClose);
+      $("#closePostEditor").addEventListener("click", requestPostEditorClose);
       postEditorDialog.addEventListener("click", (event) => {
-        if (event.target === postEditorDialog) postEditorDialog.close();
+        if (event.target === postEditorDialog) requestPostEditorClose();
+      });
+      postEditorDialog.addEventListener("cancel", (event) => {
+        event.preventDefault();
+        requestPostEditorClose();
+      });
+      postEditorDialog.addEventListener("keydown", (event) => {
+        if (event.key !== "Tab") return;
+        const focusable = $$(
+          'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+          postEditorDialog,
+        ).filter((element) => !element.hidden && element.getClientRects().length);
+        if (!focusable.length) {
+          event.preventDefault();
+          postEditorDialog.focus();
+          return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && (document.activeElement === first || !postEditorDialog.contains(document.activeElement))) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && (document.activeElement === last || !postEditorDialog.contains(document.activeElement))) {
+          event.preventDefault();
+          first.focus();
+        }
       });
       postEditorDialog.addEventListener("close", restoreComposerAfterEdit);
       $("#closeReplyComposer").addEventListener("click", closeReplyComposer);
@@ -16122,8 +16291,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       ct.addEventListener("input", () => {
         stopPostPlaceholder();
         updatePostButton();
-        ct.style.height = "44px";
-        ct.style.height = `${Math.min(120, Math.max(44, ct.scrollHeight))}px`;
+        ct.style.height = "auto";
+        ct.style.height = `${editingPostId
+          ? Math.max(72, ct.scrollHeight)
+          : Math.min(120, Math.max(44, ct.scrollHeight))}px`;
       });
       ct.addEventListener("focus", stopPostPlaceholder);
       ct.addEventListener("blur", startPostPlaceholder);
@@ -16550,6 +16721,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             optionalAnalytics,
             savedAt: new Date().toISOString(),
           }));
+          markCookieNoticeSeen();
           updateCookieConsentVisibility();
           closePolicyDialog(cookieSettingsDialog);
         } catch (error) {
@@ -16558,6 +16730,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
       }
       function openCookieSettings(trigger = document.activeElement) {
+        if (trigger instanceof Element && trigger.closest("#cookieAuthPrompt")) {
+          markCookieNoticeSeen();
+        }
         const savedOptionalAnalytics = readCookieConsent()?.optionalAnalytics ?? false;
         $("#analyticsCookies").setAttribute(
           "aria-checked",
@@ -16568,14 +16743,35 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function initializeCookieConsent() {
         updateCookieConsentVisibility();
       }
-      function updateCookieConsentVisibility() {
+      function hasSeenCookieNotice() {
+        try {
+          return localStorage.getItem("relay.cookieNoticeSeen") === "1";
+        } catch (error) {
+          console.warn("Could not read the cookie notice state.", error);
+          return false;
+        }
+      }
+      function markCookieNoticeSeen() {
+        try {
+          localStorage.setItem("relay.cookieNoticeSeen", "1");
+        } catch (error) {
+          console.warn("Could not save the cookie notice state.", error);
+        }
+      }
+      function updateCookieConsentVisibility(preserveAuthPrompt = false) {
         const consentSaved = Boolean(readCookieConsent());
         const authIsOpen = authDialog.open;
         $("#cookieBanner").hidden = consentSaved || authIsOpen;
-        $("#cookieAuthPrompt").hidden = !authIsOpen;
+        const authPrompt = $("#cookieAuthPrompt");
+        if (hasSeenCookieNotice() && !preserveAuthPrompt) {
+          authPrompt?.remove();
+        } else if (authPrompt?.isConnected) {
+          authPrompt.hidden = !authIsOpen;
+        }
       }
       $$("[data-open-legal]").forEach((button) => {
         button.addEventListener("click", () => {
+          if (button.closest("#cookieAuthPrompt")) markCookieNoticeSeen();
           const selectedTab = button.dataset.openLegal === "privacy" ? "privacy" : "terms";
           openLegal(selectedTab, button);
         });
@@ -16628,7 +16824,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       const initialLegalTab = location.hash === "#privacy" || location.hash === "#terms"
         ? location.hash.slice(1)
         : null;
-      authDialog.addEventListener("close", updateCookieConsentVisibility);
+      authDialog.addEventListener("close", () => {
+        showAuthCookieNoticeForCurrentDialog = false;
+        updateCookieConsentVisibility();
+      });
       initializeCookieConsent();
       loadSession().then(() => {
         if (initialLegalTab) openLegal(initialLegalTab, null, true);

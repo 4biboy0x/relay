@@ -31,6 +31,7 @@ import {
   verifyLocalReelReadUrl,
 } from "./reel-storage";
 import { detectReelContainer } from "./reel-processing";
+import { createViewerKey, viewRateLimiter, viewRequestGuard } from "./view-tracking";
 
 const router = express.Router();
 const profileRouter = express.Router();
@@ -111,12 +112,6 @@ const uploadLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => req.userId ?? ipKeyGenerator(req.ip ?? "unknown"),
-});
-const viewLimiter = rateLimit({
-  windowMs: 60_000,
-  limit: 120,
-  standardHeaders: true,
-  legacyHeaders: false,
 });
 const statusLimiter = rateLimit({
   windowMs: 60_000,
@@ -214,31 +209,19 @@ const notificationInclude = {
   actor: { select: { id: true, handle: true, displayName: true, avatarUrl: true } },
 } as const;
 
-const encodeViewerKey = (req: express.Request): string => {
-  if (req.userId) return `user:${req.userId}`;
-  const digest = createHash("sha256")
-    .update(config.JWT_ACCESS_SECRET)
-    .update("\0")
-    .update(req.ip ?? "unknown")
-    .update("\0")
-    .update(req.header("user-agent") ?? "")
-    .digest("hex");
-  return `anon:${digest}`;
-};
-
 router.get("/feed", authOptional, asyncRoute(async (req, res) => {
   const { cursor: rawCursor, limit } = paginationSchema.parse(req.query);
   const cursor = parseCursor(rawCursor, feedCursorSchema);
   const asOf = cursor ? new Date(cursor.asOf) : new Date();
   const viewerId = req.userId ?? null;
-  const viewerKey = encodeViewerKey(req);
+  const viewerKey = createViewerKey(req);
   const seenAfter = new Date(Date.now() - 7 * 24 * 60 * 60_000);
   const seenFilter = Prisma.sql`
     AND NOT EXISTS (
-      SELECT 1 FROM "ReelView" seen
-      WHERE seen."reelId" = r."id"
-        AND seen."viewerKey" = ${viewerKey}
-        AND seen."createdAt" >= ${seenAfter}
+      SELECT 1 FROM reel_views seen
+      WHERE seen.reel_id = r."id"
+        AND seen.viewer_key = ${viewerKey}
+        AND seen.first_viewed_at >= ${seenAfter}
     )
   `;
   const cursorFilter = cursor
@@ -750,7 +733,7 @@ router.post("/:id/share", authRequired, writeLimiter, asyncRoute(async (req, res
   res.json({ counts });
 }));
 
-router.post("/:id/view", authOptional, viewLimiter, asyncRoute(async (req, res) => {
+router.post("/:id/view", authOptional, viewRequestGuard, viewRateLimiter, asyncRoute(async (req, res) => {
   const reelId = reelIdFrom(req.params.id);
   const { watchedMs } = z.object({ watchedMs: z.number().int().min(0).max(60_000) }).parse(req.body);
   const reel = await ensureVisibleReel(reelId);
@@ -760,10 +743,9 @@ router.post("/:id/view", authOptional, viewLimiter, asyncRoute(async (req, res) 
   }
 
   const now = new Date();
-  const day = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const created = await prisma.$transaction(async (tx) => {
     const inserted = await tx.reelView.createMany({
-      data: { reelId, viewerKey: encodeViewerKey(req), day },
+      data: { reelId, viewerKey: createViewerKey(req, now), userId: req.userId ?? null },
       skipDuplicates: true,
     });
     if (inserted.count) {

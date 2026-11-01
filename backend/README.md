@@ -4,7 +4,7 @@ Relay is a Node.js 20+ / TypeScript API using Express, PostgreSQL, Prisma, Zod, 
 
 ## Start locally
 
-1. Copy `.env.example` to `.env` and set `DATABASE_URL` and a random `JWT_ACCESS_SECRET` (at least 32 characters). Set `CLIENT_ORIGIN=http://localhost:5173` to match the local frontend origin. Keep `.env` out of source control.
+1. Copy `.env.example` to `.env` and set `DATABASE_URL`, a random `JWT_ACCESS_SECRET`, and a separate random `POST_VIEW_HMAC_SECRET` (each at least 32 characters). Set `CLIENT_ORIGIN=http://localhost:5173` to match the local frontend origin. Keep `.env` out of source control.
 2. From this directory run `npm install`, `npm run db:generate`, and `npm run db:migrate` to apply the database migrations.
 3. Run `npm run dev`. The API and Socket.IO server listen on `PORT` (default `3000`); REST endpoints are under `/api`.
 4. From a second terminal at the workspace root, run `py -m http.server 5173`, then open `http://localhost:5173/Relay%20%E2%80%94%20Social%20interface.html`. Use the same `localhost` hostname on both frontend and API; do not switch one side to `127.0.0.1`, which changes cookie behavior.
@@ -74,6 +74,8 @@ All endpoints except registration and login require `Authorization: Bearer <acce
 | GET | `/api/search?q=...&limit=10&cursor=...` | Search post text, handles, display names, and hashtags |
 | POST | `/api/posts` | Create a post or reply (`location` is an optional user-entered label, up to 80 characters) |
 | GET, PATCH, DELETE | `/api/posts/:postId` | Read, edit, or soft-delete a post; PATCH can update or clear `location` |
+| POST | `/api/posts/:postId/view` | Record one idempotent post view |
+| POST | `/api/posts/views` | Record up to 20 idempotent post views |
 | POST | `/api/posts/:postId/view` | Record one authenticated view per user, post, and browser session; requires `{ "sessionId": "<UUID>" }` |
 | GET | `/api/posts/:postId/replies?limit=20&cursor=...` | Cursor-paginated replies for a thread |
 | GET | `/api/posts/:postId/thread?limit=20&cursor=...` | Bounded parent chain, selected post, and cursor-paginated direct replies |
@@ -126,7 +128,7 @@ Events sent to authenticated clients include `notification:new`, `profile:update
 
 - `User`: normalized account/profile data and password hash, online state, and last-seen timestamp.
 - `Post`: authored content, optional media URL, reply parent, atomic reply and view counts, timestamps, and soft-delete timestamp.
-- `PostView`: one idempotent view record per user, post, and browser session.
+- `post_views`: one idempotent view record per authenticated account or daily anonymous fingerprint; existing post view counts are preserved by migration.
 - `Hashtag` / `PostHashtag`: normalized hashtag catalog and relational post links.
 - `Interaction`: unique user/post/type rows for likes and reposts.
 - `Follow`: unique directed follower/followed relationship.
@@ -138,4 +140,4 @@ Indexes and unique constraints are in the Prisma schema. Likes/reposts are aggre
 
 ## Security notes
 
-Passwords use bcrypt with cost 12. Zod validates bodies and query parameters; auth, search, message-send, and upload endpoints have rate limits; Helmet sets common security headers; CORS allows only `CLIENT_ORIGIN`. The authenticated public-profile route accepts a validated user ID and returns only the explicit public projection plus the requesting viewer's follow state; it never exposes email, password hashes, or refresh tokens. Errors do not expose database details. Access tokens are short-lived and refresh tokens are HttpOnly cookies. Local media files are ignored by Git; production media should use a controlled object store and scanning pipeline.
+Passwords use bcrypt with cost 12. Zod validates bodies and query parameters; auth, search, message-send, view-count, and upload endpoints have rate limits; Helmet sets common security headers; CORS allows only `CLIENT_ORIGIN`. View-count identities are derived server-side, anonymous fingerprints use `POST_VIEW_HMAC_SECRET`, and count requests require an allowed app origin. The authenticated public-profile route accepts a validated user ID and returns only the explicit public projection plus the requesting viewer's follow state; it never exposes email, password hashes, or refresh tokens. Errors do not expose database details. Access tokens are short-lived and refresh tokens are HttpOnly cookies. Local media files are ignored by Git; production media should use a controlled object store and scanning pipeline.
