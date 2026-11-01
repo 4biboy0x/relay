@@ -5415,6 +5415,7 @@
         outline-offset: 3px;
       }
       .message-bubble {
+        position: relative;
         max-width: min(90%, 720px);
         align-self: flex-start;
         padding: 8px 11px;
@@ -5428,6 +5429,142 @@
         border-radius: 12px 12px 3px 12px;
         color: #fff;
         background: var(--accent);
+      }
+      .message-tools {
+        position: absolute;
+        top: 50%;
+        z-index: 4;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(-50%);
+        transition: opacity 100ms ease;
+      }
+      .message-bubble:not(.mine) > .message-tools,
+      .message-image-item:not(.mine) > .message-tools {
+        left: calc(100% + 4px);
+      }
+      .message-bubble.mine > .message-tools,
+      .message-image-item.mine > .message-tools {
+        right: calc(100% + 4px);
+      }
+      .message-bubble:hover > .message-tools,
+      .message-image-item:hover > .message-tools,
+      .message-bubble:focus-within > .message-tools,
+      .message-image-item:focus-within > .message-tools,
+      .message-bubble.has-open-menu > .message-tools,
+      .message-image-item.has-open-menu > .message-tools,
+      .message-bubble.tools-visible > .message-tools,
+      .message-image-item.tools-visible > .message-tools {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .message-tool-button {
+        display: grid;
+        width: 32px;
+        height: 32px;
+        flex: none;
+        place-items: center;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        color: var(--text-2);
+        background: transparent;
+        cursor: pointer;
+      }
+      .message-tool-button:hover,
+      .message-tool-button:focus-visible,
+      .message-tool-button[aria-expanded="true"] {
+        color: var(--text);
+        background: var(--surface-2);
+      }
+      .message-tool-button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+      .message-tool-button .i {
+        width: 18px;
+        height: 18px;
+      }
+      .message-action-menu {
+        position: fixed;
+        z-index: 100;
+        width: 196px;
+        max-width: calc(100vw - 16px);
+        max-height: calc(100dvh - 16px);
+        overflow: auto;
+        padding: 5px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        color: var(--text);
+        background: var(--surface);
+        box-shadow: var(--shadow);
+      }
+      .message-action-menu[hidden] { display: none; }
+      .message-action-menu button {
+        display: flex;
+        width: 100%;
+        min-height: 38px;
+        align-items: center;
+        gap: 10px;
+        padding: 0 10px;
+        border: 0;
+        border-radius: 8px;
+        color: var(--text);
+        background: transparent;
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+      }
+      .message-action-menu button:hover,
+      .message-action-menu button:focus-visible {
+        background: var(--surface-2);
+      }
+      .message-action-menu button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: -2px;
+      }
+      .message-action-menu .i {
+        width: 17px;
+        height: 17px;
+        flex: none;
+      }
+      @media (hover: none) {
+        .message-bubble:hover > .message-tools,
+        .message-image-item:hover > .message-tools {
+          opacity: 0;
+          pointer-events: none;
+        }
+        .message-bubble:focus-within > .message-tools,
+        .message-image-item:focus-within > .message-tools,
+        .message-bubble.has-open-menu > .message-tools,
+        .message-image-item.has-open-menu > .message-tools,
+        .message-bubble.tools-visible > .message-tools,
+        .message-image-item.tools-visible > .message-tools {
+          opacity: 1;
+          pointer-events: auto;
+        }
+        .message-tool-button { width: 40px; height: 40px; }
+      }
+      @media (max-width: 640px) {
+        .message-bubble:not(.mine) > .message-tools,
+        .message-image-item:not(.mine) > .message-tools {
+          top: auto;
+          right: auto;
+          bottom: calc(100% + 4px);
+          left: 0;
+          transform: none;
+        }
+        .message-bubble.mine > .message-tools,
+        .message-image-item.mine > .message-tools {
+          top: auto;
+          right: 0;
+          bottom: calc(100% + 4px);
+          left: auto;
+          transform: none;
+        }
       }
       .message-bubble.search-message-highlight {
         animation: message-search-shake 420ms ease-in-out;
@@ -5626,25 +5763,67 @@
         gap: 2px;
         padding: 0;
         overflow: visible;
-        border-radius: 14px;
+        border-radius: 12px;
         background: transparent;
       }
       .message-bubble.audio-message {
-        width: min(300px, 100%);
-        max-width: min(320px, 90%);
+        width: 220px;
+        max-width: 100%;
         min-width: 0;
         padding: 0;
+        color: var(--text);
+        background: var(--surface-2);
+      }
+      .message-bubble.mine.audio-message {
+        color: #fff;
+        background: var(--accent);
+      }
+      .message-image-item {
+        position: relative;
+        width: fit-content;
+        max-width: 100%;
+      }
+      .message-image-list {
+        display: grid;
+        width: min(300px, 100%);
+        max-width: 100%;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 2px;
+      }
+      .message-image-list[data-count="1"] {
+        display: block;
+        width: min(300px, 100%);
+      }
+      .message-image-list:not([data-count="1"]) .message-image-item {
+        width: 100%;
+      }
+      .message-image-frame {
+        width: 100%;
+        max-width: 100%;
+        aspect-ratio: 3 / 2;
+        overflow: hidden;
+        border-radius: 14px;
         background: transparent;
       }
+      .message-image-frame.is-portrait {
+        max-height: 400px;
+        aspect-ratio: 3 / 5;
+      }
+      .message-image-list[data-count="1"].is-portrait {
+        width: min(240px, 100%);
+      }
+      .message-image-frame.is-square { aspect-ratio: 1; }
+      .message-image-frame.is-banner { aspect-ratio: 3 / 1; }
       .message-media {
-        width: 260px;
-        max-width: 100%;
-        height: auto;
-        aspect-ratio: 4 / 3;
-        object-fit: contain;
         display: block;
-        border-radius: 14px;
-        background: var(--surface-2);
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        aspect-ratio: auto;
+        border-radius: inherit;
+        object-fit: cover;
+        object-position: center;
+        background: transparent;
       }
       .message-media-static {
         cursor: default;
@@ -5653,35 +5832,15 @@
       }
       .message-media-button {
         display: block;
-        width: min(300px, 100%);
+        width: 100%;
+        height: 100%;
         max-width: 100%;
-        aspect-ratio: 3 / 2;
         padding: 0;
         border: 0;
-        border-radius: 14px;
+        border-radius: inherit;
         overflow: hidden;
         background: transparent;
         cursor: zoom-in;
-      }
-      .message-media-button.is-portrait {
-        width: min(240px, 100%);
-        max-height: 400px;
-        aspect-ratio: 3 / 5;
-      }
-      .message-media-button.is-square {
-        aspect-ratio: 1;
-      }
-      .message-media-button.is-banner {
-        aspect-ratio: 3 / 1;
-      }
-      .message-media-button .message-media {
-        width: 100%;
-        height: 100%;
-        aspect-ratio: auto;
-        border-radius: inherit;
-        background: transparent;
-        object-fit: cover;
-        object-position: center;
       }
       .message-media-button:focus-visible {
         outline: 2px solid var(--accent);
@@ -5696,43 +5855,29 @@
       .message-sticker { display: block; width: 32px; height: 32px; font-size: 32px; line-height: 32px; text-align: center; }
       .relay-voice {
         position: relative;
-        width: 100%;
+        width: 220px;
         max-width: 100%;
         min-width: 0;
-        height: 52px;
-        display: grid;
-        grid-template-columns: 36px minmax(0, 1fr) 34px;
+        height: 42px;
+        display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         box-sizing: border-box;
-        padding: 7px 10px;
-        border: 1px solid var(--border);
-        border-radius: 999px;
-        background: var(--bg);
-        --voice-played: var(--text);
-        --voice-unplayed: rgba(0,0,0,.28);
-        --voice-control-bg: var(--text);
-        --voice-control-fg: var(--bg);
-        --voice-time: var(--text-2);
-      }
-      :root[data-theme="dark"] .relay-voice {
-        --voice-unplayed: rgba(255,255,255,.35);
-      }
-      @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) .relay-voice { --voice-unplayed: rgba(255,255,255,.35); }
-      }
-      .message-bubble.mine.audio-message .relay-voice {
-        border-color: rgba(0,0,0,.12);
-        background: #fff;
-        --voice-played: #111;
-        --voice-unplayed: rgba(0,0,0,.28);
-        --voice-control-bg: #111;
-        --voice-control-fg: #fff;
-        --voice-time: #333;
+        padding: 4px 7px;
+        border: 0;
+        border-radius: inherit;
+        color: inherit;
+        background: transparent;
+        --voice-played: currentColor;
+        --voice-unplayed: color-mix(in srgb, currentColor 38%, transparent);
+        --voice-control-bg: transparent;
+        --voice-control-fg: currentColor;
+        --voice-time: currentColor;
       }
       .relay-voice-play {
-        width: 36px;
-        height: 36px;
+        width: 32px;
+        height: 32px;
+        flex: none;
         display: grid;
         place-items: center;
         border: 0;
@@ -5750,19 +5895,24 @@
       .relay-voice-play-icons .relay-voice-pause-icon { transform: scale(.85); opacity: 0; }
       .relay-voice.playing .relay-voice-play-icon { transform: translateX(1px) scale(.85); opacity: 0; }
       .relay-voice.playing .relay-voice-pause-icon { transform: scale(1); opacity: 1; }
-      .relay-waveform { width: 100%; min-width: 0; height: 24px; display: flex; align-items: center; justify-content: center; touch-action: pan-y; cursor: pointer; }
+      .relay-waveform { width: auto; min-width: 0; height: 24px; flex: 1; display: flex; align-items: center; justify-content: center; touch-action: pan-y; cursor: pointer; }
       .relay-waveform svg { width: 100%; min-width: 0; height: 24px; overflow: visible; pointer-events: none; }
       .relay-waveform rect { fill: var(--voice-unplayed); }
       .relay-waveform rect.is-played { fill: var(--voice-played); }
       .relay-waveform:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 5px; }
-      .relay-voice-duration { min-width: 34px; color: var(--voice-time); font-size: 12px; font-variant-numeric: tabular-nums; line-height: 1; text-align: right; pointer-events: none; }
+      .relay-voice-duration { width: 32px; min-width: 32px; flex: none; color: var(--voice-time); font-size: 11px; font-variant-numeric: tabular-nums; line-height: 1; text-align: right; pointer-events: none; }
       @media (prefers-reduced-motion: reduce) {
         .relay-voice-play, .relay-voice-play-icons svg { transition: none; }
         #messageAudioButton.recording { animation: none; }
       }
-      @media (max-width: 380px) {
-        .message-bubble.audio-message { max-width: min(320px, 90%); }
-        .relay-voice { gap: 6px; padding-inline: 8px; }
+      @media (max-width: 640px) {
+        .message-bubble.image-message { max-width: min(220px, 100%); }
+        .message-image-list { width: min(220px, 100%); }
+        .message-image-list[data-count="1"] { width: min(220px, 100%); }
+        .message-image-list[data-count="1"].is-portrait { width: min(168px, 100%); }
+        .message-image-frame.is-portrait { max-height: 280px; }
+        .message-bubble.audio-message,
+        .relay-voice { width: 220px; max-width: 100%; }
       }
       .typing-status {
         display: flex;
@@ -6670,7 +6820,8 @@
           width: min(260px, 100%);
         }
         .relay-voice {
-          width: min(340px, 100%);
+          width: 220px;
+          max-width: 100%;
         }
         .chat-compose {
           margin-bottom: 12px;
@@ -7855,6 +8006,15 @@
           <circle cx="12" cy="12" r="1" />
           <circle cx="19" cy="12" r="1" />
           <circle cx="5" cy="12" r="1" />
+        </symbol>
+        <symbol id="download" viewBox="0 0 24 24">
+          <path d="M12 3v12" />
+          <path d="m7 10 5 5 5-5" />
+          <path d="M5 21h14" />
+        </symbol>
+        <symbol id="copy" viewBox="0 0 24 24">
+          <rect x="8" y="8" width="13" height="13" rx="2" />
+          <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" />
         </symbol>
         <symbol id="contrast" viewBox="0 0 24 24">
           <circle cx="12" cy="12" r="10" />
@@ -14550,18 +14710,104 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function relayVoicePlayIcon() {
         return `<span class="relay-voice-play-icons" aria-hidden="true"><svg class="relay-voice-play-icon" viewBox="0 0 24 24"><path d="M9 5.6v12.8a.8.8 0 0 0 1.2.7l10.4-6.4a.8.8 0 0 0 0-1.4L10.2 4.9A.8.8 0 0 0 9 5.6z"/></svg><svg class="relay-voice-pause-icon" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1.5"/><rect x="14" y="5" width="4" height="14" rx="1.5"/></svg></span>`;
       }
+      function messageToolsMarkup({ copyText = "", downloadUrl = "", downloadLabel = "media", directDownload = false } = {}) {
+        const copyAction = copyText
+          ? `<button type="button" role="menuitem" data-message-menu-action="copy" data-message-copy="${esc(copyText)}">${ic("copy")}<span>Copy message text</span></button>`
+          : "";
+        const downloadAction = downloadUrl
+          ? `<button type="button" role="menuitem" data-message-menu-action="download" data-message-download="${esc(downloadUrl)}">${ic("download")}<span>Download</span></button>`
+          : "";
+        if (!copyAction && !downloadAction) return "";
+        const downloadButton = directDownload && downloadUrl
+          ? `<button class="message-tool-button" type="button" data-message-download="${esc(downloadUrl)}" aria-label="Download ${esc(downloadLabel)}" title="Download">${ic("download")}</button>`
+          : "";
+        return `<div class="message-tools"><button class="message-tool-button" type="button" data-message-more aria-expanded="false" aria-haspopup="menu" aria-label="More message actions" title="More">${ic("dots")}</button>${downloadButton}<div class="message-action-menu" role="menu" hidden>${copyAction}${downloadAction}</div></div>`;
+      }
+      function revealMessageTools(owner) {
+        owner.classList.add("tools-visible");
+        clearTimeout(owner._messageToolsTimer);
+        owner._messageToolsTimer = setTimeout(() => {
+          if (!owner.querySelector(".message-action-menu:not([hidden])")) owner.classList.remove("tools-visible");
+        }, 4000);
+      }
+      function closeMessageActionMenus(restoreFocus = false) {
+        document.querySelectorAll(".message-action-menu:not([hidden])").forEach((menu) => {
+          menu.hidden = true;
+          const owner = menu.closest(".message-bubble, .message-image-item");
+          owner?.classList.remove("has-open-menu");
+          const trigger = owner?.querySelector("[data-message-more]");
+          trigger?.setAttribute("aria-expanded", "false");
+          if (restoreFocus) trigger?.focus();
+        });
+      }
+      function positionMessageActionMenu(trigger, menu) {
+        menu.hidden = false;
+        const triggerRect = trigger.getBoundingClientRect();
+        const menuRect = menu.getBoundingClientRect();
+        const left = Math.max(8, Math.min(window.innerWidth - menuRect.width - 8, triggerRect.right - menuRect.width));
+        const preferredTop = triggerRect.bottom + 6;
+        const top = preferredTop + menuRect.height <= window.innerHeight - 8
+          ? preferredTop
+          : Math.max(8, triggerRect.top - menuRect.height - 6);
+        menu.style.left = `${left}px`;
+        menu.style.top = `${top}px`;
+      }
+      async function copyMessageText(text) {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(text);
+          return;
+        }
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.append(textarea);
+        textarea.select();
+        const copied = document.execCommand("copy");
+        textarea.remove();
+        if (!copied) throw new Error("Copy is not available in this browser.");
+      }
+      async function downloadMessageMedia(url) {
+        const mediaUrl = new URL(url, location.href);
+        if (!["http:", "https:"].includes(mediaUrl.protocol)) throw new Error("This media cannot be downloaded.");
+        const response = await fetch(mediaUrl.href, {
+          credentials: mediaUrl.origin === location.origin ? "same-origin" : "omit",
+        });
+        if (!response.ok) throw new Error(`Download failed (${response.status}).`);
+        const blobUrl = URL.createObjectURL(await response.blob());
+        const filename = decodeURIComponent(mediaUrl.pathname.split("/").pop() || "relay-media");
+        const anchor = document.createElement("a");
+        anchor.href = blobUrl;
+        anchor.download = filename;
+        document.body.append(anchor);
+        anchor.click();
+        anchor.remove();
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      }
       function messageMarkup(message) {
         const mine = message.senderId === currentUser?.id;
         const body = String(message.body || "");
-        const bodyGifUrl = !message.mediaUrl && isGifMediaUrl(body.trim()) ? body.trim() : "";
-        const mediaUrl = message.mediaUrl ? mediaHref(message.mediaUrl) : bodyGifUrl ? mediaHref(bodyGifUrl) : "";
-        const imageUrl = normalizeGiphyGifUrl(mediaUrl) || mediaUrl;
-        const isGif = Boolean(imageUrl && isGifMediaUrl(imageUrl));
-        const bodyIsGifUrl = isGif && isGifMediaUrl(body.trim());
-        const image = mediaUrl
-          ? isGif
-            ? `<img class="message-media message-media-static" src="${esc(imageUrl)}" alt="Shared GIF" width="260" height="195" loading="lazy" decoding="async" />`
-            : `<button class="message-media-button" type="button" data-lightbox-image="${esc(imageUrl)}" aria-label="Open shared image"><img class="message-media" src="${esc(imageUrl)}" alt="Shared image" width="260" height="195" loading="lazy" decoding="async" /></button>`
+        const hasMediaUrls = Array.isArray(message.mediaUrls);
+        const bodyGifUrl = !message.mediaUrl && !hasMediaUrls && isGifMediaUrl(body.trim()) ? body.trim() : "";
+        const rawMediaUrls = hasMediaUrls
+          ? message.mediaUrls.filter((url) => typeof url === "string" && url)
+          : message.mediaUrl ? [message.mediaUrl] : bodyGifUrl ? [bodyGifUrl] : [];
+        const mediaItems = rawMediaUrls.map((rawUrl) => {
+          const sourceUrl = mediaHref(rawUrl);
+          const imageUrl = normalizeGiphyGifUrl(sourceUrl) || sourceUrl;
+          return { sourceUrl, imageUrl, isGif: isGifMediaUrl(imageUrl) };
+        });
+        const bodyIsGifUrl = Boolean(bodyGifUrl && mediaItems.some(({ isGif }) => isGif));
+        const image = mediaItems.length
+          ? `<div class="message-image-list" data-count="${mediaItems.length}">${mediaItems.map(({ sourceUrl, imageUrl, isGif }) => `
+            <div class="message-image-item${mine ? " mine" : ""}">
+              <div class="message-image-frame">
+                ${isGif
+                  ? `<img class="message-media message-media-static" src="${esc(imageUrl)}" alt="Shared GIF" loading="lazy" decoding="async" />`
+                  : `<button class="message-media-button" type="button" data-lightbox-image="${esc(imageUrl)}" aria-label="Open shared image"><img class="message-media" src="${esc(imageUrl)}" alt="Shared image" loading="lazy" decoding="async" /></button>`}
+              </div>
+              ${messageToolsMarkup({ downloadUrl: imageUrl, downloadLabel: isGif ? "GIF" : "image", directDownload: true })}
+            </div>`).join("")}</div>`
           : "";
         const waveform = validVoiceWaveform(message.waveform) ? message.waveform : Array(voiceWaveformBarCount).fill(0);
         const waveformReady = validVoiceWaveform(message.waveform);
@@ -14574,7 +14820,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const stickerOnly = Boolean(sticker && !image && !audio && !text);
         const imageOnly = Boolean(image && !audio && !text && !sticker);
         const audioOnly = Boolean(audio && !image && !text && !sticker);
-        return `<div class="message-bubble${mine ? " mine" : ""}${mediaOnly ? " media-message" : ""}${imageOnly ? " image-message" : ""}${audioOnly ? " audio-message" : ""}${stickerOnly ? " sticker-message" : ""}" data-message-id="${esc(message.id)}">${image}${audio}${sticker}${text}</div>`;
+        const actions = messageToolsMarkup({
+          copyText: text ? body : "",
+          downloadUrl: audioUrl,
+          downloadLabel: "voice message",
+        });
+        return `<div class="message-bubble${mine ? " mine" : ""}${mediaOnly ? " media-message" : ""}${imageOnly ? " image-message" : ""}${audioOnly ? " audio-message" : ""}${stickerOnly ? " sticker-message" : ""}" data-message-id="${esc(message.id)}">${image}${audio}${sticker}${text}${actions}</div>`;
       }
       function bindVoiceMessages(container = document) {
         container.querySelectorAll(".relay-voice audio:not([data-relay-bound])").forEach((audio) => {
@@ -14639,12 +14890,16 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const list = $("#chatLog");
         container.querySelectorAll(".message-media").forEach((image) => {
           const updateImageFrame = () => {
-            const frame = image.closest(".message-media-button");
+            const frame = image.closest(".message-image-frame");
             if (frame && image.naturalWidth && image.naturalHeight) {
               const ratio = image.naturalWidth / image.naturalHeight;
               frame.classList.remove("is-portrait", "is-square", "is-banner");
-              if (ratio < 0.9) frame.classList.add("is-portrait");
-              else if (ratio <= 1.1) frame.classList.add("is-square");
+              const list = frame.closest(".message-image-list");
+              list?.classList.remove("is-portrait");
+              if (ratio < 0.9) {
+                frame.classList.add("is-portrait");
+                if (list?.dataset.count === "1") list.classList.add("is-portrait");
+              } else if (ratio <= 1.1) frame.classList.add("is-square");
               else if (ratio > 2.2) frame.classList.add("is-banner");
             }
             requestAnimationFrame(() => {
@@ -16584,9 +16839,85 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           options[next].click();
         }
       });
+      document.addEventListener("pointerdown", (event) => {
+        if (!matchMedia("(hover: none)").matches) return;
+        const owner = event.target.closest(".message-image-item, .message-bubble");
+        if (event.target.closest(".message-tools")) return;
+        if (!owner) {
+          document.querySelectorAll(".message-bubble.tools-visible, .message-image-item.tools-visible")
+            .forEach((item) => item.classList.remove("tools-visible"));
+          return;
+        }
+        const firstImageTap = owner.matches(".message-image-item") && !owner.classList.contains("tools-visible");
+        revealMessageTools(owner);
+        if (firstImageTap && event.target.closest("[data-lightbox-image]")) event.preventDefault();
+      }, true);
+      document.addEventListener("keydown", (event) => {
+        const menu = event.target instanceof Element
+          ? event.target.closest(".message-action-menu:not([hidden])")
+          : null;
+        if (!menu) return;
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeMessageActionMenus(true);
+          return;
+        }
+        const items = $$("[role='menuitem']", menu);
+        if (!items.length || !["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+        event.preventDefault();
+        const currentIndex = items.indexOf(document.activeElement);
+        const nextIndex = event.key === "Home" ? 0
+          : event.key === "End" ? items.length - 1
+            : (currentIndex + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
+        items[nextIndex].focus();
+      });
       document.addEventListener("click", async (e) => {
         if (emojiCategoryInteraction) {
           emojiCategoryInteraction = false;
+          return;
+        }
+        const moreTrigger = e.target.closest("[data-message-more]");
+        if (moreTrigger) {
+          const menu = moreTrigger.parentElement.querySelector(".message-action-menu");
+          const opening = menu.hidden;
+          closeMessageActionMenus();
+          if (opening) {
+            positionMessageActionMenu(moreTrigger, menu);
+            moreTrigger.setAttribute("aria-expanded", "true");
+            moreTrigger.closest(".message-bubble, .message-image-item")?.classList.add("has-open-menu");
+            menu.querySelector("[role='menuitem']")?.focus();
+          }
+          return;
+        }
+        const menuAction = e.target.closest("[data-message-menu-action]");
+        if (menuAction) {
+          const owner = menuAction.closest(".message-bubble, .message-image-item");
+          const trigger = owner?.querySelector("[data-message-more]");
+          const action = menuAction.dataset.messageMenuAction;
+          const copyText = menuAction.dataset.messageCopy;
+          const downloadUrl = menuAction.dataset.messageDownload;
+          closeMessageActionMenus();
+          try {
+            if (action === "copy") {
+              await copyMessageText(copyText || "");
+              toast("Message copied.");
+            } else if (action === "download" && downloadUrl) {
+              await downloadMessageMedia(downloadUrl);
+            }
+          } catch (error) {
+            toast(error.message || "Message action failed.");
+          }
+          trigger?.focus();
+          return;
+        }
+        if (!e.target.closest(".message-action-menu, .message-tools")) closeMessageActionMenus();
+        const directDownload = e.target.closest(".message-tool-button[data-message-download]");
+        if (directDownload) {
+          try {
+            await downloadMessageMedia(directDownload.dataset.messageDownload);
+          } catch (error) {
+            toast(error.message || "Download failed.");
+          }
           return;
         }
         if (e.target.closest("#closeReplyComposer")) {
