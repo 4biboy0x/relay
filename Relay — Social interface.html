@@ -11685,7 +11685,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         container.insertBefore(sentinel, slides[Math.max(0, slides.length - 2)]);
       }
-      const reelCacheKey = () => `relay_reels_cache:${currentUser?.id || "anonymous"}`;
+      const reelCacheKey = () => `relay_reels_cache:v2:${currentUser?.id || "anonymous"}`;
       function readReelCache() {
         try {
           const cached = JSON.parse(sessionStorage.getItem(reelCacheKey()) || "null");
@@ -11797,7 +11797,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (requestedReelId) {
             [selected, page] = await Promise.all([
               api(`/reels/${encodeURIComponent(requestedReelId)}`),
-              api("/reels/feed?limit=8"),
+              api(`/reels/feed?${new URLSearchParams({ limit: "8", afterId: requestedReelId })}`),
             ]);
             if (selected.status !== "READY" || !selected.videoUrl) {
               throw new Error("This Reel isn’t ready to play yet.");

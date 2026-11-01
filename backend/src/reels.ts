@@ -53,11 +53,6 @@ const isFollowing = async (viewerId: string | null, authorId: string): Promise<b
   (await followingAuthors(viewerId, [authorId])).has(authorId);
 type ReelRecord = Prisma.ReelGetPayload<{ include: ReturnType<typeof relationInclude> }>;
 type ProfileCursor = { createdAt: string; id: string };
-type FeedCursor = ProfileCursor & {
-  followRank: number;
-  score: number;
-  asOf: string;
-};
 
 const profileCursorSchema = z.object({
   createdAt: z.string().datetime(),
@@ -70,11 +65,6 @@ const localUploadOnly: RequestHandler = (_req, _res, next) => {
   }
   next();
 };
-const feedCursorSchema = profileCursorSchema.extend({
-  followRank: z.number().int().min(0).max(1),
-  score: z.number().finite(),
-  asOf: z.string().datetime(),
-});
 const uploadSchema = z.object({
   caption: z.string().max(280).nullable().optional(),
   mime: z.enum(["video/mp4", "video/quicktime", "video/webm"]),
@@ -97,6 +87,7 @@ const paginationSchema = z.object({
   cursor: z.string().max(256).optional(),
   limit: z.coerce.number().int().min(1).max(20).default(8),
 });
+const feedQuerySchema = paginationSchema.extend({ afterId: uuidSchema.optional() });
 const mediaKindSchema = z.enum(["video", "poster"]);
 
 const writeLimiter = rateLimit({
@@ -142,7 +133,7 @@ const parseCursor = <T>(value: string | undefined, schema: z.ZodType<T>): T | un
     throw new HttpError(400, "Invalid pagination cursor");
   }
 };
-const encodeCursor = (cursor: ProfileCursor | FeedCursor): string =>
+const encodeCursor = (cursor: ProfileCursor): string =>
   Buffer.from(JSON.stringify(cursor)).toString("base64url");
 const reelIdFrom = (value: string | string[] | undefined): string => uuidSchema.parse(value);
 const viewerIdFrom = (req: express.Request): string => {
@@ -210,136 +201,51 @@ const notificationInclude = {
 } as const;
 
 router.get("/feed", authOptional, asyncRoute(async (req, res) => {
-  const { cursor: rawCursor, limit } = paginationSchema.parse(req.query);
-  const cursor = parseCursor(rawCursor, feedCursorSchema);
-  const asOf = cursor ? new Date(cursor.asOf) : new Date();
+  const { cursor: rawCursor, limit, afterId } = feedQuerySchema.parse(req.query);
+  const cursor = parseCursor(rawCursor, profileCursorSchema);
+  if (cursor && afterId) throw new HttpError(400, "Use either a cursor or an anchor Reel");
+  const anchor = afterId
+    ? await prisma.reel.findFirst({
+        where: {
+          id: afterId,
+          status: ReelStatus.READY,
+          deletedAt: null,
+          publishedAt: { not: null },
+        },
+        select: { id: true, publishedAt: true },
+      })
+    : null;
+  if (afterId && !anchor?.publishedAt) throw new HttpError(404, "Reel not found");
+  const pageCursor = cursor ?? (anchor?.publishedAt
+    ? { createdAt: anchor.publishedAt.toISOString(), id: anchor.id }
+    : undefined);
   const viewerId = req.userId ?? null;
-  const cursorFilter = cursor
-    ? Prisma.sql`
-      WHERE "followRank" > ${cursor.followRank}
-        OR ("followRank" = ${cursor.followRank} AND (
-          "score" < ${cursor.score}
-          OR ("score" = ${cursor.score} AND (
-            "publishedAt" < ${new Date(cursor.createdAt)}
-            OR ("publishedAt" = ${new Date(cursor.createdAt)} AND "id" < ${cursor.id}::uuid)
-          ))
-        ))
-    `
-    : Prisma.empty;
-
-  type RankedReel = {
-    id: string;
-    caption: string | null;
-    authorId: string;
-    authorHandle: string;
-    authorDisplayName: string;
-    authorAvatarUrl: string | null;
-    status: ReelStatus;
-    videoKey: string | null;
-    posterKey: string | null;
-    durationMs: number | null;
-    width: number | null;
-    height: number | null;
-    likeCount: number;
-    commentCount: number;
-    repostCount: number;
-    shareCount: number;
-    viewCount: number;
-    createdAt: Date;
-    publishedAt: Date;
-    viewerLiked: boolean;
-    viewerBookmarked: boolean;
-    viewerReposted: boolean;
-    followRank: number;
-    score: number;
-  };
-
-  // Engagement/hour is time-decayed; followed authors are promoted ahead of the score-ranked public feed.
-  const rows = await prisma.$queryRaw<RankedReel[]>`
-    WITH ranked AS (
-      SELECT
-        r."id", r."caption", r."authorId", u."handle" AS "authorHandle",
-        u."displayName" AS "authorDisplayName", u."avatarUrl" AS "authorAvatarUrl",
-        r."status", r."videoKey", r."posterKey", r."durationMs", r."width", r."height",
-        r."likeCount", r."commentCount", r."repostCount", r."shareCount", r."viewCount",
-        r."createdAt", r."publishedAt",
-        EXISTS (
-          SELECT 1 FROM "ReelLike" liked
-          WHERE liked."reelId" = r."id" AND liked."userId" = ${viewerId ?? ""}
-        ) AS "viewerLiked",
-        EXISTS (
-          SELECT 1 FROM "ReelBookmark" saved
-          WHERE saved."reelId" = r."id" AND saved."userId" = ${viewerId ?? ""}
-        ) AS "viewerBookmarked",
-        EXISTS (
-          SELECT 1 FROM "ReelRepost" reposted
-          WHERE reposted."reelId" = r."id" AND reposted."userId" = ${viewerId ?? ""}
-        ) AS "viewerReposted",
-        CASE WHEN EXISTS (
-          SELECT 1 FROM "Follow" f
-          WHERE f."followerId" = ${viewerId ?? ""} AND f."followedId" = r."authorId"
-        ) THEN 0 ELSE 1 END AS "followRank",
-        (
-          (r."likeCount" + 2.0 * r."commentCount" + 2.0 * r."repostCount"
-            + 0.25 * r."shareCount" + 0.05 * r."viewCount")
-          / POWER(GREATEST(1.0, EXTRACT(EPOCH FROM (${asOf}::timestamp - r."publishedAt")) / 3600.0 + 1), 1.2)
-        )::double precision AS "score"
-      FROM "Reel" r
-      JOIN "User" u ON u."id" = r."authorId"
-      WHERE r."status" = 'READY'
-        AND r."deletedAt" IS NULL
-        AND r."publishedAt" IS NOT NULL
-    )
-    SELECT * FROM ranked
-    ${cursorFilter}
-    ORDER BY "followRank" ASC, "score" DESC, "publishedAt" DESC, "id" DESC
-    LIMIT ${limit + 1}
-  `;
-
-  const hasMore = rows.length > limit;
-  const page = rows.slice(0, limit);
-  const items = await Promise.all(page.map(async (reel) => ({
-    id: reel.id,
-    caption: reel.caption,
-    status: reel.status,
-    durationMs: reel.durationMs,
-    width: reel.width,
-    height: reel.height,
-    createdAt: reel.createdAt,
-    publishedAt: reel.publishedAt,
-    author: {
-      id: reel.authorId,
-      handle: reel.authorHandle,
-      displayName: reel.authorDisplayName,
-      avatarUrl: reel.authorAvatarUrl,
-      isFollowing: reel.followRank === 0,
+  const reels = await prisma.reel.findMany({
+    where: {
+      status: ReelStatus.READY,
+      deletedAt: null,
+      publishedAt: { not: null },
+      ...(pageCursor ? {
+        OR: [
+          { publishedAt: { lt: new Date(pageCursor.createdAt) } },
+          { publishedAt: new Date(pageCursor.createdAt), id: { lt: pageCursor.id } },
+        ],
+      } : {}),
     },
-    counts: {
-      likes: reel.likeCount,
-      comments: reel.commentCount,
-      reposts: reel.repostCount,
-      shares: reel.shareCount,
-      views: reel.viewCount,
-    },
-    viewer: {
-      liked: reel.viewerLiked,
-      bookmarked: reel.viewerBookmarked,
-      reposted: reel.viewerReposted,
-    },
-    videoUrl: await mediaUrl(reel.id, reel.videoKey, "video"),
-    posterUrl: await mediaUrl(reel.id, reel.posterKey, "poster"),
-  })));
+    include: relationInclude(viewerId),
+    orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
+    take: limit + 1,
+  });
+  const hasMore = reels.length > limit;
+  const page = reels.slice(0, limit);
+  const followedAuthors = await followingAuthors(viewerId, page.map((reel) => reel.authorId));
+  const items = await Promise.all(page.map((reel) =>
+    reelResponse(reel, followedAuthors.has(reel.authorId))));
   const last = page.at(-1);
   res.json({
     items,
     nextCursor: hasMore && last
-      ? encodeCursor({
-          createdAt: last.publishedAt.toISOString(),
-          id: last.id,
-          followRank: last.followRank,
-          score: last.score,
-          asOf: asOf.toISOString(),
-        })
+      ? encodeCursor({ createdAt: last.publishedAt!.toISOString(), id: last.id })
       : null,
   });
 }));
@@ -348,31 +254,33 @@ router.get("/bookmarks", authRequired, asyncRoute(async (req, res) => {
   const { cursor: rawCursor, limit } = paginationSchema.parse(req.query);
   const cursor = parseCursor(rawCursor, profileCursorSchema);
   const userId = viewerIdFrom(req);
-  const bookmarks = await prisma.reelBookmark.findMany({
+  const reels = await prisma.reel.findMany({
     where: {
-      userId,
-      reel: { status: ReelStatus.READY, deletedAt: null },
+      status: ReelStatus.READY,
+      deletedAt: null,
+      publishedAt: { not: null },
+      bookmarks: { some: { userId } },
       ...(cursor ? {
         OR: [
-          { createdAt: { lt: new Date(cursor.createdAt) } },
-          { createdAt: new Date(cursor.createdAt), reelId: { lt: cursor.id } },
+          { publishedAt: { lt: new Date(cursor.createdAt) } },
+          { publishedAt: new Date(cursor.createdAt), id: { lt: cursor.id } },
         ],
       } : {}),
     },
-    include: { reel: { include: relationInclude(userId) } },
-    orderBy: [{ createdAt: "desc" }, { reelId: "desc" }],
+    include: relationInclude(userId),
+    orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
     take: limit + 1,
   });
-  const hasMore = bookmarks.length > limit;
-  const page = bookmarks.slice(0, limit);
-  const followedAuthors = await followingAuthors(userId, page.map(({ reel }) => reel.authorId));
-  const items = await Promise.all(page.map(({ reel }) =>
+  const hasMore = reels.length > limit;
+  const page = reels.slice(0, limit);
+  const followedAuthors = await followingAuthors(userId, page.map((reel) => reel.authorId));
+  const items = await Promise.all(page.map((reel) =>
     reelResponse(reel, followedAuthors.has(reel.authorId))));
   const last = page.at(-1);
   res.json({
     items,
     nextCursor: hasMore && last
-      ? encodeCursor({ createdAt: last.createdAt.toISOString(), id: last.reelId })
+      ? encodeCursor({ createdAt: last.publishedAt!.toISOString(), id: last.id })
       : null,
   });
 }));
