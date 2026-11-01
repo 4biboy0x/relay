@@ -4023,7 +4023,7 @@
         display: flex;
         width: min(600px, calc(100% - 32px));
         max-width: none;
-        height: auto;
+        height: fit-content;
         max-height: calc(100dvh - 48px);
         flex-direction: column;
         overflow: hidden;
@@ -4059,7 +4059,7 @@
       .post-editor-close:hover { background: var(--surface-2); color: var(--text); }
       .post-editor-close svg { width: 16px; height: 16px; }
       .post-editor-body {
-        flex: 1;
+        flex: 0 1 auto;
         min-height: 0;
         overflow-y: auto;
         padding: 16px 20px;
@@ -4136,6 +4136,7 @@
         box-shadow: none;
       }
       #postEditorMount #mediaPreview[hidden] { display: none !important; }
+      #postEditorMount #mediaPreview.is-removing { overflow: hidden; }
       #postEditorMount .media-preview-visual {
         display: grid;
         width: 100%;
@@ -8383,6 +8384,9 @@
       let composerMediaUrl = "";
       let composerLocation = "";
       let composerPreviewUrl = "";
+      let composerMediaRemovalAnimation = null;
+      let composerMediaRemovalGeneration = 0;
+      let composerMediaRemovalUrl = "";
       let composerUploadPromise = null;
       let composerUploadGeneration = 0;
       const postPlaceholderPhrases = [
@@ -8841,26 +8845,69 @@
         file && ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)
         && file.size > 0 && file.size <= 5 * 1024 * 1024;
       function showLocalPreview(file, image) {
+        if (image === $("#mediaPreviewImage")) cancelComposerMediaRemoval();
         const url = URL.createObjectURL(file);
         image.src = url;
         image.hidden = false;
         return url;
       }
+      function cancelComposerMediaRemoval() {
+        composerMediaRemovalGeneration += 1;
+        composerMediaRemovalAnimation?.cancel();
+        composerMediaRemovalAnimation = null;
+        if (composerMediaRemovalUrl) URL.revokeObjectURL(composerMediaRemovalUrl);
+        composerMediaRemovalUrl = "";
+        const preview = $("#mediaPreview");
+        preview.classList.remove("is-removing");
+        ["height", "margin-top", "opacity"].forEach((property) => {
+          preview.style.removeProperty(property);
+        });
+      }
       function clearComposerMedia() {
         composerUploadGeneration += 1;
         composerMediaUrl = "";
         composerUploadPromise = null;
-        if (composerPreviewUrl) URL.revokeObjectURL(composerPreviewUrl);
+        const previewUrl = composerPreviewUrl;
         composerPreviewUrl = "";
-        $("#mediaPreview").hidden = true;
+        const preview = $("#mediaPreview");
+        const image = $("#mediaPreviewImage");
+        cancelComposerMediaRemoval();
+        const shouldAnimate = editingPostId
+          && postEditorDialog.open
+          && !preview.hidden
+          && typeof preview.animate === "function"
+          && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (shouldAnimate) {
+          const generation = composerMediaRemovalGeneration;
+          const styles = getComputedStyle(preview);
+          const height = preview.getBoundingClientRect().height;
+          preview.classList.add("is-removing");
+          const animation = preview.animate([
+            { height: `${height}px`, marginTop: styles.marginTop, opacity: 1 },
+            { height: "0px", marginTop: "0px", opacity: 0 },
+          ], { duration: 200, easing: "cubic-bezier(.2, .8, .2, 1)" });
+          composerMediaRemovalAnimation = animation;
+          composerMediaRemovalUrl = previewUrl;
+          animation.onfinish = () => {
+            if (generation !== composerMediaRemovalGeneration) return;
+            preview.hidden = true;
+            image.removeAttribute("src");
+            image.hidden = false;
+            cancelComposerMediaRemoval();
+          };
+        } else {
+          preview.hidden = true;
+          image.removeAttribute("src");
+          image.hidden = false;
+          if (previewUrl) URL.revokeObjectURL(previewUrl);
+        }
         $(".composer .box").classList.remove("has-media");
-        $("#mediaPreviewImage").removeAttribute("src");
-        $("#mediaPreviewImage").hidden = false;
         $("#attachImage").setAttribute("aria-pressed", "false");
         $("#postFileInput").value = "";
         updatePostButton();
       }
       function setComposerMedia(url) {
+        cancelComposerMediaRemoval();
         composerMediaUrl = url || "";
         $("#postFileInput").value = "";
         $("#attachImage").setAttribute("aria-pressed", String(Boolean(composerMediaUrl)));
