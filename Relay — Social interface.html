@@ -7617,7 +7617,16 @@
         place-items: center;
         scroll-snap-align: none;
       }
+      .reel-feed-sentinel.is-loading {
+        height: 28px;
+      }
+      .reel-feed-sentinel .spinner {
+        display: block;
+      }
       .reel-feed-sentinel[hidden] { display: none; }
+      @media (prefers-reduced-motion: reduce) {
+        .reel-feed-sentinel .spinner { animation: none; }
+      }
       .reel-skeleton {
         width: auto;
         max-width: 450px;
@@ -9201,6 +9210,7 @@
       let gifSearchController = null;
       let gifSearchGeneration = 0;
       let gifSearchDebounceTimer = null;
+      let gifSkeletonFinish = null;
       let giphyResultsById = new Map();
       let profileCropInput = null;
       let profileCropObjectUrl = "";
@@ -9250,6 +9260,7 @@
       let activeConversationCursor = null;
       let activeConversationLoadGeneration = 0;
       let conversationSearchTimer = null;
+      let messageSearchSpinnerFinish = null;
       const conversationSearchState = {
         query: "",
         tab: "conversations",
@@ -9287,7 +9298,7 @@
       let feedLoading = false;
       let feedObserver = null;
       let exploreTimer;
-      let exploreSkeletonTimer;
+      let exploreSkeletonFinish;
       let exploreRequestGeneration = 0;
       let exploreTab = "trending";
       let exploreSearchFilter = "Top";
@@ -9342,6 +9353,8 @@
       let activeReelStatusSession = null;
       let reelCommentsReelId = "";
       let reelCommentsCursor = null;
+      let reelCommentsGeneration = 0;
+      let reelStatsGeneration = 0;
       let reelCommentReplyToId = "";
       let reelActionsId = "";
       let reelViewSending = new Set();
@@ -9771,6 +9784,10 @@
       }
       function clearComposerLocation() {
         composerLocation = "";
+        clearTimeout(locationSearchTimer);
+        locationSearchGeneration += 1;
+        cancelDelayedPlaceholder($("#locationResults"));
+        locationSkeletonFinish = null;
         $("#locationInput").value = "";
         $("#locationResults").replaceChildren();
         $("#locationResults").hidden = true;
@@ -9898,12 +9915,15 @@
       }
       let locationSearchTimer = null;
       let locationSearchGeneration = 0;
+      let locationSkeletonFinish = null;
       async function searchPlaces(query) {
         const normalizedQuery = query.trim();
         const generation = ++locationSearchGeneration;
         clearTimeout(locationSearchTimer);
         const results = $("#locationResults");
         const status = $("#locationStatus");
+        cancelDelayedPlaceholder(results);
+        locationSkeletonFinish = null;
         if (normalizedQuery.length < 2) {
           results.replaceChildren();
           results.hidden = true;
@@ -9913,10 +9933,16 @@
         locationSearchTimer = setTimeout(async () => {
           status.textContent = "Searching places…";
           status.hidden = false;
-          results.innerHTML = Array.from({ length: 3 }, () => '<span class="location-result-skeleton relay-skeleton-shimmer" aria-hidden="true"></span>').join("");
           results.hidden = false;
+          locationSkeletonFinish = showDelayedMarkup(
+            results,
+            Array.from({ length: 3 }, () => '<span class="location-result-skeleton relay-skeleton-shimmer" aria-hidden="true"></span>').join(""),
+            { canShow: () => generation === locationSearchGeneration && !results.childElementCount },
+          );
           try {
             const response = await api(`/places/search?q=${encodeURIComponent(normalizedQuery)}`);
+            if (generation !== locationSearchGeneration) return;
+            await locationSkeletonFinish?.();
             if (generation !== locationSearchGeneration) return;
             results.replaceChildren(...(response.items || []).map((place) => {
               const option = document.createElement("button");
@@ -9932,6 +9958,8 @@
             status.textContent = response.items?.length ? "" : "No matching places found.";
             status.hidden = Boolean(response.items?.length);
           } catch (error) {
+            if (generation !== locationSearchGeneration) return;
+            await locationSkeletonFinish?.();
             if (generation !== locationSearchGeneration) return;
             results.hidden = true;
             status.textContent = error.message || "Could not search places.";
@@ -10102,6 +10130,10 @@
         trigger?.setAttribute("aria-expanded", "false");
         if (activeComposerPopover?.popover === popover) activeComposerPopover = null;
         if (popover === $("#locationPopover")) {
+          clearTimeout(locationSearchTimer);
+          locationSearchGeneration += 1;
+          cancelDelayedPlaceholder($("#locationResults"));
+          locationSkeletonFinish = null;
           replyLocationTarget = null;
           popover.classList.remove("is-fixed-anchor");
         }
@@ -10251,6 +10283,8 @@
         gifSearchController?.abort();
         gifSearchController = null;
         gifSearchGeneration += 1;
+        gifSkeletonFinish?.cancel?.();
+        gifSkeletonFinish = null;
         $("#gifPickerResults").removeAttribute("aria-busy");
         $("#gifPickerStatus").classList.remove("is-loading");
       }
@@ -10259,6 +10293,8 @@
         const status = $("#gifPickerStatus");
         const results = $("#gifPickerResults");
         gifSearchController?.abort();
+        gifSkeletonFinish?.cancel?.();
+        gifSkeletonFinish = null;
         const controller = new AbortController();
         gifSearchController = controller;
         const generation = ++gifSearchGeneration;
@@ -10275,7 +10311,11 @@
         status.classList.add("is-loading");
         results.setAttribute("aria-busy", "true");
         if (!results.childElementCount) {
-          results.innerHTML = Array.from({ length: 8 }, () => '<span class="gif-picker-skeleton relay-skeleton-shimmer" aria-hidden="true"></span>').join("");
+          gifSkeletonFinish = showDelayedMarkup(
+            results,
+            Array.from({ length: 8 }, () => '<span class="gif-picker-skeleton relay-skeleton-shimmer" aria-hidden="true"></span>').join(""),
+            { canShow: () => generation === gifSearchGeneration && !results.childElementCount },
+          );
         }
         const params = new URLSearchParams({
           api_key: GIPHY_API_KEY,
@@ -10294,6 +10334,8 @@
           const payload = await response.json();
           if (generation !== gifSearchGeneration) return;
           if (!Array.isArray(payload.data)) throw new Error("GIPHY returned an invalid response.");
+          await gifSkeletonFinish?.();
+          if (generation !== gifSearchGeneration) return;
           results.replaceChildren();
           results.removeAttribute("aria-busy");
           giphyResultsById.clear();
@@ -10326,6 +10368,8 @@
           status.classList.remove("is-loading");
         } catch (error) {
           if (error.name === "AbortError" || generation !== gifSearchGeneration) return;
+          await gifSkeletonFinish?.();
+          if (generation !== gifSearchGeneration) return;
           results.removeAttribute("aria-busy");
           status.textContent = error.message || "Could not load GIFs from GIPHY.";
           status.classList.remove("is-loading");
@@ -10660,31 +10704,83 @@
       const skeletonListMarkup = (kind = "post", count = 5, label = "content") =>
         `<div class="relay-skeleton-list" role="status" aria-label="Loading ${label}" aria-busy="true">${listSkeleton(kind, count)}</div>`;
       const appendSkeleton = (element, kind, count, label) => {
-        const wrapper = document.createElement("div");
-        wrapper.dataset.loadingSkeleton = "";
-        wrapper.innerHTML = skeletonListMarkup(kind, count, label);
-        element.append(wrapper);
-        return () => wrapper.remove();
+        return scheduleDelayedPlaceholder(element, () => {
+          const wrapper = document.createElement("div");
+          wrapper.dataset.loadingSkeleton = "";
+          wrapper.innerHTML = skeletonListMarkup(kind, count, label);
+          element.append(wrapper);
+          return () => wrapper.remove();
+        }, { canShow: () => element.isConnected });
       };
       const skeletonLabels = { post: "posts", notification: "notifications", message: "messages", person: "people", trend: "trending topics" };
       const delayedSkeletons = new WeakMap();
-      const showDelayedSkeleton = (element, kind, delay = 150) => {
-        const requestToken = {};
-        delayedSkeletons.set(element, requestToken);
-        const hasExistingContent = element.childElementCount > 0;
-        let timer = setTimeout(() => {
-          if (delayedSkeletons.get(element) === requestToken && !element.dataset.loaded && !hasExistingContent) {
-            element.innerHTML = skeletonListMarkup(kind, 5, skeletonLabels[kind] || "content");
+      const activeDelayedPlaceholders = new Set();
+      const scheduleDelayedPlaceholder = (element, render, {
+        delay = 250,
+        minVisible = 300,
+        canShow = () => !element.childElementCount,
+      } = {}) => {
+        delayedSkeletons.get(element)?.cancel?.();
+        const state = { timer: null, minTimer: null, shownAt: 0, remove: null, finished: false, promise: null, resolve: null };
+        const finish = (cancel = false) => {
+          if (state.finished) return Promise.resolve();
+          if (state.promise && !cancel) return state.promise;
+          clearTimeout(state.timer);
+          if (cancel) {
+            clearTimeout(state.minTimer);
+            state.remove?.();
+            state.finished = true;
+            state.resolve?.();
+            activeDelayedPlaceholders.delete(finish);
+            if (delayedSkeletons.get(element) === finish) delayedSkeletons.delete(element);
+            return Promise.resolve();
           }
-        }, delay);
-        return () => {
-          clearTimeout(timer);
-          if (delayedSkeletons.get(element) === requestToken) {
-            element.dataset.loaded = "true";
-            delayedSkeletons.delete(element);
-          }
+          const remaining = Math.max(0, minVisible - (performance.now() - state.shownAt));
+          state.promise = new Promise((resolve) => {
+            state.resolve = resolve;
+            state.minTimer = setTimeout(resolve, state.shownAt ? remaining : 0);
+          }).then(() => {
+            state.remove?.();
+            state.finished = true;
+            activeDelayedPlaceholders.delete(finish);
+            if (delayedSkeletons.get(element) === finish) delayedSkeletons.delete(element);
+          });
+          return state.promise;
         };
+        finish.cancel = () => finish(true);
+        delayedSkeletons.set(element, finish);
+        activeDelayedPlaceholders.add(finish);
+        state.timer = setTimeout(() => {
+          if (state.finished || delayedSkeletons.get(element) !== finish || !canShow()) return;
+          state.shownAt = performance.now();
+          state.remove = render() || (() => {});
+        }, delay);
+        return finish;
       };
+      const cancelDelayedPlaceholders = () => {
+        [...activeDelayedPlaceholders].forEach((finish) => finish.cancel());
+      };
+      const cancelDelayedPlaceholder = (element) => delayedSkeletons.get(element)?.cancel?.();
+      const showDelayedSkeleton = (element, kind, options = {}) => {
+        const { canShow = () => true, count = 5, label, ...timingOptions } = options;
+        cancelDelayedPlaceholder(element);
+        if (element.childElementCount || element.dataset.loaded === "true") return () => Promise.resolve();
+        return scheduleDelayedPlaceholder(element, () => {
+          if (element.childElementCount || element.dataset.loaded === "true") return;
+          element.innerHTML = skeletonListMarkup(kind, count, label || skeletonLabels[kind] || "content");
+          return () => {
+            if (element.querySelector(":scope > .relay-skeleton-list")) element.replaceChildren();
+          };
+        }, { ...timingOptions, canShow: () => canShow() && !element.childElementCount && element.dataset.loaded !== "true" });
+      };
+      const showDelayedMarkup = (element, markup, options = {}) => scheduleDelayedPlaceholder(element, () => {
+        const template = document.createElement("template");
+        template.innerHTML = markup;
+        const nodes = [...template.content.childNodes];
+        if (options.append) element.append(...nodes);
+        else element.replaceChildren(...nodes);
+        return () => nodes.forEach((node) => node.remove());
+      }, options);
       const transitionStates = new WeakMap();
       const waitForOpacityTransition = (element) => {
         if (matchMedia("(prefers-reduced-motion: reduce)").matches) return Promise.resolve();
@@ -11090,9 +11186,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           posts = [];
           delete $("#feed").dataset.loaded;
           const cached = readViewCache(`feed:${feedTab}`);
-          if (cached?.length) {
+          if (Array.isArray(cached)) {
             posts = cached.map(normalizePost);
-            $("#feed").innerHTML = posts.map(post).join("");
+            $("#feed").innerHTML = posts.map(post).join("")
+              || emptyState("Nothing here yet.", "Posts from your timeline will appear here.");
           }
           finishSkeleton = showDelayedSkeleton($("#feed"), "post");
         } else {
@@ -11104,9 +11201,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (append && feedCursor) query.set("cursor", feedCursor);
           const result = await api(`/feed?${query}`);
           const items = result.items.map(normalizePost);
+          await finishSkeleton?.();
           posts.push(...items);
           if (append) {
-            removeAppendSkeleton?.();
+            await removeAppendSkeleton?.();
             $("#feed").insertAdjacentHTML("beforeend", items.map(post).join(""));
             const appended = items
               .map((item) => $(`.post[data-id="${CSS.escape(item.id)}"]`, $("#feed")))
@@ -11123,17 +11221,16 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             $("#feed").innerHTML = items.map(post).join("") || emptyState("Nothing here yet.", "Posts from your timeline will appear here.");
           }
           if (!append) writeViewCache(`feed:${feedTab}`, items);
-          finishSkeleton?.();
           joinVisiblePostRooms();
           feedCursor = result.nextCursor;
           $("#feedSentinel").hidden = !feedCursor;
         } catch (error) {
-          finishSkeleton?.();
-          removeAppendSkeleton?.();
+          await finishSkeleton?.();
+          await removeAppendSkeleton?.();
           $("#feedSentinel").hidden = true;
           renderError($("#feed"), error, "feed");
         } finally {
-          removeAppendSkeleton?.();
+          await removeAppendSkeleton?.();
           feedLoading = false;
         }
       }
@@ -11146,6 +11243,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const generation = ++profileRenderGeneration;
         const headerNeedsLoad = $("#profileBody").dataset.profileUserId !== targetId;
         let finishSkeleton;
+        let finishProfileHeaderSkeleton;
         let removeAppendSkeleton;
         if (!append) {
           profileCursor = null;
@@ -11164,10 +11262,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             $("#profileFollow").hidden = owner;
           }
           if (headerNeedsLoad) {
-            $("#profileBody").classList.add("is-loading");
             $("#profileBody").setAttribute("aria-busy", "true");
+            if (!$("#profileBody").dataset.profileUserId) {
+              finishProfileHeaderSkeleton = scheduleDelayedPlaceholder($("#profileBody"), () => {
+                $("#profileBody").classList.add("is-loading");
+                return () => $("#profileBody").classList.remove("is-loading");
+              }, { canShow: () => !$("#profileBody").dataset.profileUserId });
+            }
           }
-          $("#pf").innerHTML = "";
           delete $("#pf").dataset.loaded;
           finishSkeleton = showDelayedSkeleton($("#pf"), "post");
         } else {
@@ -11212,6 +11314,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             result = response.posts;
           }
           if (generation !== profileRenderGeneration || targetId !== (viewedProfileId || currentUser.id)) return;
+          await finishSkeleton?.();
+          await removeAppendSkeleton?.();
+          await finishProfileHeaderSkeleton?.();
           if (headerNeedsLoad && profile) {
             viewedProfileHandle = profile.handle;
             $("#profileName").textContent = profile.displayName;
@@ -11234,7 +11339,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             $("#profileBody").removeAttribute("aria-busy");
           }
           const items = reelsTab ? result.items : result.items.map(normalizePost);
-          removeAppendSkeleton?.();
           if (reelsTab) {
             const cards = items.map(profileReelCardMarkup).join("");
             if (append) {
@@ -11250,13 +11354,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               ? $("#pf").innerHTML + items.map(post).join("")
               : items.map(post).join("") || emptyState(`No ${t.toLowerCase()} yet.`, "Posts from this profile will appear here.");
           }
-          finishSkeleton?.();
           if (!reelsTab) joinVisiblePostRooms();
           profileCursor = result.nextCursor;
           $("#profileMore").hidden = !profileCursor;
         } catch (error) {
-          finishSkeleton?.();
-          removeAppendSkeleton?.();
+          await finishSkeleton?.();
+          await removeAppendSkeleton?.();
+          await finishProfileHeaderSkeleton?.();
           if (generation !== profileRenderGeneration) return;
           if (headerNeedsLoad) {
             $("#profileBody").classList.remove("is-loading");
@@ -11402,25 +11506,71 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (!currentUser || reelLoading || (append && !reelCursor)) return;
         const generation = append ? reelRenderGeneration : ++reelRenderGeneration;
         reelLoading = true;
+        let finishReelSkeleton;
+        let finishReelAppendSpinner;
         reelFeedObserver?.disconnect();
         reelFeedObserver = null;
         let cachedShowing = false;
         if (!append && !requestedReelId) {
+          cancelDelayedPlaceholder($("#reelItems"));
           const cached = readReelCache();
-          if (cached?.items.length) {
+          if (cached) {
             reelItems = cached.items;
             reelCursor = cached.nextCursor;
             renderReelMarkup();
             cachedShowing = true;
+            renderReelFeedState(reelItems.length ? "Refreshing Reels…" : "No reels yet");
           } else {
-            reelItems = [];
-            reelCursor = null;
-            activeReelId = "";
-            $("#reelItems").innerHTML = '<div class="reel-skeleton" aria-hidden="true"></div>';
+            if (!reelItems.length) {
+              reelCursor = null;
+              activeReelId = "";
+            }
+            finishReelSkeleton = showDelayedMarkup(
+              $("#reelItems"),
+              '<div class="reel-skeleton" aria-hidden="true"></div>',
+              { canShow: () => generation === reelRenderGeneration && !$("#reelItems").querySelector(".reel-item") },
+            );
+            renderReelFeedState("Loading Reels…");
           }
-          renderReelFeedState(cachedShowing ? "Refreshing Reels…" : "Loading Reels…");
+        } else if (!append) {
+          cancelDelayedPlaceholder($("#reelItems"));
+          if (!reelItems.length) {
+            finishReelSkeleton = showDelayedMarkup(
+              $("#reelItems"),
+              '<div class="reel-skeleton" aria-hidden="true"></div>',
+              { canShow: () => generation === reelRenderGeneration && !$("#reelItems").querySelector(".reel-item") },
+            );
+          }
+          renderReelFeedState("Loading Reel…");
         } else if (append) {
-          $("#reelFeedSentinel").innerHTML = '<span class="feed-sentinel-spinner" aria-hidden="true"></span>';
+          const sentinel = $("#reelFeedSentinel");
+          cancelDelayedPlaceholder(sentinel);
+          sentinel.replaceChildren();
+          finishReelAppendSpinner = scheduleDelayedPlaceholder(sentinel, () => {
+            const spinner = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            spinner.setAttribute("viewBox", "0 0 24 24");
+            spinner.setAttribute("width", "18");
+            spinner.setAttribute("height", "18");
+            spinner.setAttribute("fill", "none");
+            spinner.setAttribute("stroke", "currentColor");
+            spinner.setAttribute("stroke-width", "2.5");
+            spinner.setAttribute("stroke-linecap", "round");
+            spinner.classList.add("spinner");
+            spinner.setAttribute("aria-hidden", "true");
+            spinner.innerHTML = '<circle cx="12" cy="12" r="9" opacity=".2"></circle><path d="M21 12a9 9 0 0 0-9-9"></path>';
+            sentinel.classList.add("is-loading");
+            sentinel.removeAttribute("aria-hidden");
+            sentinel.setAttribute("role", "status");
+            sentinel.setAttribute("aria-label", "Loading more Reels");
+            sentinel.append(spinner);
+            return () => {
+              spinner.remove();
+              sentinel.classList.remove("is-loading");
+              sentinel.setAttribute("aria-hidden", "true");
+              sentinel.removeAttribute("role");
+              sentinel.removeAttribute("aria-label");
+            };
+          }, { canShow: () => generation === reelRenderGeneration && sentinel.isConnected });
         }
         let feedError = false;
         try {
@@ -11439,6 +11589,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             if (append && reelCursor) query.set("cursor", reelCursor);
             page = await api(`/reels/feed?${query}`);
           }
+          if (generation !== reelRenderGeneration) return;
+          await finishReelSkeleton?.();
+          await finishReelAppendSpinner?.();
           if (generation !== reelRenderGeneration) return;
           if (append) {
             const knownIds = new Set(reelItems.map((reel) => reel.id));
@@ -11476,16 +11629,23 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           feedError = true;
           console.error("Unable to load Reels.", error);
           if (generation !== reelRenderGeneration) return;
+          await finishReelSkeleton?.();
+          await finishReelAppendSpinner?.();
+          if (generation !== reelRenderGeneration) return;
           if (cachedShowing && reelItems.length) {
             renderReelFeedState("Couldn’t refresh. Showing saved Reels.", true);
           } else if (append && reelItems.length) {
             $("#reelFeedSentinel").innerHTML = "";
             renderReelFeedState(error.message || "Couldn’t load more Reels.", true, true);
+          } else if (reelItems.length) {
+            renderReelFeedState(error.message || "Couldn’t load Reels. Showing previous Reels.", true);
           } else {
             $("#reelItems").innerHTML = "";
             renderReelFeedState(error.message || "Couldn’t load Reels.", true);
           }
         } finally {
+          await finishReelSkeleton?.();
+          await finishReelAppendSpinner?.();
           if (generation === reelRenderGeneration) {
             reelLoading = false;
             if (!feedError) {
@@ -11954,11 +12114,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         reelCommentReplyToId = "";
         $("#reelReplyTarget").hidden = true;
         $("#reelCommentInput").value = "";
+        cancelDelayedPlaceholder($("#reelCommentList"));
         $("#reelCommentList").innerHTML = "";
         $("#reelCommentMore").hidden = true;
         $("#reelCommentsTitle").textContent = "Comments";
         $("#reelCommentsCount").textContent = "";
-        $("#reelCommentList").innerHTML = '<div class="relay-load-error">Loading comments…</div>';
         $("#reelCommentsDialog").showModal();
         const request = loadReelComments();
         if (actionButton) void request.finally(() => reelActionRequests.delete(actionButton));
@@ -11978,20 +12138,31 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       async function loadReelComments(append = false) {
         if (!reelCommentsReelId) return;
+        const generation = append ? reelCommentsGeneration : ++reelCommentsGeneration;
+        const reelId = reelCommentsReelId;
+        const commentList = $("#reelCommentList");
         const query = new URLSearchParams({ limit: "20" });
         if (append && reelCommentsCursor) query.set("cursor", reelCommentsCursor);
-        if (!append) $("#reelCommentList").innerHTML = '<div class="relay-load-error">Loading comments…</div>';
+        const finishSkeleton = !append && !commentList.childElementCount
+          ? showDelayedSkeleton(commentList, "post")
+          : () => Promise.resolve();
         try {
-          const result = await api(`/reels/${encodeURIComponent(reelCommentsReelId)}/comments?${query}`);
-          const item = reelItems.find((reel) => reel.id === reelCommentsReelId);
+          const result = await api(`/reels/${encodeURIComponent(reelId)}/comments?${query}`);
+          if (generation !== reelCommentsGeneration || reelId !== reelCommentsReelId) return;
+          if (!append) await finishSkeleton();
+          if (generation !== reelCommentsGeneration || reelId !== reelCommentsReelId) return;
+          const item = reelItems.find((reel) => reel.id === reelId);
           $("#reelCommentsCount").textContent = `${formatReelCount(item?.counts?.comments)} comments`;
           const markup = result.items.map((comment) => reelCommentMarkup(comment)).join("");
-          if (append) $("#reelCommentList").insertAdjacentHTML("beforeend", markup);
-          else $("#reelCommentList").innerHTML = markup || '<div class="relay-load-error">No comments yet. Start the conversation.</div>';
+          if (append) commentList.insertAdjacentHTML("beforeend", markup);
+          else commentList.innerHTML = markup || '<div class="relay-load-error">No comments yet. Start the conversation.</div>';
           reelCommentsCursor = result.nextCursor;
           $("#reelCommentMore").hidden = !reelCommentsCursor;
         } catch (error) {
-          $("#reelCommentList").innerHTML = `<div class="relay-load-error">${esc(error.message || "Could not load comments.")}<br><button class="ghost-btn" type="button" data-reel-comments-retry>Try again</button></div>`;
+          if (generation !== reelCommentsGeneration || reelId !== reelCommentsReelId) return;
+          if (!append) await finishSkeleton();
+          if (generation !== reelCommentsGeneration) return;
+          commentList.innerHTML = `<div class="relay-load-error">${esc(error.message || "Could not load comments.")}<br><button class="ghost-btn" type="button" data-reel-comments-retry>Try again</button></div>`;
         }
       }
       function setReelReplyTarget(commentId, handle) {
@@ -12178,15 +12349,27 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       async function openReelStats(reelId) {
         const reel = reelItems.find((item) => item.id === reelId);
         if (!reel || reel.author?.id !== currentUser?.id) return;
+        const generation = ++reelStatsGeneration;
         reelActionsId = reelId;
         $("#reelActionsDialog").close();
-        $("#reelStatsContent").innerHTML = '<div class="relay-load-error">Loading Reel insights…</div>';
+        const statsContent = $("#reelStatsContent");
+        cancelDelayedPlaceholder(statsContent);
+        const finishSkeleton = statsContent.childElementCount
+          ? () => Promise.resolve()
+          : showDelayedMarkup(statsContent, '<div class="relay-load-error">Loading Reel insights…</div>', {
+            canShow: () => generation === reelStatsGeneration && statsContent.isConnected,
+          });
         $("#reelStatsDialog").showModal();
         try {
           const result = await api(`/reels/${encodeURIComponent(reelId)}/reports`);
+          if (generation !== reelStatsGeneration) return;
+          await finishSkeleton();
+          if (generation !== reelStatsGeneration) return;
           renderReelStats(reel, result.items);
         } catch (error) {
-          $("#reelStatsContent").innerHTML = `<div class="relay-load-error">${esc(error.message)}</div>`;
+          if (generation !== reelStatsGeneration) return;
+          await finishSkeleton();
+          if (generation === reelStatsGeneration) statsContent.innerHTML = `<div class="relay-load-error">${esc(error.message)}</div>`;
         }
       }
       async function updateReelReportStatus(button) {
@@ -13148,6 +13331,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             else dialog.close();
           }
         }));
+        $("#reelStatsDialog").addEventListener("close", () => {
+          reelStatsGeneration += 1;
+          cancelDelayedPlaceholder($("#reelStatsContent"));
+        });
         window.addEventListener("online", updateReelConnectionState);
         window.addEventListener("offline", updateReelConnectionState);
         document.addEventListener("visibilitychange", () => {
@@ -13218,18 +13405,24 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       async function searchRecipients(rawQuery) {
         const query = rawQuery.trim().replace(/^@/, "");
         const generation = ++recipientSearchGeneration;
+        const results = $("#recipientOptions");
+        cancelDelayedPlaceholder(results);
         if (!query) {
           renderRecipientOptions();
           positionFloatingMenu($("#startConversation"), $("#recipientMenu"));
           return;
         }
-        $("#recipientOptions").innerHTML = skeletonListMarkup("person", 2, "people");
+        const hadResults = Boolean(results.querySelector(".recipient-option"));
+        if (!hadResults) results.replaceChildren();
+        const finishSkeleton = hadResults ? () => Promise.resolve() : showDelayedSkeleton(results, "person", { count: 2, label: "people" });
         $("#recipientEmpty").hidden = true;
         try {
           const result = await api(`/users/directory?q=${encodeURIComponent(query)}`);
           if (generation !== recipientSearchGeneration || $("#recipientSearch").value.trim().replace(/^@/, "") !== query) return;
+          await finishSkeleton();
+          if (generation !== recipientSearchGeneration) return;
           people = [...new Map([...result.items, ...people].map((person) => [person.id, person])).values()];
-          $("#recipientOptions").innerHTML = result.items.map((person) =>
+          results.innerHTML = result.items.map((person) =>
             `<button class="recipient-option" type="button" role="option" data-recipient-id="${esc(person.id)}">${avatarMarkup(person, "sm")}<span class="user-search-copy"><b>${esc(person.displayName)}</b><small>@${esc(person.handle)}</small></span></button>`,
           ).join("");
           $("#recipientEmpty").hidden = result.items.length > 0;
@@ -13237,6 +13430,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           positionFloatingMenu($("#startConversation"), $("#recipientMenu"));
         } catch (error) {
           if (generation === recipientSearchGeneration) {
+            await finishSkeleton();
+            if (generation !== recipientSearchGeneration) return;
             $("#recipientOptions").innerHTML = `<div class="recipient-hint">${esc(error.message)}</div>`;
             $("#recipientEmpty").hidden = true;
           }
@@ -13274,20 +13469,28 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const query = rawHandle.trim().replace(/^@/, "");
         const generation = ++directorySearchGeneration;
         const results = $("#directoryResults");
+        cancelDelayedPlaceholder(results);
         if (!query) {
           results.innerHTML = "";
           return;
         }
-        results.innerHTML = skeletonListMarkup("person", 3, "people");
+        const finishSkeleton = results.childElementCount
+          ? () => Promise.resolve()
+          : showDelayedSkeleton(results, "person", { count: 3, label: "people" });
         try {
           const result = await api(`/users/directory?q=${encodeURIComponent(query)}`);
           if (generation !== directorySearchGeneration || input.value.trim().replace(/^@/, "").toLowerCase() !== query.toLowerCase()) return;
+          await finishSkeleton();
+          if (generation !== directorySearchGeneration) return;
           people = [...new Map([...result.items, ...people].map((user) => [user.id, user])).values()];
           results.innerHTML = result.items.map((user) =>
             `<article class="row directory-result">${avatarMarkup(user, "sm")}<div class="grow user-search-copy"><b>${profileLink(user)}</b><small>@${esc(user.handle)} · ${fmt(user.followerCount)} followers</small></div>${fbtn(user)}</article>`,
           ).join("") || emptyState(`No people found for “${query}”.`, "Try a different search or filter.", true);
         } catch (error) {
-          if (generation === directorySearchGeneration) renderError(results, error);
+          if (generation === directorySearchGeneration) {
+            await finishSkeleton();
+            if (generation === directorySearchGeneration) renderError(results, error);
+          }
         }
       }
       const threadPost = (item, focused = false) => post(normalizePost(item))
@@ -13391,7 +13594,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         threadScrollIntents = new WeakMap();
         threadLastGestureAt = 0;
         resetThreadScrollPositions();
-        $("#threadContent").innerHTML = skeletonListMarkup("post", 2, "thread");
+        $$("[data-thread-replies-status]", $("#threadContent")).forEach(cancelDelayedPlaceholder);
+        cancelDelayedPlaceholder($("#threadContent"));
+        const finishThreadSkeleton = showDelayedSkeleton($("#threadContent"), "post", { count: 2, label: "thread" });
         const moreButton = $("#threadMore");
         moreButton.hidden = true;
         moreButton.disabled = false;
@@ -13399,6 +13604,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         moreButton.removeAttribute("aria-busy");
         try {
           const result = await api(`/posts/${encodeURIComponent(postId)}`);
+          if (generation !== threadLoadGeneration || postId !== threadPostId) return;
+          await finishThreadSkeleton();
           if (generation !== threadLoadGeneration || postId !== threadPostId) return;
           const totalReplies = Math.max(0, Number(result.counts?.replies) || 0);
           threadParentId = result.replyToId || null;
@@ -13448,7 +13655,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           joinVisiblePostRooms();
           loadThreadReplies();
         } catch (error) {
-          if (generation === threadLoadGeneration) renderError($("#threadContent"), error, "thread");
+          if (generation === threadLoadGeneration) {
+            await finishThreadSkeleton();
+            if (generation === threadLoadGeneration) renderError($("#threadContent"), error, "thread");
+          }
         }
       }
       function cancelThreadAncestorCollapse() {
@@ -13621,14 +13831,21 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           status.setAttribute("role", "status");
           replies.append(status);
         }
-        status.innerHTML = listSkeleton("post", 2);
-        status.hidden = false;
+        status.replaceChildren();
+        status.hidden = true;
         status.setAttribute("aria-busy", "true");
         status.classList.remove("thread-load-error");
+        const finishReplySkeleton = scheduleDelayedPlaceholder(status, () => {
+          status.innerHTML = listSkeleton("post", 2);
+          status.hidden = false;
+          return () => status.replaceChildren();
+        }, { canShow: () => generation === threadLoadGeneration && status.isConnected });
         try {
           const query = new URLSearchParams({ limit: "20" });
           if (threadCursor) query.set("cursor", threadCursor);
           const result = await api(`/posts/${encodeURIComponent(postId)}/replies?${query}`);
+          if (generation !== threadLoadGeneration || postId !== threadPostId) return;
+          await finishReplySkeleton();
           if (generation !== threadLoadGeneration || postId !== threadPostId) return;
           status.remove();
           replies.hidden = false;
@@ -13651,6 +13868,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           button.removeAttribute("aria-busy");
           joinVisiblePostRooms();
         } catch (error) {
+          if (generation !== threadLoadGeneration) return;
+          await finishReplySkeleton();
           if (generation !== threadLoadGeneration) return;
           status.hidden = true;
           status.textContent = error.message;
@@ -13840,12 +14059,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         try {
           result = await api("/trending");
         } catch (error) {
-          finishSkeleton();
+          await finishSkeleton();
           renderError(container, error);
           throw error;
         }
         if (generation !== trendingRenderGeneration) {
-          finishSkeleton();
+          await finishSkeleton();
           return;
         }
         trendingSearchItems = result.items;
@@ -13860,14 +14079,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           removedTopics.forEach((topic) => topic.classList.add("trend-widget-exiting"));
           await new Promise((resolve) => setTimeout(resolve, 180));
           if (generation !== trendingRenderGeneration) {
-            finishSkeleton();
+            await finishSkeleton();
             return;
           }
         }
+        await finishSkeleton();
         container.innerHTML = topics.map((item) =>
           `<button class="trend" data-search-tag="${esc(item.tag)}"><b>${esc(item.tag)}</b><small>${fmt(item.postCount)} posts · ${fmt(item.uniqueUsers)} people</small></button>`,
         ).join("") || emptyState("No trends right now", "", true, "megaphone");
-        finishSkeleton();
         if (animateChanges && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
           if (!topics.length && previousTags.size) {
             const empty = container.querySelector(".empty-state");
@@ -13909,20 +14128,20 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       async function renderSide() {
         delete $("#wf").dataset.loaded;
-        const finishSkeleton = showDelayedSkeleton($("#wf"), "person");
+        const finishSkeleton = showDelayedSkeleton($("#wf"), "person", { count: 3, label: "people" });
         try {
           const [, suggestions, contacts] = await Promise.all([
             renderTrending(),
             api("/users/suggestions?limit=6"),
             api("/explore?limit=20"),
           ]);
-          finishSkeleton();
+          await finishSkeleton();
           hasMoreSuggestedPeople = !!suggestions.nextCursor;
           people = contacts.items;
           renderWhoToFollow(suggestions.items, hasMoreSuggestedPeople, true);
           renderRecipientOptions();
         } catch (error) {
-          finishSkeleton();
+          await finishSkeleton();
           hasMoreSuggestedPeople = false;
           $("#whoToFollowMore").hidden = true;
           renderError($("#wf"), error, "explore");
@@ -13957,7 +14176,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         return searchText ? `search:${searchText}:${filter}` : `default:${tab}`;
       }
       function setExploreContentStatus(status, key) {
-        clearTimeout(exploreSkeletonTimer);
         exploreSearchStatus = status;
         exploreSearchStatusKey = key;
         exploreTabStatuses.set(key, status);
@@ -13975,14 +14193,17 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
       }
       function scheduleExploreSkeleton(key, skeletonKind) {
-        clearTimeout(exploreSkeletonTimer);
-        exploreSkeletonTimer = setTimeout(() => {
-          if (exploreSearchStatus !== "loading" || exploreSearchStatusKey !== key) return;
+        exploreSkeletonFinish?.cancel?.();
+        const results = $("#exp");
+        exploreSkeletonFinish = scheduleDelayedPlaceholder(results, () => {
+          if (exploreSearchStatus !== "loading" || exploreSearchStatusKey !== key || results.childElementCount) return;
           const loading = document.createElement("div");
           loading.dataset.searchLoading = "";
           loading.innerHTML = skeletonListMarkup(skeletonKind, 5, "search results");
-          $("#exp").replaceChildren(loading);
-        }, 180);
+          results.append(loading);
+          return () => loading.remove();
+        }, { canShow: () => exploreSearchStatus === "loading"
+          && exploreSearchStatusKey === key && !results.childElementCount });
       }
       function setExploreContentLoading(searchText, key, skeletonKind, deferSkeleton = false) {
         renderExploreSearchTabs(searchText);
@@ -13991,7 +14212,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (!deferSkeleton) scheduleExploreSkeleton(key, skeletonKind);
         $("#exploreMore").hidden = true;
       }
-      function commitExploreContent(html, status, key, isCurrentRequest, animate = true) {
+      async function commitExploreContent(html, status, key, isCurrentRequest, animate = true) {
+        if (!isCurrentRequest()) return;
+        const finishSkeleton = exploreSkeletonFinish;
+        if (status !== "loading") await finishSkeleton?.();
+        if (exploreSkeletonFinish === finishSkeleton) exploreSkeletonFinish = null;
+        if (!isCurrentRequest()) return;
         const commit = () => {
           if (!isCurrentRequest()) return;
           $("#exp").innerHTML = html;
@@ -13999,9 +14225,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         };
         if (!animate) {
           commit();
-          return Promise.resolve();
+          return;
         }
-        return transitionContent($("#exp"), commit, true);
+        await transitionContent($("#exp"), commit, true);
       }
       function showCachedExploreSearch(searchText, generation) {
         const key = exploreStatusKey(searchText);
@@ -14026,6 +14252,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           : requestTab === "people" ? "person" : requestTab === "trending" ? "trend" : "post";
         let removeAppendSkeleton;
         if (!append) {
+          if (exploreSearchStatusKey !== requestStatusKey) {
+            exploreSkeletonFinish?.cancel?.();
+            exploreSkeletonFinish = null;
+          }
           exploreCursor = null;
           renderExploreSearchTabs(searchText);
           $("#exploreSearchClear").hidden = !searchText;
@@ -14083,7 +14313,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             const people = result.users.map((person) => `<div class="explore-person-row" role="link" tabindex="0" aria-label="View @${esc(person.handle)} profile" data-explore-profile-id="${esc(person.id)}">${avatarMarkup(person)}<div class="explore-person-copy"><strong>${esc(person.displayName)}</strong><small>@${esc(person.handle)} · ${fmt(person.followerCount)} followers</small><span>${esc(person.bio || "")}</span></div>${fbtn(person)}</div>`).join("");
             const posts = explorePostCards(result.posts.items.map((item) => post(normalizePost(item), searchTerm)).join(""));
             const content = requestFilter === "People" ? people : posts;
-            removeAppendSkeleton?.();
+            await removeAppendSkeleton?.();
             if (append) {
               const results = $("#exp [data-search-results]");
               if (results && content) results.insertAdjacentHTML("beforeend", content);
@@ -14109,7 +14339,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             if (!isCurrentRequest()) {
               return;
             }
-            removeAppendSkeleton?.();
+            await removeAppendSkeleton?.();
             const html = trending.items.slice(0, 10).map((item) => `<button class="explore-trending-row" type="button" data-search-tag="${esc(item.tag)}"><strong>${esc(item.tag)}</strong><small>${fmt(item.postCount)} posts · ${fmt(item.uniqueUsers)} people</small></button>`).join("");
             if (append) $("#exp").innerHTML += html;
             else await commitExploreContent(
@@ -14128,7 +14358,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             const html = requestTab === "people"
               ? result.items.map((person) => `<div class="explore-person-row" role="link" tabindex="0" aria-label="View @${esc(person.handle)} profile" data-explore-profile-id="${esc(person.id)}">${avatarMarkup(person)}<div class="explore-person-copy"><strong>${esc(person.displayName)}</strong><small>@${esc(person.handle)} · ${fmt(person.followerCount)} followers</small><span>${esc(person.bio || "")}</span></div>${fbtn(person)}</div>`).join("")
               : explorePostCards(result.items.map((item) => post(normalizePost(item))).join(""));
-            removeAppendSkeleton?.();
+            await removeAppendSkeleton?.();
             if (append) $("#exp").innerHTML += html;
             else await commitExploreContent(
               html || emptyState("Nothing to explore yet.", "Try another tab or check back later."),
@@ -14142,7 +14372,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           joinVisiblePostRooms();
           $("#exploreMore").hidden = !exploreCursor;
         } catch (error) {
-          removeAppendSkeleton?.();
+          await removeAppendSkeleton?.();
           if (isCurrentRequest()) {
             if (cached) {
               console.error("Could not refresh Explore content; keeping cached results", error);
@@ -14167,7 +14397,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             }
           }
         } finally {
-          removeAppendSkeleton?.();
+          await removeAppendSkeleton?.();
         }
       }
       exploreObserver = new IntersectionObserver((entries) => {
@@ -14248,13 +14478,23 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       };
       let notificationObserver = null;
       let notificationRequestInFlight = false;
+      let notificationSpinnerFinish = null;
       function setNotificationPageStatus(state) {
         const status = $("#notificationsPageStatus");
         if (state === "loading") {
-          status.innerHTML = '<span class="notifications-load-spinner" role="status" aria-label="Loading notifications"></span>';
+          cancelDelayedPlaceholder(status);
+          status.replaceChildren();
+          notificationSpinnerFinish = scheduleDelayedPlaceholder(status, () => {
+            status.innerHTML = '<span class="notifications-load-spinner" role="status" aria-label="Loading notifications"></span>';
+            return () => status.replaceChildren();
+          }, { canShow: () => notificationRequestInFlight && status.isConnected });
         } else if (state === "error") {
+          notificationSpinnerFinish?.cancel?.();
+          notificationSpinnerFinish = null;
           status.innerHTML = 'Couldn’t load more <button class="notifications-retry" type="button" id="notificationsRetry">Try again</button>';
         } else {
+          notificationSpinnerFinish?.cancel?.();
+          notificationSpinnerFinish = null;
           status.replaceChildren();
         }
       }
@@ -14293,9 +14533,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const query = new URLSearchParams({ limit: "20" });
           if (append && notificationCursor) query.set("cursor", notificationCursor);
           const result = await api(`/notifications?${query}`);
+          await notificationSpinnerFinish?.();
           result.items.forEach((item) => seenNotificationIds.add(item.id));
           const visibleItems = groupedNotifications(result.items);
           const html = visibleItems.map(notificationText).filter(Boolean).join("");
+          await finishSkeleton?.();
           if (append) {
             if (html) $("#nl").insertAdjacentHTML("beforeend", html);
           } else {
@@ -14307,7 +14549,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const badge = $("#nbadge");
           setUnreadBadge(badge, result.unreadCount, "notifications");
           $("#notificationsMarkAll").disabled = result.unreadCount === 0;
-          finishSkeleton?.();
           if (!append && result.unreadCount) {
             try {
               await api("/notifications/read", { method: "PATCH", body: JSON.stringify({}) });
@@ -14327,7 +14568,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           else disconnectNotificationObserver();
           if (!append) startNotificationStream();
         } catch (error) {
-          finishSkeleton?.();
+          await notificationSpinnerFinish?.();
+          await finishSkeleton?.();
           if (append) {
             disconnectNotificationObserver();
             setNotificationPageStatus("error");
@@ -15301,6 +15543,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       let globalSearchState = null;
       let globalSearchGeneration = 0;
       let globalSearchTimer = null;
+      let globalSearchSkeletonFinish = null;
       const autocompleteInputSelector = "#ct, .reply input, [data-thread-reply] input";
       function positionGlobalSearchDropdown() {
         if (globalSearchDropdown.hidden) return;
@@ -15342,9 +15585,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function closeGlobalSearchDropdown() {
         clearTimeout(globalSearchTimer);
         globalSearchGeneration += 1;
+        cancelDelayedPlaceholder(globalSearchDropdown);
+        globalSearchSkeletonFinish = null;
         globalSearchState = null;
         globalSearchDropdown.classList.remove("is-empty");
         globalSearchDropdown.removeAttribute("aria-busy");
+        globalSearchDropdown.inert = false;
         globalSearchDropdown.hidden = true;
         globalSearchDropdown.innerHTML = "";
         $("#sideSearch").setAttribute("aria-expanded", "false");
@@ -15396,6 +15642,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         globalSearchState.selectedIndex = -1;
         globalSearchDropdown.classList.toggle("is-empty", !hasMatches);
         setGlobalSearchContent(markup);
+        globalSearchDropdown.inert = false;
         globalSearchDropdown.hidden = false;
         $("#sideSearch").setAttribute("aria-expanded", "true");
         positionGlobalSearchDropdown();
@@ -15409,29 +15656,42 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           closeGlobalSearchDropdown();
           return;
         }
+        cancelDelayedPlaceholder(globalSearchDropdown);
+        globalSearchSkeletonFinish = null;
         globalSearchState = { query, options: [], selectedIndex: -1 };
         const wasHidden = globalSearchDropdown.hidden;
         globalSearchDropdown.hidden = false;
         globalSearchDropdown.setAttribute("aria-busy", "true");
+        globalSearchDropdown.inert = true;
         const loadingRows = Array.from({ length: 3 }, () =>
           '<div class="relay-skeleton global-search-loading" aria-hidden="true"><span class="relay-skeleton-avatar relay-skeleton-shimmer"></span><span class="relay-skeleton-copy"><span class="relay-skeleton-bar relay-skeleton-shimmer"></span><span class="relay-skeleton-bar short relay-skeleton-shimmer"></span></span></div>',
         ).join("");
-        setGlobalSearchContent(`<div class="global-search-results" role="status" aria-label="Loading search suggestions">${loadingRows}</div>`, false);
         $("#sideSearch").setAttribute("aria-expanded", "true");
         if (wasHidden) animateGlobalSearchOpen();
         positionGlobalSearchDropdown();
         globalSearchTimer = setTimeout(async () => {
+          if (!globalSearchDropdown.childElementCount) {
+            globalSearchSkeletonFinish = showDelayedMarkup(
+              globalSearchDropdown,
+              `<div class="global-search-results" role="status" aria-label="Loading search suggestions">${loadingRows}</div>`,
+              { canShow: () => generation === globalSearchGeneration && Boolean(globalSearchState) && !globalSearchDropdown.childElementCount },
+            );
+          }
           try {
             const [trendingResult, peopleResult] = await Promise.all([
               trendingSearchItems ? Promise.resolve({ items: trendingSearchItems }) : api("/trending"),
               api(`/search?q=${encodeURIComponent(normalizedQuery)}&limit=10&mode=users`),
             ]);
             if (generation !== globalSearchGeneration || !globalSearchState) return;
+            await globalSearchSkeletonFinish?.();
+            if (generation !== globalSearchGeneration || !globalSearchState) return;
             const trends = trendingResult.items
               .filter((item) => item.tag.toLowerCase().includes(normalizedQuery.toLowerCase()))
               .slice(0, 3);
             renderGlobalSearchDropdown(query, trends, peopleResult.users.slice(0, 10));
           } catch (error) {
+            if (generation !== globalSearchGeneration || !globalSearchState) return;
+            await globalSearchSkeletonFinish?.();
             if (generation !== globalSearchGeneration || !globalSearchState) return;
             renderGlobalSearchDropdown(query, [], [], error.message || "Search suggestions could not be loaded.");
           }
@@ -15717,6 +15977,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function updateMessageSearchSentinel() {
         const list = $("#messageSearchResults");
+        messageSearchSpinnerFinish?.cancel?.();
+        messageSearchSpinnerFinish = null;
         conversationSearchState.messageObserver?.disconnect();
         conversationSearchState.messageObserver = null;
         list.querySelector(".message-search-sentinel")?.remove();
@@ -15725,9 +15987,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const sentinel = document.createElement("div");
         sentinel.className = "message-search-sentinel";
         sentinel.setAttribute("aria-live", "polite");
-        if (conversationSearchState.messageLoading) {
-          sentinel.innerHTML = '<span class="message-search-spinner" role="status" aria-label="Loading more messages"></span>';
-        } else if (conversationSearchState.messageError) {
+        if (conversationSearchState.messageError) {
           sentinel.append(document.createTextNode("Couldn't load more "));
           const retry = document.createElement("button");
           retry.type = "button";
@@ -15737,6 +15997,18 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           sentinel.append(retry);
         }
         list.append(sentinel);
+        if (conversationSearchState.messageLoading) {
+          const generation = conversationSearchState.generation;
+          messageSearchSpinnerFinish = scheduleDelayedPlaceholder(sentinel, () => {
+            const spinner = document.createElement("span");
+            spinner.className = "message-search-spinner";
+            spinner.setAttribute("role", "status");
+            spinner.setAttribute("aria-label", "Loading more messages");
+            sentinel.append(spinner);
+            return () => spinner.remove();
+          }, { canShow: () => conversationSearchState.messageLoading
+            && generation === conversationSearchState.generation && sentinel.isConnected });
+        }
         if (conversationSearchState.messageHasNextPage && !conversationSearchState.messageLoading
           && !conversationSearchState.messageError && "IntersectionObserver" in window) {
           conversationSearchState.messageObserver = new IntersectionObserver((entries) => {
@@ -15822,6 +16094,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const result = await api(`/conversations/search?${params}`);
           if (generation !== conversationSearchState.generation
             || $("#conversationSearch").value.trim().replace(/\s+/g, " ") !== query) return;
+          await messageSearchSpinnerFinish?.();
+          if (generation !== conversationSearchState.generation) return;
           const items = JSON.parse(JSON.stringify(result.items));
           conversationSearchState.results.messages.push(...items);
           conversationSearchState.messageCursor = result.nextCursor || "";
@@ -15830,6 +16104,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         } catch (error) {
           if (generation === conversationSearchState.generation) {
             console.error("Could not load more matching messages.", error);
+            await messageSearchSpinnerFinish?.();
+            if (generation !== conversationSearchState.generation) return;
             conversationSearchState.messageError = true;
           }
         } finally {
@@ -15868,6 +16144,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         clearTimeout(conversationSearchTimer);
         const query = $("#conversationSearch").value.trim().replace(/\s+/g, " ");
         const generation = ++conversationSearchState.generation;
+        messageSearchSpinnerFinish?.cancel?.();
+        messageSearchSpinnerFinish = null;
+        cancelDelayedPlaceholder($("#conversationList"));
+        cancelDelayedPlaceholder($("#messageSearchResults"));
         conversationSearchState.messageObserver?.disconnect();
         conversationSearchState.messageObserver = null;
         conversationSearchState.query = query;
@@ -15891,11 +16171,17 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#conversationSearchTabs").hidden = false;
         $("#messageSearchTab").textContent = "Messages (…)";
         $("#conversationSearchEmpty").hidden = true;
-        $("#conversationList").innerHTML = skeletonListMarkup("conversation", 3, "conversation search results");
-        $("#messageSearchResults").innerHTML = skeletonListMarkup("message", 3, "message search results");
         $("#messageSearchResults").scrollTop = 0;
         setConversationSearchMode(conversationSearchState.tab);
         conversationSearchTimer = setTimeout(async () => {
+          const conversationList = $("#conversationList");
+          const messageResults = $("#messageSearchResults");
+          const finishConversationSkeleton = conversationList.childElementCount
+            ? () => Promise.resolve()
+            : showDelayedSkeleton(conversationList, "conversation", { count: 3, label: "conversation search results" });
+          const finishMessageSkeleton = messageResults.childElementCount
+            ? () => Promise.resolve()
+            : showDelayedSkeleton(messageResults, "message", { count: 3, label: "message search results" });
           try {
             const conversationParams = new URLSearchParams({ q: query, limit: "50", mode: "conversations" });
             const messageParams = new URLSearchParams({ q: query, limit: "30", mode: "messages" });
@@ -15905,6 +16191,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             ]);
             if (generation !== conversationSearchState.generation
               || $("#conversationSearch").value.trim().replace(/\s+/g, " ") !== query) return;
+            await Promise.all([finishConversationSkeleton(), finishMessageSkeleton()]);
+            if (generation !== conversationSearchState.generation) return;
             const conversationIds = new Set(conversationResult.items.map((item) => item.id));
             const conversationItems = JSON.parse(JSON.stringify(
               conversations.filter((item) => conversationIds.has(item.id)),
@@ -15927,6 +16215,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             setConversationSearchMode(conversationSearchState.tab);
           } catch (error) {
             if (generation !== conversationSearchState.generation) return;
+            await Promise.all([finishConversationSkeleton(), finishMessageSkeleton()]);
+            if (generation !== conversationSearchState.generation) return;
             $("#conversationList").innerHTML = emptyState("Couldn’t search conversations.", error.message, true);
             $("#messageSearchResults").innerHTML = emptyState("Couldn’t search messages.", error.message, true);
             $("#messageSearchTab").textContent = "Messages";
@@ -15946,16 +16236,16 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
           finishSkeleton = showDelayedSkeleton($("#conversationList"), "conversation");
           const result = await api("/conversations");
+          await finishSkeleton();
           conversations = result.items;
           renderConversationItems(conversations);
           writeViewCache("messages", $("#conversationList").innerHTML);
-          finishSkeleton?.();
           if ($("#conversationSearch").value.trim()) searchConversations();
           else filterConversations();
           const unread = conversations.reduce((total, item) => total + item.unreadCount, 0);
           setUnreadBadge($("#mbadge"), unread, "messages");
         } catch (error) {
-          finishSkeleton?.();
+          await finishSkeleton?.();
           renderError($("#conversationList"), error);
         }
       }
@@ -16123,13 +16413,21 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           delete chatProfileLink.dataset.profileId;
           chatProfileLink.setAttribute("aria-label", "Conversation profile unavailable");
         }
-        $("#chatLog").innerHTML = `${skeletonListMarkup("message", 4, "messages")}<div class="typing-status" id="typingStatus" aria-live="polite"></div>`;
+        const chatLog = $("#chatLog");
+        cancelDelayedPlaceholder(chatLog);
+        const hadChatContent = Boolean(chatLog.querySelector(".message-row, .empty-state, .relay-load-error"));
+        if (!hadChatContent) chatLog.replaceChildren();
+        const finishChatSkeleton = hadChatContent
+          ? () => Promise.resolve()
+          : showDelayedSkeleton(chatLog, "message", { count: 4, label: "messages" });
         $("#messageInput").disabled = false;
         ["#messageImageButton", "#messageGifButton", "#messageStickerButton", "#messageAudioButton"].forEach((selector) => $(selector).disabled = false);
         syncMessageComposer();
         if (socket?.connected) socket.emit("conversation:join", conversation.id);
         try {
           const result = await api(`/conversations/${conversation.id}/messages?limit=40`);
+          if (loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversation.id) return;
+          await finishChatSkeleton();
           if (loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversation.id) return;
           activeConversationCursor = result.nextCursor;
           result.items.forEach((message) => receivedMessageIds.add(message.id));
@@ -16159,7 +16457,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
           if (!conversationSearchState.query) await renderConversations();
         } catch (error) {
-          if (loadGeneration === activeConversationLoadGeneration) renderError($("#chatLog"), error);
+          if (loadGeneration === activeConversationLoadGeneration) {
+            await finishChatSkeleton();
+            if (loadGeneration === activeConversationLoadGeneration) renderError($("#chatLog"), error);
+          }
         }
       }
       async function loadConversationUntilMessage(conversationId, targetMessageId, loadGeneration) {
@@ -16244,23 +16545,29 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         loader.className = "chat-history-loader";
         loader.setAttribute("role", "status");
         loader.setAttribute("aria-label", "Loading older messages");
-        loader.innerHTML = skeletonListMarkup("message", 2, "older messages");
-        log.prepend(loader);
+        const finishHistorySkeleton = scheduleDelayedPlaceholder(log, () => {
+          loader.innerHTML = skeletonListMarkup("message", 2, "older messages");
+          log.prepend(loader);
+          return () => loader.remove();
+        }, { canShow: () => loadGeneration === activeConversationLoadGeneration
+          && activeConversation?.id === conversationId && log.isConnected });
         let anchorShift = 0;
         try {
           const query = new URLSearchParams({ limit: "40", cursor });
           const result = await api(`/conversations/${encodeURIComponent(conversationId)}/messages?${query}`);
           if (loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversationId) return;
+          await finishHistorySkeleton();
+          if (loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversationId) return;
           const unseen = result.items.filter((message) => !receivedMessageIds.has(message.id));
           unseen.forEach((message) => receivedMessageIds.add(message.id));
           if (unseen.length) {
             const anchorTopBeforeInsert = anchor?.getBoundingClientRect().top ?? null;
-            loader.insertAdjacentHTML("afterend", unseen.map((message) => messageMarkup(message, { eager: false })).join(""));
+            log.insertAdjacentHTML("afterbegin", unseen.map((message) => messageMarkup(message, { eager: false })).join(""));
             if (anchor && anchorTopBeforeInsert !== null) {
               anchorShift = anchor.getBoundingClientRect().top - anchorTopBeforeInsert;
             }
             const incomingMessages = [];
-            for (let message = loader.nextElementSibling; message && message !== anchor; message = message.nextElementSibling) {
+            for (let message = log.firstElementChild; message && message !== anchor; message = message.nextElementSibling) {
               if (message.matches(".message-row")) incomingMessages.push(message);
             }
             animateChatMessages(incomingMessages);
@@ -16269,9 +16576,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
           activeConversationCursor = result.nextCursor;
         } catch (error) {
-          if (loadGeneration === activeConversationLoadGeneration) toast(`Could not load older messages: ${error.message}`);
+          if (loadGeneration === activeConversationLoadGeneration) {
+            await finishHistorySkeleton();
+            if (loadGeneration === activeConversationLoadGeneration) toast(`Could not load older messages: ${error.message}`);
+          }
         } finally {
-          loader.remove();
+          await finishHistorySkeleton();
           if (anchor?.isConnected) log.scrollTop += anchorShift;
           if (loadGeneration === activeConversationLoadGeneration) loadingOlderMessages = false;
         }
@@ -16935,6 +17245,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function go(v, updateRoute = true, preserveProfile = false, restoreConversationId = "") {
         if (!requireAuth()) return;
+        cancelDelayedPlaceholders();
         if (v !== "notifs") disconnectNotificationObserver();
         if (v === "reels" && updateRoute) deepLinkedReelId = "";
         if (v !== "reels") deepLinkedReelId = "";
@@ -18565,6 +18876,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const popover = $("#locationPopover");
         const host = trigger.closest(".c-bar, .reply-composer-footer, .thread-reply-toolbar");
         if (!host) return;
+        clearTimeout(locationSearchTimer);
+        locationSearchGeneration += 1;
+        cancelDelayedPlaceholder($("#locationResults"));
+        locationSkeletonFinish = null;
         if (popover.parentElement !== host) host.append(popover);
         $("#locationInput").value = target ? replyLocationValue(target) : composerLocation;
         $("#saveLocation").disabled = !$("#locationInput").value.trim();
@@ -18628,12 +18943,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           grid.append(button);
         });
       }
-      function renderEmojiLoading() {
-        $("#emojiCategoryTitle").textContent = "Loading emojis…";
-        const grid = $("#emojiGrid");
-        grid.setAttribute("aria-busy", "true");
-        grid.innerHTML = Array.from({ length: 32 }, () => '<span class="emoji-skeleton" aria-hidden="true"></span>').join("");
-      }
       function animateEmojiCategoryChange(render) {
         const results = $("#emojiResults");
         results.classList.remove("is-switching");
@@ -18652,7 +18961,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       async function loadEmojiChoices() {
         renderEmojiCategories(["smileys and people"]);
-        renderEmojiLoading();
+        renderEmojiChoices();
         try {
           const response = await fetch("https://emojihub.yurace.pro/api/all");
           if (!response.ok) throw new Error(`Emoji endpoint returned ${response.status}`);
@@ -18710,12 +19019,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       window.matchMedia("(max-width: 640px)").addEventListener?.("change", syncPostPlaceholderForViewport);
       $("#directorySearch").addEventListener("input", () => {
         clearTimeout(directoryTimer);
+        cancelDelayedPlaceholder($("#directoryResults"));
         const query = $("#directorySearch").value;
         if (!query.trim()) searchDirectory("");
         else directoryTimer = setTimeout(() => searchDirectory(query), 220);
       });
       $("#recipientSearch").addEventListener("input", () => {
         clearTimeout(recipientSearchTimer);
+        cancelDelayedPlaceholder($("#recipientOptions"));
         const query = $("#recipientSearch").value;
         if (!query.trim()) searchRecipients("");
         else recipientSearchTimer = setTimeout(() => searchRecipients(query), 220);
@@ -18871,6 +19182,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       $("#exploreSearch").addEventListener("input", () => {
         clearTimeout(exploreTimer);
         const searchText = $("#exploreSearch").value.trim();
+        const nextKey = exploreStatusKey(searchText);
+        if (exploreSearchStatusKey !== nextKey) {
+          exploreSkeletonFinish?.cancel?.();
+          exploreSkeletonFinish = null;
+        }
         if (searchText && !lastExploreSearch) exploreSearchFilter = "Top";
         lastExploreSearch = searchText;
         $("#exploreSearchClear").hidden = !searchText;
@@ -18890,7 +19206,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             searchText,
             exploreStatusKey(searchText),
             exploreSearchFilter === "People" ? "person" : "post",
-            true,
           );
         }
         exploreTimer = setTimeout(() => renderExplore(searchText), 350);
