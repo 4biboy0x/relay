@@ -11636,7 +11636,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               <svg data-indicator="pause" viewBox="0 0 24 24"><rect x="6" y="4.5" width="4" height="15" rx="1.5"/><rect x="14" y="4.5" width="4" height="15" rx="1.5"/></svg>
             </div>
             <div class="reel-like-burst" data-reel-like-burst aria-hidden="true" hidden><svg viewBox="0 0 24 24"><use href="#heart"/></svg></div>
-            <button class="reel-stage-control" type="button" data-reel-mute aria-label="${reelMuted ? "Unmute" : "Mute"} Reel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path class="reel-sound-wave" d="M15.5 8.5a5 5 0 0 1 0 7"/><path class="reel-muted-mark" d="m17 9 5 6m0-6-5 6"/></svg></button>
+            <button class="reel-stage-control" type="button" data-reel-mute aria-label="${reelMuted ? "Unmute" : "Mute"} Reel" aria-pressed="${!reelMuted}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path class="reel-sound-wave" d="M15.5 8.5a5 5 0 0 1 0 7"${reelMuted ? " hidden" : ""}/><path class="reel-muted-mark" d="m17 9 5 6m0-6-5 6"${reelMuted ? "" : " hidden"}/></svg></button>
             <div class="reel-copy">
               <div class="reel-author-line">
                 <button class="reel-author-link" type="button" data-profile-id="${esc(author.id || "")}" aria-label="View ${esc(author.displayName || author.handle || "creator")}'s profile">${avatarMarkup(author, "sm")}<span>${esc(author.displayName || author.handle || "Relay creator")}</span></button>
@@ -11956,7 +11956,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         video.className = "reel-video";
         video.playsInline = true;
         video.loop = true;
-        video.muted = reelMuted;
+        video.muted = stage.dataset.reelStage === activeReelId ? reelMuted : true;
         video.preload = reel.id === activeReelId ? "metadata" : "none";
         video.setAttribute("aria-label", `Reel by @${reel.author?.handle || "user"}`);
         video.src = mediaHref(reel.videoUrl);
@@ -11991,6 +11991,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         video.addEventListener("waiting", () => stage.classList.add("is-loading"));
         video.addEventListener("timeupdate", () => updateReelProgress(reel, video));
         video.addEventListener("seeked", () => reelLastTime.set(reel.id, video.currentTime));
+        video.addEventListener("volumechange", () => syncReelMuteFromVideo(video));
         video.addEventListener("error", () => {
           stage.classList.remove("is-loading", "is-playing");
           stage.classList.add("is-paused");
@@ -12100,6 +12101,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           await video.play();
           return;
         } catch (error) {
+          if (error.name === "NotAllowedError" && !video.muted) {
+            video.muted = true;
+            syncReelMuteFromVideo(video);
+            await video.play();
+            return;
+          }
           if (error.name === "AbortError" || error.name === "NotAllowedError") throw error;
           const fresh = await api(`/reels/${encodeURIComponent(reel.id)}`);
           if (fresh.status !== "READY" || !fresh.videoUrl) throw error;
@@ -12126,7 +12133,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             video = ensureReelVideo(reel, stage);
           }
           if (video) {
-            video.muted = reelMuted;
+            video.muted = isActive ? reelMuted : true;
             video.preload = isActive ? "metadata" : "none";
             if (shouldStart && !document.hidden) {
               playReelVideo(reel, stage, video).catch((error) => {
@@ -12186,16 +12193,53 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         } catch (error) {
           console.warn("Unable to save the Reel sound preference.", error);
         }
-        $$(".reel-video").forEach((video) => { video.muted = reelMuted; });
+        $$(".reel-video").forEach((video) => {
+          const videoStage = video.closest("[data-reel-stage]");
+          const isActive = videoStage?.dataset.reelStage === activeReelId;
+          if (!isActive) video.pause();
+          video.muted = isActive ? reelMuted : true;
+        });
         updateReelMuteControls();
         renderReelSettings();
       }
+      function syncReelMuteFromVideo(video) {
+        const stage = video.closest("[data-reel-stage]");
+        if (stage?.dataset.reelStage !== activeReelId) {
+          video.muted = true;
+          video.pause();
+          return;
+        }
+        setReelMuted(video.muted || video.volume === 0);
+      }
       function updateReelMuteControls() {
         $$("[data-reel-mute]").forEach((button) => {
-          button.setAttribute("aria-label", `${reelMuted ? "Unmute" : "Mute"} Reel`);
-          button.querySelector(".reel-sound-wave")?.toggleAttribute("hidden", reelMuted);
-          button.querySelector(".reel-muted-mark")?.toggleAttribute("hidden", !reelMuted);
+          const video = button.closest("[data-reel-stage]")?.querySelector(".reel-video");
+          const muted = video ? video.muted || video.volume === 0 : reelMuted;
+          button.setAttribute("aria-label", `${muted ? "Unmute" : "Mute"} Reel`);
+          button.setAttribute("aria-pressed", String(!muted));
+          button.querySelector(".reel-sound-wave")?.toggleAttribute("hidden", muted);
+          button.querySelector(".reel-muted-mark")?.toggleAttribute("hidden", !muted);
         });
+      }
+      async function toggleReelMute(button) {
+        const stage = button.closest("[data-reel-stage]");
+        const reel = reelItems.find((item) => item.id === stage?.dataset.reelStage);
+        const video = stage?.querySelector(".reel-video") || (reel && ensureReelVideo(reel, stage));
+        if (!video) return;
+        const currentlyMuted = video.muted || video.volume === 0;
+        video.muted = !currentlyMuted;
+        syncReelMuteFromVideo(video);
+        if (currentlyMuted && video.paused && !video.muted) {
+          try {
+            await video.play();
+          } catch (error) {
+            video.muted = true;
+            syncReelMuteFromVideo(video);
+            if (error.name !== "NotAllowedError" && error.name !== "AbortError") {
+              console.warn(`Could not unmute Reel ${reel?.id || stage.dataset.reelStage}.`, error);
+            }
+          }
+        }
       }
       async function toggleReelPlayback(reelId) {
         const reel = reelItems.find((item) => item.id === reelId);
@@ -13328,7 +13372,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
       }
       function syncReelPreviewMute(preview = $("#reelUploadPreview")) {
-        reelPreviewMuted = preview.muted;
+        reelPreviewMuted = preview.muted || preview.volume === 0;
         const button = $("#reelPreviewMute");
         button.setAttribute("aria-label", `${reelPreviewMuted ? "Unmute" : "Mute"} video`);
         button.title = `${reelPreviewMuted ? "Unmute" : "Mute"} video`;
@@ -13338,16 +13382,22 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function setReelPreviewMuted(muted) {
         const preview = $("#reelUploadPreview");
-        reelPreviewMuted = muted;
-        preview.muted = reelPreviewMuted;
+        preview.muted = !!muted;
         syncReelPreviewMute(preview);
       }
       function toggleReelPreviewMute() {
         const preview = $("#reelUploadPreview");
-        const unmuting = reelPreviewMuted;
-        setReelPreviewMuted(!reelPreviewMuted);
-        if (unmuting && preview.paused) {
-          preview.play().catch(() => setReelPreviewError("Could not play this video preview."));
+        const unmuting = preview.muted || preview.volume === 0;
+        preview.muted = !unmuting;
+        syncReelPreviewMute(preview);
+        if (unmuting && preview.paused && !preview.muted) {
+          preview.play().catch((error) => {
+            preview.muted = true;
+            syncReelPreviewMute(preview);
+            if (error.name !== "NotAllowedError" && error.name !== "AbortError") {
+              setReelPreviewError("Could not play this video preview.");
+            }
+          });
         }
       }
       function handleReelFeedDoubleClick(event) {
@@ -13389,7 +13439,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         const mute = event.target.closest("[data-reel-mute]");
         if (mute) {
-          setReelMuted(!reelMuted);
+          event.stopPropagation();
+          void toggleReelMute(mute);
           return;
         }
         const follow = event.target.closest("[data-reel-follow]");
@@ -17373,8 +17424,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (!Object.prototype.hasOwnProperty.call(reelSettings, key)) return;
         reelSettings[key] = !reelSettings[key];
         if (key === "startMuted") {
-          reelMuted = reelSettings.startMuted;
-          $$(".reel-video").forEach((video) => { video.muted = reelMuted; });
+          setReelMuted(reelSettings.startMuted);
         }
         saveReelSettings();
         renderReelSettings();
