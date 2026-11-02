@@ -28,6 +28,8 @@ The API starts the Reel processing worker loop in the same process, in developme
 
 Reels accept MP4, MOV, or WebM uploads up to 100 MB, 60 seconds, and 4096 pixels per dimension. The worker validates the container and metadata, rejects location metadata, transcodes video to H.264/AAC MP4, creates a JPEG preview, and strips embedded metadata. This is format validation and transcoding, not malware scanning.
 
+Connected clients join a private Socket.IO room for the active Reel. Likes, reposts, shares, comments, replies, and comment deletions broadcast updated counts or comment records to that room. Reel comment notifications retain the target comment ID so opening one can focus the exact comment.
+
 `REEL_STORAGE_DRIVER=local` stores source videos and processed media in `REEL_STORAGE_DIR`, which must be outside the public `/uploads/` directory. Local storage is appropriate for development or a single server with a durable disk. For multiple API/worker instances, configure `REEL_STORAGE_DRIVER=s3`, `REEL_S3_BUCKET`, `REEL_S3_REGION`, and (if needed) `REEL_S3_ENDPOINT`; give both API and worker private access to the same bucket. Configure bucket CORS for the exact `CLIENT_ORIGIN`, `PUT`, and the `Content-Type` request header so browser uploads can use signed URLs. Signed upload URLs expire after 10 minutes; media read URLs expire after one hour. Never make the bucket public.
 
 Ensure the reverse proxy permits request bodies up to at least 100 MB and sufficient upload/processing timeouts. Deleted Reel media is retained for seven days, then removed by the worker; `storageDeletedAt` records successful cleanup so object deletion is not retried indefinitely. Uploads left incomplete for one hour are expired by the worker.

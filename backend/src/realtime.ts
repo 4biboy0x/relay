@@ -143,6 +143,24 @@ export const initializeRealtime = (server: HttpServer): Server => {
       await Promise.all(posts.map(({ id }) => socket.join(`post:${id}`)));
     });
 
+    socket.on("reel:join", async (reelId: unknown) => {
+      const parsed = z.string().uuid().safeParse(reelId);
+      if (!parsed.success) return;
+      const reel = await prisma.reel.findFirst({
+        where: { id: parsed.data, status: "READY", deletedAt: null },
+        select: { id: true },
+      }).catch((error: unknown) => {
+        console.error("Could not verify Reel room", error);
+        return null;
+      });
+      if (reel) await socket.join(`reel:${parsed.data}`);
+    });
+
+    socket.on("reel:leave", (reelId: unknown) => {
+      const parsed = z.string().uuid().safeParse(reelId);
+      if (parsed.success) void socket.leave(`reel:${parsed.data}`);
+    });
+
     socket.on("conversation:join", async (conversationId: unknown, ack?: unknown) => {
       const acknowledge = typeof ack === "function" ? ack as (result: { ok: boolean }) => void : () => {};
       const parsed = z.string().cuid().safeParse(conversationId);
@@ -193,6 +211,10 @@ export const emitToConversation = (conversationId: string, event: string, payloa
 
 export const emitToPost = (postId: string, event: string, payload: unknown): void => {
   io?.to(`post:${postId}`).emit(event, payload);
+};
+
+export const emitToReel = (reelId: string, event: string, payload: unknown): void => {
+  io?.to(`reel:${reelId}`).emit(event, payload);
 };
 
 export const emitToAuthenticated = (event: string, payload: unknown): void => {

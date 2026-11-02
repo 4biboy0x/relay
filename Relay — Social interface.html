@@ -6103,11 +6103,14 @@
         transition: border-radius 120ms ease;
       }
       .message-reply-preview {
+        box-sizing: border-box;
         display: flex;
+        width: calc(100% - 8px);
+        min-width: 0;
         align-items: center;
         gap: 10px;
         margin: 0 4px 8px;
-        padding: 8px 10px;
+        padding: 8px 12px;
         border: 1px solid var(--border);
         border-radius: 12px;
         background: var(--surface);
@@ -6119,15 +6122,17 @@
         min-width: 0;
         flex: 1;
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
         gap: 4px;
       }
-      .reply-bar .reply-header { max-width: 100%; }
+      .reply-bar .reply-header { width: 100%; max-width: 100%; }
       .reply-bar .reply-preview--text,
       .reply-bar .reply-preview--voice,
       .reply-bar .reply-preview--deleted {
+        width: 100%;
         min-height: 0;
         max-width: 100%;
+        align-self: stretch;
         padding: 0;
         border: 0;
         font-size: 12px;
@@ -6136,6 +6141,7 @@
       .reply-bar .reply-preview--media {
         width: 40px;
         height: 40px;
+        align-self: flex-start;
         border-radius: 12px;
       }
       .reply-bar .reply-preview-gif-badge { bottom: 2px; left: 2px; }
@@ -6153,7 +6159,7 @@
       }
       .message-reply-preview-copy strong { font-size: 12px; font-weight: 650; }
       .message-reply-preview-copy span { margin-top: 2px; color: var(--text-3); font-size: 12px; }
-      .message-reply-preview button {
+      .message-reply-preview > [data-message-reply-cancel] {
         display: grid;
         width: 28px;
         height: 28px;
@@ -6165,8 +6171,8 @@
         background: transparent;
         cursor: pointer;
       }
-      .message-reply-preview button:hover { color: var(--text); background: var(--surface-2); }
-      .message-reply-preview button:focus-visible { outline: 2px solid var(--accent); }
+      .message-reply-preview > [data-message-reply-cancel]:hover { color: var(--text); background: var(--surface-2); }
+      .message-reply-preview > [data-message-reply-cancel]:focus-visible { outline: 2px solid var(--accent); }
       .chat-compose-pill.is-growing { border-radius: 24px; }
       .chat-compose-pill:focus-within { border-color: var(--text-3); }
       .chat-compose-field {
@@ -8375,6 +8381,20 @@
       .reel-comment-replies { margin: 8px 0 0 6px; padding-left: 9px; border-left: 1px solid var(--border); }
       .reel-comment.is-reply { padding: 7px 0; border: 0; }
       .reel-comment.is-reply .av { width: 28px; height: 28px; }
+      .reel-comment.is-live { animation: reel-comment-arrive 260ms cubic-bezier(.2, .8, .2, 1) both; }
+      .reel-comment.is-notification-target { border-radius: 10px; animation: reel-comment-focus 1.8s ease-out both; }
+      @keyframes reel-comment-arrive {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes reel-comment-focus {
+        0%, 35% { background: var(--accent-soft); box-shadow: 0 0 0 6px var(--accent-soft); }
+        100% { background: transparent; box-shadow: 0 0 0 0 transparent; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .reel-comment.is-live,
+        .reel-comment.is-notification-target { animation: none; }
+      }
       .reel-comment-form { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
       .reel-comment-form input { min-width: 0; }
       .reel-comment-form .btn { flex: none; }
@@ -9947,9 +9967,13 @@
       const reelVideoReadyIds = new Set();
       let activeReelId = "";
       let deepLinkedReelId = "";
+      let joinedReelRoomId = "";
+      let pendingReelNotification = null;
       let reelFeedObserver = null;
       let reelActiveObserver = null;
       let reelFeedScrollTop = 0;
+      let reelAwayState = null;
+      let reelResumeSeek = null;
       let reelFeedIgnorePointersUntil = 0;
       let reelUploadPreviewUrl = "";
       let reelUploadValidationUrl = "";
@@ -9979,6 +10003,7 @@
       let reelViewSending = new Set();
       const reelWatchMs = new Map();
       const reelLastTime = new Map();
+      const reelResumeWindowMs = 5 * 60_000;
       const reelViewedIds = new Set();
       const reelReducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
       const defaultReelSettings = {
@@ -10415,11 +10440,13 @@
             streamController = null;
             if (activeConversation) socket.emit("conversation:join", activeConversation.id);
             joinVisiblePostRooms();
+            syncActiveReelRoom();
             refreshMessageBadge();
           });
           socket.on("disconnect", () => {
             clearInterval(presenceHeartbeatTimer);
             presenceHeartbeatTimer = null;
+            joinedReelRoomId = "";
             if (accessToken && currentUser) setTimeout(() => {
               if (!socket?.connected && !streamController) startNotificationStream();
             }, 1000);
@@ -10443,6 +10470,9 @@
           socket.on("post:deleted", receivePostDeleted);
           socket.on("post:reply-count", receiveReplyCount);
           socket.on("post:comment:new", receiveLiveComment);
+          socket.on("reel:interaction", receiveReelInteraction);
+          socket.on("reel:comment:new", receiveLiveReelComment);
+          socket.on("reel:comment:deleted", receiveDeletedReelComments);
           socket.on("user:suggestion:new", receiveLiveSuggestion);
           socket.on("user:followed", receiveViewerFollowed);
           socket.on("trending:updated", () => {
@@ -11432,6 +11462,18 @@
           socket.emit("posts:join", batch);
         }
       }
+      function syncActiveReelRoom() {
+        const shouldJoin = Boolean(currentUser && !document.hidden && !$("#v-reels").hidden
+          && activeReelId && reelItems.some((reel) => reel.id === activeReelId));
+        if (joinedReelRoomId && (!shouldJoin || joinedReelRoomId !== activeReelId)) {
+          if (socket?.connected) socket.emit("reel:leave", joinedReelRoomId);
+          joinedReelRoomId = "";
+        }
+        if (shouldJoin && socket?.connected && !joinedReelRoomId) {
+          joinedReelRoomId = activeReelId;
+          socket.emit("reel:join", activeReelId);
+        }
+      }
       const renderError = (element, error, retry) => {
         element.innerHTML = `<div class="relay-load-error"><span>Couldn't load. Try again</span>${retry ? `<button class="ghost-btn" type="button" data-retry="${retry}">Try again</button>` : ""}</div>`;
       };
@@ -12025,6 +12067,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             button.setAttribute("aria-selected", button.dataset.pt === t ? "true" : "false"),
           );
           if (headerNeedsLoad) {
+            $("#profilePageTitle").textContent = owner
+              ? currentUser.displayName || "Your profile"
+              : "Profile";
             $$("[data-pt]").forEach((button) => {
               button.hidden = !owner && button.dataset.pt === "Likes";
             });
@@ -12041,6 +12086,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 $("#profileBody").classList.add("is-loading");
                 return () => $("#profileBody").classList.remove("is-loading");
               }, { canShow: () => !$("#profileBody").dataset.profileUserId });
+            } else {
+              $("#profileBody").classList.add("is-loading");
             }
           }
           delete $("#pf").dataset.loaded;
@@ -12279,7 +12326,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           ? `${esc(message)}${retry ? `<br><button class="ghost-btn" type="button" data-reel-retry="${retryMore ? "more" : "feed"}">Try again</button>` : ""}`
           : "";
       }
-      async function renderReels(append = false, requestedReelId = "") {
+      async function renderReels(append = false, requestedReelId = "", resumeFallback = false) {
         if (!currentUser || reelLoading || (append && !reelCursor)) return;
         const generation = append ? reelRenderGeneration : ++reelRenderGeneration;
         reelLoading = true;
@@ -12354,12 +12401,28 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           let selected = null;
           let page;
           if (requestedReelId) {
-            [selected, page] = await Promise.all([
-              api(`/reels/${encodeURIComponent(requestedReelId)}`),
-              api(`/reels/feed?${new URLSearchParams({ limit: "8", afterId: requestedReelId })}`),
-            ]);
-            if (selected.status !== "READY" || !selected.videoUrl) {
-              throw new Error("This Reel isn’t ready to play yet.");
+            try {
+              [selected, page] = await Promise.all([
+                api(`/reels/${encodeURIComponent(requestedReelId)}`),
+                api(`/reels/feed?${new URLSearchParams(resumeFallback
+                  ? { limit: "8" }
+                  : { limit: "8", afterId: requestedReelId })}`),
+              ]);
+              if (selected.status !== "READY" || !selected.videoUrl) {
+                throw new Error("This Reel isn’t ready to play yet.");
+              }
+            } catch (error) {
+              const unavailable = /This Reel is unavailable|This Reel isn.t ready to play yet\./.test(error.message || "");
+              if (!resumeFallback || !unavailable) throw error;
+              selected = null;
+              activeReelId = "";
+              deepLinkedReelId = "";
+              reelResumeSeek = null;
+              reelLastTime.delete(requestedReelId);
+              reelFeedScrollTop = 0;
+              history.replaceState(history.state, "", `${location.pathname}${location.search}#/reels`);
+              requestedReelId = "";
+              page = await api(`/reels/feed?${new URLSearchParams({ limit: "8" })}`);
             }
           } else {
             const query = new URLSearchParams({ limit: "8" });
@@ -12384,6 +12447,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             else if (!reelItems.some((reel) => reel.id === activeReelId)) activeReelId = reelItems[0]?.id || "";
             renderReelMarkup();
           }
+          syncActiveReelRoom();
           reelCursor = page.nextCursor;
           positionReelFeedSentinel();
           renderReelFeedState("");
@@ -12398,6 +12462,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               }
               observeReelItems();
               syncReelPlayback();
+              if (pendingReelNotification?.reelId === activeReelId) {
+                const notification = pendingReelNotification;
+                pendingReelNotification = null;
+                if (notification.commentId) {
+                  openReelComments(notification.reelId, null, notification.commentId);
+                }
+              }
             });
           } else {
             observeReelItems();
@@ -12458,6 +12529,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         if ($("#reelActionsDialog").open) $("#reelActionsDialog").close();
         activeReelId = id;
+        syncActiveReelRoom();
         if (reelManualPlayback !== id) reelManualPlayback = "";
         const status = $("#reelFeedState");
         if (!reelLoading && !reelCursor && status.dataset.state !== "notice") {
@@ -12538,6 +12610,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         stage.append(video);
         stage.classList.add("is-loading", "is-paused");
         stage.setAttribute("aria-label", "Play reel");
+        video.addEventListener("loadedmetadata", () => applyPendingReelResume(video, reel.id));
         if (!reelStageKeyHandlers.has(stage)) {
           stage.addEventListener("keydown", (event) => {
             if (![" ", "Enter", "k", "K"].includes(event.key)) return;
@@ -12735,6 +12808,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             video = ensureReelVideo(reel, stage, nextPreloadMode);
           }
           if (video) {
+            applyPendingReelResume(video, reel.id);
             video.muted = isActive ? reelMuted : true;
             if (isActive) video.preload = "metadata";
             else if (isNext && shouldPreloadNext) video.preload = nextPreloadMode;
@@ -12899,6 +12973,17 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           location.hash = route;
         }
       }
+      function openReelNotification(reelId, commentId = "") {
+        if (!reelId) return;
+        pendingReelNotification = { reelId, commentId };
+        const route = `#/reels/${encodeURIComponent(reelId)}`;
+        if (location.hash === route) {
+          if ($("#v-reels").hidden) routeFromHash();
+          else void renderReels(false, reelId);
+        } else {
+          location.hash = route;
+        }
+      }
       function syncReelActionUI(reel, action, animateCount = false) {
         const item = $(`.reel-item[data-reel-id="${CSS.escape(reel.id)}"]`, $("#reelFeed"));
         const button = item?.querySelector(`[data-reel-action="${action}"]`);
@@ -12919,6 +13004,60 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         else if (action === "like") button.setAttribute("aria-label", `${reel.viewer.liked ? "Unlike" : "Like"} · ${text} likes`);
         else if (action === "repost") button.setAttribute("aria-label", `${reel.viewer.reposted ? "Undo repost" : "Repost"} · ${text} reposts`);
         else if (action !== "more") button.setAttribute("aria-label", `${text} ${action === "comment" ? "comments" : reelActionLabels[action] || ""}`.trim());
+      }
+      function applyReelCounts(reel, counts, animate = true) {
+        if (!reel || !counts) return;
+        const actionByCount = { likes: "like", comments: "comment", reposts: "repost", shares: "share" };
+        const changedActions = [];
+        ["likes", "comments", "reposts", "shares", "views"].forEach((key) => {
+          if (!Number.isFinite(counts[key])) return;
+          if (reel.counts[key] !== counts[key] && actionByCount[key]) changedActions.push(actionByCount[key]);
+          reel.counts[key] = counts[key];
+        });
+        changedActions.forEach((action) => syncReelActionUI(reel, action, animate));
+      }
+      function receiveReelInteraction(event) {
+        if (!event?.reelId || !["like", "repost", "share"].includes(event.action)) return;
+        const reel = reelItems.find((item) => item.id === event.reelId);
+        if (!reel) return;
+        applyReelCounts(reel, event.counts);
+        if (event.actorId === currentUser?.id && event.action === "like") {
+          reel.viewer.liked = Boolean(event.active);
+          syncReelActionUI(reel, "like");
+        } else if (event.actorId === currentUser?.id && event.action === "repost") {
+          reel.viewer.reposted = Boolean(event.active);
+          syncReelActionUI(reel, "repost");
+        }
+        writeReelCache();
+      }
+      function receiveLiveReelComment(event) {
+        const comment = event?.comment;
+        if (!event?.reelId || !comment?.id) return;
+        const reel = reelItems.find((item) => item.id === event.reelId);
+        if (reel) applyReelCounts(reel, event.counts);
+        if (reelCommentsReelId === event.reelId) {
+          const exists = $(`[data-reel-comment="${CSS.escape(comment.id)}"]`, $("#reelCommentList"));
+          if (!exists && !insertReelComment(comment, true) && comment.replyToId) {
+            void loadReelComments(false, comment.id);
+          }
+          $("#reelCommentsCount").textContent = `${formatReelCount(reel?.counts?.comments)} comments`;
+        }
+        writeReelCache();
+      }
+      function receiveDeletedReelComments(event) {
+        if (!event?.reelId || !Array.isArray(event.commentIds)) return;
+        const reel = reelItems.find((item) => item.id === event.reelId);
+        if (reel) applyReelCounts(reel, event.counts);
+        if (reelCommentsReelId === event.reelId) {
+          event.commentIds.forEach((id) => {
+            $(`[data-reel-comment="${CSS.escape(id)}"]`, $("#reelCommentList"))?.remove();
+          });
+          $("#reelCommentsCount").textContent = `${formatReelCount(reel?.counts?.comments)} comments`;
+          if (!$("#reelCommentList").querySelector(".reel-comment")) {
+            $("#reelCommentList").innerHTML = '<div class="relay-load-error">No comments yet. Start the conversation.</div>';
+          }
+        }
+        writeReelCache();
       }
       async function toggleReelRelation(button, desiredState = null) {
         if (reelActionRequests.has(button)) return;
@@ -12948,6 +13087,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (countName) reel.counts[countName] = previousCount;
           syncReelActionUI(reel, action, true);
           animateReelActionFailure(button);
+          toast(error.message || "Could not update this Reel.");
         } finally {
           reelActionRequests.delete(button);
         }
@@ -12975,7 +13115,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           setPendingButton(button, false);
         }
       }
-      function openReelComments(reelId, actionButton = null) {
+      function openReelComments(reelId, actionButton = null, focusCommentId = "") {
         if (!reelItems.some((item) => item.id === reelId)) return;
         if (actionButton && reelActionRequests.has(actionButton)) return;
         if (actionButton) reelActionRequests.add(actionButton);
@@ -12990,29 +13130,49 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#reelCommentsTitle").textContent = "Comments";
         $("#reelCommentsCount").textContent = "";
         $("#reelCommentsDialog").showModal();
-        const request = loadReelComments();
+        const request = loadReelComments(false, focusCommentId);
         if (actionButton) void request.finally(() => reelActionRequests.delete(actionButton));
       }
-      function reelCommentMarkup(comment, depth = 0) {
+      function reelCommentMarkup(comment, depth = 0, live = false) {
         const author = comment.author || {};
         const replies = Array.isArray(comment.replies) ? comment.replies : [];
-        return `<div class="reel-comment${depth ? " is-reply" : ""}" data-reel-comment="${esc(comment.id)}">
+        return `<div class="reel-comment${depth ? " is-reply" : ""}${live ? " is-live" : ""}" data-reel-comment="${esc(comment.id)}">
           ${avatarMarkup(author, "sm")}
           <div class="reel-comment-copy">
             <button type="button" class="profile-link" data-profile-id="${esc(author.id || "")}">${esc(author.displayName || author.handle || "Relay user")}</button>
             <p>${esc(comment.body || "")}</p>
             ${!depth ? `<button type="button" class="reel-comment-reply" data-reel-reply="${esc(comment.id)}" data-reel-reply-handle="${esc(author.handle || "")}">Reply</button>` : ""}
-            ${replies.length ? `<div class="reel-comment-replies">${replies.map((reply) => reelCommentMarkup(reply, depth + 1)).join("")}</div>` : ""}
+            ${replies.length ? `<div class="reel-comment-replies">${replies.map((reply) => reelCommentMarkup(reply, depth + 1, live)).join("")}</div>` : ""}
           </div>
         </div>`;
       }
-      async function loadReelComments(append = false) {
+      function insertReelComment(comment, live = false) {
+        const list = $("#reelCommentList");
+        if ($(`[data-reel-comment="${CSS.escape(comment.id)}"]`, list)) return false;
+        list.querySelector(".relay-load-error")?.remove();
+        if (comment.replyToId) {
+          const parent = $(`[data-reel-comment="${CSS.escape(comment.replyToId)}"]`, list);
+          if (!parent) return false;
+          let replies = parent.querySelector(".reel-comment-replies");
+          if (!replies) {
+            replies = document.createElement("div");
+            replies.className = "reel-comment-replies";
+            parent.querySelector(".reel-comment-copy").append(replies);
+          }
+          replies.insertAdjacentHTML("beforeend", reelCommentMarkup(comment, 1, live));
+        } else {
+          list.insertAdjacentHTML("afterbegin", reelCommentMarkup(comment, 0, live));
+        }
+        return true;
+      }
+      async function loadReelComments(append = false, focusCommentId = "") {
         if (!reelCommentsReelId) return;
         const generation = append ? reelCommentsGeneration : ++reelCommentsGeneration;
         const reelId = reelCommentsReelId;
         const commentList = $("#reelCommentList");
         const query = new URLSearchParams({ limit: "20" });
         if (append && reelCommentsCursor) query.set("cursor", reelCommentsCursor);
+        if (focusCommentId) query.set("focusId", focusCommentId);
         const finishSkeleton = !append && !commentList.childElementCount
           ? showDelayedSkeleton(commentList, "post")
           : () => Promise.resolve();
@@ -13028,6 +13188,16 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           else commentList.innerHTML = markup || '<div class="relay-load-error">No comments yet. Start the conversation.</div>';
           reelCommentsCursor = result.nextCursor;
           $("#reelCommentMore").hidden = !reelCommentsCursor;
+          if (focusCommentId) {
+            requestAnimationFrame(() => {
+              const target = $(`[data-reel-comment="${CSS.escape(focusCommentId)}"]`, commentList);
+              if (!target) return;
+              target.scrollIntoView({ behavior: reelReducedMotion.matches ? "auto" : "smooth", block: "center" });
+              target.classList.add("is-notification-target");
+              target.addEventListener("animationend", () => target.classList.remove("is-notification-target"), { once: true });
+              window.setTimeout(() => target.classList.remove("is-notification-target"), 1900);
+            });
+          }
         } catch (error) {
           if (generation !== reelCommentsGeneration || reelId !== reelCommentsReelId) return;
           if (!append) await finishSkeleton();
@@ -13050,6 +13220,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       async function submitReelComment(event) {
         event.preventDefault();
         if (!requireAuth() || !reelCommentsReelId) return;
+        const reelId = reelCommentsReelId;
         const input = $("#reelCommentInput");
         const body = input.value.trim();
         if (!body) return;
@@ -13058,32 +13229,27 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const submit = $("#reelCommentForm").querySelector("button[type=submit]");
         setPendingButton(submit, true);
         try {
-          const comment = await api(`/reels/${encodeURIComponent(reelCommentsReelId)}/comments`, {
+          const comment = await api(`/reels/${encodeURIComponent(reelId)}/comments`, {
             method: "POST",
             body: JSON.stringify(payload),
           });
-          const reel = reelItems.find((item) => item.id === reelCommentsReelId);
+          const reel = reelItems.find((item) => item.id === reelId);
           if (reel) {
-            reel.counts.comments += 1;
-            syncReelActionUI(reel, "comment");
-          }
-          if (comment.replyToId) {
-            const parent = $(`[data-reel-comment="${CSS.escape(comment.replyToId)}"]`, $("#reelCommentList"));
-            if (parent) {
-              let replies = parent.querySelector(".reel-comment-replies");
-              if (!replies) {
-                replies = document.createElement("div");
-                replies.className = "reel-comment-replies";
-                parent.querySelector(".reel-comment-copy").append(replies);
-              }
-              replies.insertAdjacentHTML("beforeend", reelCommentMarkup(comment, 1));
+            if (comment.counts) applyReelCounts(reel, comment.counts);
+            else {
+              reel.counts.comments += 1;
+              syncReelActionUI(reel, "comment");
             }
-          } else {
-            $("#reelCommentList").insertAdjacentHTML("afterbegin", reelCommentMarkup(comment));
           }
-          $("#reelCommentsCount").textContent = `${formatReelCount(reel?.counts?.comments)} comments`;
-          input.value = "";
-          cancelReelReply();
+          if (reelCommentsReelId === reelId) {
+            const existing = $(`[data-reel-comment="${CSS.escape(comment.id)}"]`, $("#reelCommentList"));
+            if (!existing && !insertReelComment(comment, true) && comment.replyToId) {
+              await loadReelComments(false, comment.id);
+            }
+            $("#reelCommentsCount").textContent = `${formatReelCount(reel?.counts?.comments)} comments`;
+            input.value = "";
+            cancelReelReply();
+          }
         } catch (error) {
           toast(error.message);
         } finally {
@@ -14135,8 +14301,19 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function initializeReels() {
         document.addEventListener("visibilitychange", () => {
+          syncActiveReelRoom();
           if (document.hidden) {
+            if (!$("#v-reels").hidden) recordReelAwayState();
             $$(".reel-video").forEach((video) => video.pause());
+          } else if (!$("#v-reels").hidden) {
+            const resumeMode = restoreReelAwayState();
+            if (resumeMode === "refresh" || (resumeMode === "resume" && !reelItems.some((reel) => reel.id === activeReelId))) {
+              deepLinkedReelId = activeReelId;
+              void renderReels(false, deepLinkedReelId, true);
+              return;
+            }
+            $("#reelFeed").scrollTop = reelFeedScrollTop;
+            syncReelPlayback();
           } else {
             syncReelPlayback();
           }
@@ -15447,9 +15624,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const followBack = item.type === "FOLLOW" && !alreadyFollowing
           ? `<button class="notification-follow-back" type="button" data-follow-back="${esc(item.actor.id)}" aria-label="Follow back"><span class="notification-follow-label">Follow back</span><svg class="notification-follow-icon i" aria-hidden="true"><use href="#user-plus"/></svg></button>` : "";
         const rightSide = followBack ? `<div class="notification-actions">${followBack}</div>` : "";
-        return `<div class="notification-row${item.readAt ? "" : " unread"}" role="button" tabindex="0" data-notification-ids="${esc((item.ids || [item.id]).join(","))}" data-notification-post="${esc(item.post?.id || "")}" data-notification-actor="${esc(item.actor.id)}">${avatar}<div class="notification-content">${actorLabel}${notificationTime}${preview}</div>${rightSide}${item.readAt ? "" : '<span class="notification-unread-dot" aria-label="Unread"></span>'}</div>`;
+        return `<div class="notification-row${item.readAt ? "" : " unread"}" role="button" tabindex="0" data-notification-ids="${esc((item.ids || [item.id]).join(","))}" data-notification-post="${esc(item.post?.id || "")}" data-notification-reel="${esc(item.reelId || "")}" data-notification-comment="${esc(item.reelCommentId || "")}" data-notification-actor="${esc(item.actor.id)}">${avatar}<div class="notification-content">${actorLabel}${notificationTime}${preview}</div>${rightSide}${item.readAt ? "" : '<span class="notification-unread-dot" aria-label="Unread"></span>'}</div>`;
       };
-      const notificationGroupKey = (item) => `${item.type}:${item.post?.id || item.actor?.id || item.id}`;
+      const notificationGroupKey = (item) => `${item.type}:${item.post?.id || item.reelId || item.actor?.id || item.id}`;
       const groupedNotifications = (items) => {
         const groups = [];
         const index = new Map();
@@ -18827,6 +19004,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           renderConversations();
           refreshNotificationBadge();
           startNotificationStream();
+          normalizeClosedReelRoute();
           routeFromHash();
           finishSplash();
         } catch (error) {
@@ -18835,8 +19013,50 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           finishSplash();
         }
       }
+      function recordReelAwayState() {
+        if ($("#v-reels").hidden) return;
+        const feed = $("#reelFeed");
+        const video = $(`[data-reel-stage="${CSS.escape(activeReelId)}"]`, feed)?.querySelector(".reel-video");
+        const currentTime = video && Number.isFinite(video.currentTime) ? video.currentTime : reelLastTime.get(activeReelId) || 0;
+        if (activeReelId && currentTime > 0) reelLastTime.set(activeReelId, currentTime);
+        reelFeedScrollTop = feed.scrollTop;
+        reelAwayState = {
+          leftAt: reelAwayState?.reelId === activeReelId ? reelAwayState.leftAt : Date.now(),
+          reelId: activeReelId,
+          scrollTop: reelFeedScrollTop,
+          currentTime,
+        };
+      }
+      function restoreReelAwayState() {
+        const away = reelAwayState;
+        reelAwayState = null;
+        if (!away?.reelId) return "";
+        activeReelId = away.reelId;
+        reelFeedScrollTop = away.scrollTop;
+        if (Date.now() - away.leftAt > reelResumeWindowMs) {
+          reelLastTime.delete(away.reelId);
+          reelResumeSeek = null;
+          return "refresh";
+        }
+        reelResumeSeek = { reelId: away.reelId, currentTime: away.currentTime };
+        return "resume";
+      }
+      function applyPendingReelResume(video, reelId) {
+        if (reelResumeSeek?.reelId !== reelId || !Number.isFinite(video.duration) || video.duration <= 0) return;
+        video.currentTime = Math.min(reelResumeSeek.currentTime, Math.max(0, video.duration - 0.1));
+        reelLastTime.set(reelId, video.currentTime);
+        reelResumeSeek = null;
+      }
+      function normalizeClosedReelRoute() {
+        if (!/^#\/reels\/[^/?]+$/.test(location.hash)) return;
+        const navigationType = performance.getEntriesByType("navigation")[0]?.type;
+        if (navigationType !== "reload" && navigationType !== "back_forward") return;
+        history.replaceState(null, "", `${location.pathname}${location.search}#/reels`);
+      }
       function go(v, updateRoute = true, preserveProfile = false, restoreConversationId = "") {
         if (!requireAuth()) return;
+        const explicitReelId = deepLinkedReelId;
+        const reelResumeMode = v === "reels" && !explicitReelId ? restoreReelAwayState() : "";
         if (v !== "reels") {
           closeReelDeleteConfirmation();
           if ($("#reelActionsDialog").open) $("#reelActionsDialog").close();
@@ -18848,8 +19068,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (v !== "notifs") disconnectNotificationObserver();
         if (v === "reels" && updateRoute) deepLinkedReelId = "";
         if (v !== "reels") deepLinkedReelId = "";
+        if (reelResumeMode === "refresh") deepLinkedReelId = activeReelId;
         if (v !== "reels" && !$("#v-reels").hidden) {
-          reelFeedScrollTop = $("#reelFeed").scrollTop;
+          recordReelAwayState();
           $$(".reel-video").forEach((video) => video.pause());
           reelFeedObserver?.disconnect();
           reelActiveObserver?.disconnect();
@@ -18875,6 +19096,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $(".app").classList.toggle("thread-active", v === "thread");
         $(".app").classList.toggle("reels-active", v === "reels");
         $$("[data-v]").forEach((s) => (s.hidden = s.id !== "v-" + v));
+        syncActiveReelRoom();
         const activeView = $(`#v-${v}`);
         const isOwnProfile = v === "profile"
           && (!viewedProfileId || viewedProfileId === currentUser?.id);
@@ -18918,7 +19140,18 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 setComposerVisibility(feedTab === "for-you");
                 await renderFeed();
               }
-              if (v === "reels") await renderReels(false, deepLinkedReelId);
+              if (v === "reels") {
+                if (reelResumeMode === "resume" && reelItems.some((reel) => reel.id === activeReelId)) {
+                  requestAnimationFrame(() => {
+                    $("#reelFeed").scrollTop = reelFeedScrollTop;
+                    observeReelItems();
+                    syncReelPlayback();
+                  });
+                } else {
+                  const resumeReelId = reelResumeMode === "resume" ? activeReelId : deepLinkedReelId;
+                  await renderReels(false, resumeReelId, reelResumeMode === "refresh" || reelResumeMode === "resume");
+                }
+              }
               if (v === "thread") await renderThread();
             }, true);
           }
@@ -19448,9 +19681,20 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         const notificationTrigger = e.target.closest("[data-notification-post]");
         if (notificationTrigger) {
+          const openNotificationTarget = () => {
+            if (notificationTrigger.dataset.notificationReel) {
+              openReelNotification(
+                notificationTrigger.dataset.notificationReel,
+                notificationTrigger.dataset.notificationComment || "",
+              );
+            } else if (notificationTrigger.dataset.notificationPost) {
+              openThread(notificationTrigger.dataset.notificationPost);
+            } else {
+              openPublicProfile(notificationTrigger.dataset.notificationActor);
+            }
+          };
           if (!notificationTrigger.classList.contains("unread")) {
-            if (notificationTrigger.dataset.notificationPost) openThread(notificationTrigger.dataset.notificationPost);
-            else openPublicProfile(notificationTrigger.dataset.notificationActor);
+            openNotificationTarget();
             return;
           }
           if (notificationTrigger.getAttribute("aria-busy") === "true") return;
@@ -19478,8 +19722,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           } finally {
             notificationTrigger.removeAttribute("aria-busy");
           }
-          if (notificationTrigger.dataset.notificationPost) openThread(notificationTrigger.dataset.notificationPost);
-          else openPublicProfile(notificationTrigger.dataset.notificationActor);
+          openNotificationTarget();
           return;
         }
         const g = e.target.closest("[data-go]");

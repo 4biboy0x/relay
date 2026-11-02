@@ -16,7 +16,7 @@ import { authOptional, authRequired } from "./auth";
 import { config } from "./config";
 import { prisma } from "./db";
 import { asyncRoute, HttpError } from "./http";
-import { emitToUser } from "./realtime";
+import { emitToReel, emitToUser } from "./realtime";
 import { wakeReelWorker } from "./reel-worker";
 import {
   createLocalReelReadUrl,
@@ -59,6 +59,10 @@ const profileCursorSchema = z.object({
   createdAt: z.string().datetime(),
   id: uuidSchema,
 });
+const reelCommentCursorSchema = z.object({
+  createdAt: z.string().datetime(),
+  id: z.string().cuid(),
+});
 const localUploadOnly: RequestHandler = (_req, _res, next) => {
   if (config.REEL_STORAGE_DRIVER !== "local") {
     next(new HttpError(404, "Local uploads are disabled"));
@@ -89,6 +93,7 @@ const paginationSchema = z.object({
   limit: z.coerce.number().int().min(1).max(20).default(8),
 });
 const feedQuerySchema = paginationSchema.extend({ afterId: uuidSchema.optional() });
+const reelCommentsQuerySchema = paginationSchema.extend({ focusId: z.string().cuid().optional() });
 const mediaKindSchema = z.enum(["video", "poster"]);
 
 const writeLimiter = rateLimit({
@@ -497,20 +502,25 @@ router.get("/:id", authOptional, asyncRoute(async (req, res) => {
   res.json(await reelResponse(reel, await isFollowing(viewerId, reel.authorId)));
 }));
 
-const makeInteractionResponse = (reel: {
+const reelCountsFromRecord = (reel: {
   likeCount: number;
   commentCount: number;
   repostCount: number;
   shareCount: number;
   viewCount: number;
-}, viewer: { liked: boolean; bookmarked: boolean; reposted: boolean }) => ({
-  counts: {
-    likes: reel.likeCount,
-    comments: reel.commentCount,
-    reposts: reel.repostCount,
-    shares: reel.shareCount,
-    views: reel.viewCount,
-  },
+}) => ({
+  likes: reel.likeCount,
+  comments: reel.commentCount,
+  reposts: reel.repostCount,
+  shares: reel.shareCount,
+  views: reel.viewCount,
+});
+
+const makeInteractionResponse = (
+  reel: Parameters<typeof reelCountsFromRecord>[0],
+  viewer: { liked: boolean; bookmarked: boolean; reposted: boolean },
+) => ({
+  counts: reelCountsFromRecord(reel),
   viewer,
 });
 
@@ -587,8 +597,19 @@ const setRelation = async (
         reposted: Boolean(reposted),
       }),
       notification,
+      changed,
     };
   });
+  if (result.changed && (kind === "like" || kind === "repost")) {
+    emitToReel(reelId, "reel:interaction", {
+      reelId,
+      actorId: userId,
+      action: kind,
+      active,
+      counts: result.response.counts,
+      viewer: result.response.viewer,
+    });
+  }
   if (result.notification) {
     emitToUser(result.notification.recipientId, "notification:new", result.notification);
   }
@@ -616,13 +637,14 @@ router.delete("/:id/repost", authRequired, writeLimiter, asyncRoute(async (req, 
 
 router.post("/:id/share", authRequired, writeLimiter, asyncRoute(async (req, res) => {
   const reelId = reelIdFrom(req.params.id);
+  const userId = viewerIdFrom(req);
   const counts = await prisma.$transaction(async (tx) => {
     const reel = await tx.reel.findFirst({
       where: { id: reelId, status: ReelStatus.READY, deletedAt: null },
       select: { id: true },
     });
     if (!reel) throw new HttpError(404, "Reel not found");
-    await recordUniqueReelShare(tx, req.userId!, reelId);
+    await recordUniqueReelShare(tx, userId, reelId);
     const updatedReel = await tx.reel.findUniqueOrThrow({
       where: { id: reelId },
       select: { likeCount: true, commentCount: true, repostCount: true, shareCount: true, viewCount: true },
@@ -632,6 +654,12 @@ router.post("/:id/share", authRequired, writeLimiter, asyncRoute(async (req, res
       bookmarked: false,
       reposted: false,
     }).counts;
+  });
+  emitToReel(reelId, "reel:interaction", {
+    reelId,
+    actorId: userId,
+    action: "share",
+    counts,
   });
   res.json({ counts });
 }));
@@ -726,34 +754,52 @@ router.post("/:id/cancel-upload", authRequired, writeLimiter, asyncRoute(async (
 router.get("/:id/comments", authOptional, asyncRoute(async (req, res) => {
   const reelId = reelIdFrom(req.params.id);
   await ensureVisibleReel(reelId);
-  const { cursor: rawCursor, limit } = paginationSchema.parse(req.query);
-  const cursor = parseCursor(rawCursor, profileCursorSchema);
-  const comments = await prisma.reelComment.findMany({
-    where: {
-      reelId,
-      replyToId: null,
-      deletedAt: null,
-      ...(cursor ? {
-        OR: [
-          { createdAt: { lt: new Date(cursor.createdAt) } },
-          { createdAt: new Date(cursor.createdAt), id: { lt: cursor.id } },
-        ],
-      } : {}),
+  const { cursor: rawCursor, limit, focusId } = reelCommentsQuerySchema.parse(req.query);
+  const cursor = parseCursor(rawCursor, reelCommentCursorSchema);
+  const commentInclude = {
+    author: { select: profileUserSelect },
+    replies: {
+      where: { deletedAt: null },
+      include: { author: { select: profileUserSelect } },
+      orderBy: [{ createdAt: "asc" as const }, { id: "asc" as const }],
     },
-    include: {
-      author: { select: profileUserSelect },
-      replies: {
-        where: { deletedAt: null },
-        include: { author: { select: profileUserSelect } },
-        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  };
+  const [comments, focusedComment] = await Promise.all([
+    prisma.reelComment.findMany({
+      where: {
+        reelId,
+        replyToId: null,
+        deletedAt: null,
+        ...(cursor ? {
+          OR: [
+            { createdAt: { lt: new Date(cursor.createdAt) } },
+            { createdAt: new Date(cursor.createdAt), id: { lt: cursor.id } },
+          ],
+        } : {}),
       },
-    },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    take: limit + 1,
-  });
+      include: commentInclude,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: limit + 1,
+    }),
+    focusId ? prisma.reelComment.findFirst({
+      where: {
+        reelId,
+        replyToId: null,
+        deletedAt: null,
+        OR: [
+          { id: focusId },
+          { replies: { some: { id: focusId, deletedAt: null } } },
+        ],
+      },
+      include: commentInclude,
+    }) : null,
+  ]);
   const hasMore = comments.length > limit;
   const page = comments.slice(0, limit);
-  const last = page.at(-1);
+  if (focusedComment && !page.some(({ id }) => id === focusedComment.id)) {
+    page.unshift(focusedComment);
+  }
+  const last = comments.slice(0, limit).at(-1);
   res.json({
     items: page,
     nextCursor: hasMore && last
@@ -776,7 +822,7 @@ router.post("/:id/comments", authRequired, writeLimiter, asyncRoute(async (req, 
     if (input.replyToId) {
       const parent = await tx.reelComment.findFirst({
         where: { id: input.replyToId, reelId, replyToId: null, deletedAt: null },
-        select: { id: true },
+        select: { id: true, authorId: true },
       });
       if (!parent) throw new HttpError(404, "Reply target not found");
     }
@@ -789,29 +835,46 @@ router.post("/:id/comments", authRequired, writeLimiter, asyncRoute(async (req, 
       },
       include: { author: { select: profileUserSelect } },
     });
-    await tx.reel.update({ where: { id: reelId }, data: { commentCount: { increment: 1 } } });
-    const notification = reel.authorId !== userId
+    const updatedReel = await tx.reel.update({
+      where: { id: reelId },
+      data: { commentCount: { increment: 1 } },
+      select: { likeCount: true, commentCount: true, repostCount: true, shareCount: true, viewCount: true },
+    });
+    const recipientId = input.replyToId
+      ? (await tx.reelComment.findUniqueOrThrow({
+          where: { id: input.replyToId },
+          select: { authorId: true },
+        })).authorId
+      : reel.authorId;
+    const notification = recipientId !== userId
       ? await tx.notification.create({
           data: {
-            recipientId: reel.authorId,
+            recipientId,
             actorId: userId,
             reelId,
+            reelCommentId: comment.id,
             type: NotificationType.REEL_COMMENT,
           },
           include: notificationInclude,
         })
       : null;
-    return { comment, notification };
+    return { comment, notification, counts: reelCountsFromRecord(updatedReel) };
+  });
+  emitToReel(reelId, "reel:comment:new", {
+    reelId,
+    actorId: userId,
+    comment: result.comment,
+    counts: result.counts,
   });
   if (result.notification) emitToUser(result.notification.recipientId, "notification:new", result.notification);
-  res.status(201).json(result.comment);
+  res.status(201).json({ ...result.comment, counts: result.counts });
 }));
 
 router.delete("/:id/comments/:commentId", authRequired, writeLimiter, asyncRoute(async (req, res) => {
   const reelId = reelIdFrom(req.params.id);
   const commentId = z.string().cuid().parse(req.params.commentId);
   const userId = viewerIdFrom(req);
-  await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const [comment, reel] = await Promise.all([
       tx.reelComment.findFirst({ where: { id: commentId, reelId, deletedAt: null } }),
       tx.reel.findUnique({ where: { id: reelId }, select: { authorId: true } }),
@@ -821,18 +884,33 @@ router.delete("/:id/comments/:commentId", authRequired, writeLimiter, asyncRoute
       throw new HttpError(403, "You cannot delete this comment");
     }
     const deletedAt = new Date();
-    const deleted = await tx.reelComment.updateMany({
+    const commentIds = await tx.reelComment.findMany({
       where: {
         reelId,
         deletedAt: null,
         OR: [{ id: commentId }, { replyToId: commentId }],
       },
+      select: { id: true },
+    });
+    await tx.reelComment.updateMany({
+      where: { id: { in: commentIds.map(({ id }) => id) }, deletedAt: null },
       data: { deletedAt },
     });
-    await tx.reel.update({
+    const updatedReel = await tx.reel.update({
       where: { id: reelId },
-      data: { commentCount: { decrement: deleted.count } },
+      data: { commentCount: { decrement: commentIds.length } },
+      select: { likeCount: true, commentCount: true, repostCount: true, shareCount: true, viewCount: true },
     });
+    return {
+      commentIds: commentIds.map(({ id }) => id),
+      counts: reelCountsFromRecord(updatedReel),
+    };
+  });
+  emitToReel(reelId, "reel:comment:deleted", {
+    reelId,
+    actorId: userId,
+    commentIds: result.commentIds,
+    counts: result.counts,
   });
   res.status(204).end();
 }));
