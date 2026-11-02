@@ -3726,6 +3726,19 @@
         align-items: flex-end;
         gap: 8px;
       }
+      .profile-message-button {
+        display: inline-grid;
+        width: 38px;
+        height: 38px;
+        flex: none;
+        place-items: center;
+        border-radius: 50%;
+        padding: 0;
+      }
+      .profile-message-button .i {
+        width: 20px;
+        height: 20px;
+      }
       .profile-actions .btn:not(.follow-button) {
         min-width: 90px;
       }
@@ -9370,6 +9383,9 @@
               </div>
               <div class="profile-actions">
                 <button class="btn btn-line" id="profileEdit">Edit profile</button>
+                <button class="btn btn-line profile-message-button" id="profileMessage" type="button" aria-label="Message" title="Message" hidden>
+                  <svg class="i" aria-hidden="true"><use href="#msg"></use></svg>
+                </button>
                 <button class="btn btn-dark" id="profileFollow" hidden aria-pressed="false"></button>
               </div>
             </div>
@@ -10157,6 +10173,7 @@
       let people = [];
       let conversations = [];
       let activeConversation = null;
+      let draftConversationRecipientId = "";
       let selectedConversationId = "";
       const conversationDrafts = new Map();
       const messagesById = new Map();
@@ -10661,6 +10678,7 @@
         clearTypingUsers();
         conversations = [];
         activeConversation = null;
+        draftConversationRecipientId = "";
         selectedMessageReply = null;
         messagesById.clear();
         renderMessageReplyPreview();
@@ -12599,6 +12617,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             $("#editProfileAvatar").hidden = !owner;
             $("#editProfileBanner").hidden = !owner;
             $("#profileFollow").hidden = owner;
+            $("#profileMessage").hidden = owner;
           }
           if (headerNeedsLoad) {
             $("#profileBody").setAttribute("aria-busy", "true");
@@ -15387,15 +15406,63 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (!userId || !requireAuth()) return;
         toggleRecipientMenu(false);
         try {
-          const conversation = await api("/conversations", {
-            method: "POST",
-            body: JSON.stringify({ userId }),
-          });
-          await renderConversations();
-          await openConversation(conversation);
+          const existing = conversations.find((conversation) =>
+            conversation.members?.some((member) => member.id === userId)
+          );
+          if (existing) {
+            await renderConversations();
+            await openConversation(existing);
+            return;
+          }
+          await startConversationDraft(userId, people.find((person) => person.id === userId));
         } catch (error) {
           toast(error.message);
         }
+      }
+      async function startConversationDraft(userId, recipient) {
+        if (!userId || !requireAuth()) return;
+        const existing = conversations.find((conversation) =>
+          conversation.members?.some((member) => member.id === userId)
+        );
+        if (existing) {
+          go("messages");
+          await openConversation(existing);
+          return;
+        }
+        const profile = recipient || people.find((person) => person.id === userId) || {
+          id: userId,
+          displayName: "User",
+          handle: "",
+        };
+        go("messages");
+        activeConversation = {
+          id: `draft-${userId}`,
+          members: [currentUser, profile],
+        };
+        draftConversationRecipientId = userId;
+        $("#messagesLayout").classList.add("has-conversation");
+        $("#chatName").textContent = profile.displayName || profile.handle || "Conversation";
+        $("#chatSubtitle").textContent = profile.handle ? `@${profile.handle}` : "";
+        $("#chatSubtitle").hidden = !profile.handle;
+        setAvatar($("#chatAvatar"), profile, "sm");
+        setPresenceAvatar($("#chatAvatar"), profile);
+        $("#chatProfileLink").disabled = false;
+        $("#chatProfileLink").dataset.profileId = profile.id;
+        $("#chatProfileLink").setAttribute("aria-label", `View ${profile.displayName || profile.handle}'s profile`);
+        $("#chatLog").replaceChildren();
+        $("#chatLog").innerHTML = `${conversationStartMarkup()}<div class="typing-status" id="typingStatus" aria-live="polite"></div>`;
+        $("#chatLog").dataset.conversationId = activeConversation.id;
+        $("#messageForm").dataset.conversationId = activeConversation.id;
+        $("#messageInput").disabled = false;
+        ["#messageImageButton", "#messageGifButton", "#messageStickerButton", "#messageAudioButton"].forEach((selector) => {
+          $(selector).disabled = false;
+        });
+        $("#messageInput").value = "";
+        syncMessageComposer();
+        $("#sendMessage").disabled = true;
+        syncConversationSelection("");
+        location.hash = "#/messages";
+        requestAnimationFrame(() => $("#messageInput").focus());
       }
       async function searchDirectory(rawHandle) {
         const input = $("#directorySearch");
@@ -17761,7 +17828,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const shouldFollow = chatLog.scrollHeight - chatLog.scrollTop - chatLog.clientHeight <= 80;
           const typingStatus = $("#typingStatus", chatLog);
           clearEmptyMessagesState();
-          if (typingStatus) typingStatus.insertAdjacentHTML("beforebegin", messageMarkup(message));
+("beforebegin", messageMarkup(message));
           else chatLog.insertAdjacentHTML("beforeend", messageMarkup(message));
           updateMessageRowSpacing(chatLog);
           const insertedMessage = typingStatus?.previousElementSibling || chatLog.lastElementChild;
@@ -20799,6 +20866,16 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           openActionDialog("profile");
           return;
         }
+        if (e.target.closest("#profileMessage")) {
+          if (!requireAuth()) return;
+          startConversationDraft(viewedProfileId, {
+            id: viewedProfileId,
+            displayName: $("#profileName").textContent,
+            handle: $("#profileHandle").textContent.replace(/^@/, ""),
+            avatarUrl: $("#profileAvatar").dataset.avatarUrl || "",
+          });
+          return;
+        }
         const postMenuToggle = e.target.closest("[data-post-menu-toggle]");
         if (postMenuToggle) {
           const wrap = postMenuToggle.closest(".post-menu-wrap");
@@ -21079,6 +21156,26 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             return;
           }
           const conversationId = activeConversation.id;
+          let sendConversationId = conversationId;
+          if (conversationId.startsWith("draft-")) {
+            try {
+              const conversation = await api("/conversations", {
+                method: "POST",
+                body: JSON.stringify({ userId: draftConversationRecipientId }),
+              });
+              await renderConversations();
+              activeConversation = conversation;
+              draftConversationRecipientId = "";
+              sendConversationId = conversation.id;
+              $("#chatLog").dataset.conversationId = conversation.id;
+              $("#messageForm").dataset.conversationId = conversation.id;
+              const route = `#/messages?conversation=${encodeURIComponent(conversation.id)}`;
+              if (location.hash !== route) location.hash = route;
+            } catch (error) {
+              toast(error.message);
+              return;
+            }
+          }
           const replyTo = selectedMessageReply?.conversationId === conversationId
             ? selectedMessageReply.message
             : null;
@@ -21087,14 +21184,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           clearEmptyMessagesState();
           if (typingStatus) typingStatus.insertAdjacentHTML("beforebegin", messageMarkup({
             id: pendingId,
-            conversationId,
+            conversationId: sendConversationId,
             senderId: currentUser.id,
             body,
             ...(replyTo ? { replyToId: replyTo.id, replyTo } : {}),
           }));
           else $("#chatLog").insertAdjacentHTML("beforeend", messageMarkup({
             id: pendingId,
-            conversationId,
+            conversationId: sendConversationId,
             senderId: currentUser.id,
             body,
             ...(replyTo ? { replyToId: replyTo.id, replyTo } : {}),
@@ -21103,17 +21200,17 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const pendingMessage = typingStatus?.previousElementSibling || $("#chatLog").lastElementChild;
           if (pendingMessage) animateChatMessages([pendingMessage]);
           input.value = "";
-          conversationDrafts.set(conversationId, "");
+          conversationDrafts.set(sendConversationId, "");
           syncMessageComposer();
           sendTyping(false);
           try {
-            const message = await api(`/conversations/${conversationId}/messages`, {
+            const message = await api(`/conversations/${sendConversationId}/messages`, {
               method: "POST",
               body: JSON.stringify(replyTo ? { body, replyToId: replyTo.id } : { body }),
             });
             $(`[data-message-id="${CSS.escape(pendingId)}"]`)?.remove();
             updateMessageRowSpacing($("#chatLog"));
-            if (message.conversationId !== conversationId) {
+            if (message.conversationId !== sendConversationId) {
               throw new Error("The message was returned for a different conversation.");
             }
             if (replyTo) clearMessageReplyTarget(conversationId);
@@ -21121,9 +21218,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           } catch (error) {
             $(`[data-message-id="${CSS.escape(pendingId)}"]`)?.remove();
             updateMessageRowSpacing($("#chatLog"));
-            conversationDrafts.set(conversationId, body);
-            if (activeConversation?.id === conversationId
-              && $("#messageForm").dataset.conversationId === conversationId) {
+            conversationDrafts.set(sendConversationId, body);
+            if (activeConversation?.id === sendConversationId
+              && $("#messageForm").dataset.conversationId === sendConversationId) {
               restoreEmptyMessagesState();
               input.value = body;
               syncMessageComposer();
