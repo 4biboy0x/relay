@@ -1885,7 +1885,7 @@ const messageEditSchema = z.object({
 api.patch("/messages/:messageId", authRequired, messageLimiter, asyncRoute(async (req, res) => {
   const messageId = z.string().cuid().parse(req.params.messageId);
   const { body } = messageEditSchema.parse(req.body);
-  const message = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const updated = await tx.message.updateMany({
       where: {
         id: messageId,
@@ -1898,7 +1898,7 @@ api.patch("/messages/:messageId", authRequired, messageLimiter, asyncRoute(async
       data: { body },
     });
     if (!updated.count) throw new HttpError(404, "Message not found or cannot be edited");
-    return tx.message.findUniqueOrThrow({
+    const message = await tx.message.findUniqueOrThrow({
       where: { id: messageId },
       include: {
         sender: { select: publicUser },
@@ -1906,12 +1906,69 @@ api.patch("/messages/:messageId", authRequired, messageLimiter, asyncRoute(async
         reactions: { select: { emoji: true, userId: true } },
       },
     });
+    await tx.conversationReactionActivity.updateMany({
+      where: { messageId, targetType: "text" },
+      data: { targetText: body },
+    });
+    const [latestMessage, latestReactionActivity, conversation] = await Promise.all([
+      tx.message.findFirst({
+        where: { conversationId: message.conversationId },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        select: { id: true, createdAt: true },
+      }),
+      tx.conversationReactionActivity.findFirst({
+        where: { conversationId: message.conversationId, isActive: true },
+        orderBy: { createdAt: "desc" },
+        select: { actorId: true, emoji: true, targetType: true, targetText: true, createdAt: true },
+      }),
+      tx.conversation.findUniqueOrThrow({
+        where: { id: message.conversationId },
+        select: { updatedAt: true },
+      }),
+    ]);
+    const reactionIsLatest = Boolean(
+      latestReactionActivity
+        && (!latestMessage || latestReactionActivity.createdAt > latestMessage.createdAt),
+    );
+    if (reactionIsLatest && latestReactionActivity) {
+      await tx.conversation.update({
+        where: { id: message.conversationId },
+        data: { lastMessage: reactionLastMessage(latestReactionActivity) },
+      });
+      return {
+        message,
+        inboxPreview: {
+          kind: "reaction" as const,
+          lastMessage: reactionLastMessage(latestReactionActivity),
+          updatedAt: conversation.updatedAt,
+        },
+      };
+    }
+    return {
+      message,
+      inboxPreview: latestMessage?.id === message.id
+        ? { kind: "message" as const, updatedAt: conversation.updatedAt }
+        : null,
+    };
   });
-  const response = serializeMessage(message, req.userId!);
+  const serializeUpdate = (viewerId: string) => {
+    const message = serializeMessage(result.message, viewerId);
+    return {
+      ...message,
+      ...(result.inboxPreview ? {
+        inboxPreview: {
+          lastMessage: result.inboxPreview.kind === "reaction"
+            ? result.inboxPreview.lastMessage
+            : message,
+          updatedAt: result.inboxPreview.updatedAt,
+        },
+      } : {}),
+    };
+  };
   let members: Array<{ userId: string }> = [];
   try {
     members = await prisma.conversationMember.findMany({
-      where: { conversationId: message.conversationId },
+      where: { conversationId: result.message.conversationId },
       select: { userId: true },
     });
   } catch (error) {
@@ -1919,12 +1976,12 @@ api.patch("/messages/:messageId", authRequired, messageLimiter, asyncRoute(async
   }
   for (const member of members) {
     try {
-      emitToUser(member.userId, "message:updated", serializeMessage(message, member.userId));
+      emitToUser(member.userId, "message:updated", serializeUpdate(member.userId));
     } catch (error) {
       console.error(`Could not broadcast an edited message to user ${member.userId}`, error);
     }
   }
-  res.json(response);
+  res.json(serializeUpdate(req.userId!));
 }));
 
 api.delete("/messages/:messageId", authRequired, messageLimiter, asyncRoute(async (req, res) => {

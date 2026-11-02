@@ -16540,6 +16540,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function receiveMessage(message) {
         if (receivedMessageIds.has(message.id)) return;
         receivedMessageIds.add(message.id);
+        syncInboxConversationPreview(message.conversationId, message, message.createdAt);
         const chatLog = $("#chatLog");
         if (activeConversation?.id === message.conversationId
           && chatLog.dataset.conversationId === message.conversationId
@@ -16565,10 +16566,28 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         renderConversations();
         refreshMessageBadge();
       }
-      function replaceMessageRow(message) {
+      function syncInboxConversationPreview(conversationId, lastMessage, updatedAt) {
+        const conversation = conversations.find((item) => item.id === conversationId);
+        if (!conversation) return;
+        conversation.lastMessage = lastMessage;
+        if (updatedAt) conversation.updatedAt = updatedAt;
+        conversations.sort((first, second) => new Date(second.updatedAt).getTime() - new Date(first.updatedAt).getTime());
+        if (!$("#conversationSearch").value.trim()) {
+          renderConversationItems(conversations);
+          filterConversations();
+          writeViewCache("messages", $("#conversationList").innerHTML);
+        }
+      }
+      function replaceMessageRow(message, inboxPreview = null) {
         const previous = messagesById.get(message.id);
         const updated = { ...previous, ...message };
         messagesById.set(updated.id, updated);
+        const conversation = conversations.find((item) => item.id === updated.conversationId);
+        if (inboxPreview) {
+          syncInboxConversationPreview(updated.conversationId, inboxPreview.lastMessage, inboxPreview.updatedAt);
+        } else if (conversation?.lastMessage?.id === updated.id) {
+          syncInboxConversationPreview(updated.conversationId, updated, conversation.updatedAt);
+        }
         if (selectedMessageReply?.message.id === updated.id) {
           selectedMessageReply = { ...selectedMessageReply, message: updated };
           renderMessageReplyPreview();
@@ -16590,7 +16609,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function receiveMessageUpdated(message) {
         if (!message?.id || !message?.conversationId) return;
-        replaceMessageRow(message);
+        const { inboxPreview, ...updatedMessage } = message;
+        replaceMessageRow(updatedMessage, inboxPreview);
       }
       function receiveMessageDeleted(event) {
         if (!event?.messageId || !event?.conversationId) return;
@@ -16736,13 +16756,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         const conversation = conversations.find((item) => item.id === event.conversationId);
         if (conversation) {
-          if (Object.prototype.hasOwnProperty.call(event, "lastMessage")) conversation.lastMessage = event.lastMessage;
-          if (event.updatedAt) conversation.updatedAt = event.updatedAt;
-          conversations.sort((first, second) => new Date(second.updatedAt).getTime() - new Date(first.updatedAt).getTime());
-          if (!$("#conversationSearch").value.trim()) {
-            renderConversationItems(conversations);
-            filterConversations();
-            writeViewCache("messages", $("#conversationList").innerHTML);
+          if (Object.prototype.hasOwnProperty.call(event, "lastMessage")) {
+            syncInboxConversationPreview(event.conversationId, event.lastMessage, event.updatedAt || conversation.updatedAt);
           }
         }
         if (event.active && actorId !== currentUser?.id && isViewingConversation) {
