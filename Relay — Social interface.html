@@ -17717,7 +17717,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           ? `<div class="reply-stack">${replyHeaderMarkup(replySenderName(replyTo), replyTo?.id || "")}${replyPreviewMarkup(replyTo, { jump: Boolean(replyTo?.id) })}</div>`
           : "";
         const reactions = messageReactionsMarkup(message);
-        return `<div class="message-row${mine ? " mine" : ""}${reactions ? " has-reactions" : ""}" data-message-row data-conversation-id="${esc(message.conversationId)}" data-sender-id="${esc(message.senderId || "")}">${replyStack}<div class="message-bubble${mine ? " mine" : ""}${mediaOnly ? " media-message" : ""}${imageOnly ? " image-message" : ""}${audioOnly ? " audio-message" : ""}${stickerOnly ? " sticker-message" : ""}" data-message-id="${esc(message.id)}">${image}${audio}${sticker}${text}${bubbleActions}${reactions}</div></div>`;
+        return `<div class="message-row${mine ? " mine" : ""}${reactions ? " has-reactions" : ""}" data-message-row data-conversation-id="${esc(message.conversationId)}" data-sender-id="${esc(message.senderId || "")}" data-reply-to-id="${esc(message.replyToId || replyTo?.id || "")}">${replyStack}<div class="message-bubble${mine ? " mine" : ""}${mediaOnly ? " media-message" : ""}${imageOnly ? " image-message" : ""}${audioOnly ? " audio-message" : ""}${stickerOnly ? " sticker-message" : ""}" data-message-id="${esc(message.id)}">${image}${audio}${sticker}${text}${bubbleActions}${reactions}</div></div>`;
       }
       function updateMessageRowSpacing(container = $("#chatLog")) {
         const rows = [...container.children].filter((element) => element.matches(".message-row"));
@@ -17850,7 +17850,27 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (status) status.insertAdjacentHTML("beforebegin", markup);
         else list.insertAdjacentHTML("afterbegin", markup);
       }
+      function removePendingMessageRow(pendingId, message = null) {
+        const bubbles = pendingId
+          ? [$(`[data-message-id="${CSS.escape(pendingId)}"]`)].filter(Boolean)
+          : $$(".message-bubble", $("#chatLog")).filter((bubble) => {
+            if (!bubble.dataset.messageId.startsWith("pending-")) return false;
+            if (!message) return false;
+            const row = bubble.closest(".message-row");
+            const optimistic = messagesById.get(bubble.dataset.messageId);
+            const senderMatches = String(row?.dataset.senderId || optimistic?.senderId || "") === String(message.senderId || "");
+            const bodyMatches = String(optimistic?.body ?? row?.querySelector(".message-text")?.textContent ?? "").trim()
+              === String(message.body ?? "").trim();
+            const optimisticReplyId = optimistic?.replyToId || optimistic?.replyTo?.id || row?.dataset.replyToId || "";
+            const replyMatches = !message.replyToId || String(optimisticReplyId) === String(message.replyToId);
+            return senderMatches && bodyMatches && replyMatches;
+          });
+        bubbles.forEach((bubble) => {
+          bubble.closest(".message-row")?.remove();
+        });
+      }
       function receiveMessage(message) {
+        removePendingMessageRow("", message);
         if (receivedMessageIds.has(message.id)) return;
         receivedMessageIds.add(message.id);
         syncInboxConversationPreview(message.conversationId, message, message.createdAt);
@@ -21242,7 +21262,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 ...(draftRecipientId ? { recipientId: draftRecipientId } : {}),
               }),
             });
-            $(`[data-message-id="${CSS.escape(pendingId)}"]`)?.remove();
+            removePendingMessageRow(pendingId);
             updateMessageRowSpacing($("#chatLog"));
             if (sendConversationId === "draft") {
               sendConversationId = message.conversationId;
@@ -21263,7 +21283,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             if (replyTo) clearMessageReplyTarget(conversationId);
             receiveMessage(message);
           } catch (error) {
-            $(`[data-message-id="${CSS.escape(pendingId)}"]`)?.remove();
+            removePendingMessageRow(pendingId);
             updateMessageRowSpacing($("#chatLog"));
             conversationDrafts.set(sendConversationId, body);
             if (activeConversation?.id === sendConversationId
