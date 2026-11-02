@@ -43,6 +43,7 @@ model User {
   sentMessages  Message[]
   messageReactions MessageReaction[]
   realtimeDemos RealtimeDemo[]
+  reactionActivities ConversationReactionActivity[] @relation("ConversationReactionActor")
 
   @@index([createdAt])
 }
@@ -317,6 +318,8 @@ model Conversation {
   updatedAt DateTime             @updatedAt
   members   ConversationMember[]
   messages  Message[]
+  lastMessage Json?
+  reactionActivities ConversationReactionActivity[]
 
   @@index([updatedAt(sort: Desc)])
 }
@@ -326,6 +329,7 @@ model ConversationMember {
   userId         String
   joinedAt       DateTime     @default(now())
   lastReadAt     DateTime?
+  unreadReactionCount Int     @default(0)
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -349,6 +353,7 @@ model Message {
   replyTo        Message?     @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
   replies        Message[]    @relation("MessageReplies")
   reactions      MessageReaction[]
+  reactionActivities ConversationReactionActivity[]
 
   @@index([conversationId, createdAt(sort: Desc), id(sort: Desc)])
   @@index([senderId, createdAt(sort: Desc)])
@@ -366,6 +371,24 @@ model MessageReaction {
 
   @@id([messageId, userId, emoji])
   @@index([messageId, emoji])
+}
+
+model ConversationReactionActivity {
+  id             String       @id @default(cuid())
+  conversationId String
+  messageId      String
+  actorId        String
+  emoji          String       @db.VarChar(16)
+  targetType     String       @db.VarChar(16)
+  targetText     String?      @db.VarChar(2000)
+  createdAt      DateTime     @default(now())
+  isActive       Boolean      @default(true)
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  message        Message      @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  actor          User         @relation("ConversationReactionActor", fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, isActive, createdAt(sort: Desc)])
+  @@index([messageId, actorId, isActive])
 }
 
 enum InteractionType {

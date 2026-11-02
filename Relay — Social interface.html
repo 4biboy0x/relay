@@ -5288,6 +5288,23 @@
         text-overflow: ellipsis;
         white-space: nowrap;
       }
+      .conversation-preview-reaction {
+        display: flex;
+        align-items: center;
+        text-overflow: clip;
+      }
+      .conversation-preview-reaction-prefix,
+      .conversation-preview-quote-mark {
+        flex: none;
+        white-space: nowrap;
+      }
+      .conversation-preview-quoted-text {
+        min-width: 0;
+        flex: 0 1 auto;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
       .conversation-preview-text strong {
         color: var(--text);
         font-weight: 700;
@@ -16504,7 +16521,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           count: reaction.count,
           reactedByMe: typeof reaction.reactedByMe === "boolean"
             ? reaction.reactedByMe
-            : actor?.userId === currentUser?.id && actor.emoji === reaction.emoji
+            : (actor?.actorId || actor?.userId) === currentUser?.id && actor.emoji === reaction.emoji
               ? actor.active
               : Boolean(previous.get(reaction.emoji)),
         }));
@@ -16547,7 +16564,37 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function receiveMessageReaction(event) {
         if (!event?.messageId || !event?.conversationId || !Array.isArray(event.reactions)) return;
-        updateMessageReactions(event.messageId, event.conversationId, event.reactions, event);
+        const actorId = event.actorId || event.userId;
+        const isViewingConversation = activeConversation?.id === event.conversationId
+          && $("#chatLog").dataset.conversationId === event.conversationId
+          && !$("#v-messages").hidden;
+        if (activeConversation?.id === event.conversationId
+          && $("#chatLog").dataset.conversationId === event.conversationId) {
+          updateMessageReactions(event.messageId, event.conversationId, event.reactions, event);
+        }
+        if (event.active && actorId !== currentUser?.id && !isViewingConversation) {
+          const conversation = conversations.find((item) => item.id === event.conversationId);
+          const actor = event.actor?.displayName
+            || conversation?.members.find((member) => member.id === actorId)?.displayName
+            || "Relay user";
+          toast(`New message from ${actor}`);
+        }
+        const conversation = conversations.find((item) => item.id === event.conversationId);
+        if (conversation) {
+          if (Object.prototype.hasOwnProperty.call(event, "lastMessage")) conversation.lastMessage = event.lastMessage;
+          if (event.updatedAt) conversation.updatedAt = event.updatedAt;
+          conversations.sort((first, second) => new Date(second.updatedAt).getTime() - new Date(first.updatedAt).getTime());
+          if (!$("#conversationSearch").value.trim()) {
+            renderConversationItems(conversations);
+            filterConversations();
+            writeViewCache("messages", $("#conversationList").innerHTML);
+          }
+        }
+        if (event.active && actorId !== currentUser?.id && isViewingConversation) {
+          api(`/conversations/${encodeURIComponent(event.conversationId)}/messages?limit=1`)
+            .then(() => refreshMessageBadge())
+            .catch((error) => console.error("Could not update reaction read state", error));
+        }
       }
       function receiveTyping(event) {
         if (!activeConversation || event.conversationId !== activeConversation.id || event.userId === currentUser?.id) return;
@@ -16950,6 +16997,24 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           .normalize("NFKC")
           .toLowerCase();
       }
+      function reactionConversationPreviewMarkup(message) {
+        const emoji = esc(message.emoji || "");
+        const prefix = message.actorId === currentUser?.id ? "You reacted" : "Reacted";
+        const targetType = message.targetType;
+        if (targetType === "text") {
+          const text = String(message.targetText || "").replace(/\s+/g, " ").trim();
+          return `<span class="conversation-preview-text conversation-preview-reaction"><span class="conversation-preview-reaction-prefix">${esc(prefix)} ${emoji} to </span><span class="conversation-preview-quote-mark">"</span><span class="conversation-preview-quoted-text" dir="auto">${esc(text)}</span><span class="conversation-preview-quote-mark">"</span></span>`;
+        }
+        const targetLabels = {
+          image: "a photo",
+          voice: "an audio",
+          gif: "a GIF",
+          video: "a video",
+          file: "a file",
+        };
+        const target = targetLabels[targetType] || "a message";
+        return `<span class="conversation-preview-text">${esc(prefix)} ${emoji} to ${target}</span>`;
+      }
       function renderConversationItems(items, searchQuery = "", searchMode = "all", append = false) {
         const normalizedQuery = searchQuery.normalize("NFKC").toLowerCase();
         const queryTerms = normalizedConversationQuery(searchQuery);
@@ -16988,12 +17053,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               : sender;
             const body = message.body?.trim()
               || (message.mediaUrl ? (normalizeGiphyGifUrl(mediaHref(message.mediaUrl)) ? "GIF" : "Photo") : message.audioUrl ? "Voice message" : message.stickerId ? "Sticker" : "");
-            const previewText = body ? `${esc(shortSender)}: ${esc(body)}` : esc(shortSender);
+            const previewText = message.kind === "reaction"
+              ? reactionConversationPreviewMarkup(message)
+              : body ? `${esc(shortSender)}: ${esc(body)}` : esc(shortSender);
             if (message.createdAt && Number.isFinite(new Date(message.createdAt).getTime())) {
               const createdAt = new Date(message.createdAt).toISOString();
               messageTime = `<time class="conversation-preview-time" datetime="${esc(createdAt)}" title="${esc(new Date(createdAt).toLocaleString())}">${esc(timeAgo(createdAt))}</time>`;
             }
-            preview = `<span class="conversation-preview-text">${previewText}</span>`;
+            preview = message.kind === "reaction" ? previewText : `<span class="conversation-preview-text">${previewText}</span>`;
           } else {
             preview = `<span class="conversation-preview-text">${esc(preview)}</span>`;
           }

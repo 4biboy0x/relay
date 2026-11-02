@@ -68,6 +68,38 @@ const serializeMessage = <T extends { reactions: Array<{ emoji: string; userId: 
   reactions: summarizeMessageReactions(message.reactions, viewerId),
 });
 
+type ReactionTargetType = "text" | "voice" | "image" | "gif" | "video" | "file";
+
+const reactionTargetType = (message: { body: string; mediaUrl: string | null; audioUrl: string | null }): ReactionTargetType => {
+  if (message.audioUrl) return "voice";
+  if (!message.mediaUrl) return "text";
+  const pathname = message.mediaUrl
+    .split(/[?#]/, 1)[0]
+    .toLowerCase()
+    .replace(/^https?:\/\/[^/]+/, "");
+  if (/\.(mp4|webm|mov|m4v)$/.test(pathname)) return "video";
+  if (/\.(pdf|docx?|xlsx?|pptx?|zip|txt)$/.test(pathname)) return "file";
+  if (/\.(gif)$/.test(pathname) || /giphy|tenor/.test(message.mediaUrl.toLowerCase())) return "gif";
+  return "image";
+};
+
+const reactionLastMessage = (
+  activity: {
+    actorId: string;
+    emoji: string;
+    targetType: string;
+    targetText: string | null;
+    createdAt: Date;
+  },
+) => ({
+  kind: "reaction" as const,
+  actorId: activity.actorId,
+  emoji: activity.emoji,
+  targetType: activity.targetType,
+  ...(activity.targetText ? { targetText: activity.targetText } : {}),
+  createdAt: activity.createdAt.toISOString(),
+});
+
 async function withNotificationFollowState<T extends { actor: { id: string } }>(viewerId: string, notifications: T[]): Promise<T[]> {
   const actorIds = [...new Set(notifications.map((notification) => notification.actor.id))];
   const follows = actorIds.length
@@ -1505,7 +1537,8 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
   const conversationIds = rows.map((row) => row.conversationId);
   const unreadRows = conversationIds.length
     ? await prisma.$queryRaw<Array<{ conversationId: string; unreadCount: number }>>(Prisma.sql`
-        SELECT member."conversationId", COUNT(DISTINCT message."senderId")::int AS "unreadCount"
+        SELECT member."conversationId",
+          COUNT(DISTINCT message."senderId")::int + member."unreadReactionCount" AS "unreadCount"
         FROM "ConversationMember" AS member
         LEFT JOIN "Message" AS message
           ON message."conversationId" = member."conversationId"
@@ -1513,7 +1546,7 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
           AND (member."lastReadAt" IS NULL OR message."createdAt" > member."lastReadAt")
         WHERE member."userId" = ${req.userId}
           AND member."conversationId" IN (${Prisma.join(conversationIds)})
-        GROUP BY member."conversationId"
+        GROUP BY member."conversationId", member."unreadReactionCount"
       `)
     : [];
   const unread = new Map(unreadRows.map((row) => [row.conversationId, row.unreadCount]));
@@ -1522,7 +1555,7 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
       id: row.conversationId,
       updatedAt: row.conversation.updatedAt,
       members: row.conversation.members.map(({ user }) => user),
-      lastMessage: row.conversation.messages[0] ?? null,
+      lastMessage: row.conversation.lastMessage ?? row.conversation.messages[0] ?? null,
       unreadCount: unread.get(row.conversationId) ?? 0,
     })),
   });
@@ -1791,7 +1824,10 @@ api.get("/conversations/:conversationId/messages", authRequired, asyncRoute(asyn
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: page.limit + 1,
   });
-  await prisma.conversationMember.update({ where: memberKey, data: { lastReadAt: new Date() } });
+  await prisma.conversationMember.update({
+    where: memberKey,
+    data: { lastReadAt: new Date(), unreadReactionCount: 0 },
+  });
   const hasMore = records.length > page.limit;
   const items = records.slice(0, page.limit).reverse();
   const oldest = items[0];
@@ -1825,7 +1861,10 @@ api.post("/conversations/:conversationId/messages", authRequired, messageLimiter
         reactions: { select: { emoji: true, userId: true } },
       },
     });
-    await tx.conversation.update({ where: { id: conversationId }, data: { updatedAt: created.createdAt } });
+    await tx.conversation.update({
+      where: { id: conversationId },
+      data: { lastMessage: Prisma.DbNull, updatedAt: created.createdAt },
+    });
     return created;
   });
   const response = serializeMessage(message, req.userId!);
@@ -1843,44 +1882,194 @@ const updateMessageReaction = async (req: express.Request, res: express.Response
   const messageId = z.string().cuid().parse(req.params.messageId);
   const emoji = messageReactionEmojiSchema.parse(active ? req.body?.emoji : req.query.emoji);
   const result = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${messageId}), hashtext(${req.userId!}))`);
     const message = await tx.message.findFirst({
       where: { id: messageId, conversation: { members: { some: { userId: req.userId! } } } },
-      select: { id: true, conversationId: true },
     });
     if (!message) throw new HttpError(404, "Message not found");
-    const changed = active
-      ? (await tx.messageReaction.createMany({
-          data: { messageId, userId: req.userId!, emoji },
-          skipDuplicates: true,
-        })).count
-      : (await tx.messageReaction.deleteMany({ where: { messageId, userId: req.userId!, emoji } })).count;
+    const [existingReactions, previousActivities] = await Promise.all([
+      tx.messageReaction.findMany({
+        where: { messageId, userId: req.userId! },
+        select: { emoji: true },
+      }),
+      tx.conversationReactionActivity.findMany({
+        where: { messageId, actorId: req.userId!, isActive: true },
+        select: { id: true, emoji: true, createdAt: true },
+      }),
+    ]);
+    const selectedReactionExists = existingReactions.some((reaction) => reaction.emoji === emoji);
+    let changed = false;
+    if (active && !selectedReactionExists) {
+      changed = (await tx.messageReaction.createMany({
+        data: { messageId, userId: req.userId!, emoji },
+        skipDuplicates: true,
+      })).count > 0;
+    } else if (!active && selectedReactionExists) {
+      changed = (await tx.messageReaction.deleteMany({
+        where: { messageId, userId: req.userId!, emoji },
+      })).count > 0;
+    }
+    const members = await tx.conversationMember.findMany({
+      where: { conversationId: message.conversationId, userId: { not: req.userId! } },
+      select: { userId: true, lastReadAt: true },
+    });
+    const now = new Date();
+    const targetType = reactionTargetType(message);
+    const targetText = targetType === "text"
+      ? (message.body.trim() || (message.stickerId ? "Sticker" : "")).slice(0, 2000)
+      : null;
+    const removedActivityIds = changed
+      ? previousActivities
+        .filter((activity) => active ? activity.emoji !== emoji : activity.emoji === emoji)
+        .map((activity) => activity.id)
+      : [];
+    if (changed && removedActivityIds.length) {
+      await tx.conversationReactionActivity.updateMany({
+        where: { id: { in: removedActivityIds } },
+        data: { isActive: false },
+      });
+    }
+    if (active && changed) {
+      await tx.messageReaction.deleteMany({
+        where: { messageId, userId: req.userId!, emoji: { not: emoji } },
+      });
+      await tx.conversationReactionActivity.create({
+        data: {
+          conversationId: message.conversationId,
+          messageId,
+          actorId: req.userId!,
+          emoji,
+          targetType,
+          targetText,
+          createdAt: now,
+        },
+      });
+    }
+    for (const activity of previousActivities) {
+      if (!removedActivityIds.includes(activity.id)) continue;
+      for (const member of members) {
+        if (member.lastReadAt && member.lastReadAt >= activity.createdAt) continue;
+        await tx.conversationMember.updateMany({
+          where: {
+            conversationId: message.conversationId,
+            userId: member.userId,
+            unreadReactionCount: { gt: 0 },
+          },
+          data: { unreadReactionCount: { decrement: 1 } },
+        });
+      }
+    }
+    if (active && changed) {
+      for (const member of members) {
+        if (member.lastReadAt && member.lastReadAt >= now) continue;
+        await tx.conversationMember.update({
+          where: {
+            conversationId_userId: {
+              conversationId: message.conversationId,
+              userId: member.userId,
+            },
+          },
+          data: { unreadReactionCount: { increment: 1 } },
+        });
+      }
+    }
     const reactionRows = await tx.messageReaction.findMany({
       where: { messageId },
       select: { emoji: true, userId: true },
     });
+    const [latestMessage, latestReactionActivity, conversation, unreadMembers, actor] = await Promise.all([
+      tx.message.findFirst({
+        where: { conversationId: message.conversationId },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        select: {
+          id: true,
+          senderId: true,
+          body: true,
+          mediaUrl: true,
+          audioUrl: true,
+          stickerId: true,
+          createdAt: true,
+          sender: { select: publicUser },
+        },
+      }),
+      tx.conversationReactionActivity.findFirst({
+        where: { conversationId: message.conversationId, isActive: true },
+        orderBy: { createdAt: "desc" },
+        select: { actorId: true, emoji: true, targetType: true, targetText: true, createdAt: true },
+      }),
+      tx.conversation.findUniqueOrThrow({
+        where: { id: message.conversationId },
+        select: { updatedAt: true },
+      }),
+      tx.conversationMember.findMany({
+        where: { conversationId: message.conversationId },
+        select: { userId: true, unreadReactionCount: true },
+      }),
+      tx.user.findUniqueOrThrow({
+        where: { id: req.userId! },
+        select: publicUser,
+      }),
+    ]);
+    const reactionIsLatest = Boolean(
+      latestReactionActivity
+        && (!latestMessage || latestReactionActivity.createdAt > latestMessage.createdAt),
+    );
+    const lastMessage = reactionIsLatest && latestReactionActivity
+      ? reactionLastMessage(latestReactionActivity)
+      : latestMessage;
+    const updatedAt = reactionIsLatest && latestReactionActivity
+      ? latestReactionActivity.createdAt
+      : latestMessage?.createdAt || conversation.updatedAt;
+    await tx.conversation.update({
+      where: { id: message.conversationId },
+      data: {
+        lastMessage: reactionIsLatest && lastMessage ? lastMessage : Prisma.DbNull,
+        updatedAt,
+      },
+    });
     return {
-      ...message,
+      conversationId: message.conversationId,
+      actor,
       changed,
-      reactions: summarizeMessageReactions(reactionRows, req.userId!),
+      emoji: active ? emoji : null,
+      targetType,
+      targetPreview: {
+        type: targetType,
+        ...(targetText ? { text: targetText } : {}),
+        ...(message.mediaUrl ? { mediaUrl: message.mediaUrl } : {}),
+        ...(message.audioUrl ? { audioUrl: message.audioUrl } : {}),
+      },
+      createdAt: now,
+      reactions: reactionRows,
+      lastMessage,
+      updatedAt,
+      unreadMembers,
     };
   });
   if (result.changed) {
-    emitToConversation(result.conversationId, "message:reaction", {
-      messageId,
-      conversationId: result.conversationId,
-      userId: req.userId!,
-      emoji,
-      active,
-      reactions: result.reactions.map(({ emoji: reactionEmoji, count }) => ({
-        emoji: reactionEmoji,
-        count,
-      })),
-    });
+    for (const member of result.unreadMembers) {
+      emitToUser(member.userId, "message:reaction", {
+        messageId,
+        conversationId: result.conversationId,
+        actorId: req.userId!,
+        userId: req.userId!,
+        emoji: result.emoji,
+        active,
+        targetType: result.targetType,
+        targetPreview: result.targetPreview,
+        createdAt: result.createdAt,
+        lastMessage: result.lastMessage,
+        updatedAt: result.updatedAt,
+        actor: result.actor,
+        reactions: summarizeMessageReactions(result.reactions, member.userId),
+      });
+      emitToUser(member.userId, "messages:unread-increment", { conversationId: result.conversationId });
+    }
   }
   res.json({
     messageId,
     conversationId: result.conversationId,
-    reactions: result.reactions,
+    reactions: summarizeMessageReactions(result.reactions, req.userId!),
   });
 };
 
