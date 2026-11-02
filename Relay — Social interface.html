@@ -3327,6 +3327,7 @@
         grid-column: 3;
         grid-row: 1;
         height: 32px;
+        align-self: center;
         margin-left: auto;
         padding: 0 14px;
         border-radius: 999px;
@@ -8621,23 +8622,9 @@
         .reel-comment-like svg { transition: none; }
         .reel-comment-like.is-like-pop svg { animation: none; }
       }
-      .reel-comment-form {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 12px 16px;
-        border-top: 1px solid var(--border);
-      }
-      .reel-comment-form input {
-        min-width: 0;
-        height: 40px;
-        box-sizing: border-box;
-      }
-      .reel-comment-form .btn {
-        height: 40px;
-        flex: none;
-        align-self: center;
-      }
+      .reel-comment-form { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
+      .reel-comment-form input { min-width: 0; height: 40px; box-sizing: border-box; }
+      .reel-comment-form .btn { height: 40px; flex: none; align-self: center; }
       .reel-menu-actions { display: grid; padding: 8px; }
       .reel-menu-actions button {
         min-height: 44px;
