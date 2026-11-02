@@ -2413,6 +2413,114 @@
         background: rgba(9, 9, 11, .52);
         backdrop-filter: blur(3px);
       }
+      .post-media-crop-dialog {
+        width: min(620px, calc(100vw - 24px));
+      }
+      .post-media-crop-dialog .profile-crop-heading {
+        margin-bottom: 0;
+      }
+      .post-media-crop-heading-title {
+        flex: 1;
+        margin: 0;
+        font-size: 16px;
+      }
+      .post-media-crop-save {
+        width: auto;
+        min-width: 64px;
+        padding: 0 14px;
+        border-radius: 999px;
+        border: 0;
+        color: #fff;
+        font-weight: 700;
+        background: var(--accent);
+      }
+      .post-media-crop-tabs {
+        margin: 8px 0;
+      }
+      .post-media-crop-stage {
+        width: min(520px, 100%);
+        height: min(360px, 52vh);
+        aspect-ratio: auto;
+        border: 1px solid var(--accent);
+        border-radius: 12px;
+        touch-action: none;
+      }
+      .post-media-crop-image {
+        position: absolute;
+        max-width: none;
+        max-height: none;
+        transform-origin: center;
+        pointer-events: none;
+        user-select: none;
+      }
+      .post-media-aspect-controls {
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+        margin-top: 12px;
+      }
+      .post-media-aspect-controls button {
+        min-height: 34px;
+        padding: 0 10px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        color: var(--text-2);
+        background: transparent;
+        font-size: 13px;
+      }
+      .post-media-aspect-controls button[aria-pressed="true"] {
+        border-color: var(--accent);
+        color: var(--accent);
+        background: var(--accent-soft);
+      }
+      .post-media-alt-panel {
+        min-height: 280px;
+        padding: 12px 0 0;
+      }
+      .post-media-alt-panel textarea {
+        width: 100%;
+        min-height: 180px;
+        box-sizing: border-box;
+        resize: vertical;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px;
+        color: var(--text);
+        background: var(--surface-2);
+        font: inherit;
+      }
+      .post-media-alt-panel textarea:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .post-media-alt-panel .composer-alt-meta {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 6px;
+        color: var(--text-3);
+        font-size: 12px;
+      }
+      .media-preview-edit {
+        position: absolute;
+        z-index: 2;
+        top: 8px;
+        left: 8px;
+        min-height: 32px;
+        padding: 0 12px;
+        border-radius: 999px;
+        color: #fff;
+        background: rgb(0 0 0 / .72);
+        font-weight: 700;
+        backdrop-filter: blur(4px);
+      }
+      .media-preview-alt-action {
+        margin-top: 6px;
+        padding: 0;
+        color: var(--accent);
+        background: transparent;
+        font-size: 14px;
+        font-weight: 600;
+      }
       .profile-crop-heading {
         display: flex;
         align-items: center;
@@ -6958,6 +7066,10 @@
         object-fit: cover;
         transition: filter 120ms ease;
       }
+      .media-grid img[data-media-cropped="true"] {
+        transform: scale(var(--relay-media-scale, 1));
+        transform-origin: var(--relay-media-x, 50%) var(--relay-media-y, 50%);
+      }
       .media-grid > .media-item:hover img { filter: brightness(.95); }
       .media-grid > .media-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
       .media-grid[data-count="1"] img {
@@ -8868,12 +8980,14 @@
               <div class="media-preview" id="mediaPreview" hidden>
                 <div class="media-preview-visual">
                   <img id="mediaPreviewImage" alt="Selected image preview" />
+                  <button class="media-preview-edit" id="editMedia" type="button">Edit</button>
                 </div>
                 <div class="grow"><b id="mediaPreviewName">Image ready</b><small id="mediaUploadStatus">Ready to attach</small></div>
                 <button class="dismiss-btn" id="removeMedia" type="button" aria-label="Remove attached image">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>
                 </button>
               </div>
+              <button class="media-preview-alt-action" id="addMediaDescription" type="button" hidden>Add description</button>
             </div>
           </div>
           </div>
@@ -9600,6 +9714,41 @@
         </button>
       </footer>
     </dialog>
+    <dialog class="profile-crop-dialog post-media-crop-dialog" id="postMediaCropDialog" aria-labelledby="postMediaCropTitle">
+      <header class="profile-crop-heading">
+        <button class="profile-crop-close" id="postMediaCropBack" type="button" aria-label="Discard changes and close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+        </button>
+        <h2 class="post-media-crop-heading-title" id="postMediaCropTitle">Crop media</h2>
+        <button class="post-media-crop-save" id="postMediaCropSave" type="button">Save</button>
+      </header>
+      <nav class="tabs post-media-crop-tabs" role="tablist" aria-label="Media editing">
+        <button class="tab" id="postMediaCropTab" type="button" role="tab" aria-selected="true">Crop</button>
+        <button class="tab" id="postMediaAltTab" type="button" role="tab" aria-selected="false">ALT</button>
+      </nav>
+      <div id="postMediaCropPanel" role="tabpanel" aria-labelledby="postMediaCropTab">
+        <div class="profile-crop-stage post-media-crop-stage" id="postMediaCropStage" role="application" tabindex="0" aria-label="Move the image within the crop frame">
+          <img class="post-media-crop-image" id="postMediaCropImage" alt="" draggable="false">
+        </div>
+        <div class="post-media-aspect-controls" aria-label="Aspect ratio">
+          <button type="button" data-media-ratio="16:9" aria-pressed="false">Wide 16:9</button>
+          <button type="button" data-media-ratio="original" aria-pressed="true">Original</button>
+          <button type="button" data-media-ratio="1:1" aria-pressed="false">Square 1:1</button>
+          <button type="button" data-media-ratio="4:5" aria-pressed="false">Portrait 4:5</button>
+        </div>
+        <label class="profile-crop-zoom">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 4.5 4.5M10.8 7.8v6M7.8 10.8h6" /></svg>
+          <span class="sr">Zoom media</span>
+          <input id="postMediaCropZoom" type="range" min="1" max="3" step="0.01" value="1">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 4.5 4.5M7.8 10.8h6" /></svg>
+        </label>
+      </div>
+      <div class="post-media-alt-panel" id="postMediaAltPanel" role="tabpanel" aria-labelledby="postMediaAltTab" hidden>
+        <label class="sr" for="postMediaAltInput">Image description</label>
+        <textarea id="postMediaAltInput" maxlength="1000" placeholder="Describe this image for people who are blind or have low vision"></textarea>
+        <div class="composer-alt-meta"><span id="postMediaAltCount">0 / 1000</span></div>
+      </div>
+    </dialog>
     <dialog class="post-alt-dialog" id="postAltDialog" aria-label="Image description">
       <button class="dismiss-btn" type="button" data-alt-close aria-label="Close description">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>
@@ -9889,6 +10038,11 @@
       let composerMediaRemovalUrl = "";
       let composerUploadPromise = null;
       let composerUploadGeneration = 0;
+      let composerMediaCrop = null;
+      let composerMediaAlt = "";
+      let composerCropDraft = null;
+      let composerCropDrag = null;
+      let composerCropNaturalSize = { width: 0, height: 0 };
       const postPlaceholderPhrases = [
         "What's on your mind today?",
         "Share a thought, a project, or an idea...",
@@ -10563,6 +10717,8 @@
         composerUploadGeneration += 1;
         composerMediaUrl = "";
         composerUploadPromise = null;
+        composerMediaCrop = null;
+        composerMediaAlt = "";
         const previewUrl = composerPreviewUrl;
         composerPreviewUrl = "";
         const preview = $("#mediaPreview");
@@ -10600,6 +10756,8 @@
         $(".composer .box").classList.remove("has-media");
         $("#attachImage").setAttribute("aria-pressed", "false");
         $("#postFileInput").value = "";
+        $("#addMediaDescription").hidden = true;
+        $("#editMedia").hidden = true;
         updatePostButton();
       }
       function setComposerMedia(url) {
@@ -10609,6 +10767,8 @@
         $("#attachImage").setAttribute("aria-pressed", String(Boolean(composerMediaUrl)));
         $("#mediaPreview").hidden = !composerMediaUrl;
         $(".composer .box").classList.toggle("has-media", Boolean(composerMediaUrl));
+        $("#addMediaDescription").hidden = !composerMediaUrl || Boolean(normalizeGiphyGifUrl(composerMediaUrl));
+        $("#editMedia").hidden = !composerMediaUrl || Boolean(normalizeGiphyGifUrl(composerMediaUrl));
         if (composerMediaUrl) {
           const gifUrl = normalizeGiphyGifUrl(composerMediaUrl);
           const gif = Boolean(gifUrl);
@@ -11085,6 +11245,16 @@
         $("#mediaPreviewName").textContent = file.name;
         $("#mediaUploadStatus").textContent = "Uploading image…";
         $("#attachImage").setAttribute("aria-pressed", "true");
+        composerMediaCrop = null;
+        composerMediaAlt = "";
+        $("#addMediaDescription").hidden = true;
+        const naturalPreview = new Image();
+        naturalPreview.onload = () => {
+          if (generation !== composerUploadGeneration) return;
+          composerCropNaturalSize = { width: naturalPreview.naturalWidth, height: naturalPreview.naturalHeight };
+          $("#addMediaDescription").hidden = file.type === "image/gif";
+        };
+        naturalPreview.src = composerPreviewUrl;
         composerUploadPromise = uploadMedia(file, "post").then((result) => {
           if (generation !== composerUploadGeneration) return;
           composerMediaUrl = result.url;
@@ -11092,6 +11262,8 @@
           composerPreviewUrl = "";
           $("#mediaPreviewImage").src = mediaHref(result.url);
           $("#mediaUploadStatus").textContent = "Ready to attach";
+          $("#editMedia").hidden = file.type === "image/gif";
+          $("#addMediaDescription").hidden = file.type === "image/gif";
         }).catch((error) => {
           if (generation === composerUploadGeneration) clearComposerMedia();
           toast(error.message);
@@ -11103,6 +11275,174 @@
         });
         updatePostButton();
       }
+      function stripPostMediaControlCharacters(value) {
+        return String(value || "").replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 1000);
+      }
+      function postMediaOriginalRatio() {
+        const { width, height } = composerCropNaturalSize;
+        if (!width || !height) return 16 / 9;
+        return Math.min(3, Math.max(3 / 4, width / height));
+      }
+      function postMediaRatioValue(ratio) {
+        if (ratio === "16:9") return 16 / 9;
+        if (ratio === "1:1") return 1;
+        if (ratio === "4:5") return 4 / 5;
+        return postMediaOriginalRatio();
+      }
+      function setPostMediaCropTab(tab) {
+        const crop = tab === "crop";
+        $("#postMediaCropTab").setAttribute("aria-selected", String(crop));
+        $("#postMediaAltTab").setAttribute("aria-selected", String(!crop));
+        $("#postMediaCropPanel").hidden = !crop;
+        $("#postMediaAltPanel").hidden = crop;
+      }
+      function syncPostMediaCropPreview() {
+        if (!composerCropDraft) return;
+        const image = $("#postMediaCropImage");
+        const stage = $("#postMediaCropStage");
+        if (!image.naturalWidth || !image.naturalHeight || !stage.clientWidth || !stage.clientHeight) return;
+        const ratio = postMediaRatioValue(composerCropDraft.ratio);
+        let width = Math.min(520, stage.parentElement.clientWidth - 0);
+        let height = width / ratio;
+        if (height > Math.min(360, window.innerHeight * .52)) {
+          height = Math.min(360, window.innerHeight * .52);
+          width = height * ratio;
+        }
+        stage.style.width = `${width}px`;
+        stage.style.height = `${height}px`;
+        stage.style.aspectRatio = `${ratio}`;
+        const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight) * composerCropDraft.zoom;
+        const imageWidth = image.naturalWidth * scale;
+        const imageHeight = image.naturalHeight * scale;
+        const overflowX = Math.max(0, imageWidth - width);
+        const overflowY = Math.max(0, imageHeight - height);
+        image.style.width = `${imageWidth}px`;
+        image.style.height = `${imageHeight}px`;
+        image.style.left = `${width / 2 + (0.5 - composerCropDraft.x) * overflowX}px`;
+        image.style.top = `${height / 2 + (0.5 - composerCropDraft.y) * overflowY}px`;
+        image.style.transform = "translate(-50%, -50%)";
+        $("#postMediaCropZoom").value = String(composerCropDraft.zoom);
+        $$("[data-media-ratio]").forEach((button) => {
+          button.setAttribute("aria-pressed", String(button.dataset.mediaRatio === composerCropDraft.ratio));
+        });
+      }
+      function openPostMediaCrop(tab = "crop") {
+        if (!composerMediaUrl) return;
+        composerCropDraft = {
+          ...(composerMediaCrop || { ratio: "original", x: .5, y: .5, zoom: 1 }),
+        };
+        $("#postMediaCropImage").onload = syncPostMediaCropPreview;
+        $("#postMediaCropImage").src = mediaHref(composerMediaUrl);
+        $("#postMediaAltInput").value = composerMediaAlt;
+        $("#postMediaAltCount").textContent = `${composerMediaAlt.length} / 1000`;
+        setPostMediaCropTab(tab);
+        $("#postMediaCropDialog").showModal();
+        requestAnimationFrame(syncPostMediaCropPreview);
+      }
+      function closePostMediaCrop() {
+        composerCropDraft = null;
+        composerCropDrag = null;
+        $("#postMediaCropDialog").close();
+      }
+      $("#editMedia").addEventListener("click", () => openPostMediaCrop("crop"));
+      $("#addMediaDescription").addEventListener("click", () => openPostMediaCrop("alt"));
+      $("#postMediaCropBack").addEventListener("click", closePostMediaCrop);
+      $("#postMediaCropDialog").addEventListener("cancel", (event) => {
+        event.preventDefault();
+        closePostMediaCrop();
+      });
+      $("#postMediaCropSave").addEventListener("click", () => {
+        composerMediaCrop = composerCropDraft ? { ...composerCropDraft } : null;
+        composerMediaAlt = stripPostMediaControlCharacters($("#postMediaAltInput").value);
+        $("#postMediaCropDialog").close();
+        composerCropDraft = null;
+        const altAction = $("#addMediaDescription");
+        altAction.hidden = !composerMediaUrl;
+        altAction.textContent = composerMediaAlt ? "Edit description" : "Add description";
+      });
+      $("#postMediaCropTab").addEventListener("click", () => setPostMediaCropTab("crop"));
+      $("#postMediaAltTab").addEventListener("click", () => setPostMediaCropTab("alt"));
+      $("#postMediaAltInput").addEventListener("input", (event) => {
+        const clean = stripPostMediaControlCharacters(event.target.value);
+        if (event.target.value !== clean) event.target.value = clean;
+        $("#postMediaAltCount").textContent = `${clean.length} / 1000`;
+      });
+      $$("[data-media-ratio]").forEach((button) => {
+        button.addEventListener("click", () => {
+          if (!composerCropDraft) return;
+          composerCropDraft.ratio = button.dataset.mediaRatio;
+          syncPostMediaCropPreview();
+        });
+      });
+      $("#postMediaCropZoom").addEventListener("input", (event) => {
+        if (!composerCropDraft) return;
+        composerCropDraft.zoom = Math.min(3, Math.max(1, Number(event.target.value)));
+        syncPostMediaCropPreview();
+      });
+      $("#postMediaCropStage").addEventListener("pointerdown", (event) => {
+        if (!composerCropDraft) return;
+        event.currentTarget.setPointerCapture(event.pointerId);
+        composerCropDrag = {
+          pointerId: event.pointerId,
+          x: event.clientX,
+          y: event.clientY,
+          cropX: composerCropDraft.x,
+          cropY: composerCropDraft.y,
+        };
+      });
+      $("#postMediaCropStage").addEventListener("pointermove", (event) => {
+        if (!composerCropDrag || composerCropDrag.pointerId !== event.pointerId) return;
+        const image = $("#postMediaCropImage");
+        const stage = $("#postMediaCropStage");
+        const overflowX = Math.max(0, image.clientWidth - stage.clientWidth);
+        const overflowY = Math.max(0, image.clientHeight - stage.clientHeight);
+        composerCropDraft.x = Math.min(1, Math.max(0, composerCropDrag.cropX - (event.clientX - composerCropDrag.x) / overflowX));
+        composerCropDraft.y = Math.min(1, Math.max(0, composerCropDrag.cropY - (event.clientY - composerCropDrag.y) / overflowY));
+        syncPostMediaCropPreview();
+      });
+      $("#postMediaCropStage").addEventListener("pointerup", () => { composerCropDrag = null; });
+      $("#postMediaCropStage").addEventListener("pointercancel", () => { composerCropDrag = null; });
+      let composerCropPinch = null;
+      $("#postMediaCropStage").addEventListener("touchstart", (event) => {
+        if (event.touches.length !== 2 || !composerCropDraft) return;
+        const [first, second] = event.touches;
+        composerCropPinch = {
+          distance: Math.hypot(second.clientX - first.clientX, second.clientY - first.clientY),
+          zoom: composerCropDraft.zoom,
+        };
+      }, { passive: true });
+      $("#postMediaCropStage").addEventListener("touchmove", (event) => {
+        if (!composerCropPinch || event.touches.length !== 2 || !composerCropDraft) return;
+        event.preventDefault();
+        const [first, second] = event.touches;
+        const distance = Math.hypot(second.clientX - first.clientX, second.clientY - first.clientY);
+        composerCropDraft.zoom = Math.min(3, Math.max(1, composerCropPinch.zoom * distance / composerCropPinch.distance));
+        syncPostMediaCropPreview();
+      }, { passive: false });
+      $("#postMediaCropStage").addEventListener("touchend", (event) => {
+        if (event.touches.length < 2) composerCropPinch = null;
+      }, { passive: true });
+      $("#postMediaCropStage").addEventListener("wheel", (event) => {
+        if (!composerCropDraft) return;
+        event.preventDefault();
+        composerCropDraft.zoom = Math.min(3, Math.max(1, composerCropDraft.zoom + (event.deltaY < 0 ? .08 : -.08)));
+        syncPostMediaCropPreview();
+      }, { passive: false });
+      $("#postMediaCropStage").addEventListener("keydown", (event) => {
+        if (!composerCropDraft) return;
+        if (event.key === "+" || event.key === "=") {
+          composerCropDraft.zoom = Math.min(3, composerCropDraft.zoom + .08);
+        } else if (event.key === "-") {
+          composerCropDraft.zoom = Math.max(1, composerCropDraft.zoom - .08);
+        } else if (event.key === "ArrowLeft") composerCropDraft.x = Math.max(0, composerCropDraft.x - .02);
+        else if (event.key === "ArrowRight") composerCropDraft.x = Math.min(1, composerCropDraft.x + .02);
+        else if (event.key === "ArrowUp") composerCropDraft.y = Math.max(0, composerCropDraft.y - .02);
+        else if (event.key === "ArrowDown") composerCropDraft.y = Math.min(1, composerCropDraft.y + .02);
+        else return;
+        event.preventPreventDefault?.();
+        event.preventDefault();
+        syncPostMediaCropPreview();
+      });
       function openGifPicker(target, opener) {
         cancelGiphySearch();
         gifPickerTarget = target;
@@ -11461,6 +11801,26 @@
         liked: item.viewer.liked,
         rep: item.viewer.reposted,
       });
+      const validPostMediaCrop = (crop) => {
+        if (!crop || typeof crop !== "object") return null;
+        if (!["original", "16:9", "1:1", "4:5"].includes(crop.ratio)) return null;
+        const x = Number(crop.x), y = Number(crop.y), zoom = Number(crop.zoom);
+        if (![x, y, zoom].every(Number.isFinite) || x < 0 || x > 1 || y < 0 || y > 1 || zoom < 1 || zoom > 3) return null;
+        return { ratio: crop.ratio, x, y, zoom };
+      };
+      const postMediaCropFor = (post, index = 0) => {
+        const crops = Array.isArray(post.mediaCrops) ? post.mediaCrops : Array.isArray(post.mediaCrop) ? post.mediaCrop : null;
+        return validPostMediaCrop(crops ? crops[index] : (index === 0 ? post.mediaCrop : null));
+      };
+      const postMediaAltFor = (post, index = 0) => {
+        const alts = Array.isArray(post.mediaAlts) ? post.mediaAlts : null;
+        return typeof (alts ? alts[index] : post.mediaAlt) === "string" ? (alts ? alts[index] : post.mediaAlt) : "";
+      };
+      const postMediaCropAttributes = (crop) => {
+        if (!crop) return "";
+        return ` data-media-cropped="true" style="--relay-media-scale:${crop.zoom};--relay-media-x:${crop.x * 100}%;--relay-media-y:${crop.y * 100}%;object-position:${crop.x * 100}% ${crop.y * 100}%"`
+          ;
+      };
       const emphasizeSearchText = (text, query = "") => {
         const value = String(text);
         const term = String(query).trim().replace(/^[@#]+/, "").trim();
@@ -11780,13 +12140,20 @@
         if (!media.length) return "";
         if (media.length === 1) {
           const url = normalizeGiphyGifUrl(mediaHref(media[0])) || mediaHref(media[0]);
-          return `<div class="media-grid" data-count="1" style="aspect-ratio:auto"><button class="media-item" type="button" data-lightbox-image="${esc(url)}" aria-label="Open image"><img src="${esc(url)}" alt="${esc(p.mediaAlt || "")}" width="1200" height="675" loading="lazy" decoding="async"></button>${p.mediaAlt ? `<button class="post-media-alt" type="button" data-alt-text="${esc(p.mediaAlt)}" aria-label="Show image description">${ic("image")}<span>ALT</span></button>` : ""}</div>`;
+          const crop = postMediaCropFor(p);
+          const alt = postMediaAltFor(p);
+          const cropRatio = crop?.ratio === "16:9" ? "16 / 9" : crop?.ratio === "1:1" ? "1 / 1" : crop?.ratio === "4:5" ? "4 / 5" : "auto";
+          const cropFrameStyle = crop?.ratio === "original" ? "aspect-ratio:auto" : `aspect-ratio:${cropRatio}`;
+          return `<div class="media-grid" data-count="1" style="${cropFrameStyle}"><button class="media-item" type="button" data-lightbox-image="${esc(url)}" aria-label="Open image"><img src="${esc(url)}" alt="${esc(alt)}"${postMediaCropAttributes(crop)} width="1200" height="675" loading="lazy" decoding="async"></button>${alt ? `<button class="post-media-alt" type="button" data-alt-text="${esc(alt)}" aria-label="Show image description">${ic("image")}<span>ALT</span></button>` : ""}</div>`;
         }
         const images = media.slice(0, 4).map((url, index) => {
           const href = normalizeGiphyGifUrl(mediaHref(url)) || mediaHref(url);
-          return `<button class="media-item" type="button" data-lightbox-image="${esc(href)}" data-lightbox-index="${index}" aria-label="Open image ${index + 1}"><img src="${esc(href)}" alt="${esc(p.mediaAlt || "")}" width="1200" height="675" loading="lazy" decoding="async"></button>`;
+          const crop = postMediaCropFor(p, index);
+          const alt = postMediaAltFor(p, index);
+          return `<button class="media-item" type="button" data-lightbox-image="${esc(href)}" data-lightbox-index="${index}" aria-label="Open image ${index + 1}"><img src="${esc(href)}" alt="${esc(alt)}"${postMediaCropAttributes(crop)} width="1200" height="675" loading="lazy" decoding="async"></button>`;
         });
-        return `<div class="media-grid" data-count="${Math.min(media.length, 4)}">${images.join("")}${p.mediaAlt ? `<button class="post-media-alt" type="button" data-alt-text="${esc(p.mediaAlt)}" aria-label="Show image description">${ic("image")}<span>ALT</span></button>` : ""}</div>`;
+        const alt = postMediaAltFor(p);
+        return `<div class="media-grid" data-count="${Math.min(media.length, 4)}">${images.join("")}${alt ? `<button class="post-media-alt" type="button" data-alt-text="${esc(alt)}" aria-label="Show image description">${ic("image")}<span>ALT</span></button>` : ""}</div>`;
       };
       let lightboxImages = [];
       let lightboxIndex = 0;
@@ -11869,7 +12236,7 @@
       const post = (p, searchTerm = "") => {
         const mine = currentUser && p.author.id === currentUser.id;
         const postMenu = mine
-          ? `<div class="post-menu-wrap"><button class="icon-btn more" type="button" data-post-menu-toggle aria-label="Post options" aria-haspopup="menu" aria-expanded="false">${ic("dots")}</button><div class="post-menu" role="menu" hidden><button type="button" role="menuitem" data-post-edit data-post-id="${esc(p.id)}" data-post-body="${esc(p.x)}" data-post-media="${esc(p.m || "")}" data-post-location="${esc(p.location || "")}">Edit</button><button type="button" role="menuitem" data-post-delete>Delete</button></div></div>`
+          ? `<div class="post-menu-wrap"><button class="icon-btn more" type="button" data-post-menu-toggle aria-label="Post options" aria-haspopup="menu" aria-expanded="false">${ic("dots")}</button><div class="post-menu" role="menu" hidden><button type="button" role="menuitem" data-post-edit data-post-id="${esc(p.id)}" data-post-body="${esc(p.x)}" data-post-media="${esc(p.m || "")}" data-post-crop="${esc(JSON.stringify(postMediaCropFor(p) || null))}" data-post-alt="${esc(postMediaAltFor(p))}" data-post-location="${esc(p.location || "")}">Edit</button><button type="button" role="menuitem" data-post-delete>Delete</button></div></div>`
           : "";
         if (p.replyToId) {
           const parent = p.replyTo;
@@ -19030,6 +19397,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#ct").style.height = `${Math.max(72, $("#ct").scrollHeight)}px`;
         clearComposerMedia();
         setComposerMedia(data.mediaUrl || "");
+        composerMediaCrop = validPostMediaCrop(data.mediaCrop ? JSON.parse(String(data.mediaCrop)) : null);
+        composerMediaAlt = stripPostMediaControlCharacters(data.mediaAlt || "");
+        if (composerMediaUrl) {
+          $("#editMedia").hidden = false;
+          $("#addMediaDescription").hidden = false;
+          $("#addMediaDescription").textContent = composerMediaAlt ? "Edit description" : "Add description";
+        }
         clearComposerLocation();
         if (data.location) setComposerLocation(data.location);
         closeComposerPopover($("#locationPopover"), activeComposerPopover?.popover === $("#locationPopover")
@@ -20333,6 +20707,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             postId: editPost.dataset.postId,
             body: editPost.dataset.postBody,
             mediaUrl: editPost.dataset.postMedia,
+            mediaCrop: editPost.dataset.postCrop === "null" ? null : editPost.dataset.postCrop,
+            mediaAlt: editPost.dataset.postAlt,
             location: editPost.dataset.postLocation,
             returnFocus: editPost.closest(".post-menu-wrap")?.querySelector("[data-post-menu-toggle]"),
           });
@@ -21506,6 +21882,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               body: JSON.stringify({
                 body,
                 mediaUrl: composerMediaUrl || null,
+                mediaCrop: composerMediaUrl ? composerMediaCrop : null,
+                mediaAlt: composerMediaUrl ? composerMediaAlt : null,
                 location: composerLocation || null,
               }),
             });
@@ -21541,6 +21919,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (composerPreviewUrl && !composerMediaUrl) throw new Error("Wait for the image upload to finish.");
           const postBody = { body };
           if (composerMediaUrl) postBody.mediaUrl = composerMediaUrl;
+          if (composerMediaUrl && composerMediaCrop) postBody.mediaCrop = composerMediaCrop;
+          if (composerMediaUrl && composerMediaAlt) postBody.mediaAlt = composerMediaAlt;
           if (composerLocation) postBody.location = composerLocation;
           const result = await api("/posts", { method: "POST", body: JSON.stringify(postBody) });
           ct.value = "";

@@ -7,6 +7,16 @@ const mediaUrlSchema = z.string().max(2048).refine(
   { message: "Media must be an http(s) URL or a Relay upload path" },
 );
 
+const strippedControlCharacters = (value: string): string =>
+  value.replace(/[\u0000-\u001f\u007f]/g, "");
+
+const mediaCropSchema = z.object({
+  ratio: z.enum(["original", "16:9", "1:1", "4:5"]),
+  x: z.number().finite().min(0).max(1),
+  y: z.number().finite().min(0).max(1),
+  zoom: z.number().finite().min(1).max(3),
+}).strict();
+
 const passwordSchema = z
   .string()
   .min(12)
@@ -32,6 +42,8 @@ export const loginSchema = z.object({
 export const postSchema = z.object({
   body: z.string().trim().min(1).max(280),
   mediaUrl: mediaUrlSchema.optional(),
+  mediaCrop: mediaCropSchema.nullable().optional(),
+  mediaAlt: z.string().transform(strippedControlCharacters).transform((value) => value.slice(0, 1000)).optional(),
   location: z.string().trim().min(1).max(80).optional(),
   replyToId: z.string().cuid().optional(),
 });
@@ -39,6 +51,8 @@ export const postSchema = z.object({
 export const updatePostSchema = z.object({
   body: z.string().trim().min(1).max(280),
   mediaUrl: mediaUrlSchema.nullable().optional(),
+  mediaCrop: mediaCropSchema.nullable().optional(),
+  mediaAlt: z.string().transform(strippedControlCharacters).transform((value) => value.slice(0, 1000)).nullable().optional(),
   location: z.string().trim().min(1).max(80).nullable().optional(),
 });
 

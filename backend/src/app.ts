@@ -331,6 +331,8 @@ const postResponse = (post: PostRecord, counts: InteractionCounts = { likes: 0, 
   id: post.id,
   body: post.body,
   mediaUrl: post.mediaUrl,
+  mediaCrop: post.mediaCrop,
+  mediaAlt: post.mediaAlt,
   location: post.location,
   replyToId: post.replyToId,
   replyTo: post.replyTo && !post.replyTo.deletedAt
@@ -1141,7 +1143,11 @@ api.post("/posts", authRequired, asyncRoute(async (req, res) => {
   }
   const { post, mentionNotifications } = await prisma.$transaction(async (tx) => {
     const created = await tx.post.create({
-      data: { ...input, authorId: req.userId! },
+      data: {
+        ...input,
+        mediaCrop: input.mediaCrop === null ? Prisma.DbNull : input.mediaCrop ?? undefined,
+        authorId: req.userId!,
+      },
       include: postInclude(req.userId!),
     });
     await syncHashtags(tx, created.id, input.body);
@@ -1188,7 +1194,10 @@ api.patch("/posts/:postId", authRequired, asyncRoute(async (req, res) => {
   const { post, mentionNotifications } = await prisma.$transaction(async (tx) => {
     await tx.post.update({
       where: { id: postId },
-      data: input,
+      data: {
+        ...input,
+        mediaCrop: input.mediaCrop === null ? Prisma.DbNull : input.mediaCrop ?? undefined,
+      },
     });
     await syncHashtags(tx, postId, input.body);
     const post = await tx.post.findUniqueOrThrow({
