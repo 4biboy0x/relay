@@ -3737,11 +3737,20 @@
         padding: 0;
         line-height: 1;
       }
+      .profile-actions .profile-message-button,
+      .profile-actions .profile-message-button.btn-line {
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
+        border-radius: 50%;
+        aspect-ratio: 1 / 1;
+        padding: 0;
+      }
       .profile-message-button .i {
         width: 20px;
         height: 20px;
       }
-      .profile-actions .btn:not(.follow-button) {
+      .profile-actions .btn:not(.follow-button):not(.profile-message-button) {
         min-width: 90px;
       }
       #profileBack {
