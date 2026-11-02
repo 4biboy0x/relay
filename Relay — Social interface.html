@@ -480,6 +480,21 @@
       .follow-button .follow-unfollow {
         grid-area: 1 / 1;
       }
+      .follow-button .follow-label.follow-label-changing {
+        animation: follow-label-change 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+      @keyframes follow-label-change {
+        0% {
+          opacity: 0;
+          transform: translateY(5px);
+          filter: blur(2px);
+        }
+        100% {
+          opacity: 1;
+          transform: translateY(0);
+          filter: blur(0);
+        }
+      }
       .follow-unfollow {
         display: none;
       }
@@ -10500,6 +10515,7 @@
           socket.on("reel:comment:deleted", receiveDeletedReelComments);
           socket.on("user:suggestion:new", receiveLiveSuggestion);
           socket.on("user:followed", receiveViewerFollowed);
+          socket.on("user:follow-state", receiveFollowState);
           socket.on("trending:updated", () => {
             renderTrending(true).catch((error) => console.error("Could not refresh trending topics", error));
           });
@@ -14818,6 +14834,16 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         button.setAttribute("aria-pressed", String(following));
         button.innerHTML = `<span class="follow-label">${label}</span>${following ? '<span class="follow-unfollow" aria-hidden="true">Unfollow</span>' : ""}`;
       }
+      function animateFollowButtonLabel(button, person, animate = true) {
+        if (!button) return;
+        const following = !!person.viewerFollows;
+        const label = following ? "Following" : person.followsYou ? "Follow back" : "Follow";
+        button.className = `follow-button ${following ? "btn-line" : "btn-dark"}`;
+        button.dataset.fol = person.id;
+        button.setAttribute("aria-label", label);
+        button.setAttribute("aria-pressed", String(following));
+        button.innerHTML = `<span class="follow-label${animate && !matchMedia("(prefers-reduced-motion: reduce)").matches ? " follow-label-changing" : ""}">${label}</span>${following ? '<span class="follow-unfollow" aria-hidden="true">Unfollow</span>' : ""}`;
+      }
       const fbtn = (person) =>
         `<button type="button" class="follow-button ${person.viewerFollows ? "btn-line" : "btn-dark"}" data-fol="${esc(person.id)}" aria-label="${person.viewerFollows ? "Following" : person.followsYou ? "Follow back" : "Follow"}" aria-pressed="${!!person.viewerFollows}"><span class="follow-label">${person.viewerFollows ? "Following" : person.followsYou ? "Follow back" : "Follow"}</span>${person.viewerFollows ? '<span class="follow-unfollow" aria-hidden="true">Unfollow</span>' : ""}</button>`;
       function renderRecipientOptions() {
@@ -16329,6 +16355,29 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function receiveViewerFollowed(event) {
         const userId = typeof event === "string" ? event : event?.userId;
         removeFollowedSuggestion(userId).catch((error) => console.error("Could not update follow suggestions", error));
+      }
+      function receiveFollowState(event) {
+        const userId = typeof event === "string" ? event : event?.userId;
+        if (!userId || typeof event !== "object") return;
+        const followsYou = !!event.followsYou;
+        let changed = false;
+        suggestedPeople = suggestedPeople.map((person) => {
+          if (person.id !== userId) return person;
+          changed = true;
+          return { ...person, followsYou };
+        });
+        people = people.map((person) => {
+          if (person.id !== userId) return person;
+          changed = true;
+          return { ...person, followsYou };
+        });
+        $$(`[data-fol="${CSS.escape(userId)}"]`).forEach((button) => {
+          const person = suggestedPeople.find((item) => item.id === userId)
+            || people.find((item) => item.id === userId)
+            || (viewedProfileId === userId ? { id: userId, viewerFollows: button.getAttribute("aria-pressed") === "true", followsYou } : null);
+          if (person && !person.viewerFollows) animateFollowButtonLabel(button, { ...person, followsYou });
+        });
+        if (changed && !$("#v-profile").hidden && viewedProfileId === userId) renderProfile();
       }
       function receiveProfileUpdate(user) {
         if (!user || typeof user.id !== "string") return;
@@ -20312,9 +20361,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (!requireAuth()) return;
           const shouldFollow = f.getAttribute("aria-pressed") !== "true";
           const previousClass = f.className;
+          const person = people.find((item) => item.id === f.dataset.fol)
+            || suggestedPeople.find((item) => item.id === f.dataset.fol);
           f.setAttribute("aria-pressed", String(shouldFollow));
-          f.setAttribute("aria-label", shouldFollow ? "Following" : "Follow");
-          f.innerHTML = `<span class="follow-label">${shouldFollow ? "Following" : "Follow"}</span>${shouldFollow ? '<span class="follow-unfollow" aria-hidden="true">Unfollow</span>' : ""}`;
+          const optimisticLabel = shouldFollow ? "Following" : person?.followsYou ? "Follow back" : "Follow";
+          f.setAttribute("aria-label", optimisticLabel);
+          f.innerHTML = `<span class="follow-label follow-label-changing">${optimisticLabel}</span>${shouldFollow ? '<span class="follow-unfollow" aria-hidden="true">Unfollow</span>' : ""}`;
           f.classList.toggle("btn-dark", !shouldFollow);
           f.classList.toggle("btn-line", shouldFollow);
           setPendingButton(f, true);
@@ -20329,8 +20381,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               toast(shouldFollow ? "Following" : "Unfollowed");
             }).catch((error) => {
               f.setAttribute("aria-pressed", String(!shouldFollow));
-              f.setAttribute("aria-label", shouldFollow ? "Follow" : "Following");
-              f.innerHTML = `<span class="follow-label">${shouldFollow ? "Follow" : "Following"}</span>${!shouldFollow ? '<span class="follow-unfollow" aria-hidden="true">Unfollow</span>' : ""}`;
+              const rollbackLabel = shouldFollow ? "Follow" : "Following";
+              f.setAttribute("aria-label", rollbackLabel);
+              f.innerHTML = `<span class="follow-label follow-label-changing">${rollbackLabel}</span>${!shouldFollow ? '<span class="follow-unfollow" aria-hidden="true">Unfollow</span>' : ""}`;
               f.className = previousClass;
               toast(error.message);
             }).finally(() => setPendingButton(f, false));

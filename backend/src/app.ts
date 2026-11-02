@@ -1008,12 +1008,16 @@ api.put("/users/:userId/follow", authRequired, asyncRoute(async (req, res) => {
     await notify(targetId, req.userId!, "FOLLOW");
     emitToUser(req.userId!, "user:followed", { userId: targetId });
   }
+  emitToUser(targetId, "user:follow-state", { userId: req.userId!, followsYou: true });
   res.status(204).end();
 }));
 
 api.delete("/users/:userId/follow", authRequired, asyncRoute(async (req, res) => {
   const targetId = z.string().cuid().parse(req.params.userId);
-  await prisma.follow.deleteMany({ where: { followerId: req.userId!, followedId: targetId } });
+  const deleted = await prisma.follow.deleteMany({ where: { followerId: req.userId!, followedId: targetId } });
+  if (deleted.count) {
+    emitToUser(targetId, "user:follow-state", { userId: req.userId!, followsYou: false });
+  }
   res.status(204).end();
 }));
 
