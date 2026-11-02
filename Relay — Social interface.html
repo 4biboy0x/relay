@@ -19312,6 +19312,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         revealMessageTools(owner);
         if (firstImageTap && target.closest("[data-lightbox-image]")) event.preventDefault();
       }, true);
+      document.addEventListener("contextmenu", (event) => {
+        const target = event.target instanceof Element ? event.target : event.target.parentElement;
+        if (target?.closest("img")) event.preventDefault();
+      });
       document.addEventListener("keydown", (event) => {
         if (event.key === "Escape" && document.querySelector(".message-action-menu:not([hidden])")) {
           event.preventDefault();
