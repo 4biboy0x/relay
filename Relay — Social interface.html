@@ -17808,11 +17808,16 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function animateChatMessages(messages) {
         if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
         messages.forEach((message, index) => {
+          const bubble = message.matches?.(".message-row")
+            ? message.querySelector(".message-bubble")
+            : message;
+          if (!bubble) return;
           message.style.setProperty("--chat-message-delay", `${Math.min(index * 18, 150)}ms`);
-          message.classList.add("chat-message-entering");
-          message.addEventListener("animationend", () => {
-            message.classList.remove("chat-message-entering");
-            message.style.removeProperty("--chat-message-delay");
+          bubble.style.setProperty("--chat-message-delay", `${Math.min(index * 18, 150)}ms`);
+          bubble.classList.add("chat-message-entering");
+          bubble.addEventListener("animationend", () => {
+            bubble.classList.remove("chat-message-entering");
+            bubble.style.removeProperty("--chat-message-delay");
           }, { once: true });
         });
       }
@@ -17868,6 +17873,19 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         bubbles.forEach((bubble) => {
           bubble.closest(".message-row")?.remove();
         });
+      }
+      function reconcilePendingMessageRow(pendingId, message, displayConversationId = message.conversationId) {
+        const bubble = $(`[data-message-id="${CSS.escape(pendingId)}"]`);
+        const pendingRow = bubble?.closest(".message-row");
+        if (!pendingRow) return;
+        const template = document.createElement("template");
+        template.innerHTML = messageMarkup({ ...message, id: pendingId, conversationId: displayConversationId });
+        const confirmedRow = template.content.firstElementChild;
+        if (!confirmedRow) return;
+        confirmedRow.querySelector(".message-bubble")?.setAttribute("data-message-id", message.id);
+        pendingRow.replaceWith(confirmedRow);
+        animateChatMessages([confirmedRow.querySelector(".message-bubble")].filter(Boolean));
+        scrollMessageListToBottom(false);
       }
       function receiveMessage(message) {
         removePendingMessageRow("", message);
@@ -21245,8 +21263,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }));
           updateMessageRowSpacing($("#chatLog"));
           const pendingMessage = typingStatus?.previousElementSibling || $("#chatLog").lastElementChild;
-          if (pendingMessage) animateChatMessages([pendingMessage]);
-          scrollMessageListToBottom(true);
+          if (pendingMessage) animateChatMessages([pendingMessage.querySelector(".message-bubble") || pendingMessage]);
+          scrollMessageListToBottom(false);
           input.value = "";
           conversationDrafts.set(sendConversationId, "");
           syncMessageComposer();
@@ -21262,7 +21280,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 ...(draftRecipientId ? { recipientId: draftRecipientId } : {}),
               }),
             });
-            removePendingMessageRow(pendingId);
+            reconcilePendingMessageRow(
+              pendingId,
+              message,
+              sendConversationId === "draft" ? "draft" : message.conversationId,
+            );
             updateMessageRowSpacing($("#chatLog"));
             if (sendConversationId === "draft") {
               sendConversationId = message.conversationId;
@@ -21273,6 +21295,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               draftConversationRecipientId = "";
               $("#chatLog").dataset.conversationId = sendConversationId;
               $("#messageForm").dataset.conversationId = sendConversationId;
+              $$(".message-row", $("#chatLog")).forEach((row) => {
+                row.dataset.conversationId = sendConversationId;
+              });
               await renderConversations();
               const route = `#/messages?conversation=${encodeURIComponent(sendConversationId)}`;
               if (location.hash !== route) location.hash = route;
