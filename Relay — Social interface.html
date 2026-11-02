@@ -5546,7 +5546,7 @@
         margin: 0;
         padding: 0;
         border: 0;
-        color: var(--text-3);
+        color: var(--text-2);
         background: transparent;
         font: inherit;
         font-size: 12px;
@@ -5580,10 +5580,12 @@
         font: inherit;
         text-align: start;
         direction: ltr;
+        transition: opacity 120ms ease;
       }
       button.reply-preview {
         cursor: pointer;
       }
+      button.reply-preview:hover { opacity: .8; }
       .reply-preview--text,
       .reply-preview--voice {
         display: inline-flex;
@@ -5604,7 +5606,11 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        unicode-bidi: plaintext;
       }
+      .message-row:not(.mine) .reply-preview--media { border-radius: 12px 12px 12px 3px; }
+      .message-row.mine .reply-preview--media { border-radius: 12px 12px 3px 12px; }
+      .reply-bar .reply-preview--media { border-radius: 12px; }
       .reply-preview--voice .i {
         width: 15px;
         height: 15px;
@@ -5848,19 +5854,14 @@
         background: color-mix(in srgb, var(--accent) 12%, var(--surface));
       }
       .message-row > .message-reaction-list { max-width: min(90%, 720px); }
-      .message-bubble.message-reply-highlight { animation: message-reply-highlight 1.2s ease-out; }
-      @keyframes message-reply-highlight {
-        0%, 100% { background-color: transparent; }
-        25% { background-color: color-mix(in srgb, var(--accent) 18%, var(--surface)); }
-      }
       @media (prefers-reduced-motion: reduce) {
         .reply-preview-gif .reply-preview-media-motion { display: none; }
         .reply-preview-gif .reply-preview-media-static { display: block; }
-        .message-bubble.message-reply-highlight { animation: none; }
       }
       .reply-preview-media-static { display: none; }
       .chat-log > .message-row + .message-row { margin-block-start: 4px; }
       .chat-log > .message-row.same-sender { margin-block-start: -6px; }
+      .message-row > .reply-stack + .message-bubble { margin-block-start: 4px; }
       @media (hover: none) {
         .message-tool-button { width: 40px; height: 40px; }
         .message-tools { margin-top: -20px; }
@@ -5975,7 +5976,7 @@
       .reply-bar .reply-preview--media {
         width: 40px;
         height: 40px;
-        border-radius: 8px;
+        border-radius: 12px;
       }
       .reply-bar .reply-preview-gif-badge { bottom: 2px; left: 2px; }
       .reply-bar .reply-preview-play .i { width: 18px; height: 18px; }
@@ -15927,7 +15928,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         if (type === "text") {
           const text = String(message.text ?? message.body ?? (message.stickerId ? "Sticker" : "")).trim();
-          return quoteButton("reply-preview--text", text || "Message", `<span>${esc(text || "Message")}</span>`);
+          return quoteButton("reply-preview--text", text || "Message", `<span dir="auto">${esc(text || "Message")}</span>`);
         }
         if (!mediaUrl) return `<span class="reply-preview reply-preview--deleted">Message deleted</span>`;
 
@@ -15938,7 +15939,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const autoplay = gifVideo && !window.matchMedia("(prefers-reduced-motion: reduce)").matches ? " autoplay" : "";
           const poster = thumbnailUrl ? ` poster="${esc(thumbnailUrl)}"` : "";
           const motionClass = gifVideo && thumbnailUrl ? "reply-preview-media-motion" : "";
-          mediaContent = `<video class="${motionClass}" src="${esc(mediaUrl)}"${poster}${autoplay} loop muted playsinline preload="metadata"></video>${thumbnailUrl && gifVideo ? `<img class="reply-preview-media-static" src="${esc(thumbnailUrl)}" alt="" loading="lazy" decoding="async" />` : ""}<span class="reply-preview-play" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>`;
+          mediaContent = `<video class="${motionClass}" src="${esc(mediaUrl)}"${poster}${autoplay} loop muted playsinline preload="metadata"></video>${thumbnailUrl && gifVideo ? `<img class="reply-preview-media-static" src="${esc(thumbnailUrl)}" alt="" loading="lazy" decoding="async" />` : ""}${type === "video" ? `<span class="reply-preview-play" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>` : ""}`;
         } else if (type === "gif") {
           const staticSource = thumbnailUrl
             ? `<source media="(prefers-reduced-motion: reduce)" srcset="${esc(thumbnailUrl)}" />`
@@ -15963,10 +15964,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           preview.replaceChildren();
           return;
         }
-        const senderName = target.message.sender?.displayName
-          || (target.message.senderId === currentUser?.id ? "You" : "Message");
+        const senderName = replySenderName(target.message);
         preview.innerHTML = `<div class="reply-bar-copy">${replyHeaderMarkup(`Replying to ${senderName}`)}${replyPreviewMarkup(target.message, { jump: Boolean(target.message.id) })}</div><button type="button" data-message-reply-cancel aria-label="Cancel reply" title="Cancel reply">${ic("close")}</button>`;
         preview.hidden = false;
+      }
+      function replySenderName(message) {
+        if (message?.senderId === currentUser?.id || message?.sender?.id === currentUser?.id) return "You";
+        return message?.sender?.displayName || message?.senderName || "Message";
       }
       function setMessageReplyTarget(messageId) {
         const message = messagesById.get(messageId);
@@ -15984,14 +15988,30 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       async function jumpToMessage(messageId) {
         const conversationId = activeConversation?.id;
         if (!conversationId) return;
+        const loadGeneration = activeConversationLoadGeneration;
         let target = $$(".message-bubble", $("#chatLog")).find((bubble) => bubble.dataset.messageId === messageId);
         if (!target && activeConversationCursor) {
-          target = await loadConversationUntilMessage(conversationId, messageId, activeConversationLoadGeneration);
+          target = await loadConversationUntilMessage(conversationId, messageId, loadGeneration);
         }
-        if (!target || activeConversation?.id !== conversationId) return;
-        target.scrollIntoView({ behavior: "smooth", block: "center" });
-        target.classList.remove("message-reply-highlight");
-        requestAnimationFrame(() => target.classList.add("message-reply-highlight"));
+        if (!target || loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversationId) return;
+        const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+        target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+        if (!reduceMotion) {
+          const log = $("#chatLog");
+          await new Promise((resolve) => {
+            let timer;
+            const finish = () => {
+              clearTimeout(timer);
+              log.removeEventListener("scrollend", finish);
+              resolve();
+            };
+            log.addEventListener("scrollend", finish, { once: true });
+            timer = setTimeout(finish, 700);
+          });
+        }
+        if (reduceMotion || loadGeneration !== activeConversationLoadGeneration
+          || activeConversation?.id !== conversationId || !target.isConnected) return;
+        triggerMessageSearchHighlight(target);
       }
       function messageReactionsMarkup(message) {
         const reactions = Array.isArray(message.reactions) ? message.reactions : [];
@@ -16317,7 +16337,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const replyTo = message.replyTo || null;
         const hasReply = Boolean(message.replyToId || replyTo);
         const replyStack = hasReply
-          ? `<div class="reply-stack">${replyHeaderMarkup(replyTo?.sender?.displayName || replyTo?.senderName || "Message", replyTo?.id || "")}${replyPreviewMarkup(replyTo, { jump: Boolean(replyTo?.id) })}</div>`
+          ? `<div class="reply-stack">${replyHeaderMarkup(replySenderName(replyTo), replyTo?.id || "")}${replyPreviewMarkup(replyTo, { jump: Boolean(replyTo?.id) })}</div>`
           : "";
         return `<div class="message-row${mine ? " mine" : ""}" data-message-row data-conversation-id="${esc(message.conversationId)}" data-sender-id="${esc(message.senderId || "")}">${replyStack}<div class="message-bubble${mine ? " mine" : ""}${mediaOnly ? " media-message" : ""}${imageOnly ? " image-message" : ""}${audioOnly ? " audio-message" : ""}${stickerOnly ? " sticker-message" : ""}" data-message-id="${esc(message.id)}">${image}${audio}${sticker}${text}${bubbleActions}</div>${messageReactionsMarkup(message)}</div>`;
       }
@@ -16326,7 +16346,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         rows.forEach((row, index) => {
           row.classList.toggle(
             "same-sender",
-            index > 0 && rows[index - 1].dataset.senderId === row.dataset.senderId,
+            index > 0 && !row.querySelector(".reply-stack")
+              && rows[index - 1].dataset.senderId === row.dataset.senderId,
           );
         });
       }
@@ -17587,6 +17608,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
         }
         if (loadGeneration !== activeConversationLoadGeneration || !target.isConnected) return;
+        triggerMessageSearchHighlight(target);
+      }
+      function triggerMessageSearchHighlight(target) {
         clearTimeout(messageSearchHighlightTimers.get(target));
         target.classList.remove("search-message-highlight");
         void target.offsetWidth;
