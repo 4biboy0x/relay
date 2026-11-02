@@ -5683,7 +5683,7 @@
         z-index: 4;
         display: flex;
         align-items: center;
-        gap: 2px;
+        gap: 4px;
         margin-top: -16px;
         opacity: 0;
         pointer-events: none;
@@ -5823,37 +5823,56 @@
         outline: none;
       }
       .message-reaction-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-        margin-top: 5px;
-        white-space: normal;
-      }
-      .message-reaction-list:empty { display: none; }
-      .message-reaction-chip {
+        position: absolute;
+        z-index: 3;
+        bottom: -10px;
         display: inline-flex;
-        min-width: 32px;
-        min-height: 25px;
+        min-height: 21px;
         align-items: center;
-        justify-content: center;
-        gap: 4px;
-        padding: 0 7px;
-        border: 1px solid var(--border);
+        gap: 3px;
+        margin: 0;
+        padding: 2px 6px;
+        border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
         border-radius: 999px;
         color: var(--text-2);
-        background: var(--surface);
+        background: var(--bg);
+        box-shadow: 0 0 0 2px var(--bg);
+        cursor: pointer;
+        transition: opacity 120ms ease;
+        white-space: nowrap;
+      }
+      .message-reaction-list:empty { display: none; }
+      .message-reaction-list:hover { opacity: .85; }
+      .message-bubble.mine > .message-reaction-list { right: 8px; left: auto; }
+      .message-bubble:not(.mine) > .message-reaction-list { right: auto; left: 8px; }
+      .message-row.has-reactions { margin-block-end: 12px; }
+      .message-reaction-chip {
+        display: inline-flex;
+        min-width: 0;
+        min-height: 0;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        color: inherit;
+        background: transparent;
         font: inherit;
-        font-size: 12px;
-        line-height: 1;
+        font-size: 14px;
+        line-height: 16px;
         cursor: pointer;
       }
-      .message-reaction-chip:hover { background: var(--hover, var(--surface-2)); }
-      .message-reaction-chip.is-selected {
-        border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
-        color: var(--text);
-        background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+      .message-reaction-chip:hover { opacity: .85; }
+      .message-reaction-chip.is-selected { color: var(--accent); }
+      .message-reaction-total {
+        color: var(--text-2);
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1;
+        pointer-events: none;
       }
-      .message-row > .message-reaction-list { max-width: min(90%, 720px); }
+      .message-reaction-add { position: relative; }
+      .message-reaction-add .i { width: 18px; height: 18px; }
       @media (prefers-reduced-motion: reduce) {
         .reply-preview-gif .reply-preview-media-motion { display: none; }
         .reply-preview-gif .reply-preview-media-static { display: block; }
@@ -5863,8 +5882,8 @@
       .chat-log > .message-row.same-sender { margin-block-start: -6px; }
       .message-row > .reply-stack + .message-bubble { margin-block-start: 4px; }
       @media (hover: none) {
-        .message-tool-button { width: 40px; height: 40px; }
-        .message-tools { margin-top: -20px; }
+        .message-tool-button { width: 32px; height: 32px; }
+        .message-tools { margin-top: -16px; }
         .message-action-menu button { min-height: 44px; }
         .message-row:hover:not(.tools-visible):not(.has-message-popover) .message-tools {
           opacity: 0;
@@ -16015,9 +16034,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function messageReactionsMarkup(message) {
         const reactions = Array.isArray(message.reactions) ? message.reactions : [];
-        return `<div class="message-reaction-list" aria-label="Message reactions">${reactions.map((reaction) =>
-          `<button type="button" class="message-reaction-chip${reaction.reactedByMe ? " is-selected" : ""}" data-message-reaction-toggle="${esc(message.id)}" data-reaction-emoji="${esc(reaction.emoji)}" aria-label="${esc(reaction.emoji)} ${reaction.count}${reaction.reactedByMe ? ", remove your reaction" : ", add your reaction"}" aria-pressed="${Boolean(reaction.reactedByMe)}"><span>${esc(reaction.emoji)}</span><span>${reaction.count}</span></button>`
-        ).join("")}</div>`;
+        if (!reactions.length) return "";
+        const total = reactions.reduce((sum, reaction) => sum + (Number(reaction.count) || 0), 0);
+        const emojiButtons = reactions.slice(0, 3).map((reaction) =>
+          `<button type="button" class="message-reaction-chip${reaction.reactedByMe ? " is-selected" : ""}" data-message-reaction-toggle="${esc(message.id)}" data-reaction-emoji="${esc(reaction.emoji)}" aria-label="${esc(reaction.emoji)} ${reaction.count}${reaction.reactedByMe ? ", remove your reaction" : ", add your reaction"}" aria-pressed="${Boolean(reaction.reactedByMe)}">${esc(reaction.emoji)}</button>`
+        ).join("");
+        const count = total > 1 ? `<span class="message-reaction-total">${total}</span>` : "";
+        return `<div class="message-reaction-list" role="group" aria-label="Message reactions">${emojiButtons}${count}</div>`;
       }
       async function sendMessageAttachment(payload, conversationId = activeConversation?.id) {
         if (!conversationId) return;
@@ -16152,11 +16175,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           ? `<button type="button" role="menuitem" data-message-menu-action="download" data-message-download="${esc(downloadUrl)}">${ic("download")}<span>Download</span></button>`
           : "";
         const replyAction = `<button type="button" role="menuitem" data-message-menu-action="reply" data-message-id="${esc(messageId)}">${ic("reply")}<span>Reply</span></button>`;
-        const reactAction = `<button type="button" role="menuitem" data-message-menu-action="react" data-message-id="${esc(messageId)}">${ic("smile")}<span>React</span></button>`;
         const downloadButton = directDownload && downloadUrl
           ? `<button class="message-tool-button" type="button" data-message-download="${esc(downloadUrl)}" aria-label="Download ${esc(downloadLabel)}" title="Download">${ic("download")}</button>`
           : "";
-        return `<div class="message-tools"><button class="message-tool-button" type="button" data-message-reply="${esc(messageId)}" aria-label="Reply to message" title="Reply">${ic("reply")}</button>${downloadButton}<button class="message-tool-button" type="button" data-message-more aria-expanded="false" aria-haspopup="menu" aria-label="More message actions" title="More">${ic("dots")}</button><div class="message-action-menu" role="menu" hidden>${replyAction}${reactAction}${copyAction}${downloadAction}</div></div>`;
+        return `<div class="message-tools"><button class="message-tool-button message-reaction-add" type="button" data-message-react-open="${esc(messageId)}" aria-label="Add reaction" title="Add reaction">${ic("heart-plus")}</button><button class="message-tool-button" type="button" data-message-reply="${esc(messageId)}" aria-label="Reply to message" title="Reply">${ic("reply")}</button><button class="message-tool-button" type="button" data-message-more aria-expanded="false" aria-haspopup="menu" aria-label="More message actions" title="More">${ic("dots")}</button>${downloadButton}<div class="message-action-menu" role="menu" hidden>${replyAction}${copyAction}${downloadAction}</div></div>`;
       }
       function revealMessageTools(owner) {
         document.querySelectorAll(".message-row.tools-visible").forEach((row) => {
@@ -16339,7 +16361,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const replyStack = hasReply
           ? `<div class="reply-stack">${replyHeaderMarkup(replySenderName(replyTo), replyTo?.id || "")}${replyPreviewMarkup(replyTo, { jump: Boolean(replyTo?.id) })}</div>`
           : "";
-        return `<div class="message-row${mine ? " mine" : ""}" data-message-row data-conversation-id="${esc(message.conversationId)}" data-sender-id="${esc(message.senderId || "")}">${replyStack}<div class="message-bubble${mine ? " mine" : ""}${mediaOnly ? " media-message" : ""}${imageOnly ? " image-message" : ""}${audioOnly ? " audio-message" : ""}${stickerOnly ? " sticker-message" : ""}" data-message-id="${esc(message.id)}">${image}${audio}${sticker}${text}${bubbleActions}</div>${messageReactionsMarkup(message)}</div>`;
+        const reactions = messageReactionsMarkup(message);
+        return `<div class="message-row${mine ? " mine" : ""}${reactions ? " has-reactions" : ""}" data-message-row data-conversation-id="${esc(message.conversationId)}" data-sender-id="${esc(message.senderId || "")}">${replyStack}<div class="message-bubble${mine ? " mine" : ""}${mediaOnly ? " media-message" : ""}${imageOnly ? " image-message" : ""}${audioOnly ? " audio-message" : ""}${stickerOnly ? " sticker-message" : ""}" data-message-id="${esc(message.id)}">${image}${audio}${sticker}${text}${bubbleActions}${reactions}</div></div>`;
       }
       function updateMessageRowSpacing(container = $("#chatLog")) {
         const rows = [...container.children].filter((element) => element.matches(".message-row"));
@@ -16507,13 +16530,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           .find((item) => item.dataset.messageId === messageId);
         if (!bubble) return;
         let list = $(".message-reaction-list", bubble);
-        if (!list) {
-          list = document.createElement("div");
-          list.className = "message-reaction-list";
-          list.setAttribute("aria-label", "Message reactions");
-          bubble.append(list);
-        }
-        list.outerHTML = messageReactionsMarkup(updated);
+        const reactionMarkup = messageReactionsMarkup(updated);
+        bubble.closest(".message-row")?.classList.toggle("has-reactions", Boolean(reactionMarkup));
+        if (list) list.outerHTML = reactionMarkup;
+        else if (reactionMarkup) bubble.insertAdjacentHTML("beforeend", reactionMarkup);
       }
       async function toggleMessageReaction(messageId, emoji) {
         const message = messagesById.get(messageId);
@@ -18615,6 +18635,16 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const replyJump = e.target.closest("[data-message-jump]");
         if (replyJump) {
           await jumpToMessage(replyJump.dataset.messageJump);
+          return;
+        }
+        const reactionTrigger = e.target.closest("[data-message-react-open]");
+        if (reactionTrigger) {
+          const owner = reactionTrigger.closest(".message-row");
+          const messageId = reactionTrigger.dataset.messageReactOpen;
+          if (owner && messageId) {
+            closeMessageActionMenus();
+            openMessageReactionPicker(messageId, reactionTrigger, owner);
+          }
           return;
         }
         if (e.target.closest("[data-message-reply-cancel]")) {
