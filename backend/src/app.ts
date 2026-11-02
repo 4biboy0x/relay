@@ -1857,21 +1857,40 @@ api.get("/conversations/:conversationId/messages", authRequired, asyncRoute(asyn
 }));
 
 api.post("/conversations/:conversationId/messages", authRequired, messageLimiter, asyncRoute(async (req, res) => {
-  const conversationId = z.string().cuid().parse(req.params.conversationId);
+  const routeConversationId = req.params.conversationId;
   const messageInput = messageSchema.parse(req.body);
-  const members = await prisma.conversationMember.findMany({
-    where: { conversationId },
-    select: { userId: true },
-  });
-  if (!members.some((member) => member.userId === req.userId)) throw new HttpError(404, "Conversation not found");
-  if (messageInput.replyToId) {
-    const replyTarget = await prisma.message.findFirst({
-      where: { id: messageInput.replyToId, conversationId },
-      select: { id: true },
-    });
-    if (!replyTarget) throw new HttpError(404, "Reply target not found");
-  }
+  const { recipientId } = z.object({ recipientId: z.string().cuid().optional() }).parse(req.body);
   const message = await prisma.$transaction(async (tx) => {
+    let conversationId = routeConversationId === "draft" ? "" : z.string().cuid().parse(routeConversationId);
+    let members;
+    if (!conversationId) {
+      if (!recipientId) throw new HttpError(400, "A recipient is required for a new conversation");
+      if (recipientId === req.userId) throw new HttpError(400, "You cannot message yourself");
+      const recipient = await tx.user.findUnique({ where: { id: recipientId }, select: { id: true } });
+      if (!recipient) throw new HttpError(404, "User not found");
+      const directKey = [req.userId!, recipientId].sort().join(":");
+      const conversation = await tx.conversation.upsert({
+        where: { directKey },
+        create: {
+          directKey,
+          members: { create: [{ userId: req.userId! }, { userId: recipientId }] },
+        },
+        update: {},
+      });
+      conversationId = conversation.id;
+    }
+    members = await tx.conversationMember.findMany({
+      where: { conversationId },
+      select: { userId: true },
+    });
+    if (!members.some((member) => member.userId === req.userId)) throw new HttpError(404, "Conversation not found");
+    if (messageInput.replyToId) {
+      const replyTarget = await tx.message.findFirst({
+        where: { id: messageInput.replyToId, conversationId },
+        select: { id: true },
+      });
+      if (!replyTarget) throw new HttpError(404, "Reply target not found");
+    }
     const created = await tx.message.create({
       data: { conversationId, senderId: req.userId!, ...messageInput },
       include: {
@@ -1887,6 +1906,11 @@ api.post("/conversations/:conversationId/messages", authRequired, messageLimiter
     return created;
   });
   const response = serializeMessage(message, req.userId!);
+  const conversationId = response.conversationId;
+  const members = await prisma.conversationMember.findMany({
+    where: { conversationId },
+    select: { userId: true },
+  });
   emitToConversation(conversationId, "message:new", response);
   for (const member of members) {
     if (member.userId !== req.userId) {
