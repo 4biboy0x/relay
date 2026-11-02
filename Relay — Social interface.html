@@ -12600,13 +12600,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           reelScrollFrame = 0;
           const feed = $("#reelFeed");
           reelFeedScrollTop = feed.scrollTop;
-          const slides = $$(".reel-item", feed);
-          const center = feed.scrollTop + feed.clientHeight / 2;
-          const active = slides.reduce((best, slide) => {
-            const distance = Math.abs(slide.offsetTop + slide.offsetHeight / 2 - center);
-            return !best || distance < best.distance ? { slide, distance } : best;
-          }, null);
-          if (active) setActiveReel(active.slide.dataset.reelId);
+          if (typeof IntersectionObserver === "function" || !feed.clientHeight) return;
+          const index = Math.max(0, Math.min(
+            reelItems.length - 1,
+            Math.round(feed.scrollTop / feed.clientHeight),
+          ));
+          const reel = reelItems[index];
+          if (reel) setActiveReel(reel.id);
         });
       }
       function removeReelFeedVideo(stage) {
@@ -12816,27 +12816,38 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const activeVideo = activeStage?.querySelector(".reel-video");
         const activeReady = reelVideoReadyIds.has(activeReelId)
           || activeVideo?.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA;
-        reelItems.forEach((reel, index) => {
+        const nextIndex = activeIndex + 1;
+        const shouldPreloadNext = nextIndex < reelItems.length && activeReady && nextPreloadMode
+          && !document.hidden && (shouldAutoplayReels() || reelManualPlayback === activeReelId);
+        const retainedVideoIds = new Set();
+        if (activeIndex >= 0) retainedVideoIds.add(activeReelId);
+        if (activeIndex > 0) retainedVideoIds.add(reelItems[activeIndex - 1].id);
+        if (shouldPreloadNext) retainedVideoIds.add(reelItems[nextIndex].id);
+        $$(".reel-video", $("#reelFeed")).forEach((video) => {
+          const stage = video.closest("[data-reel-stage]");
+          if (stage && !retainedVideoIds.has(stage.dataset.reelStage)) removeReelFeedVideo(stage);
+        });
+        for (const index of [activeIndex - 1, activeIndex, nextIndex]) {
+          const reel = reelItems[index];
+          if (!reel) continue;
           const stage = $(`[data-reel-stage="${CSS.escape(reel.id)}"]`, $("#reelFeed"));
-          if (!stage) return;
+          if (!stage) continue;
           const isActive = index === activeIndex;
-          const isPrevious = index === activeIndex - 1;
-          const isNext = index === activeIndex + 1;
+          const isNext = index === nextIndex;
           const manualPlay = reelManualPlayback === reel.id;
           const shouldStart = isActive && (shouldAutoplayReels() || manualPlay);
-          const shouldPreloadNext = isNext && activeReady && nextPreloadMode && !document.hidden
-            && (shouldAutoplayReels() || reelManualPlayback === activeReelId);
+          const shouldPreload = isNext && shouldPreloadNext;
           let video = stage.querySelector(".reel-video");
           if (!video && isActive && (shouldAutoplayReels() || manualPlay)) {
             video = ensureReelVideo(reel, stage, "metadata");
-          } else if (!video && shouldPreloadNext) {
+          } else if (!video && shouldPreload) {
             video = ensureReelVideo(reel, stage, nextPreloadMode);
           }
           if (video) {
             applyPendingReelResume(video, reel.id);
             video.muted = isActive ? reelMuted : true;
             if (isActive) video.preload = "metadata";
-            else if (isNext && shouldPreloadNext) video.preload = nextPreloadMode;
+            else if (shouldPreload) video.preload = nextPreloadMode;
             else video.preload = "none";
             if (shouldStart && !document.hidden && video.paused) {
               playReelVideo(reel, stage, video).catch((error) => {
@@ -12851,10 +12862,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               video.pause();
             }
           }
-          const keepPreviousBuffer = isPrevious && Boolean(video);
-          const keepActive = isActive && Boolean(video);
-          if (!keepPreviousBuffer && !keepActive && !shouldPreloadNext && video) removeReelFeedVideo(stage);
-        });
+        }
         updateReelMuteControls();
       }
       function updateReelProgress(reel, video) {
@@ -16871,6 +16879,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         downloadUrl = "",
         downloadLabel = "media",
         directDownload = false,
+        showMore = true,
         canEdit = false,
         canDelete = false,
       } = {}) {
@@ -16886,7 +16895,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const downloadButton = directDownload && downloadUrl
           ? `<button class="message-tool-button" type="button" data-message-download="${esc(downloadUrl)}" aria-label="Download ${esc(downloadLabel)}" title="Download">${ic("download")}</button>`
           : "";
-        return `<div class="message-tools"><button class="message-tool-button message-reaction-add" type="button" data-message-react-open="${esc(messageId)}" aria-label="Add reaction" title="Add reaction">${ic("heart-plus")}</button><button class="message-tool-button" type="button" data-message-reply="${esc(messageId)}" aria-label="Reply to message" title="Reply">${ic("reply")}</button><button class="message-tool-button" type="button" data-message-more aria-expanded="false" aria-haspopup="menu" aria-label="More message actions" title="More">${ic("dots")}</button>${downloadButton}<div class="message-action-menu" role="menu" hidden>${editAction}${copyAction}${deleteAction}</div></div>`;
+        const moreButton = showMore
+          ? `<button class="message-tool-button" type="button" data-message-more aria-expanded="false" aria-haspopup="menu" aria-label="More message actions" title="More">${ic("dots")}</button><div class="message-action-menu" role="menu" hidden>${editAction}${copyAction}${deleteAction}</div>`
+          : "";
+        return `<div class="message-tools"><button class="message-tool-button message-reaction-add" type="button" data-message-react-open="${esc(messageId)}" aria-label="Add reaction" title="Add reaction">${ic("heart-plus")}</button><button class="message-tool-button" type="button" data-message-reply="${esc(messageId)}" aria-label="Reply to message" title="Reply">${ic("reply")}</button>${moreButton}${downloadButton}</div>`;
       }
       function revealMessageTools(owner) {
         document.querySelectorAll(".message-row.tools-visible").forEach((row) => {
@@ -17042,6 +17054,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 downloadUrl: imageUrl,
                 downloadLabel: isGif ? "GIF" : "image",
                 directDownload: true,
+                showMore: mine,
                 canDelete: mine,
               })}
             </div>`).join("")}</div>`
@@ -17063,6 +17076,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           downloadUrl: audioUrl,
           downloadLabel: "voice message",
           directDownload: Boolean(audioUrl),
+          showMore: mine || (!image && !audio),
           canEdit: mine && Boolean(text) && !image && !audio && !sticker,
           canDelete: mine,
         });
@@ -17231,7 +17245,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         } else if (message.senderId !== currentUser?.id) {
           toast(`New message from ${message.sender.displayName}`);
         }
-        renderConversations();
         refreshMessageBadge();
       }
       function syncInboxConversationPreview(conversationId, lastMessage, updatedAt) {
@@ -17293,7 +17306,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           updateMessageRowSpacing($("#chatLog"));
           restoreEmptyMessagesState();
         }
-        renderConversations().catch((error) => console.error("Could not refresh conversations after a message deletion", error));
         refreshMessageBadge();
       }
       function startMessageEditing(messageId) {
@@ -17864,6 +17876,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               searchQuery ? "Try a different search or filter." : "Start a new conversation to get things going.",
               true,
             );
+            resultList.dataset.loaded = "true";
           }
           return;
         }
@@ -17911,7 +17924,37 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           return `<button class="conversation-item${searchQuery ? " is-search-result" : ""}${searchMode === "messages" ? " message-search-result" : ""}${unreadCount ? " has-unread" : ""}" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}"${searchQuery ? ` aria-selected="${current}"` : ""}>${presenceAvatarMarkup(other, "sm")}<span class="grow"><span class="conversation-item-heading"><b>${esc(other?.displayName || "Relay user")}</b>${messageTime}</span><small>${preview}</small></span>${unreadCount ? `<span class="unread-count" aria-label="${unreadCount} unread messages">${unreadLabel}</span>` : ""}</button>`;
         }).join("");
         if (append) resultList.insertAdjacentHTML("beforeend", markup);
-        else resultList.innerHTML = markup;
+        else if (resultList.id !== "conversationList") resultList.innerHTML = markup;
+        else {
+          const template = document.createElement("template");
+          template.innerHTML = markup;
+          const existingRows = new Map(
+            $$(":scope > .conversation-item", resultList).map((row) => [row.dataset.conversation, row]),
+          );
+          const renderedRows = [...template.content.children].map((freshRow) => {
+            const existingRow = existingRows.get(freshRow.dataset.conversation);
+            if (!existingRow) return freshRow;
+            existingRows.delete(freshRow.dataset.conversation);
+
+            const currentAvatar = existingRow.querySelector(":scope > [data-presence-avatar]");
+            const freshAvatar = freshRow.querySelector(":scope > [data-presence-avatar]");
+            const presenceAvatar = currentAvatar?.dataset.presenceUser === freshAvatar?.dataset.presenceUser
+              ? currentAvatar
+              : freshAvatar;
+            for (const attribute of [...existingRow.attributes]) {
+              if (!freshRow.hasAttribute(attribute.name)) existingRow.removeAttribute(attribute.name);
+            }
+            for (const attribute of [...freshRow.attributes]) {
+              existingRow.setAttribute(attribute.name, attribute.value);
+            }
+            const freshChildren = [...freshRow.childNodes].filter((node) => node !== freshAvatar);
+            existingRow.replaceChildren(...(presenceAvatar ? [presenceAvatar] : []), ...freshChildren);
+            return existingRow;
+          });
+          existingRows.forEach((row) => row.remove());
+          resultList.replaceChildren(...renderedRows);
+          resultList.dataset.loaded = "true";
+        }
         const rows = Array.from(resultList.querySelectorAll(".conversation-item"));
         const renderedRows = append ? rows.slice(-items.length) : rows;
         renderedRows.forEach((row, index) => {
@@ -18172,30 +18215,55 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
         }, 500);
       }
-      async function renderConversations() {
-        if (!accessToken) return;
-        let finishSkeleton;
-        try {
-          delete $("#conversationList").dataset.loaded;
-          const cached = readViewCache("messages");
-          if (cached) {
-            $("#conversationList").innerHTML = cached;
-            syncConversationSelection(selectedConversationId || activeConversation?.id || "");
-          }
-          finishSkeleton = showDelayedSkeleton($("#conversationList"), "conversation");
-          const result = await api("/conversations");
-          await finishSkeleton();
-          conversations = result.items;
-          renderConversationItems(conversations);
-          writeViewCache("messages", $("#conversationList").innerHTML);
-          if ($("#conversationSearch").value.trim()) searchConversations();
-          else filterConversations();
-          const unread = conversations.reduce((total, item) => total + item.unreadCount, 0);
-          setUnreadBadge($("#mbadge"), unread, "messages");
-        } catch (error) {
-          await finishSkeleton?.();
-          renderError($("#conversationList"), error);
+      let conversationRefreshPromise = null;
+      let conversationRefreshQueued = false;
+      function renderConversations() {
+        if (!accessToken) return Promise.resolve();
+        if (conversationRefreshPromise) {
+          conversationRefreshQueued = true;
+          return conversationRefreshPromise;
         }
+        const request = (async () => {
+          let finishSkeleton;
+          try {
+            const conversationList = $("#conversationList");
+            if (!conversationList.querySelector(".conversation-item") && !conversationList.dataset.loaded) {
+              const cached = readViewCache("messages");
+              if (cached) {
+                conversationList.innerHTML = cached;
+                conversationList.dataset.loaded = "true";
+              }
+            }
+            if (conversationList.querySelector(".conversation-item")) {
+              syncConversationSelection(selectedConversationId || activeConversation?.id || "");
+            }
+            finishSkeleton = showDelayedSkeleton(conversationList, "conversation");
+            const result = await api("/conversations");
+            await finishSkeleton();
+            conversations = result.items;
+            renderConversationItems(conversations);
+            writeViewCache("messages", $("#conversationList").innerHTML);
+            if ($("#conversationSearch").value.trim()) searchConversations();
+            else filterConversations();
+            const unread = conversations.reduce((total, item) => total + item.unreadCount, 0);
+            setUnreadBadge($("#mbadge"), unread, "messages");
+          } catch (error) {
+            await finishSkeleton?.();
+            if (!$("#conversationList").querySelector(".conversation-item")) {
+              renderError($("#conversationList"), error);
+            } else {
+              console.error("Could not refresh conversations.", error);
+            }
+          }
+        })();
+        conversationRefreshPromise = request.finally(() => {
+          conversationRefreshPromise = null;
+          if (conversationRefreshQueued) {
+            conversationRefreshQueued = false;
+            void renderConversations();
+          }
+        });
+        return conversationRefreshPromise;
       }
       async function refreshMessageBadge() {
         if (!currentUser) return;
