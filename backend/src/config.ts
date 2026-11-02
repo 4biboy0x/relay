@@ -26,7 +26,6 @@ const configSchema = z.object({
   FFMPEG_PATH: z.string().min(1).default("ffmpeg"),
   FFPROBE_PATH: z.string().min(1).default("ffprobe"),
   REEL_KEEP_ORIGINAL: z.enum(["true", "false"]).default("false").transform((value) => value === "true"),
-  REEL_REPORT_AUTO_HIDE_COUNT: z.coerce.number().int().positive().default(5),
 }).superRefine((value, context) => {
   if (value.REEL_STORAGE_DRIVER === "s3" && !value.REEL_S3_BUCKET) {
     context.addIssue({

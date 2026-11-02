@@ -1100,16 +1100,7 @@ router.post("/:id/report", authRequired, writeLimiter, asyncRoute(async (req, re
         details: input.details,
       },
     });
-    const pendingCount = await tx.reelReport.count({
-      where: { reelId, status: ReelReportStatus.PENDING },
-    });
-    if (pendingCount >= config.REEL_REPORT_AUTO_HIDE_COUNT) {
-      await tx.reel.update({
-        where: { id: reelId },
-        data: { status: ReelStatus.REMOVED, deletedAt: new Date() },
-      });
-    }
-    return { hidden: pendingCount >= config.REEL_REPORT_AUTO_HIDE_COUNT };
+    return { hidden: false, queuedForReview: true };
   });
   res.status(201).json(result);
 }));

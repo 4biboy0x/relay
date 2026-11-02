@@ -5,6 +5,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import bcrypt from "bcryptjs";
 import { randomBytes, randomUUID } from "node:crypto";
+import path from "node:path";
 import { NotificationType, Prisma, type InteractionType, type NotificationType as NotificationTypeValue } from "@prisma/client";
 import { z } from "zod";
 import { authOptional, authRequired, createAccessToken, hashPassword, hashRefreshToken, issueRefreshToken, verifyPassword } from "./auth";
@@ -156,38 +157,33 @@ const mediaUrlFields = new Set([
   "url",
   "videoUrl",
 ]);
-const normalizeMediaResponse = async (value: unknown, field = ""): Promise<unknown> => {
+const normalizeMediaResponse = async (value: unknown, field = "", viewerId?: string): Promise<unknown> => {
   if (typeof value === "string" && mediaUrlFields.has(field) && /^\/uploads\//i.test(value)) {
     try {
-      return await createUploadReadUrl(value);
+      return await createUploadReadUrl(value, viewerId);
     } catch (error) {
       console.error("Could not sign media URL for API response.", error);
       return value;
     }
   }
-  if (Array.isArray(value)) return Promise.all(value.map((item) => normalizeMediaResponse(item, field)));
+  if (Array.isArray(value)) return Promise.all(value.map((item) => normalizeMediaResponse(item, field, viewerId)));
   if (!value || typeof value !== "object" || Object.getPrototypeOf(value) !== Object.prototype) return value;
   const entries = await Promise.all(Object.entries(value).map(async ([key, nested]) =>
-    [key, await normalizeMediaResponse(nested, key)] as const));
+    [key, await normalizeMediaResponse(nested, key, viewerId)] as const));
   return Object.fromEntries(entries);
 };
-app.use((_req, res, next) => {
+app.use((req, res, next) => {
   const sendJson = res.json.bind(res);
   Object.defineProperty(res, "json", {
     configurable: true,
     value: (body: unknown) => {
-      void normalizeMediaResponse(body).then(sendJson).catch(next);
+      void normalizeMediaResponse(body, "", req.userId).then(sendJson).catch(next);
       return res;
     },
   });
   next();
 });
 app.use(express.json({ limit: "32kb" }));
-app.use("/uploads", express.static(uploadDirectory, {
-  maxAge: "1d",
-  immutable: true,
-  setHeaders: (res) => res.setHeader("Cross-Origin-Resource-Policy", "cross-origin"),
-}));
 app.get("/uploads/:filename", asyncRoute(async (req, res) => {
   const filename = req.params.filename;
   if (typeof filename !== "string"
@@ -195,9 +191,15 @@ app.get("/uploads/:filename", asyncRoute(async (req, res) => {
     res.sendStatus(404);
     return;
   }
-  const url = await createUploadReadUrl(`/uploads/${filename}`);
+  const url = await createUploadReadUrl(`/uploads/${filename}`, undefined, req.query.token);
   if (url.startsWith("/uploads/")) {
-    res.sendStatus(404);
+    if (!req.query.token) {
+      res.sendStatus(404);
+      return;
+    }
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    res.setHeader("Cache-Control", "private, max-age=86400, immutable");
+    res.sendFile(path.join(uploadDirectory, filename));
     return;
   }
   res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
@@ -697,11 +699,15 @@ api.patch("/users/me/email", authRequired, asyncRoute(async (req, res) => {
   }
   const existing = await prisma.user.findUnique({ where: { email: input.email }, select: { id: true } });
   if (existing && existing.id !== req.userId) throw new HttpError(409, "That email is already in use");
-  const user = await prisma.user.update({
-    where: { id: req.userId! },
-    data: { email: input.email },
-    select: { ...publicUser, email: true },
+  const user = await prisma.$transaction(async (tx) => {
+    await tx.refreshToken.deleteMany({ where: { userId: req.userId! } });
+    return tx.user.update({
+      where: { id: req.userId! },
+      data: { email: input.email },
+      select: { ...publicUser, email: true },
+    });
   });
+  res.clearCookie(refreshCookie, { ...refreshCookieOptions, maxAge: undefined });
   res.json(user);
 }));
 
@@ -711,7 +717,14 @@ api.patch("/users/me/password", authRequired, asyncRoute(async (req, res) => {
   if (!account || !(await verifyPassword(input.currentPassword, account.passwordHash))) {
     throw new HttpError(401, "Current password is incorrect");
   }
-  await prisma.user.update({ where: { id: req.userId! }, data: { passwordHash: await hashPassword(input.password) } });
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: req.userId! },
+      data: { passwordHash: await hashPassword(input.password) },
+    });
+    await tx.refreshToken.deleteMany({ where: { userId: req.userId! } });
+  });
+  res.clearCookie(refreshCookie, { ...refreshCookieOptions, maxAge: undefined });
   res.status(204).end();
 }));
 

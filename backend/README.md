@@ -34,7 +34,7 @@ Connected clients join a private Socket.IO room for the active Reel. Likes, repo
 
 Ensure the reverse proxy permits request bodies up to at least 100 MB and sufficient upload/processing timeouts. Deleted Reel media is retained for seven days, then removed by the worker; `storageDeletedAt` records successful cleanup so object deletion is not retried indefinitely. Uploads left incomplete for one hour are expired by the worker.
 
-Moderation is intentionally limited: users can report a Reel, and it is hidden when the configured pending-report threshold is reached (`REEL_REPORT_AUTO_HIDE_COUNT`, default 5). A Reel owner can inspect reports on their own content and update their statuses. This implementation does not include a central admin moderation role or block/mute-based feed exclusion.
+Moderation is review-driven: users can report a Reel, and reports remain pending for moderator review. Reports never automatically remove public content. A Reel owner can inspect reports on their own content and update their statuses. This implementation does not include a central admin moderation role or block/mute-based feed exclusion.
 
 ## Neon Realtime demo
 
