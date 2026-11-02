@@ -10224,6 +10224,7 @@
       const messageSearchHighlightTimers = new WeakMap();
       let pendingConversationRestoreId = "";
       let pendingMessageNavigation = null;
+      let pendingMessageDraft = null;
       let conversationSelectionGeneration = 0;
       let loadingOlderMessages = false;
       let socket = null;
@@ -15462,7 +15463,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           displayName: "User",
           handle: "",
         };
-        go("messages");
+        pendingMessageDraft = { userId, profile };
+        go("messages", false);
+        location.hash = "#/messages";
+      }
+      function applyMessageDraft(userId, profile) {
         activeConversation = {
           id: `draft-${userId}`,
           members: [currentUser, profile],
@@ -15489,7 +15494,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         syncMessageComposer();
         $("#sendMessage").disabled = true;
         syncConversationSelection("");
-        location.hash = "#/messages";
         requestAnimationFrame(() => $("#messageInput").focus());
       }
       async function searchDirectory(rawHandle) {
@@ -20079,6 +20083,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         } else {
           pendingConversationRestoreId = "";
           pendingMessageNavigation = null;
+          if (v !== "messages") pendingMessageDraft = null;
           conversationSelectionGeneration += 1;
           syncConversationSelection(activeConversation?.id || "");
         }
@@ -20111,6 +20116,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               if (v === "notifs") await renderNotifications();
               if (v === "messages") {
                 await renderConversations();
+                if (pendingMessageDraft) {
+                  const draft = pendingMessageDraft;
+                  pendingMessageDraft = null;
+                  applyMessageDraft(draft.userId, draft.profile);
+                  return;
+                }
                 if (pendingMessageNavigation) {
                   const pending = pendingMessageNavigation;
                   pendingMessageNavigation = null;
