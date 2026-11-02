@@ -5810,6 +5810,50 @@
         height: 20px;
         flex: none;
       }
+      .message-action-menu [data-message-menu-action="delete"] { color: var(--like); }
+      .message-inline-editor {
+        display: grid;
+        min-width: min(240px, 70vw);
+        gap: 8px;
+        white-space: normal;
+      }
+      .message-inline-editor textarea {
+        width: 100%;
+        min-height: 72px;
+        resize: vertical;
+        padding: 8px 10px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        background: var(--surface);
+        font: inherit;
+        line-height: 1.4;
+      }
+      .message-inline-editor textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+      .message-inline-editor-actions { display: flex; justify-content: flex-end; gap: 6px; }
+      .message-inline-editor-actions button {
+        min-height: 30px;
+        padding: 0 10px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        background: var(--surface);
+        font: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .message-inline-editor-actions [data-message-edit-save] {
+        border-color: var(--accent);
+        color: #fff;
+        background: var(--accent);
+      }
+      .message-inline-editor [role="alert"] {
+        margin: 0;
+        color: var(--like);
+        font-size: 12px;
+        line-height: 1.4;
+      }
       .message-reaction-picker {
         position: fixed;
         z-index: 101;
@@ -10308,6 +10352,8 @@
           socket.on("profile:updated", receiveProfileUpdate);
           socket.on("presence:update", receivePresenceUpdate);
           socket.on("message:new", receiveMessage);
+          socket.on("message:updated", receiveMessageUpdated);
+          socket.on("message:deleted", receiveMessageDeleted);
           socket.on("message:reaction", receiveMessageReaction);
           socket.on("messages:unread-increment", refreshMessageBadge);
           socket.on("typing:update", receiveTyping);
@@ -16177,18 +16223,28 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function relayVoicePlayIcon() {
         return `<span class="relay-voice-play-icons" aria-hidden="true"><svg class="relay-voice-play-icon" viewBox="0 0 24 24"><path d="M9 5.6v12.8a.8.8 0 0 0 1.2.7l10.4-6.4a.8.8 0 0 0 0-1.4L10.2 4.9A.8.8 0 0 0 9 5.6z"/></svg><svg class="relay-voice-pause-icon" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1.5"/><rect x="14" y="5" width="4" height="14" rx="1.5"/></svg></span>`;
       }
-      function messageToolsMarkup({ messageId = "", copyText = "", downloadUrl = "", downloadLabel = "media", directDownload = false } = {}) {
+      function messageToolsMarkup({
+        messageId = "",
+        copyText = "",
+        downloadUrl = "",
+        downloadLabel = "media",
+        directDownload = false,
+        canEdit = false,
+        canDelete = false,
+      } = {}) {
         const copyAction = copyText
           ? `<button type="button" role="menuitem" data-message-menu-action="copy" data-message-copy="${esc(copyText)}">${ic("copy")}<span>Copy message text</span></button>`
           : "";
-        const downloadAction = downloadUrl
-          ? `<button type="button" role="menuitem" data-message-menu-action="download" data-message-download="${esc(downloadUrl)}">${ic("download")}<span>Download</span></button>`
+        const editAction = canEdit
+          ? `<button type="button" role="menuitem" data-message-menu-action="edit" data-message-id="${esc(messageId)}"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5 4 4M4 20l4.2-.8L19 8.4a2.1 2.1 0 0 0-3-3L5.2 16.2 4 20Z"/></svg><span>Edit message</span></button>`
           : "";
-        const replyAction = `<button type="button" role="menuitem" data-message-menu-action="reply" data-message-id="${esc(messageId)}">${ic("reply")}<span>Reply</span></button>`;
+        const deleteAction = canDelete
+          ? `<button type="button" role="menuitem" data-message-menu-action="delete" data-message-id="${esc(messageId)}"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 14h12l1-14M9 7V4h6v3"/></svg><span>Delete message</span></button>`
+          : "";
         const downloadButton = directDownload && downloadUrl
           ? `<button class="message-tool-button" type="button" data-message-download="${esc(downloadUrl)}" aria-label="Download ${esc(downloadLabel)}" title="Download">${ic("download")}</button>`
           : "";
-        return `<div class="message-tools"><button class="message-tool-button message-reaction-add" type="button" data-message-react-open="${esc(messageId)}" aria-label="Add reaction" title="Add reaction">${ic("heart-plus")}</button><button class="message-tool-button" type="button" data-message-reply="${esc(messageId)}" aria-label="Reply to message" title="Reply">${ic("reply")}</button><button class="message-tool-button" type="button" data-message-more aria-expanded="false" aria-haspopup="menu" aria-label="More message actions" title="More">${ic("dots")}</button>${downloadButton}<div class="message-action-menu" role="menu" hidden>${replyAction}${copyAction}${downloadAction}</div></div>`;
+        return `<div class="message-tools"><button class="message-tool-button message-reaction-add" type="button" data-message-react-open="${esc(messageId)}" aria-label="Add reaction" title="Add reaction">${ic("heart-plus")}</button><button class="message-tool-button" type="button" data-message-reply="${esc(messageId)}" aria-label="Reply to message" title="Reply">${ic("reply")}</button><button class="message-tool-button" type="button" data-message-more aria-expanded="false" aria-haspopup="menu" aria-label="More message actions" title="More">${ic("dots")}</button>${downloadButton}<div class="message-action-menu" role="menu" hidden>${editAction}${copyAction}${deleteAction}</div></div>`;
       }
       function revealMessageTools(owner) {
         document.querySelectorAll(".message-row.tools-visible").forEach((row) => {
@@ -16339,7 +16395,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                   ? `<img class="message-media message-media-static" src="${esc(imageUrl)}" width="${width || 1}" height="${height || 1}" alt="Shared GIF" loading="${mediaLoading}" decoding="async" />`
                   : `<button class="message-media-button" type="button" data-lightbox-image="${esc(imageUrl)}" aria-label="Open shared image"><img class="message-media" src="${esc(imageUrl)}" width="${width || 1}" height="${height || 1}" alt="Shared image" loading="${mediaLoading}" decoding="async" /></button>`}
               </div>
-              ${messageToolsMarkup({ messageId: message.id, downloadUrl: imageUrl, downloadLabel: isGif ? "GIF" : "image", directDownload: true })}
+              ${messageToolsMarkup({
+                messageId: message.id,
+                downloadUrl: imageUrl,
+                downloadLabel: isGif ? "GIF" : "image",
+                directDownload: true,
+                canDelete: mine,
+              })}
             </div>`).join("")}</div>`
           : "";
         const waveform = validVoiceWaveform(message.waveform) ? message.waveform : Array(voiceWaveformBarCount).fill(0);
@@ -16358,6 +16420,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           copyText: text ? body : "",
           downloadUrl: audioUrl,
           downloadLabel: "voice message",
+          directDownload: Boolean(audioUrl),
+          canEdit: mine && Boolean(text) && !image && !audio && !sticker,
+          canDelete: mine,
         });
         const bubbleActions = image ? "" : actions;
         const replyTo = message.replyTo || null;
@@ -16509,6 +16574,81 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         renderConversations();
         refreshMessageBadge();
+      }
+      function replaceMessageRow(message) {
+        const previous = messagesById.get(message.id);
+        const updated = { ...previous, ...message };
+        messagesById.set(updated.id, updated);
+        if (selectedMessageReply?.message.id === updated.id) {
+          selectedMessageReply = { ...selectedMessageReply, message: updated };
+          renderMessageReplyPreview();
+        }
+        const row = $$(".message-row", $("#chatLog"))
+          .find((item) => item.querySelector(".message-bubble")?.dataset.messageId === updated.id);
+        if (row && activeConversation?.id === updated.conversationId) {
+          const template = document.createElement("template");
+          template.innerHTML = messageMarkup(updated);
+          const replacement = template.content.firstElementChild;
+          if (replacement) {
+            row.replaceWith(replacement);
+            updateMessageRowSpacing($("#chatLog"));
+            bindVoiceMessages($("#chatLog"));
+            bindMessageMediaScroll($("#chatLog"));
+          }
+        }
+        renderConversations().catch((error) => console.error("Could not refresh conversations after a message update", error));
+      }
+      function receiveMessageUpdated(message) {
+        if (!message?.id || !message?.conversationId) return;
+        replaceMessageRow(message);
+      }
+      function receiveMessageDeleted(event) {
+        if (!event?.messageId || !event?.conversationId) return;
+        messagesById.delete(event.messageId);
+        if (selectedMessageReply?.message.id === event.messageId) clearMessageReplyTarget();
+        if (activeConversation?.id === event.conversationId
+          && $("#chatLog").dataset.conversationId === event.conversationId) {
+          $$(".message-row", $("#chatLog"))
+            .find((row) => row.querySelector(".message-bubble")?.dataset.messageId === event.messageId)
+            ?.remove();
+          updateMessageRowSpacing($("#chatLog"));
+          restoreEmptyMessagesState();
+        }
+        renderConversations().catch((error) => console.error("Could not refresh conversations after a message deletion", error));
+        refreshMessageBadge();
+      }
+      function openInlineMessageEditor(messageId) {
+        const message = messagesById.get(messageId);
+        if (!message || message.senderId !== currentUser?.id
+          || message.mediaUrl || message.audioUrl || message.stickerId) return;
+        const bubble = $$(".message-bubble", $("#chatLog"))
+          .find((item) => item.dataset.messageId === messageId);
+        if (!bubble) return;
+        bubble.innerHTML = `<div class="message-inline-editor" data-message-inline-editor><textarea data-message-edit-text aria-label="Edit message" maxlength="2000"></textarea><div class="message-inline-editor-actions"><button type="button" data-message-edit-cancel>Cancel</button><button type="button" data-message-edit-save>Save</button></div><p data-message-edit-error role="alert" hidden></p></div>`;
+        bubble.querySelector("[data-message-edit-text]").value = message.body || "";
+        bubble.querySelector("[data-message-edit-text]").focus();
+      }
+      async function saveInlineMessageEdit(button) {
+        const editor = button.closest("[data-message-inline-editor]");
+        const bubble = editor?.closest(".message-bubble");
+        const messageId = bubble?.dataset.messageId;
+        const text = editor?.querySelector("[data-message-edit-text]").value.trim();
+        if (!messageId || !text) return;
+        const errorMessage = editor.querySelector("[data-message-edit-error]");
+        button.disabled = true;
+        try {
+          const message = await api(`/messages/${encodeURIComponent(messageId)}`, {
+            method: "PATCH",
+            body: JSON.stringify({ body: text }),
+          });
+          receiveMessageUpdated(message);
+          toast("Message updated.");
+        } catch (error) {
+          errorMessage.textContent = error.message || "Could not update this message.";
+          errorMessage.hidden = false;
+        } finally {
+          if (button.isConnected) button.disabled = false;
+        }
       }
       function updateMessageReactions(messageId, conversationId, reactions, actor = null) {
         if (activeConversation?.id !== conversationId
@@ -18726,25 +18866,47 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const action = menuAction.dataset.messageMenuAction;
           const messageId = menuAction.dataset.messageId || owner?.querySelector(".message-bubble")?.dataset.messageId;
           const copyText = menuAction.dataset.messageCopy;
-          const downloadUrl = menuAction.dataset.messageDownload;
           closeMessageActionMenus();
           try {
-            if (action === "reply" && messageId) {
-              setMessageReplyTarget(messageId);
-              return;
-            } else if (action === "react" && messageId && trigger && owner) {
-              openMessageReactionPicker(messageId, trigger, owner);
-              return;
-            } else if (action === "copy") {
+            if (action === "copy") {
               await copyMessageText(copyText || "");
               toast("Message copied.");
-            } else if (action === "download" && downloadUrl) {
-              await downloadMessageMedia(downloadUrl);
+            } else if (action === "edit" && messageId) {
+              openInlineMessageEditor(messageId);
+              return;
+            } else if (action === "delete" && messageId) {
+              if (!await confirmDialog({
+                title: "Delete message?",
+                message: "This can't be undone.",
+                confirmLabel: "Delete",
+                danger: true,
+              })) return;
+              const result = await api(`/messages/${encodeURIComponent(messageId)}`, { method: "DELETE" });
+              receiveMessageDeleted(result);
+              toast("Message deleted.");
             }
           } catch (error) {
             toast(error.message || "Message action failed.");
           }
           trigger?.focus();
+          return;
+        }
+        const editCancel = e.target.closest("[data-message-edit-cancel]");
+        if (editCancel) {
+          const bubble = editCancel.closest(".message-bubble");
+          const message = messagesById.get(bubble?.dataset.messageId);
+          if (message && bubble) {
+            const template = document.createElement("template");
+            template.innerHTML = messageMarkup(message);
+            const replacement = template.content.firstElementChild;
+            if (replacement) bubble.closest(".message-row").replaceWith(replacement);
+            updateMessageRowSpacing($("#chatLog"));
+          }
+          return;
+        }
+        const editSave = e.target.closest("[data-message-edit-save]");
+        if (editSave) {
+          await saveInlineMessageEdit(editSave);
           return;
         }
         if (!e.target.closest(".message-action-menu, .message-tools")) closeMessageActionMenus();

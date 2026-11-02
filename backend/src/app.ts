@@ -1878,6 +1878,141 @@ api.post("/conversations/:conversationId/messages", authRequired, messageLimiter
   res.status(201).json(response);
 }));
 
+const messageEditSchema = z.object({
+  body: z.string().trim().min(1).max(2000),
+}).strict();
+
+api.patch("/messages/:messageId", authRequired, messageLimiter, asyncRoute(async (req, res) => {
+  const messageId = z.string().cuid().parse(req.params.messageId);
+  const { body } = messageEditSchema.parse(req.body);
+  const message = await prisma.$transaction(async (tx) => {
+    const updated = await tx.message.updateMany({
+      where: {
+        id: messageId,
+        senderId: req.userId!,
+        conversation: { members: { some: { userId: req.userId! } } },
+        mediaUrl: null,
+        audioUrl: null,
+        stickerId: null,
+      },
+      data: { body },
+    });
+    if (!updated.count) throw new HttpError(404, "Message not found or cannot be edited");
+    return tx.message.findUniqueOrThrow({
+      where: { id: messageId },
+      include: {
+        sender: { select: publicUser },
+        replyTo: { include: { sender: { select: publicUser } } },
+        reactions: { select: { emoji: true, userId: true } },
+      },
+    });
+  });
+  const response = serializeMessage(message, req.userId!);
+  let members: Array<{ userId: string }> = [];
+  try {
+    members = await prisma.conversationMember.findMany({
+      where: { conversationId: message.conversationId },
+      select: { userId: true },
+    });
+  } catch (error) {
+    console.error(`Could not load conversation members to broadcast edited message ${messageId}`, error);
+  }
+  for (const member of members) {
+    try {
+      emitToUser(member.userId, "message:updated", serializeMessage(message, member.userId));
+    } catch (error) {
+      console.error(`Could not broadcast an edited message to user ${member.userId}`, error);
+    }
+  }
+  res.json(response);
+}));
+
+api.delete("/messages/:messageId", authRequired, messageLimiter, asyncRoute(async (req, res) => {
+  const messageId = z.string().cuid().parse(req.params.messageId);
+  const result = await prisma.$transaction(async (tx) => {
+    const message = await tx.message.findFirst({
+      where: {
+        id: messageId,
+        senderId: req.userId!,
+        conversation: { members: { some: { userId: req.userId! } } },
+      },
+      select: { id: true, conversationId: true },
+    });
+    if (!message) throw new HttpError(404, "Message not found");
+    const [reactionActivities, members] = await Promise.all([
+      tx.conversationReactionActivity.findMany({
+        where: { messageId, isActive: true },
+        select: { actorId: true, createdAt: true },
+      }),
+      tx.conversationMember.findMany({
+        where: { conversationId: message.conversationId },
+        select: { userId: true, lastReadAt: true },
+      }),
+    ]);
+    for (const activity of reactionActivities) {
+      for (const member of members) {
+        if (member.userId === activity.actorId || (member.lastReadAt && member.lastReadAt >= activity.createdAt)) continue;
+        await tx.conversationMember.updateMany({
+          where: {
+            conversationId: message.conversationId,
+            userId: member.userId,
+            unreadReactionCount: { gt: 0 },
+          },
+          data: { unreadReactionCount: { decrement: 1 } },
+        });
+      }
+    }
+    await tx.message.delete({ where: { id: messageId } });
+    const [latestMessage, latestReactionActivity, conversation] = await Promise.all([
+      tx.message.findFirst({
+        where: { conversationId: message.conversationId },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        select: { createdAt: true },
+      }),
+      tx.conversationReactionActivity.findFirst({
+        where: { conversationId: message.conversationId, isActive: true },
+        orderBy: { createdAt: "desc" },
+        select: { actorId: true, emoji: true, targetType: true, targetText: true, createdAt: true },
+      }),
+      tx.conversation.findUniqueOrThrow({
+        where: { id: message.conversationId },
+        select: { createdAt: true },
+      }),
+    ]);
+    const reactionIsLatest = Boolean(
+      latestReactionActivity
+        && (!latestMessage || latestReactionActivity.createdAt > latestMessage.createdAt),
+    );
+    const lastMessage = reactionIsLatest && latestReactionActivity
+      ? reactionLastMessage(latestReactionActivity)
+      : null;
+    const updatedAt = reactionIsLatest && latestReactionActivity
+      ? latestReactionActivity.createdAt
+      : latestMessage?.createdAt || conversation.createdAt;
+    await tx.conversation.update({
+      where: { id: message.conversationId },
+      data: {
+        lastMessage: lastMessage ?? Prisma.DbNull,
+        updatedAt,
+      },
+    });
+    return { conversationId: message.conversationId, lastMessage, updatedAt, members };
+  });
+  for (const member of result.members) {
+    try {
+      emitToUser(member.userId, "message:deleted", {
+        messageId,
+        conversationId: result.conversationId,
+        lastMessage: result.lastMessage,
+        updatedAt: result.updatedAt,
+      });
+    } catch (error) {
+      console.error(`Could not broadcast a deleted message to user ${member.userId}`, error);
+    }
+  }
+  res.json({ messageId, conversationId: result.conversationId });
+}));
+
 const updateMessageReaction = async (req: express.Request, res: express.Response, active: boolean): Promise<void> => {
   const messageId = z.string().cuid().parse(req.params.messageId);
   const emoji = messageReactionEmojiSchema.parse(active ? req.body?.emoji : req.query.emoji);
