@@ -5671,31 +5671,6 @@
         font-size: 13px;
         line-height: 18px;
       }
-      .message-bubble.reply-message-bubble {
-        padding: 8px 14px;
-        border-radius: 18px;
-        font-size: 15px;
-      }
-      .message-row > .reply-stack + .message-bubble.reply-message-bubble { margin-block-start: 4px; }
-      .message-bubble.reply-message-bubble.mine { font-weight: 600; }
-      .bubble-meta {
-        display: inline-flex;
-        align-items: center;
-        gap: 3px;
-        margin-inline-start: 8px;
-        color: currentColor;
-        font-size: 11px;
-        font-weight: 700;
-        line-height: 1;
-        opacity: .9;
-        white-space: nowrap;
-        vertical-align: baseline;
-      }
-      .bubble-meta .i {
-        width: 12px;
-        height: 12px;
-        flex: none;
-      }
       .message-tools {
         position: absolute;
         top: 50%;
@@ -15980,15 +15955,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           `${mediaContent}${gifBadge}`,
         );
       }
-      function replyBubbleMetaMarkup(message, mine) {
-        const date = new Date(message.createdAt);
-        if (!Number.isFinite(date.getTime())) return "";
-        const time = date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-        const sentIcon = mine
-          ? `<span aria-label="Sent"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6.25"/><path d="m5 8 2 2 4-4"/></svg></span>`
-          : "";
-        return `<span class="bubble-meta"><time datetime="${date.toISOString()}">${esc(time)}</time>${sentIcon}</span>`;
-      }
       function renderMessageReplyPreview() {
         const preview = $("#messageReplyPreview");
         const target = selectedMessageReply;
@@ -16353,8 +16319,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const replyStack = hasReply
           ? `<div class="reply-stack">${replyHeaderMarkup(replyTo?.sender?.displayName || replyTo?.senderName || "Message", replyTo?.id || "")}${replyPreviewMarkup(replyTo, { jump: Boolean(replyTo?.id) })}</div>`
           : "";
-        const replyMeta = hasReply ? replyBubbleMetaMarkup(message, mine) : "";
-        return `<div class="message-row${mine ? " mine" : ""}" data-message-row data-conversation-id="${esc(message.conversationId)}" data-sender-id="${esc(message.senderId || "")}">${replyStack}<div class="message-bubble${mine ? " mine" : ""}${hasReply ? " reply-message-bubble" : ""}${mediaOnly ? " media-message" : ""}${imageOnly ? " image-message" : ""}${audioOnly ? " audio-message" : ""}${stickerOnly ? " sticker-message" : ""}" data-message-id="${esc(message.id)}">${image}${audio}${sticker}${text}${replyMeta}${bubbleActions}</div>${messageReactionsMarkup(message)}</div>`;
+        return `<div class="message-row${mine ? " mine" : ""}" data-message-row data-conversation-id="${esc(message.conversationId)}" data-sender-id="${esc(message.senderId || "")}">${replyStack}<div class="message-bubble${mine ? " mine" : ""}${mediaOnly ? " media-message" : ""}${imageOnly ? " image-message" : ""}${audioOnly ? " audio-message" : ""}${stickerOnly ? " sticker-message" : ""}" data-message-id="${esc(message.id)}">${image}${audio}${sticker}${text}${bubbleActions}</div>${messageReactionsMarkup(message)}</div>`;
       }
       function updateMessageRowSpacing(container = $("#chatLog")) {
         const rows = [...container.children].filter((element) => element.matches(".message-row"));
