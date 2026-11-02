@@ -6212,25 +6212,19 @@
       .message-image-frame {
         width: 100%;
         max-width: 100%;
-        aspect-ratio: 1;
+        max-height: 420px;
         overflow: hidden;
         border-radius: 16px;
         background: var(--surface-2);
       }
-      .message-image-list[data-count="1"].is-portrait {
-        width: min(240px, 100%);
-      }
-      .message-image-frame.is-portrait { aspect-ratio: 3 / 5; }
-      .message-image-frame.is-square { aspect-ratio: 1; }
-      .message-image-frame.is-banner { aspect-ratio: 3 / 1; }
-      .message-image-frame.is-landscape { aspect-ratio: 3 / 2; }
       .message-media {
         display: block;
         width: 100%;
         height: 100%;
         max-width: 100%;
+        max-height: 420px;
         border-radius: inherit;
-        object-fit: cover;
+        object-fit: contain;
         object-position: center;
         opacity: 0;
         transition: opacity 150ms ease;
@@ -6320,8 +6314,7 @@
         .message-bubble.image-message { max-width: min(220px, 100%); }
         .message-image-list { width: min(220px, 100%); }
         .message-image-list[data-count="1"] { width: min(220px, 100%); }
-        .message-image-list[data-count="1"].is-portrait { width: min(168px, 100%); }
-        .message-image-frame.is-portrait { max-height: 280px; }
+        .message-media { width: 100%; }
         .message-bubble.audio-message,
         .relay-voice { width: 220px; max-width: 100%; }
       }
@@ -8487,8 +8480,8 @@
           <path d="M4 9h9a6 6 0 0 1 6 6v2" />
         </symbol>
         <symbol id="heart-plus" viewBox="0 0 24 24">
-          <path d="M19.5 13.5 12 20l-7-6.2C2 11 2 6.5 5 4.5c2.2-1.5 5-.8 7 1.4 1.4-1.5 3.2-2.2 5-2" />
-          <path d="M19 3v6M16 6h6" />
+          <path d="M12 20C6 15.5 3 12.5 3 9a4.2 4.2 0 0 1 9-2a4.2 4.2 0 0 1 9 2c0 1-.2 1.8-.6 2.6" />
+          <path d="M18 14.5v5M15.5 17h5" />
         </symbol>
         <symbol id="contrast" viewBox="0 0 24 24">
           <circle cx="12" cy="12" r="10" />
@@ -16311,29 +16304,23 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const width = Number(dimensions?.width);
           const height = Number(dimensions?.height);
           const hasDimensions = Number.isFinite(width) && width > 0 && Number.isFinite(height) && height > 0;
-          const ratio = hasDimensions ? width / height : 1;
-          const aspectClass = !hasDimensions || ratio <= 1.1 && ratio >= 0.9 ? "is-square"
-            : ratio < 0.9 ? "is-portrait"
-              : ratio > 2.2 ? "is-banner" : "is-landscape";
           return {
             imageUrl,
             isGif: isGifMediaUrl(imageUrl),
             width: hasDimensions ? width : 0,
             height: hasDimensions ? height : 0,
-            aspectClass,
             hasDimensions,
           };
         });
         const bodyIsGifUrl = Boolean(bodyGifUrl && mediaItems.some(({ isGif }) => isGif));
-        const singlePortrait = mediaItems.length === 1 && mediaItems[0].aspectClass === "is-portrait";
         const mediaLoading = eager ? "eager" : "lazy";
         const image = mediaItems.length
-          ? `<div class="message-image-list${singlePortrait ? " is-portrait" : ""}" data-count="${mediaItems.length}">${mediaItems.map(({ imageUrl, isGif, width, height, aspectClass, hasDimensions }) => `
+          ? `<div class="message-image-list" data-count="${mediaItems.length}">${mediaItems.map(({ imageUrl, isGif, width, height, hasDimensions }) => `
             <div class="message-image-item${mine ? " mine" : ""}">
-              <div class="message-image-frame ${aspectClass}" data-media-width="${width}" data-media-height="${height}" data-media-dimensions="${hasDimensions ? "stored" : "fallback"}">
+              <div class="message-image-frame" style="aspect-ratio:${width || 1} / ${height || 1}" data-media-width="${width}" data-media-height="${height}" data-media-dimensions="${hasDimensions ? "stored" : "fallback"}">
                 ${isGif
-                  ? `<img class="message-media message-media-static" src="${esc(imageUrl)}" alt="Shared GIF" loading="${mediaLoading}" decoding="async" />`
-                  : `<button class="message-media-button" type="button" data-lightbox-image="${esc(imageUrl)}" aria-label="Open shared image"><img class="message-media" src="${esc(imageUrl)}" alt="Shared image" loading="${mediaLoading}" decoding="async" /></button>`}
+                  ? `<img class="message-media message-media-static" src="${esc(imageUrl)}" width="${width || 1}" height="${height || 1}" alt="Shared GIF" loading="${mediaLoading}" decoding="async" />`
+                  : `<button class="message-media-button" type="button" data-lightbox-image="${esc(imageUrl)}" aria-label="Open shared image"><img class="message-media" src="${esc(imageUrl)}" width="${width || 1}" height="${height || 1}" alt="Shared image" loading="${mediaLoading}" decoding="async" /></button>`}
               </div>
               ${messageToolsMarkup({ messageId: message.id, downloadUrl: imageUrl, downloadLabel: isGif ? "GIF" : "image", directDownload: true })}
             </div>`).join("")}</div>`
@@ -16442,6 +16429,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 frame.dataset.mediaWidth = String(image.naturalWidth);
                 frame.dataset.mediaHeight = String(image.naturalHeight);
               }
+              frame.style.aspectRatio = `${image.naturalWidth} / ${image.naturalHeight}`;
               image.classList.add("is-loaded");
             }
           };
