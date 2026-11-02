@@ -8578,12 +8578,18 @@
       .reel-comment-copy strong { font-size: 12px; }
       .reel-comment-copy p { margin: 4px 0 0; color: var(--text-2); font-size: 13px; line-height: 1.45; white-space: pre-wrap; }
       .reel-comment-copy .profile-link { padding: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+      .reel-comment-actions {
+        display: flex;
+        align-items: center;
+        min-height: 22px;
+        margin-top: 6px;
+      }
       .reel-comment-reply,
-      .reel-comment-replies-toggle { margin: 6px 12px 0 0; padding: 0; border: 0; background: none; color: var(--text-3); font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; }
+      .reel-comment-replies-toggle { margin: 0 12px 0 0; padding: 0; border: 0; background: none; color: var(--text-3); font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; }
       .reel-comment-reply:hover,
       .reel-comment-replies-toggle:hover { color: var(--text-2); }
       .reel-comment-replies-toggle:disabled { cursor: default; opacity: .7; }
-      .reel-comment-like { display: inline-flex; min-height: 22px; align-items: center; gap: 4px; margin: 5px 0 0; padding: 0 3px; border: 0; background: none; color: var(--text-3); font: inherit; font-size: 11px; font-weight: 600; vertical-align: top; cursor: pointer; }
+      .reel-comment-like { display: inline-flex; min-height: 22px; align-items: center; gap: 4px; margin: 0 0 0 auto; padding: 0 3px; border: 0; background: none; color: var(--text-3); font: inherit; font-size: 11px; font-weight: 600; vertical-align: top; cursor: pointer; }
       .reel-comment-like svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.8; transition: transform 160ms ease, color 160ms ease; }
       .reel-comment-like:hover { color: var(--like); }
       .reel-comment-like[aria-pressed="true"] { color: var(--like); }
@@ -13764,9 +13770,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           <div class="reel-comment-copy">
             <button type="button" class="profile-link" data-profile-id="${esc(author.id || "")}" data-reel-comment-author="${esc(author.id || "")}">${esc(author.displayName || author.handle || "Relay user")}</button>
             <p>${esc(comment.body || "")}</p>
-            <button type="button" class="reel-comment-reply" data-reel-reply="${esc(comment.id)}" data-reel-reply-handle="${esc(author.handle || "")}">Reply</button>
-            <button type="button" class="reel-comment-replies-toggle" data-reel-replies-toggle="${esc(comment.id)}" aria-controls="reel-replies-${esc(comment.id)}" aria-expanded="false"${replyCount ? "" : " hidden"}>View replies (${replyCount})</button>
-            <button type="button" class="reel-comment-like" data-reel-comment-like="${esc(comment.id)}" aria-pressed="${likedByMe}" aria-label="${likedByMe ? "Unlike" : "Like"} comment · ${likeCount} ${likeCount === 1 ? "like" : "likes"}">${ic("heart")}<span class="reel-comment-like-count"${likeCount ? "" : " hidden"}>${formatReelCount(likeCount)}</span></button>
+            <div class="reel-comment-actions">
+              <button type="button" class="reel-comment-reply" data-reel-reply="${esc(comment.id)}" data-reel-reply-handle="${esc(author.handle || "")}">Reply</button>
+              <button type="button" class="reel-comment-replies-toggle" data-reel-replies-toggle="${esc(comment.id)}" aria-controls="reel-replies-${esc(comment.id)}" aria-expanded="false"${replyCount ? "" : " hidden"}>View replies (${replyCount})</button>
+              <button type="button" class="reel-comment-like" data-reel-comment-like="${esc(comment.id)}" aria-pressed="${likedByMe}" aria-label="${likedByMe ? "Unlike" : "Like"} comment · ${likeCount} ${likeCount === 1 ? "like" : "likes"}">${ic("heart")}<span class="reel-comment-like-count"${likeCount ? "" : " hidden"}>${formatReelCount(likeCount)}</span></button>
+            </div>
             <div class="reel-comment-replies" id="reel-replies-${esc(comment.id)}" data-reel-replies="${esc(comment.id)}" data-depth="${Math.min(depth + 1, 4)}" hidden><div class="reel-comment-replies-inner"></div></div>
           </div>
         </div>`;
