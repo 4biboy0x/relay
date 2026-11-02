@@ -5527,38 +5527,174 @@
         max-width: min(90%, 720px);
         align-self: auto;
       }
-      .message-reply-header {
+      .reply-stack {
+        display: flex;
+        width: min(70%, 720px);
+        min-width: 0;
+        max-width: 100%;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .message-row.mine > .reply-stack { align-items: flex-end; }
+      .message-row:not(.mine) > .reply-stack { align-items: flex-start; }
+      .reply-header {
         display: inline-flex;
-        max-width: min(90%, 720px);
+        min-width: 0;
+        max-width: 100%;
         align-items: center;
-        gap: 5px;
-        margin: 0 0 2px;
+        gap: 4px;
+        margin: 0;
         padding: 0;
         border: 0;
         color: var(--text-3);
         background: transparent;
         font: inherit;
         font-size: 12px;
+        font-weight: 500;
         line-height: 16px;
         text-align: left;
         direction: ltr;
-        cursor: pointer;
       }
-      .message-reply-header:hover { color: var(--text-2); }
-      .message-reply-header:focus-visible {
+      button.reply-header { cursor: pointer; }
+      button.reply-header:hover { color: var(--text-2); }
+      button.reply-header:focus-visible,
+      .reply-preview:focus-visible {
         border-radius: 3px;
         outline: 2px solid var(--accent);
         outline-offset: 2px;
       }
-      .message-reply-header .i {
-        width: 13px;
-        height: 13px;
+      .reply-header .i {
+        width: 14px;
+        height: 14px;
         flex: none;
       }
-      .message-reply-header span {
+      .reply-header span {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+      }
+      .reply-preview {
+        box-sizing: border-box;
+        min-width: 0;
+        max-width: 100%;
+        font: inherit;
+        text-align: start;
+        direction: ltr;
+      }
+      button.reply-preview {
+        cursor: pointer;
+      }
+      .reply-preview--text,
+      .reply-preview--voice {
+        display: inline-flex;
+        min-height: 28px;
+        align-items: center;
+        gap: 7px;
+        padding: 4px 12px;
+        border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+        border-radius: 999px;
+        color: var(--accent);
+        background: transparent;
+        font-size: 13px;
+        line-height: 18px;
+      }
+      .reply-preview--text span {
+        display: block;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .reply-preview--voice .i {
+        width: 15px;
+        height: 15px;
+        flex: none;
+      }
+      .reply-preview--media {
+        position: relative;
+        display: block;
+        width: 64px;
+        height: 64px;
+        flex: none;
+        overflow: hidden;
+        padding: 0;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--surface-2);
+      }
+      .reply-preview--media picture,
+      .reply-preview--media img,
+      .reply-preview--media video {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .reply-preview--media img,
+      .reply-preview--media video {
+        object-fit: cover;
+      }
+      .reply-preview--media .reply-preview-play {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        color: #fff;
+        pointer-events: none;
+      }
+      .reply-preview-play .i {
+        width: 22px;
+        height: 22px;
+        padding: 4px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, .55);
+      }
+      .reply-preview-gif-badge {
+        position: absolute;
+        bottom: 4px;
+        left: 4px;
+        padding: 1px 4px;
+        border-radius: 4px;
+        color: #fff;
+        background: rgba(0, 0, 0, .55);
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 13px;
+      }
+      .reply-preview--deleted {
+        display: inline-flex;
+        min-height: 28px;
+        align-items: center;
+        padding: 4px 12px;
+        border: 1px dashed var(--border);
+        border-radius: 999px;
+        color: var(--text-3);
+        font-size: 13px;
+        line-height: 18px;
+      }
+      .message-bubble.reply-message-bubble {
+        padding: 8px 14px;
+        border-radius: 18px;
+        font-size: 15px;
+      }
+      .message-row > .reply-stack + .message-bubble.reply-message-bubble { margin-block-start: 4px; }
+      .message-bubble.reply-message-bubble.mine { font-weight: 600; }
+      .bubble-meta {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        margin-inline-start: 8px;
+        color: currentColor;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1;
+        opacity: .9;
+        white-space: nowrap;
+        vertical-align: baseline;
+      }
+      .bubble-meta .i {
+        width: 12px;
+        height: 12px;
+        flex: none;
       }
       .message-tools {
         position: absolute;
@@ -5737,11 +5873,19 @@
         background: color-mix(in srgb, var(--accent) 12%, var(--surface));
       }
       .message-row > .message-reaction-list { max-width: min(90%, 720px); }
-      .message-bubble.message-reply-highlight { animation: message-reply-highlight 700ms ease-out; }
+      .message-bubble.message-reply-highlight { animation: message-reply-highlight 1.2s ease-out; }
       @keyframes message-reply-highlight {
-        0%, 100% { outline: 0 solid transparent; }
-        25% { outline: 3px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+        0%, 100% { background-color: transparent; }
+        25% { background-color: color-mix(in srgb, var(--accent) 18%, var(--surface)); }
       }
+      @media (prefers-reduced-motion: reduce) {
+        .reply-preview-gif .reply-preview-media-motion { display: none; }
+        .reply-preview-gif .reply-preview-media-static { display: block; }
+        .message-bubble.message-reply-highlight { animation: none; }
+      }
+      .reply-preview-media-static { display: none; }
+      .chat-log > .message-row + .message-row { margin-block-start: 4px; }
+      .chat-log > .message-row.same-sender { margin-block-start: -6px; }
       @media (hover: none) {
         .message-tool-button { width: 40px; height: 40px; }
         .message-tools { margin-top: -20px; }
@@ -5832,7 +5976,34 @@
         border-radius: 12px;
         background: var(--surface);
       }
+      .reply-bar { align-items: center; }
       .message-reply-preview[hidden] { display: none; }
+      .reply-bar-copy {
+        display: flex;
+        min-width: 0;
+        flex: 1;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+      }
+      .reply-bar .reply-header { max-width: 100%; }
+      .reply-bar .reply-preview--text,
+      .reply-bar .reply-preview--voice,
+      .reply-bar .reply-preview--deleted {
+        min-height: 0;
+        max-width: 100%;
+        padding: 0;
+        border: 0;
+        font-size: 12px;
+        line-height: 16px;
+      }
+      .reply-bar .reply-preview--media {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+      }
+      .reply-bar .reply-preview-gif-badge { bottom: 2px; left: 2px; }
+      .reply-bar .reply-preview-play .i { width: 18px; height: 18px; }
       .message-reply-preview-copy {
         min-width: 0;
         flex: 1;
@@ -6030,7 +6201,7 @@
         width: 100%;
         max-width: 100%;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 2px;
+        gap: 4px;
         white-space: normal;
       }
       .message-image-list[data-count="1"] {
@@ -6048,7 +6219,7 @@
         max-width: 100%;
         aspect-ratio: 1;
         overflow: hidden;
-        border-radius: 14px;
+        border-radius: 16px;
         background: var(--surface-2);
       }
       .message-image-list[data-count="1"].is-portrait {
@@ -8645,7 +8816,7 @@
               </div>
               <form class="chat-compose" id="messageForm">
                 <input id="messageImageInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden />
-                <div class="message-reply-preview" id="messageReplyPreview" hidden></div>
+                <div class="message-reply-preview reply-bar" id="messageReplyPreview" hidden></div>
                 <div class="chat-compose-pill" id="messageComposePill">
                   <button class="icon-btn" id="messageStickerButton" type="button" aria-label="Choose sticker" aria-expanded="false" disabled>
                     <svg class="i" aria-hidden="true"><use href="#smile" /></svg>
@@ -15735,6 +15906,89 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (message?.mediaUrl || message?.mediaUrls?.length || isGifMediaUrl(body)) return "Photo or GIF";
         return "Message";
       }
+      function replyHeaderMarkup(senderName, messageId = "") {
+        const icon = `<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h9a7 7 0 0 1 7 7v3"/></svg>`;
+        const content = `${icon}<span>${esc(senderName || "Message")}</span>`;
+        return messageId
+          ? `<button type="button" class="reply-header" data-message-jump="${esc(messageId)}">${content}</button>`
+          : `<div class="reply-header">${content}</div>`;
+      }
+      function replyPreviewMarkup(message, { jump = false } = {}) {
+        if (!message || message.deletedAt || message.isDeleted || message.deleted) {
+          return `<span class="reply-preview reply-preview--deleted">Message deleted</span>`;
+        }
+        const rawMediaUrl = message.mediaUrl
+          || (Array.isArray(message.mediaUrls) ? message.mediaUrls.find((url) => typeof url === "string" && url) : "")
+          || (isGifMediaUrl(String(message.body || "").trim()) ? String(message.body).trim() : "");
+        const mediaUrl = rawMediaUrl ? mediaHref(rawMediaUrl) : "";
+        let mediaPath = "";
+        let mediaHost = "";
+        if (mediaUrl) {
+          try {
+            const parsedUrl = new URL(mediaUrl);
+            mediaPath = parsedUrl.pathname;
+            mediaHost = parsedUrl.hostname;
+          } catch (error) {
+            console.warn("Could not parse a reply preview media URL.", error);
+          }
+        }
+        const explicitType = ["text", "voice", "image", "gif", "video"].includes(message.type)
+          ? message.type
+          : "";
+        const isVideoUrl = /\.(mp4|webm|mov|m4v)$/i.test(mediaPath);
+        const isGifVideo = isVideoUrl && /(giphy|tenor)/i.test(mediaHost);
+        const type = explicitType
+          || (message.audioUrl ? "voice"
+            : isGifMediaUrl(mediaUrl) || isGifVideo ? "gif"
+              : isVideoUrl ? "video"
+                : mediaUrl ? "image" : "text");
+        const target = jump && message.id ? ` data-message-jump="${esc(message.id)}"` : "";
+        const quoteButton = (modifier, label, content) =>
+          `<button type="button" class="reply-preview ${modifier}"${target} aria-label="${esc(label)}">${content}</button>`;
+
+        if (type === "voice") {
+          const icon = `<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><path d="M2 6v4M5 3v10M8 5v6M11 2v12M14 6v4"/></svg>`;
+          return quoteButton("reply-preview--voice", "Voice message", `${icon}<span>Voice message</span>`);
+        }
+        if (type === "text") {
+          const text = String(message.text ?? message.body ?? (message.stickerId ? "Sticker" : "")).trim();
+          return quoteButton("reply-preview--text", text || "Message", `<span>${esc(text || "Message")}</span>`);
+        }
+        if (!mediaUrl) return `<span class="reply-preview reply-preview--deleted">Message deleted</span>`;
+
+        const thumbnailUrl = message.thumbnailUrl ? mediaHref(message.thumbnailUrl) : "";
+        const gifVideo = type === "gif" && (isVideoUrl || isGifVideo);
+        let mediaContent = "";
+        if (gifVideo || type === "video") {
+          const autoplay = gifVideo && !window.matchMedia("(prefers-reduced-motion: reduce)").matches ? " autoplay" : "";
+          const poster = thumbnailUrl ? ` poster="${esc(thumbnailUrl)}"` : "";
+          const motionClass = gifVideo && thumbnailUrl ? "reply-preview-media-motion" : "";
+          mediaContent = `<video class="${motionClass}" src="${esc(mediaUrl)}"${poster}${autoplay} loop muted playsinline preload="metadata"></video>${thumbnailUrl && gifVideo ? `<img class="reply-preview-media-static" src="${esc(thumbnailUrl)}" alt="" loading="lazy" decoding="async" />` : ""}<span class="reply-preview-play" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>`;
+        } else if (type === "gif") {
+          const staticSource = thumbnailUrl
+            ? `<source media="(prefers-reduced-motion: reduce)" srcset="${esc(thumbnailUrl)}" />`
+            : "";
+          const gifUrl = normalizeGiphyGifUrl(mediaUrl) || mediaUrl;
+          mediaContent = `<picture>${staticSource}<img src="${esc(gifUrl)}" alt="GIF preview" loading="lazy" decoding="async" /></picture>`;
+        } else {
+          mediaContent = `<img src="${esc(thumbnailUrl || mediaUrl)}" alt="${type === "video" ? "Video preview" : "Image preview"}" loading="lazy" decoding="async" />${type === "video" ? `<span class="reply-preview-play" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>` : ""}`;
+        }
+        const gifBadge = type === "gif" ? `<span class="reply-preview-gif-badge">GIF</span>` : "";
+        return quoteButton(
+          `reply-preview--media reply-preview--${type}${gifVideo ? " reply-preview-gif" : ""}`,
+          `${type === "gif" ? "GIF" : type === "video" ? "Video" : "Image"} message`,
+          `${mediaContent}${gifBadge}`,
+        );
+      }
+      function replyBubbleMetaMarkup(message, mine) {
+        const date = new Date(message.createdAt);
+        if (!Number.isFinite(date.getTime())) return "";
+        const time = date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+        const sentIcon = mine
+          ? `<span aria-label="Sent"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6.25"/><path d="m5 8 2 2 4-4"/></svg></span>`
+          : "";
+        return `<span class="bubble-meta"><time datetime="${date.toISOString()}">${esc(time)}</time>${sentIcon}</span>`;
+      }
       function renderMessageReplyPreview() {
         const preview = $("#messageReplyPreview");
         const target = selectedMessageReply;
@@ -15745,7 +15999,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         const senderName = target.message.sender?.displayName
           || (target.message.senderId === currentUser?.id ? "You" : "Message");
-        preview.innerHTML = `<div class="message-reply-preview-copy"><strong>Replying to ${esc(senderName)}</strong><span>${esc(messagePreviewText(target.message))}</span></div><button type="button" data-message-reply-cancel aria-label="Cancel reply" title="Cancel reply">${ic("close")}</button>`;
+        preview.innerHTML = `<div class="reply-bar-copy">${replyHeaderMarkup(`Replying to ${senderName}`)}${replyPreviewMarkup(target.message, { jump: Boolean(target.message.id) })}</div><button type="button" data-message-reply-cancel aria-label="Cancel reply" title="Cancel reply">${ic("close")}</button>`;
         preview.hidden = false;
       }
       function setMessageReplyTarget(messageId) {
@@ -16094,10 +16348,22 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           downloadLabel: "voice message",
         });
         const bubbleActions = image ? "" : actions;
-        const replyHeader = message.replyTo
-          ? `<button type="button" class="message-reply-header" data-message-jump="${esc(message.replyTo.id)}">${ic("reply")}<span>${esc(message.replyTo.sender?.displayName || "Message")}</span></button>`
+        const replyTo = message.replyTo || null;
+        const hasReply = Boolean(message.replyToId || replyTo);
+        const replyStack = hasReply
+          ? `<div class="reply-stack">${replyHeaderMarkup(replyTo?.sender?.displayName || replyTo?.senderName || "Message", replyTo?.id || "")}${replyPreviewMarkup(replyTo, { jump: Boolean(replyTo?.id) })}</div>`
           : "";
-        return `<div class="message-row${mine ? " mine" : ""}" data-message-row data-conversation-id="${esc(message.conversationId)}">${replyHeader}<div class="message-bubble${mine ? " mine" : ""}${mediaOnly ? " media-message" : ""}${imageOnly ? " image-message" : ""}${audioOnly ? " audio-message" : ""}${stickerOnly ? " sticker-message" : ""}" data-message-id="${esc(message.id)}">${image}${audio}${sticker}${text}${bubbleActions}</div>${messageReactionsMarkup(message)}</div>`;
+        const replyMeta = hasReply ? replyBubbleMetaMarkup(message, mine) : "";
+        return `<div class="message-row${mine ? " mine" : ""}" data-message-row data-conversation-id="${esc(message.conversationId)}" data-sender-id="${esc(message.senderId || "")}">${replyStack}<div class="message-bubble${mine ? " mine" : ""}${hasReply ? " reply-message-bubble" : ""}${mediaOnly ? " media-message" : ""}${imageOnly ? " image-message" : ""}${audioOnly ? " audio-message" : ""}${stickerOnly ? " sticker-message" : ""}" data-message-id="${esc(message.id)}">${image}${audio}${sticker}${text}${replyMeta}${bubbleActions}</div>${messageReactionsMarkup(message)}</div>`;
+      }
+      function updateMessageRowSpacing(container = $("#chatLog")) {
+        const rows = [...container.children].filter((element) => element.matches(".message-row"));
+        rows.forEach((row, index) => {
+          row.classList.toggle(
+            "same-sender",
+            index > 0 && rows[index - 1].dataset.senderId === row.dataset.senderId,
+          );
+        });
       }
       function bindVoiceMessages(container = document) {
         container.querySelectorAll(".relay-voice audio:not([data-relay-bound])").forEach((audio) => {
@@ -16214,6 +16480,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           clearEmptyMessagesState();
           if (typingStatus) typingStatus.insertAdjacentHTML("beforebegin", messageMarkup(message));
           else chatLog.insertAdjacentHTML("beforeend", messageMarkup(message));
+          updateMessageRowSpacing(chatLog);
           const insertedMessage = typingStatus?.previousElementSibling || chatLog.lastElementChild;
           if (insertedMessage?.matches(".message-row")) animateChatMessages([insertedMessage]);
           bindVoiceMessages(chatLog);
@@ -17262,6 +17529,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             eager: index >= conversationMessages.length - 15,
           })).join("")
             || emptyState("No messages found.", "Send a message to start the conversation.", true)}<div class="typing-status" id="typingStatus" aria-live="polite"></div>`;
+          updateMessageRowSpacing($("#chatLog"));
           animateChatMessages($$("#chatLog .message-bubble"));
           bindVoiceMessages($("#chatLog"));
           bindMessageMediaScroll($("#chatLog"));
@@ -17316,6 +17584,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               const anchor = log.querySelector(".message-bubble");
               const anchorTop = anchor?.getBoundingClientRect().top ?? null;
               log.insertAdjacentHTML("afterbegin", unseen.map((message) => messageMarkup(message, { eager: false })).join(""));
+              updateMessageRowSpacing(log);
               if (anchor && anchorTop !== null) log.scrollTop += anchor.getBoundingClientRect().top - anchorTop;
               bindVoiceMessages(log);
               bindMessageMediaScroll(log);
@@ -17397,6 +17666,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (unseen.length) {
             const anchorTopBeforeInsert = anchor?.getBoundingClientRect().top ?? null;
             log.insertAdjacentHTML("afterbegin", unseen.map((message) => messageMarkup(message, { eager: false })).join(""));
+            updateMessageRowSpacing(log);
             if (anchor && anchorTopBeforeInsert !== null) {
               anchorShift = anchor.getBoundingClientRect().top - anchorTopBeforeInsert;
             }
@@ -19159,6 +19429,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             body,
             ...(replyTo ? { replyToId: replyTo.id, replyTo } : {}),
           }));
+          updateMessageRowSpacing($("#chatLog"));
           const pendingMessage = typingStatus?.previousElementSibling || $("#chatLog").lastElementChild;
           if (pendingMessage) animateChatMessages([pendingMessage]);
           input.value = "";
@@ -19171,6 +19442,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               body: JSON.stringify(replyTo ? { body, replyToId: replyTo.id } : { body }),
             });
             $(`[data-message-id="${CSS.escape(pendingId)}"]`)?.remove();
+            updateMessageRowSpacing($("#chatLog"));
             if (message.conversationId !== conversationId) {
               throw new Error("The message was returned for a different conversation.");
             }
@@ -19178,6 +19450,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             receiveMessage(message);
           } catch (error) {
             $(`[data-message-id="${CSS.escape(pendingId)}"]`)?.remove();
+            updateMessageRowSpacing($("#chatLog"));
             conversationDrafts.set(conversationId, body);
             if (activeConversation?.id === conversationId
               && $("#messageForm").dataset.conversationId === conversationId) {
