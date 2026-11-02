@@ -1022,14 +1022,7 @@
         color: var(--ok);
       }
       .c-bar #attachImage[aria-pressed="true"]::after {
-        position: absolute;
-        right: 3px;
-        bottom: 3px;
-        width: 5px;
-        height: 5px;
-        border-radius: 50%;
-        background: currentColor;
-        content: "";
+        display: none;
       }
       .c-bar #addLocation[aria-pressed="true"] {
         color: var(--ok);
@@ -1681,7 +1674,7 @@
         stroke-linejoin: round;
       }
       .cover .profile-edit-overlay {
-        right: 14px;
+        inset-inline-end: 12px;
         bottom: 12px;
       }
       .count {
@@ -2590,6 +2583,14 @@
         user-select: none;
       }
       .profile-crop-stage.is-dragging { cursor: grabbing; }
+      .profile-crop-stage.is-banner {
+        width: min(360px, 72vw);
+        aspect-ratio: 3 / 1;
+      }
+      .profile-crop-stage.is-banner .profile-crop-mask,
+      .profile-crop-stage.is-banner .profile-crop-ring {
+        display: none;
+      }
       .profile-crop-image-clip {
         position: absolute;
         inset: 0;
@@ -9344,7 +9345,7 @@
           <div class="cover" role="img" aria-label="Profile banner">
             <img id="profileBanner" alt="" hidden />
             <button class="profile-edit-overlay" id="editProfileBanner" type="button" aria-label="Customize cover photo" title="Customize cover photo">
-              <svg class="i" aria-hidden="true"><use href="#camera" /></svg>
+              <svg class="i" aria-hidden="true"><use href="#camera"></use></svg>
             </button>
             <input class="profile-image-input" id="profileBannerInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-profile-upload="banner" />
           </div>
@@ -10097,6 +10098,7 @@
       let gifSkeletonFinish = null;
       let giphyResultsById = new Map();
       let profileCropInput = null;
+      let profileCropKind = "avatar";
       let profileCropObjectUrl = "";
       let profileCropZoom = 1;
       let profileCropOffset = { x: 0, y: 0 };
@@ -11698,7 +11700,7 @@
           input.value = "";
           return;
         }
-        if (kind === "avatar") {
+        if (kind === "avatar" || kind === "banner") {
           openProfileCrop(file, input);
           input.value = "";
           return;
@@ -11728,9 +11730,13 @@
       }
       function openProfileCrop(file, input) {
         profileCropInput = input;
+        profileCropKind = input.dataset.profileUpload === "banner" ? "banner" : "avatar";
         profileCropZoom = 1;
         profileCropOffset = { x: 0, y: 0 };
         $("#profileCropZoom").value = "1";
+        $("#profileCropTitle").textContent = profileCropKind === "banner" ? "Crop profile banner" : "Crop profile photo";
+        $("#profileCropStage").classList.toggle("is-banner", profileCropKind === "banner");
+        $("#profileCropStage").setAttribute("aria-label", profileCropKind === "banner" ? "Drag the image to adjust the banner crop" : "Drag the image to adjust the circular crop");
         const image = $("#profileCropImage");
         image.onload = syncProfileCropPreview;
         image.onerror = () => {
@@ -11747,16 +11753,20 @@
         const image = $("#profileCropImage");
         const stage = $("#profileCropStage");
         const stageSize = stage.clientWidth;
-        if (!image.naturalWidth || !image.naturalHeight || !stageSize) return null;
-        const scale = Math.max(stageSize / image.naturalWidth, stageSize / image.naturalHeight) * profileCropZoom;
+        const stageWidth = stage.clientWidth;
+        const stageHeight = stage.clientHeight;
+        if (!image.naturalWidth || !image.naturalHeight || !stageWidth || !stageHeight) return null;
+        const scale = Math.max(stageWidth / image.naturalWidth, stageHeight / image.naturalHeight) * profileCropZoom;
         const width = image.naturalWidth * scale;
         const height = image.naturalHeight * scale;
         return {
           stageSize,
+          stageWidth,
+          stageHeight,
           width,
           height,
-          maxX: Math.max(0, (width - stageSize) / 2),
-          maxY: Math.max(0, (height - stageSize) / 2),
+          maxX: Math.max(0, (width - stageWidth) / 2),
+          maxY: Math.max(0, (height - stageHeight) / 2),
         };
       }
       function syncProfileCropPreview() {
@@ -11776,8 +11786,11 @@
         if (profileCropObjectUrl) URL.revokeObjectURL(profileCropObjectUrl);
         profileCropObjectUrl = "";
         profileCropInput = null;
+        profileCropKind = "avatar";
         profileCropDrag = null;
         profileCropOffset = { x: 0, y: 0 };
+        $("#profileCropStage").classList.remove("is-banner");
+        $("#profileCropTitle").textContent = "Crop profile photo";
         $("#profileCropImage").removeAttribute("src");
         $("#profileCropStage").classList.remove("is-dragging");
       }
@@ -11789,19 +11802,23 @@
         const saveButton = $("#profileCropSave");
         saveButton.disabled = true;
         try {
-          const size = 512;
+          const isBanner = profileCropKind === "banner";
+          const uploadKind = profileCropKind;
+          const width = isBanner ? 1500 : 512;
+          const height = isBanner ? 500 : 512;
           const canvas = document.createElement("canvas");
-          canvas.width = size;
-          canvas.height = size;
+          canvas.width = width;
+          canvas.height = height;
           const context = canvas.getContext("2d");
           if (!context) throw new Error("Could not prepare the cropped profile photo.");
-          const scale = size / geometry.stageSize;
-          const drawWidth = geometry.width * scale;
-          const drawHeight = geometry.height * scale;
+          const scaleX = width / geometry.stageWidth;
+          const scaleY = height / geometry.stageHeight;
+          const drawWidth = geometry.width * scaleX;
+          const drawHeight = geometry.height * scaleY;
           context.drawImage(
             image,
-            (size - drawWidth) / 2 + profileCropOffset.x * scale,
-            (size - drawHeight) / 2 + profileCropOffset.y * scale,
+            (width - drawWidth) / 2 + profileCropOffset.x * scaleX,
+            (height - drawHeight) / 2 + profileCropOffset.y * scaleY,
             drawWidth,
             drawHeight,
           );
@@ -11810,27 +11827,27 @@
               ? resolve(result)
               : reject(new Error("Could not crop this image.")), "image/png");
           });
-          const croppedFile = new File([blob], "profile-photo.png", { type: "image/png" });
-          const property = "avatarUrl";
+          const croppedFile = new File([blob], isBanner ? "profile-banner.png" : "profile-photo.png", { type: "image/png" });
+          const property = isBanner ? "bannerUrl" : "avatarUrl";
           const previousUser = currentUser;
           const localUrl = URL.createObjectURL(croppedFile);
           currentUser = { ...currentUser, [property]: localUrl };
           updateAccountUI();
-          setAvatar($("#profileAvatar"), currentUser, "lg");
+          if (!isBanner) setAvatar($("#profileAvatar"), currentUser, "lg");
           $("#profileCropDialog").close();
           input.disabled = true;
           try {
-            const result = await uploadMedia(croppedFile, "avatar");
+            const result = await uploadMedia(croppedFile, uploadKind);
             currentUser = result.user;
             updateAccountUI();
             URL.revokeObjectURL(localUrl);
             await renderProfile();
-            toast("Profile photo updated");
+            toast(isBanner ? "Profile banner updated" : "Profile photo updated");
           } catch (error) {
             URL.revokeObjectURL(localUrl);
             currentUser = previousUser;
             updateAccountUI();
-            setAvatar($("#profileAvatar"), currentUser, "lg");
+            if (!isBanner) setAvatar($("#profileAvatar"), currentUser, "lg");
             toast(error.message);
           } finally {
             input.disabled = false;
