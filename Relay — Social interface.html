@@ -17840,6 +17840,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function clearEmptyMessagesState() {
         $("#chatLog > .empty-state")?.remove();
+        $("#chatLog > .conversation-start-empty")?.remove();
       }
       function restoreEmptyMessagesState() {
         const list = $("#chatLog");
@@ -21205,8 +21206,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             ? selectedMessageReply.message
             : null;
           const pendingId = `pending-${Date.now()}`;
-          const typingStatus = $("#typingStatus");
           clearEmptyMessagesState();
+          const typingStatus = $("#typingStatus");
           if (typingStatus) typingStatus.insertAdjacentHTML("beforebegin", messageMarkup({
             id: pendingId,
             conversationId: sendConversationId,
@@ -21224,6 +21225,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           updateMessageRowSpacing($("#chatLog"));
           const pendingMessage = typingStatus?.previousElementSibling || $("#chatLog").lastElementChild;
           if (pendingMessage) animateChatMessages([pendingMessage]);
+          scrollMessageListToBottom(true);
           input.value = "";
           conversationDrafts.set(sendConversationId, "");
           syncMessageComposer();
