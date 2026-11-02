@@ -722,12 +722,7 @@ api.patch("/users/me", authRequired, asyncRoute(async (req, res) => {
     data: input,
     select: publicUser,
   });
-  emitToUser(user.id, "profile:updated", user);
-  const followers = await prisma.follow.findMany({
-    where: { followedId: user.id },
-    select: { followerId: true },
-  });
-  for (const follower of followers) emitToUser(follower.followerId, "profile:updated", user);
+  emitToAuthenticated("profile:updated", user);
   res.json(user);
 }));
 
@@ -747,9 +742,7 @@ api.post("/uploads/:kind", authRequired, uploadLimiter, imageUpload, asyncRoute(
       data: kind === "avatar" ? { avatarUrl: url } : { bannerUrl: url },
       select: publicUser,
     });
-    emitToUser(user.id, "profile:updated", user);
-    const followers = await prisma.follow.findMany({ where: { followedId: user.id }, select: { followerId: true } });
-    for (const follower of followers) emitToUser(follower.followerId, "profile:updated", user);
+    emitToAuthenticated("profile:updated", user);
     res.status(201).json({ url, kind, user });
     return;
   }

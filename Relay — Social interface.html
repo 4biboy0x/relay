@@ -3424,9 +3424,10 @@
         white-space: nowrap;
       }
       .notification-unread-dot { position: absolute; right: 10px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
-      .notification-avatar-stack { display: flex; width: 40px; }
-      .notification-avatar-stack .av { width: 28px; height: 28px; flex: none; border: 2px solid var(--bg); }
-      .notification-avatar-stack .av + .av { margin-left: -12px; }
+      .notification-avatar-stack { position: relative; width: 40px; height: 48px; }
+      .notification-avatar-stack .av { position: absolute; width: 36px; height: 36px; border: 2px solid var(--bg); }
+      .notification-avatar-stack .av:first-child { right: 0; bottom: 0; z-index: 2; }
+      .notification-avatar-stack .av:nth-child(2) { top: 0; left: 0; z-index: 1; }
       .notification-follow-back {
         flex: none;
         width: auto;
@@ -8382,6 +8383,14 @@
       .reel-comment-reply:hover,
       .reel-comment-replies-toggle:hover { color: var(--text-2); }
       .reel-comment-replies-toggle:disabled { cursor: default; opacity: .7; }
+      .reel-comment-like { display: inline-flex; min-height: 22px; align-items: center; gap: 4px; margin: 5px 0 0; padding: 0 3px; border: 0; background: none; color: var(--text-3); font: inherit; font-size: 11px; font-weight: 600; vertical-align: top; cursor: pointer; }
+      .reel-comment-like svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.8; transition: transform 160ms ease, color 160ms ease; }
+      .reel-comment-like:hover { color: var(--like); }
+      .reel-comment-like[aria-pressed="true"] { color: var(--like); }
+      .reel-comment-like[aria-pressed="true"] svg { fill: currentColor; }
+      .reel-comment-like.is-like-pop svg { animation: reel-comment-like-pop 260ms cubic-bezier(.2,.9,.3,1.4); }
+      .reel-comment-like-count[hidden] { display: none; }
+      @keyframes reel-comment-like-pop { 50% { transform: scale(1.3); } }
       .reel-comment-replies { display: grid; grid-template-rows: 0fr; margin-top: 0; opacity: 0; transition: grid-template-rows 180ms ease, opacity 180ms ease, margin-top 180ms ease; }
       .reel-comment-replies.is-expanded { grid-template-rows: 1fr; margin-top: 8px; opacity: 1; }
       .reel-comment-replies[hidden] { display: none; }
@@ -8403,6 +8412,8 @@
         .reel-comment.is-live,
         .reel-comment.is-notification-target { animation: none; }
         .reel-comment-replies { transition: none; }
+        .reel-comment-like svg { transition: none; }
+        .reel-comment-like.is-like-pop svg { animation: none; }
       }
       .reel-comment-form { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
       .reel-comment-form input { min-width: 0; }
@@ -10007,6 +10018,7 @@
       let reelCommentsCursor = null;
       let reelCommentsGeneration = 0;
       const reelCommentReplyStates = new Map();
+      const reelCommentLikeRequests = new WeakSet();
       let reelStatsGeneration = 0;
       let reelCommentReplyToId = "";
       let reelActionsId = "";
@@ -10239,6 +10251,8 @@
       document.addEventListener("focusin", preloadProfileAvatarOnIntent, true);
       function setAvatar(element, user, size = "") {
         if (!element) return;
+        if (user?.id) element.dataset.avatarUser = user.id;
+        else delete element.dataset.avatarUser;
         const url = rememberAvatarUrl(user);
         const className = `av ${size}${url ? " has-image" : " av-default"}`.trim();
         if (!url) {
@@ -10273,7 +10287,7 @@
       }
       const avatarMarkup = (user, size = "") => {
         const url = rememberAvatarUrl(user);
-        return `<span class="av ${size}${url ? " has-image" : " av-default"}" aria-hidden="true">${url ? `<img src="${esc(url)}" alt="" decoding="async" loading="lazy" fetchpriority="auto">` : defaultAvatarSvg}</span>`;
+        return `<span class="av ${size}${url ? " has-image" : " av-default"}" data-avatar-user="${esc(user?.id || "")}" aria-hidden="true">${url ? `<img src="${esc(url)}" alt="" decoding="async" loading="lazy" fetchpriority="auto">` : defaultAvatarSvg}</span>`;
       };
       const isUserOnline = (user) => {
         const livePresence = presenceByUser.get(user?.id);
@@ -10482,6 +10496,7 @@
           socket.on("post:comment:new", receiveLiveComment);
           socket.on("reel:interaction", receiveReelInteraction);
           socket.on("reel:comment:new", receiveLiveReelComment);
+          socket.on("reel:comment:like", receiveLiveReelCommentLike);
           socket.on("reel:comment:deleted", receiveDeletedReelComments);
           socket.on("user:suggestion:new", receiveLiveSuggestion);
           socket.on("user:followed", receiveViewerFollowed);
@@ -13054,6 +13069,29 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         writeReelCache();
       }
+      function syncReelCommentLikeUI(commentId, likeCount, likedByMe) {
+        const comment = $(`[data-reel-comment="${CSS.escape(commentId)}"]`, $("#reelCommentList"));
+        const button = comment?.querySelector("[data-reel-comment-like]");
+        if (!button) return;
+        const count = Math.max(0, Number(likeCount) || 0);
+        const countElement = button.querySelector(".reel-comment-like-count");
+        if (countElement) {
+          countElement.textContent = formatReelCount(count);
+          countElement.hidden = count === 0;
+        }
+        if (typeof likedByMe === "boolean") button.setAttribute("aria-pressed", String(likedByMe));
+        const pressed = button.getAttribute("aria-pressed") === "true";
+        button.setAttribute("aria-label", `${pressed ? "Unlike" : "Like"} comment · ${count} ${count === 1 ? "like" : "likes"}`);
+      }
+      function receiveLiveReelCommentLike(event) {
+        if (!event?.reelId || !event.commentId || !Number.isFinite(event.likeCount)) return;
+        if (reelCommentsReelId !== event.reelId) return;
+        syncReelCommentLikeUI(
+          event.commentId,
+          event.likeCount,
+          event.actorId === currentUser?.id ? Boolean(event.active) : undefined,
+        );
+      }
       function receiveDeletedReelComments(event) {
         if (!event?.reelId || !Array.isArray(event.commentIds)) return;
         const reel = reelItems.find((item) => item.id === event.reelId);
@@ -13222,13 +13260,16 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function reelCommentMarkup(comment, depth = 0, live = false) {
         const author = comment.author || {};
         const replyCount = reelCommentReplyCount(comment);
+        const likeCount = Math.max(0, Number(comment.likeCount) || 0);
+        const likedByMe = Boolean(comment.likedByMe);
         return `<div class="reel-comment${depth ? " is-reply" : ""}${live ? " is-live" : ""}" data-reel-comment="${esc(comment.id)}" data-reply-count="${replyCount}" data-depth="${Math.min(depth, 4)}">
           ${avatarMarkup(author, "sm")}
           <div class="reel-comment-copy">
-            <button type="button" class="profile-link" data-profile-id="${esc(author.id || "")}">${esc(author.displayName || author.handle || "Relay user")}</button>
+            <button type="button" class="profile-link" data-profile-id="${esc(author.id || "")}" data-reel-comment-author="${esc(author.id || "")}">${esc(author.displayName || author.handle || "Relay user")}</button>
             <p>${esc(comment.body || "")}</p>
             <button type="button" class="reel-comment-reply" data-reel-reply="${esc(comment.id)}" data-reel-reply-handle="${esc(author.handle || "")}">Reply</button>
             <button type="button" class="reel-comment-replies-toggle" data-reel-replies-toggle="${esc(comment.id)}" aria-controls="reel-replies-${esc(comment.id)}" aria-expanded="false"${replyCount ? "" : " hidden"}>View replies (${replyCount})</button>
+            <button type="button" class="reel-comment-like" data-reel-comment-like="${esc(comment.id)}" aria-pressed="${likedByMe}" aria-label="${likedByMe ? "Unlike" : "Like"} comment · ${likeCount} ${likeCount === 1 ? "like" : "likes"}">${ic("heart")}<span class="reel-comment-like-count"${likeCount ? "" : " hidden"}>${formatReelCount(likeCount)}</span></button>
             <div class="reel-comment-replies" id="reel-replies-${esc(comment.id)}" data-reel-replies="${esc(comment.id)}" data-depth="${Math.min(depth + 1, 4)}" hidden><div class="reel-comment-replies-inner"></div></div>
           </div>
         </div>`;
@@ -13361,6 +13402,34 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const focusId = focusPath[index];
           const button = $(`[data-reel-replies-toggle="${CSS.escape(parentId)}"]`, $("#reelCommentList"));
           if (!button || !await loadReelReplies(button, focusId)) return;
+        }
+      }
+      async function toggleReelCommentLike(button) {
+        if (reelCommentLikeRequests.has(button) || !requireAuth()) return;
+        const commentId = button.dataset.reelCommentLike;
+        const next = button.getAttribute("aria-pressed") !== "true";
+        const method = next ? "POST" : "DELETE";
+        reelCommentLikeRequests.add(button);
+        button.disabled = true;
+        button.setAttribute("aria-busy", "true");
+        try {
+          const result = await api(
+            `/reels/${encodeURIComponent(reelCommentsReelId)}/comments/${encodeURIComponent(commentId)}/like`,
+            { method },
+          );
+          syncReelCommentLikeUI(result.commentId, result.likeCount, result.liked);
+          if (result.liked) {
+            button.classList.remove("is-like-pop");
+            void button.offsetWidth;
+            button.classList.add("is-like-pop");
+            window.setTimeout(() => button.classList.remove("is-like-pop"), 300);
+          }
+        } catch (error) {
+          toast(error.message || "Could not update comment like.");
+        } finally {
+          reelCommentLikeRequests.delete(button);
+          button.disabled = false;
+          button.removeAttribute("aria-busy");
         }
       }
       async function loadReelComments(append = false, focusCommentId = "") {
@@ -14624,6 +14693,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#reelCommentMore").addEventListener("click", () => loadReelComments(true));
         $("#reelCommentList").addEventListener("click", (event) => {
           if (event.target.closest("[data-reel-comments-retry]")) loadReelComments();
+          const like = event.target.closest("[data-reel-comment-like]");
+          if (like) {
+            void toggleReelCommentLike(like);
+            return;
+          }
           const replies = event.target.closest("[data-reel-replies-toggle]");
           if (replies) {
             void toggleReelReplies(replies);
@@ -15816,12 +15890,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const icon = notificationIcons[item.type];
         const actors = item.actors?.length ? item.actors : [item.actor];
         const avatar = actors.length > 1
-          ? `<span class="notification-avatar-stack">${actors.slice(0, 3).map((actor) => avatarMarkup(actor)).join("")}</span>`
+          ? `<span class="notification-avatar-stack" aria-hidden="true">${actors.slice(0, 2).map((actor) => avatarMarkup(actor)).join("")}</span>`
           : `<span class="notification-avatar">${avatarMarkup(actors[0])}<span class="notification-badge ${["LIKE", "REEL_LIKE"].includes(item.type) ? "like" : ""}" aria-hidden="true">${ic(icon)}</span></span>`;
         const others = Math.max(0, actors.length - 1);
         const actorLabel = others
-          ? `<strong>${esc(actors[0].displayName)}</strong><span class="notification-action"> and ${others} ${others === 1 ? "other" : "others"} ${action}</span>`
-          : `<strong>${esc(actors[0].displayName)}</strong><span class="notification-action"> ${action}</span>`;
+          ? `<strong data-notification-actor-name="${esc(actors[0].id)}">${esc(actors[0].displayName)}</strong><span class="notification-action"> and ${others} ${others === 1 ? "other" : "others"} ${action}</span>`
+          : `<strong data-notification-actor-name="${esc(actors[0].id)}">${esc(actors[0].displayName)}</strong><span class="notification-action"> ${action}</span>`;
         const notificationTime = `<time class="notification-time" datetime="${esc(item.createdAt)}">${timeAgo(item.createdAt)}</time>`;
         const previewText = item.type === "REPLY" ? item.reply?.body || item.post?.body : item.post?.body;
         const preview = ["LIKE", "REPOST", "REPLY"].includes(item.type) && previewText
@@ -16249,12 +16323,23 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         removeFollowedSuggestion(userId).catch((error) => console.error("Could not update follow suggestions", error));
       }
       function receiveProfileUpdate(user) {
+        if (!user || typeof user.id !== "string") return;
         if (currentUser?.id === user.id) {
           currentUser = user;
           updateAccountUI();
           if (!$("#v-profile").hidden) renderProfile();
         }
         people = people.map((person) => person.id === user.id ? { ...person, ...user } : person);
+        const name = user.displayName || user.handle || "Relay user";
+        $$(`[data-notification-actor-name="${CSS.escape(user.id)}"], .notification-row[data-notification-actor="${CSS.escape(user.id)}"] .notification-content strong, [data-reel-comment-author="${CSS.escape(user.id)}"]`)
+          .forEach((element) => { element.textContent = name; });
+        $$(`.av[data-avatar-user="${CSS.escape(user.id)}"]`).forEach((avatar) => {
+          const size = [...avatar.classList]
+            .filter((className) => !["av", "has-image", "av-default"].includes(className))
+            .join(" ");
+          setAvatar(avatar, user, size);
+        });
+        if (!$("#v-notifs").hidden) writeViewCache("notifications", $("#nl").innerHTML);
       }
       function receivePresenceUpdate(presence) {
         if (!presence || typeof presence.userId !== "string") return;

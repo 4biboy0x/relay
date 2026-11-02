@@ -36,6 +36,7 @@ model User {
   reelBookmarks ReelBookmark[]
   reelShares    ReelShare[]
   reelComments  ReelComment[]
+  reelCommentLikes ReelCommentLike[]
   reelReports   ReelReport[]
   posts         Post[]
   refreshTokens RefreshToken[]
@@ -203,10 +204,22 @@ model ReelComment {
   author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
   replyTo   ReelComment?  @relation("ReelCommentReplies", fields: [replyToId], references: [id], onDelete: Cascade)
   replies   ReelComment[] @relation("ReelCommentReplies")
+  likes     ReelCommentLike[]
   notifications Notification[]
 
   @@index([reelId, createdAt(sort: Desc), id(sort: Desc)])
   @@index([replyToId, createdAt(sort: Desc)])
+}
+
+model ReelCommentLike {
+  commentId String
+  userId    String
+  createdAt DateTime    @default(now())
+  comment   ReelComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([commentId, userId])
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 model ReelReport {

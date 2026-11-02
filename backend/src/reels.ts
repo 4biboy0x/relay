@@ -762,15 +762,28 @@ router.get("/:id/comments", authOptional, asyncRoute(async (req, res) => {
   await ensureVisibleReel(reelId);
   const commentInclude = {
     author: { select: profileUserSelect },
+    likes: {
+      where: { userId: req.userId ?? "" },
+      select: { userId: true },
+    },
     _count: {
       select: {
         replies: { where: { deletedAt: null } },
+        likes: true,
       },
     },
   };
-  const serializeComment = <T extends { _count: { replies: number } }>(comment: T) => {
-    const { _count, ...record } = comment;
-    return { ...record, replyCount: _count.replies };
+  const serializeComment = <T extends {
+    _count: { replies: number; likes: number };
+    likes: Array<{ userId: string }>;
+  }>(comment: T) => {
+    const { _count, likes, ...record } = comment;
+    return {
+      ...record,
+      replyCount: _count.replies,
+      likeCount: _count.likes,
+      likedByMe: likes.length > 0,
+    };
   };
   if ("parentId" in req.query) {
     const { parentId, focusId, cursor: rawCursor, limit } = reelRepliesQuerySchema.parse(req.query);
@@ -934,7 +947,7 @@ router.post("/:id/comments", authRequired, writeLimiter, asyncRoute(async (req, 
         })
       : null;
     return {
-      comment: { ...comment, replyCount: 0 },
+      comment: { ...comment, replyCount: 0, likeCount: 0, likedByMe: false },
       notification,
       counts: reelCountsFromRecord(updatedReel),
       parentReplyCount,
@@ -949,6 +962,64 @@ router.post("/:id/comments", authRequired, writeLimiter, asyncRoute(async (req, 
   });
   if (result.notification) emitToUser(result.notification.recipientId, "notification:new", result.notification);
   res.status(201).json({ ...result.comment, parentReplyCount: result.parentReplyCount, counts: result.counts });
+}));
+
+const setReelCommentLike = async (
+  req: express.Request,
+  res: express.Response,
+  active: boolean,
+): Promise<void> => {
+  const reelId = reelIdFrom(req.params.id);
+  const commentId = z.string().cuid().parse(req.params.commentId);
+  const userId = viewerIdFrom(req);
+  await ensureVisibleReel(reelId);
+
+  const result = await prisma.$transaction(async (tx) => {
+    const comment = await tx.reelComment.findFirst({
+      where: { id: commentId, reelId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!comment) throw new HttpError(404, "Comment not found");
+
+    const changed = active
+      ? (await tx.reelCommentLike.createMany({
+          data: { commentId, userId },
+          skipDuplicates: true,
+        })).count
+      : (await tx.reelCommentLike.deleteMany({ where: { commentId, userId } })).count;
+    const [likeCount, likedByMe] = await Promise.all([
+      tx.reelCommentLike.count({ where: { commentId } }),
+      tx.reelCommentLike.findUnique({
+        where: { commentId_userId: { commentId, userId } },
+        select: { userId: true },
+      }),
+    ]);
+    return { changed, likeCount, likedByMe: Boolean(likedByMe) };
+  });
+
+  if (result.changed) {
+    emitToReel(reelId, "reel:comment:like", {
+      reelId,
+      commentId,
+      actorId: userId,
+      active: result.likedByMe,
+      likeCount: result.likeCount,
+    });
+  }
+  res.json({
+    reelId,
+    commentId,
+    liked: result.likedByMe,
+    likeCount: result.likeCount,
+  });
+};
+
+router.post("/:id/comments/:commentId/like", authRequired, writeLimiter, asyncRoute(async (req, res) => {
+  await setReelCommentLike(req, res, true);
+}));
+
+router.delete("/:id/comments/:commentId/like", authRequired, writeLimiter, asyncRoute(async (req, res) => {
+  await setReelCommentLike(req, res, false);
 }));
 
 router.delete("/:id/comments/:commentId", authRequired, writeLimiter, asyncRoute(async (req, res) => {
@@ -981,6 +1052,9 @@ router.delete("/:id/comments/:commentId", authRequired, writeLimiter, asyncRoute
     await tx.reelComment.updateMany({
       where: { id: { in: commentIds.map(({ id }) => id) }, deletedAt: null },
       data: { deletedAt },
+    });
+    await tx.reelCommentLike.deleteMany({
+      where: { commentId: { in: commentIds.map(({ id }) => id) } },
     });
     const parentReplyCount = comment.replyToId
       ? await tx.reelComment.count({ where: { replyToId: comment.replyToId, deletedAt: null } })
