@@ -678,7 +678,7 @@ router.delete("/:id", authRequired, writeLimiter, asyncRoute(async (req, res) =>
   const reelId = reelIdFrom(req.params.id);
   const userId = viewerIdFrom(req);
   const result = await prisma.reel.updateMany({
-    where: { id: reelId, authorId: userId, deletedAt: null },
+    where: { id: reelId, authorId: userId, status: ReelStatus.READY, deletedAt: null },
     data: { deletedAt: new Date(), status: ReelStatus.REMOVED },
   });
   if (!result.count) throw new HttpError(404, "Reel not found");
@@ -686,7 +686,41 @@ router.delete("/:id", authRequired, writeLimiter, asyncRoute(async (req, res) =>
     where: { reelId, status: ReelReportStatus.PENDING },
     data: { status: ReelReportStatus.ACTIONED },
   });
+  console.info("Reel deleted", JSON.stringify({ requestId: randomUUID(), reelId, userId }));
   res.status(204).end();
+}));
+
+router.post("/:id/cancel-upload", authRequired, writeLimiter, asyncRoute(async (req, res) => {
+  const reelId = reelIdFrom(req.params.id);
+  const userId = viewerIdFrom(req);
+  const reel = await prisma.reel.findFirst({
+    where: { id: reelId, authorId: userId },
+    select: { status: true, deletedAt: true },
+  });
+  if (!reel) throw new HttpError(404, "Reel not found");
+  if (reel.deletedAt || (reel.status !== ReelStatus.UPLOADING && reel.status !== ReelStatus.PROCESSING)) {
+    res.json({ canceled: false, status: reel.deletedAt ? ReelStatus.REMOVED : reel.status });
+    return;
+  }
+  const result = await prisma.reel.updateMany({
+    where: {
+      id: reelId,
+      authorId: userId,
+      deletedAt: null,
+      status: { in: [ReelStatus.UPLOADING, ReelStatus.PROCESSING] },
+    },
+    data: { deletedAt: new Date(), status: ReelStatus.REMOVED },
+  });
+  if (result.count) {
+    res.json({ canceled: true, status: ReelStatus.REMOVED });
+    return;
+  }
+  const current = await prisma.reel.findFirst({
+    where: { id: reelId, authorId: userId },
+    select: { status: true, deletedAt: true },
+  });
+  if (!current) throw new HttpError(404, "Reel not found");
+  res.json({ canceled: false, status: current.deletedAt ? ReelStatus.REMOVED : current.status });
 }));
 
 router.get("/:id/comments", authOptional, asyncRoute(async (req, res) => {

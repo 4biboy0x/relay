@@ -4770,6 +4770,33 @@
       }
       .confirm-dialog p[hidden],
       .action-dialog.confirmation #actionDescription[hidden] { display: none; }
+      .confirm-dialog-preview {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+        margin-top: 12px;
+      }
+      .confirm-dialog-preview[hidden],
+      .confirm-dialog-preview img[hidden] { display: none; }
+      .confirm-dialog-preview img {
+        width: 48px;
+        height: 76px;
+        flex: none;
+        border-radius: 8px;
+        background: var(--surface-2);
+        object-fit: cover;
+      }
+      .confirm-dialog-preview p {
+        min-width: 0;
+        max-height: 76px;
+        margin: 0;
+        overflow: auto;
+        color: var(--text-2);
+        font-size: 13px;
+        line-height: 1.4;
+        overflow-wrap: anywhere;
+      }
       .confirm-dialog-actions,
       .action-dialog.confirmation .dialog-actions {
         display: flex;
@@ -4812,6 +4839,10 @@
       .confirm-dialog .confirm-submit.danger:hover,
       .action-dialog.confirmation.danger #actionSubmit:hover {
         background: color-mix(in srgb, var(--like) 88%, black);
+      }
+      .confirm-dialog .confirm-submit:disabled {
+        cursor: default;
+        opacity: .55;
       }
       .confirm-dialog button:focus-visible,
       .action-dialog.confirmation .dialog-actions button:focus-visible {
@@ -9558,6 +9589,10 @@
       <div class="confirm-dialog-card">
         <h2 id="confirmDialogTitle"></h2>
         <p id="confirmDialogMessage" hidden></p>
+        <div class="confirm-dialog-preview" id="confirmDialogPreview" hidden>
+          <img id="confirmDialogPreviewImage" alt="" hidden>
+          <p id="confirmDialogPreviewCaption"></p>
+        </div>
         <div class="confirm-dialog-actions">
           <button class="confirm-cancel" id="confirmDialogCancel" type="button">Cancel</button>
           <button class="confirm-submit" id="confirmDialogSubmit" type="button">Confirm</button>
@@ -9915,6 +9950,7 @@
       let reelFeedObserver = null;
       let reelActiveObserver = null;
       let reelFeedScrollTop = 0;
+      let reelFeedIgnorePointersUntil = 0;
       let reelUploadPreviewUrl = "";
       let reelUploadValidationUrl = "";
       let reelPreviewMuted = true;
@@ -12417,6 +12453,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function setActiveReel(id) {
         if (!id || id === activeReelId) return;
+        if (confirmDialogState?.reelDeleteId && confirmDialogState.reelDeleteId !== id) {
+          closeReelDeleteConfirmation();
+        }
+        if ($("#reelActionsDialog").open) $("#reelActionsDialog").close();
         activeReelId = id;
         if (reelManualPlayback !== id) reelManualPlayback = "";
         const status = $("#reelFeedState");
@@ -13143,6 +13183,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           confirmLabel: "Delete",
           cancelLabel: "Cancel",
           danger: true,
+          reelDelete: { id: reel.id, posterUrl: reel.posterUrl, caption: reel.caption },
+          confirmDelayMs: 600,
         })) return;
         try {
           await api(`/reels/${encodeURIComponent(reelId)}`, { method: "DELETE" });
@@ -13419,7 +13461,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         reelUploadMetadataReady = true;
         updateReelUploadButton();
         if (previousReelId) {
-          api(`/reels/${encodeURIComponent(previousReelId)}`, { method: "DELETE" })
+          cancelReelUploadDraft(previousReelId)
             .catch((error) => console.warn("Could not discard the previous Reel draft.", error));
         }
         if (reelUploadPreviewUrl) URL.revokeObjectURL(reelUploadPreviewUrl);
@@ -13464,7 +13506,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         reelUploadPreuploaded = false;
         reelUploadCancellation = false;
         if (previousReelId) {
-          api(`/reels/${encodeURIComponent(previousReelId)}`, { method: "DELETE" })
+          cancelReelUploadDraft(previousReelId)
             .catch((error) => console.warn("Could not remove the previous Reel draft.", error));
         }
         if (reelUploadPreviewUrl) URL.revokeObjectURL(reelUploadPreviewUrl);
@@ -13500,6 +13542,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function showReelCreateDialog() {
         if (!requireAuth()) return;
+        closeReelDeleteConfirmation();
         if (!reelUploadBusy) {
           reelUploadGeneration += 1;
           reelUploadValidationGeneration += 1;
@@ -13533,9 +13576,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         $("#reelCreateDialog").showModal();
       }
-      function closeReelCreateDialog() {
-        if (reelUploadBusy) cancelReelUpload();
-        else if (reelUploadRequest || reelUploadPromise || (reelUploadCreatedId && !reelUploadCommitted)) cancelReelUpload();
+      function closeReelCreateDialog({ cancelUpload = true } = {}) {
+        closeReelDeleteConfirmation();
+        if (cancelUpload && (reelUploadBusy || reelUploadRequest || reelUploadPromise
+          || (reelUploadCreatedId && !reelUploadCommitted))) cancelReelUpload();
         if ($("#reelCreateDialog").open) $("#reelCreateDialog").close();
       }
       function uploadRequest(url, method, body, headers = {}, authenticated = false, generation = reelUploadGeneration) {
@@ -13726,18 +13770,53 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }, 3 * 60_000);
         return startReelStatusPoller(session);
       }
+      function cacheCreatedReel(reel, activateInFeed = false) {
+        reelRenderGeneration += 1;
+        reelLoading = false;
+        reelItems = [reel, ...reelItems.filter((item) => item.id !== reel.id)];
+        writeReelCache();
+        if (!activateInFeed || $("#v-reels").hidden) return;
+        const container = $("#reelItems");
+        $$(".reel-skeleton", container).forEach((skeleton) => skeleton.remove());
+        const existing = $(`.reel-item[data-reel-id="${CSS.escape(reel.id)}"]`, container);
+        const markup = reelMarkup(reel, 0);
+        if (existing) existing.outerHTML = markup;
+        else container.insertAdjacentHTML("afterbegin", markup);
+        $$(".reel-item", container).forEach((slide, index) => {
+          const item = reelItems.find((candidate) => candidate.id === slide.dataset.reelId);
+          slide.setAttribute(
+            "aria-label",
+            `Reel by @${item?.author?.handle || "user"}, ${index + 1} of ${reelItems.length}`,
+          );
+        });
+        renderReelFeedState("");
+        positionReelFeedSentinel();
+        reelFeedScrollTop = 0;
+        $("#reelFeed").scrollTop = 0;
+        deepLinkedReelId = reel.id;
+        observeReelItems();
+        activeReelId = "";
+        setActiveReel(reel.id);
+      }
+      async function fetchReadyReel(reelId, activateInFeed = false) {
+        const reel = await api(`/reels/${encodeURIComponent(reelId)}`);
+        if (reel.id !== reelId || reel.status !== "READY" || !reel.videoUrl) {
+          throw new Error("The Reel was processed but could not be loaded.");
+        }
+        cacheCreatedReel(reel, activateInFeed);
+        return reel;
+      }
+      async function cancelReelUploadDraft(reelId) {
+        const result = await api(`/reels/${encodeURIComponent(reelId)}/cancel-upload`, { method: "POST" });
+        if (result.status === "READY") await fetchReadyReel(reelId);
+        return result;
+      }
       async function finishReelUpload(reelId) {
+        await fetchReadyReel(reelId, true);
         hideReelUploadProgress();
         setReelUploadStatus("Ready to share", "ready");
-        $("#reelCreateDialog").close();
+        if ($("#reelCreateDialog").open) $("#reelCreateDialog").close();
         toast("Your Reel is ready");
-        if (!$("#v-reels").hidden) {
-          reelFeedScrollTop = 0;
-          await renderReels(false);
-        }
-        if (!$("#v-profile").hidden && profileTab === "Reels" && (!viewedProfileId || viewedProfileId === currentUser.id)) {
-          await renderProfile("Reels");
-        }
       }
       async function retryReelStatus(reelId) {
         if (reelUploadBusy || !reelId || reelId !== reelUploadCreatedId) return;
@@ -13772,7 +13851,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             }),
           });
           if (generation !== reelUploadGeneration || reelUploadCancellation) {
-            await api(`/reels/${encodeURIComponent(created.id)}`, { method: "DELETE" });
+            await cancelReelUploadDraft(created.id);
             throw new DOMException("Upload canceled", "AbortError");
           }
           reelUploadCreatedId = created.id;
@@ -13826,7 +13905,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         reelUploadCommitted = false;
         reelUploadPreuploaded = false;
         if (previousReelId) {
-          api(`/reels/${encodeURIComponent(previousReelId)}`, { method: "DELETE" })
+          cancelReelUploadDraft(previousReelId)
             .catch((error) => console.warn("Could not discard the failed Reel draft.", error));
         }
         reelUploadCancellation = false;
@@ -13848,7 +13927,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const session = await (reelUploadPromise || startReelPreupload(file, generation));
           if (generation !== reelUploadGeneration) return;
           if (reelUploadCancellation) {
-            await api(`/reels/${encodeURIComponent(session.id)}`, { method: "DELETE" });
+            await cancelReelUploadDraft(session.id);
             return;
           }
           setReelUploadStatus("Processing…", "processing");
@@ -13896,8 +13975,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         reelUploadPreuploaded = false;
         updateReelUploadButton();
         if (reelId) {
-          api(`/reels/${encodeURIComponent(reelId)}`, { method: "DELETE" })
-            .then(() => toast("Reel upload canceled"))
+          cancelReelUploadDraft(reelId)
+            .then((result) => {
+              if (result.canceled) toast("Reel upload canceled");
+            })
             .catch((error) => console.error("Could not cancel the Reel upload.", error));
         }
       }
@@ -14118,8 +14199,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             || (reelUploadCreatedId && !reelUploadCommitted)) cancelReelUpload();
         });
         $("#reelCreateDialog").addEventListener("close", () => {
+          reelFeedIgnorePointersUntil = performance.now() + 300;
+          closeReelDeleteConfirmation();
           reelUploadValidationGeneration += 1;
-          if (reelUploadCreatedId) stopReelStatusPoller(reelUploadCreatedId, null);
+          if (reelUploadCancellation && reelUploadCreatedId) {
+            stopReelStatusPoller(reelUploadCreatedId, null);
+          }
           if (reelUploadPreviewUrl) URL.revokeObjectURL(reelUploadPreviewUrl);
           reelUploadPreviewUrl = "";
           const preview = $("#reelUploadPreview");
@@ -14139,6 +14224,19 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             reelUploadMetadataReady = false;
             reelUploadPreuploaded = false;
           }
+          requestAnimationFrame(() => {
+            const focusTarget = $("#v-reels").hidden
+              ? document.querySelector(".nav-item[aria-current='page']")
+              : $("#reelFeed");
+            focusTarget?.focus({ preventScroll: true });
+          });
+        });
+        ["pointerdown", "pointerup", "click"].forEach((type) => {
+          $("#reelFeed").addEventListener(type, (event) => {
+            if (performance.now() >= reelFeedIgnorePointersUntil) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }, true);
         });
         $("#reelFeed").addEventListener("click", handleReelFeedClick);
         $("#reelFeed").addEventListener("dblclick", handleReelFeedDoubleClick);
@@ -18418,7 +18516,15 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           toast(error.message);
         }
       }
-      function confirmDialog({ title, message = "", confirmLabel, cancelLabel = "Cancel", danger = false }) {
+      function confirmDialog({
+        title,
+        message = "",
+        confirmLabel,
+        cancelLabel = "Cancel",
+        danger = false,
+        reelDelete = null,
+        confirmDelayMs = 0,
+      }) {
         const dialog = confirmDialogElement;
         if (dialog.open || confirmDialogState) {
           const error = new Error("A confirmation dialog is already open.");
@@ -18429,18 +18535,43 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const description = $("#confirmDialogMessage");
         description.textContent = message;
         description.hidden = !message;
-        if (message) dialog.setAttribute("aria-describedby", "confirmDialogMessage");
+        const describedBy = [
+          message ? "confirmDialogMessage" : "",
+          reelDelete ? "confirmDialogPreviewCaption" : "",
+        ].filter(Boolean).join(" ");
+        if (describedBy) dialog.setAttribute("aria-describedby", describedBy);
         else dialog.removeAttribute("aria-describedby");
         const cancel = $("#confirmDialogCancel");
         const submit = $("#confirmDialogSubmit");
+        const preview = $("#confirmDialogPreview");
+        const previewImage = $("#confirmDialogPreviewImage");
+        const previewCaption = $("#confirmDialogPreviewCaption");
         cancel.textContent = cancelLabel;
         submit.textContent = confirmLabel;
         submit.classList.toggle("danger", danger);
+        submit.disabled = confirmDelayMs > 0;
+        preview.hidden = !reelDelete;
+        previewImage.hidden = !reelDelete?.posterUrl;
+        previewImage.removeAttribute("src");
+        if (reelDelete?.posterUrl) previewImage.src = mediaHref(reelDelete.posterUrl);
+        previewCaption.textContent = reelDelete?.caption || "No caption";
         const trigger = document.activeElement;
         const previousBodyOverflow = document.body.style.overflow;
         const card = dialog.querySelector(".confirm-dialog-card");
         return new Promise((resolve, reject) => {
-          confirmDialogState = { resolve, trigger, previousBodyOverflow, closing: false, openedAt: performance.now() };
+          const state = {
+            resolve,
+            trigger,
+            previousBodyOverflow,
+            closing: false,
+            openedAt: performance.now(),
+            confirmAfter: performance.now() + confirmDelayMs,
+            reelDeleteId: reelDelete?.id || "",
+            pointerDownTargets: new Map(),
+            pointerClickTarget: null,
+            confirmationTimer: null,
+          };
+          confirmDialogState = state;
           try {
             if (dialog.parentElement !== document.body) document.body.append(dialog);
             card.classList.add("is-entering");
@@ -18448,12 +18579,20 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             document.body.style.overflow = "hidden";
             dialog.showModal();
             requestAnimationFrame(() => card.classList.remove("is-entering"));
-            (danger ? cancel : submit).focus({ preventScroll: true });
+            (danger || reelDelete ? cancel : submit).focus({ preventScroll: true });
+            if (confirmDelayMs > 0) {
+              state.confirmationTimer = setTimeout(() => {
+                if (confirmDialogState === state) submit.disabled = false;
+              }, confirmDelayMs);
+            }
           } catch (error) {
             card.classList.remove("is-entering");
             if (dialog.open) dialog.close();
             document.body.classList.remove("confirm-dialog-open");
             document.body.style.overflow = previousBodyOverflow;
+            submit.disabled = false;
+            preview.hidden = true;
+            previewImage.removeAttribute("src");
             confirmDialogState = null;
             console.error("Could not open confirmation dialog", error);
             reject(error);
@@ -18463,14 +18602,23 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function settleConfirmDialog(confirmed) {
         const state = confirmDialogState;
         if (!state || state.closing) return;
+        if (confirmed && state.reelDeleteId && performance.now() < state.confirmAfter) return;
         state.closing = true;
+        clearTimeout(state.confirmationTimer);
         confirmDialogElement.querySelector(".confirm-dialog-card").classList.remove("is-entering");
         confirmDialogElement.close();
         document.body.classList.remove("confirm-dialog-open");
         document.body.style.overflow = state.previousBodyOverflow;
+        $("#confirmDialogSubmit").disabled = false;
+        $("#confirmDialogPreview").hidden = true;
+        $("#confirmDialogPreviewImage").removeAttribute("src");
+        $("#confirmDialogPreviewCaption").textContent = "";
         confirmDialogState = null;
         state.resolve(confirmed);
         if (state.trigger?.isConnected) state.trigger.focus({ preventScroll: true });
+      }
+      function closeReelDeleteConfirmation() {
+        if (confirmDialogState?.reelDeleteId) settleConfirmDialog(false);
       }
       function openActionDialog(mode, data = {}) {
         actionDialogState = { mode, ...data };
@@ -18689,6 +18837,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function go(v, updateRoute = true, preserveProfile = false, restoreConversationId = "") {
         if (!requireAuth()) return;
+        if (v !== "reels") {
+          closeReelDeleteConfirmation();
+          if ($("#reelActionsDialog").open) $("#reelActionsDialog").close();
+          if ($("#reelCreateDialog").open) {
+            closeReelCreateDialog({ cancelUpload: !reelUploadCommitted });
+          }
+        }
         cancelDelayedPlaceholders();
         if (v !== "notifs") disconnectNotificationObserver();
         if (v === "reels" && updateRoute) deepLinkedReelId = "";
@@ -18777,6 +18932,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             : `#/${v}`;
           if (location.hash !== route) location.hash = route;
         }
+        if (v !== "reels") {
+          requestAnimationFrame(() => {
+            document.querySelector(".nav-item[aria-current='page']")?.focus({ preventScroll: true });
+          });
+        }
         window.scrollTo(0, 0);
       }
       function routeFromHash() {
@@ -18796,6 +18956,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             deepLinkedReelId = requestedReelId;
             go("reels", false);
           } else if (requestedReelId && requestedReelId !== activeReelId) {
+            closeReelDeleteConfirmation();
+            if ($("#reelActionsDialog").open) $("#reelActionsDialog").close();
             deepLinkedReelId = requestedReelId;
             renderReels(false, requestedReelId);
           } else if (!requestedReelId && deepLinkedReelId) {
@@ -20087,6 +20249,38 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       $("#actionCancel").addEventListener("click", closeActionDialog);
       $("#confirmDialogCancel").addEventListener("click", () => settleConfirmDialog(false));
       $("#confirmDialogSubmit").addEventListener("click", () => settleConfirmDialog(true));
+      confirmDialogElement.addEventListener("pointerdown", (event) => {
+        const state = confirmDialogState;
+        if (!state?.reelDeleteId) return;
+        const button = event.target instanceof Element ? event.target.closest("button") : null;
+        state.pointerDownTargets.set(event.pointerId, { button, startedAt: performance.now() });
+      }, true);
+      confirmDialogElement.addEventListener("pointerup", (event) => {
+        const state = confirmDialogState;
+        if (!state?.reelDeleteId) return;
+        const pointerDown = state.pointerDownTargets.get(event.pointerId);
+        const endedOn = event.target instanceof Element ? event.target.closest("button") : null;
+        state.pointerClickTarget = pointerDown?.button === endedOn
+          && pointerDown.startedAt >= state.confirmAfter ? endedOn : null;
+        state.pointerDownTargets.delete(event.pointerId);
+      }, true);
+      confirmDialogElement.addEventListener("pointercancel", (event) => {
+        const state = confirmDialogState;
+        if (!state?.reelDeleteId) return;
+        state.pointerDownTargets.delete(event.pointerId);
+        state.pointerClickTarget = null;
+      }, true);
+      confirmDialogElement.addEventListener("click", (event) => {
+        const state = confirmDialogState;
+        if (!state?.reelDeleteId || event.detail === 0) return;
+        const button = event.target instanceof Element ? event.target.closest("button") : null;
+        if (!button) return;
+        if (state.pointerClickTarget !== button) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+        state.pointerClickTarget = null;
+      }, true);
       confirmDialogElement.addEventListener("cancel", (event) => {
         event.preventDefault();
         settleConfirmDialog(false);
@@ -20101,7 +20295,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
       });
       confirmDialogElement.addEventListener("keydown", (event) => {
-        const buttons = $$("#confirmDialogCancel, #confirmDialogSubmit");
+        const buttons = $$("#confirmDialogCancel, #confirmDialogSubmit").filter((button) => !button.disabled);
         if (event.key === "Escape") {
           event.preventDefault();
           settleConfirmDialog(false);
