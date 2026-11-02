@@ -5975,20 +5975,36 @@
       @media (max-width: 640px) {
         .message-bubble:not(.mine) > .message-tools,
         .message-image-item:not(.mine) > .message-tools {
-          top: auto;
-          inset-inline-start: auto;
-          inset-inline-end: 0;
-          bottom: calc(100% + 4px);
-          margin-top: 0;
+          top: 50%;
+          right: auto;
+          bottom: auto;
+          left: calc(100% + 4px);
+          margin-top: -16px;
         }
         .message-bubble.mine > .message-tools,
         .message-image-item.mine > .message-tools {
-          top: auto;
-          inset-inline-start: 0;
-          inset-inline-end: auto;
-          bottom: calc(100% + 4px);
-          margin-top: 0;
+          top: 50%;
+          right: calc(100% + 4px);
+          bottom: auto;
+          left: auto;
+          margin-top: -16px;
+          flex-direction: row-reverse;
         }
+        .message-row:is(:hover, :focus-within, .tools-visible, .has-message-popover) > .message-bubble,
+        .message-row:is(:hover, :focus-within, .tools-visible, .has-message-popover) > .reply-stack {
+          max-width: calc(100% - 176px);
+        }
+        .message-row:is(:hover, :focus-within, .tools-visible, .has-message-popover) .message-image-list:not([data-count="1"]) {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+      @media (max-width: 640px) and (hover: none) {
+        .message-tools { gap: 4px; }
+        .message-tool-button { width: 40px; height: 40px; }
+        .message-bubble:not(.mine) > .message-tools,
+        .message-image-item:not(.mine) > .message-tools,
+        .message-bubble.mine > .message-tools,
+        .message-image-item.mine > .message-tools { margin-top: -20px; }
       }
       .message-bubble.search-message-highlight {
         animation: message-search-shake 420ms ease-in-out;
