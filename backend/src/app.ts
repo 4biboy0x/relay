@@ -1881,8 +1881,21 @@ api.post("/conversations/:conversationId/messages", authRequired, messageLimiter
 const updateMessageReaction = async (req: express.Request, res: express.Response, active: boolean): Promise<void> => {
   const messageId = z.string().cuid().parse(req.params.messageId);
   const emoji = messageReactionEmojiSchema.parse(active ? req.body?.emoji : req.query.emoji);
+  const logReactionError = (operation: string, error: unknown): void => {
+    const errorDetails = typeof error === "object" && error !== null ? error : {};
+    console.error(operation, {
+      route: `${req.method} ${req.originalUrl}`,
+      messageId,
+      userId: req.userId,
+      prismaCode: "code" in errorDetails ? errorDetails.code : undefined,
+      prismaMeta: "meta" in errorDetails ? errorDetails.meta : undefined,
+      stack: error instanceof Error ? error.stack : undefined,
+    }, error);
+  };
   const result = await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${messageId}), hashtext(${req.userId!}))`);
+    await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id" FROM "Message" WHERE "id" = ${messageId} FOR UPDATE
+    `);
     const message = await tx.message.findFirst({
       where: { id: messageId, conversation: { members: { some: { userId: req.userId! } } } },
     });
@@ -2020,13 +2033,6 @@ const updateMessageReaction = async (req: express.Request, res: express.Response
     const updatedAt = reactionIsLatest && latestReactionActivity
       ? latestReactionActivity.createdAt
       : latestMessage?.createdAt || conversation.updatedAt;
-    await tx.conversation.update({
-      where: { id: message.conversationId },
-      data: {
-        lastMessage: reactionIsLatest && lastMessage ? lastMessage : Prisma.DbNull,
-        updatedAt,
-      },
-    });
     return {
       conversationId: message.conversationId,
       actor,
@@ -2045,25 +2051,43 @@ const updateMessageReaction = async (req: express.Request, res: express.Response
       updatedAt,
       unreadMembers,
     };
+  }).catch((error: unknown) => {
+    logReactionError("Message reaction transaction failed", error);
+    throw error;
   });
+  try {
+    await prisma.conversation.update({
+      where: { id: result.conversationId },
+      data: {
+        lastMessage: result.lastMessage ? result.lastMessage : Prisma.DbNull,
+        updatedAt: result.updatedAt,
+      },
+    });
+  } catch (error) {
+    logReactionError("Could not update the conversation preview after a reaction", error);
+  }
   if (result.changed) {
     for (const member of result.unreadMembers) {
-      emitToUser(member.userId, "message:reaction", {
-        messageId,
-        conversationId: result.conversationId,
-        actorId: req.userId!,
-        userId: req.userId!,
-        emoji: result.emoji,
-        active,
-        targetType: result.targetType,
-        targetPreview: result.targetPreview,
-        createdAt: result.createdAt,
-        lastMessage: result.lastMessage,
-        updatedAt: result.updatedAt,
-        actor: result.actor,
-        reactions: summarizeMessageReactions(result.reactions, member.userId),
-      });
-      emitToUser(member.userId, "messages:unread-increment", { conversationId: result.conversationId });
+      try {
+        emitToUser(member.userId, "message:reaction", {
+          messageId,
+          conversationId: result.conversationId,
+          actorId: req.userId!,
+          userId: req.userId!,
+          emoji: result.emoji,
+          active,
+          targetType: result.targetType,
+          targetPreview: result.targetPreview,
+          createdAt: result.createdAt,
+          lastMessage: result.lastMessage,
+          updatedAt: result.updatedAt,
+          actor: result.actor,
+          reactions: summarizeMessageReactions(result.reactions, member.userId),
+        });
+        emitToUser(member.userId, "messages:unread-increment", { conversationId: result.conversationId });
+      } catch (error) {
+        logReactionError(`Could not broadcast a reaction update to user ${member.userId}`, error);
+      }
     }
   }
   res.json({

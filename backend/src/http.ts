@@ -15,7 +15,7 @@ export const asyncRoute = (handler: RequestHandler): RequestHandler =>
     Promise.resolve(handler(req, res, next)).catch(next);
   };
 
-export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
+export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
   if (typeof error === "object" && error !== null && "status" in error) {
     const status = error.status;
     if (status === 400 || status === 413) {
@@ -45,6 +45,13 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
       return;
     }
   }
-  console.error(error);
+  const errorDetails = typeof error === "object" && error !== null ? error : {};
+  console.error("Unhandled API error", {
+    route: `${req.method} ${req.originalUrl}`,
+    userId: req.userId,
+    prismaCode: "code" in errorDetails ? errorDetails.code : undefined,
+    prismaMeta: "meta" in errorDetails ? errorDetails.meta : undefined,
+    stack: error instanceof Error ? error.stack : undefined,
+  }, error);
   res.status(500).json({ error: "Internal server error" });
 };
