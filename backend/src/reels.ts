@@ -94,6 +94,12 @@ const paginationSchema = z.object({
 });
 const feedQuerySchema = paginationSchema.extend({ afterId: uuidSchema.optional() });
 const reelCommentsQuerySchema = paginationSchema.extend({ focusId: z.string().cuid().optional() });
+const reelRepliesQuerySchema = z.object({
+  parentId: z.string().cuid(),
+  focusId: z.string().cuid().optional(),
+  cursor: z.string().max(256).optional(),
+  limit: z.coerce.number().int().min(1).max(20).default(3),
+});
 const mediaKindSchema = z.enum(["video", "poster"]);
 
 const writeLimiter = rateLimit({
@@ -754,16 +760,84 @@ router.post("/:id/cancel-upload", authRequired, writeLimiter, asyncRoute(async (
 router.get("/:id/comments", authOptional, asyncRoute(async (req, res) => {
   const reelId = reelIdFrom(req.params.id);
   await ensureVisibleReel(reelId);
-  const { cursor: rawCursor, limit, focusId } = reelCommentsQuerySchema.parse(req.query);
-  const cursor = parseCursor(rawCursor, reelCommentCursorSchema);
   const commentInclude = {
     author: { select: profileUserSelect },
-    replies: {
-      where: { deletedAt: null },
-      include: { author: { select: profileUserSelect } },
-      orderBy: [{ createdAt: "asc" as const }, { id: "asc" as const }],
+    _count: {
+      select: {
+        replies: { where: { deletedAt: null } },
+      },
     },
   };
+  const serializeComment = <T extends { _count: { replies: number } }>(comment: T) => {
+    const { _count, ...record } = comment;
+    return { ...record, replyCount: _count.replies };
+  };
+  if ("parentId" in req.query) {
+    const { parentId, focusId, cursor: rawCursor, limit } = reelRepliesQuerySchema.parse(req.query);
+    const cursor = parseCursor(rawCursor, reelCommentCursorSchema);
+    const parentExists = await prisma.reelComment.findFirst({
+      where: { id: parentId, reelId, deletedAt: null },
+      select: {
+        id: true,
+        _count: { select: { replies: { where: { deletedAt: null } } } },
+      },
+    });
+    if (!parentExists) throw new HttpError(404, "Comment not found");
+    const replies = await prisma.reelComment.findMany({
+      where: {
+        reelId,
+        replyToId: parentId,
+        deletedAt: null,
+        ...(cursor ? {
+          OR: [
+            { createdAt: { gt: new Date(cursor.createdAt) } },
+            { createdAt: new Date(cursor.createdAt), id: { gt: cursor.id } },
+          ],
+        } : {}),
+      },
+      include: commentInclude,
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      take: limit + 1,
+    });
+    const page = replies.slice(0, limit);
+    const focusedReply = focusId ? await prisma.reelComment.findFirst({
+      where: { id: focusId, reelId, replyToId: parentId, deletedAt: null },
+      include: commentInclude,
+    }) : null;
+    if (focusedReply && !page.some(({ id }) => id === focusedReply.id)) page.push(focusedReply);
+    const hasMore = replies.length > limit;
+    const last = replies.slice(0, limit).at(-1);
+    res.json({
+      items: page.map(serializeComment),
+      replyCount: parentExists._count.replies,
+      nextCursor: hasMore && last
+        ? encodeCursor({ createdAt: last.createdAt.toISOString(), id: last.id })
+        : null,
+    });
+    return;
+  }
+
+  const { cursor: rawCursor, limit, focusId } = reelCommentsQuerySchema.parse(req.query);
+  const cursor = parseCursor(rawCursor, reelCommentCursorSchema);
+  const focusPath: string[] = [];
+  if (focusId) {
+    let currentId: string | null = focusId;
+    const visited = new Set<string>();
+    while (currentId && !visited.has(currentId)) {
+      visited.add(currentId);
+      const current: { id: string; replyToId: string | null } | null = await prisma.reelComment.findFirst({
+        where: { id: currentId, reelId, deletedAt: null },
+        select: { id: true, replyToId: true },
+      });
+      if (!current) {
+        focusPath.length = 0;
+        break;
+      }
+      focusPath.unshift(current.id);
+      currentId = current.replyToId;
+    }
+  }
+  const focusRootId = focusPath[0];
   const [comments, focusedComment] = await Promise.all([
     prisma.reelComment.findMany({
       where: {
@@ -781,15 +855,12 @@ router.get("/:id/comments", authOptional, asyncRoute(async (req, res) => {
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: limit + 1,
     }),
-    focusId ? prisma.reelComment.findFirst({
+    focusRootId ? prisma.reelComment.findFirst({
       where: {
+        id: focusRootId,
         reelId,
         replyToId: null,
         deletedAt: null,
-        OR: [
-          { id: focusId },
-          { replies: { some: { id: focusId, deletedAt: null } } },
-        ],
       },
       include: commentInclude,
     }) : null,
@@ -801,7 +872,8 @@ router.get("/:id/comments", authOptional, asyncRoute(async (req, res) => {
   }
   const last = comments.slice(0, limit).at(-1);
   res.json({
-    items: page,
+    items: page.map(serializeComment),
+    focusPath,
     nextCursor: hasMore && last
       ? encodeCursor({ createdAt: last.createdAt.toISOString(), id: last.id })
       : null,
@@ -821,7 +893,7 @@ router.post("/:id/comments", authRequired, writeLimiter, asyncRoute(async (req, 
 
     if (input.replyToId) {
       const parent = await tx.reelComment.findFirst({
-        where: { id: input.replyToId, reelId, replyToId: null, deletedAt: null },
+        where: { id: input.replyToId, reelId, deletedAt: null },
         select: { id: true, authorId: true },
       });
       if (!parent) throw new HttpError(404, "Reply target not found");
@@ -840,6 +912,9 @@ router.post("/:id/comments", authRequired, writeLimiter, asyncRoute(async (req, 
       data: { commentCount: { increment: 1 } },
       select: { likeCount: true, commentCount: true, repostCount: true, shareCount: true, viewCount: true },
     });
+    const parentReplyCount = input.replyToId
+      ? await tx.reelComment.count({ where: { replyToId: input.replyToId, deletedAt: null } })
+      : null;
     const recipientId = input.replyToId
       ? (await tx.reelComment.findUniqueOrThrow({
           where: { id: input.replyToId },
@@ -858,16 +933,22 @@ router.post("/:id/comments", authRequired, writeLimiter, asyncRoute(async (req, 
           include: notificationInclude,
         })
       : null;
-    return { comment, notification, counts: reelCountsFromRecord(updatedReel) };
+    return {
+      comment: { ...comment, replyCount: 0 },
+      notification,
+      counts: reelCountsFromRecord(updatedReel),
+      parentReplyCount,
+    };
   });
   emitToReel(reelId, "reel:comment:new", {
     reelId,
     actorId: userId,
     comment: result.comment,
+    parentReplyCount: result.parentReplyCount,
     counts: result.counts,
   });
   if (result.notification) emitToUser(result.notification.recipientId, "notification:new", result.notification);
-  res.status(201).json({ ...result.comment, counts: result.counts });
+  res.status(201).json({ ...result.comment, parentReplyCount: result.parentReplyCount, counts: result.counts });
 }));
 
 router.delete("/:id/comments/:commentId", authRequired, writeLimiter, asyncRoute(async (req, res) => {
@@ -884,18 +965,26 @@ router.delete("/:id/comments/:commentId", authRequired, writeLimiter, asyncRoute
       throw new HttpError(403, "You cannot delete this comment");
     }
     const deletedAt = new Date();
-    const commentIds = await tx.reelComment.findMany({
-      where: {
-        reelId,
-        deletedAt: null,
-        OR: [{ id: commentId }, { replyToId: commentId }],
-      },
-      select: { id: true },
-    });
+    const commentIds = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      WITH RECURSIVE descendants("id") AS (
+        SELECT "id"
+        FROM "ReelComment"
+        WHERE "id" = ${commentId} AND "reelId" = ${reelId} AND "deletedAt" IS NULL
+        UNION ALL
+        SELECT child."id"
+        FROM "ReelComment" child
+        INNER JOIN descendants parent ON child."replyToId" = parent."id"
+        WHERE child."reelId" = ${reelId} AND child."deletedAt" IS NULL
+      )
+      SELECT "id" FROM descendants
+    `);
     await tx.reelComment.updateMany({
       where: { id: { in: commentIds.map(({ id }) => id) }, deletedAt: null },
       data: { deletedAt },
     });
+    const parentReplyCount = comment.replyToId
+      ? await tx.reelComment.count({ where: { replyToId: comment.replyToId, deletedAt: null } })
+      : null;
     const updatedReel = await tx.reel.update({
       where: { id: reelId },
       data: { commentCount: { decrement: commentIds.length } },
@@ -903,6 +992,8 @@ router.delete("/:id/comments/:commentId", authRequired, writeLimiter, asyncRoute
     });
     return {
       commentIds: commentIds.map(({ id }) => id),
+      parentId: comment.replyToId,
+      parentReplyCount,
       counts: reelCountsFromRecord(updatedReel),
     };
   });
@@ -910,6 +1001,8 @@ router.delete("/:id/comments/:commentId", authRequired, writeLimiter, asyncRoute
     reelId,
     actorId: userId,
     commentIds: result.commentIds,
+    parentId: result.parentId,
+    parentReplyCount: result.parentReplyCount,
     counts: result.counts,
   });
   res.status(204).end();

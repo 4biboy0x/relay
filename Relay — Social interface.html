@@ -8377,8 +8377,16 @@
       .reel-comment-copy strong { font-size: 12px; }
       .reel-comment-copy p { margin: 4px 0 0; color: var(--text-2); font-size: 13px; line-height: 1.45; white-space: pre-wrap; }
       .reel-comment-copy .profile-link { padding: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
-      .reel-comment-reply { margin-top: 6px; padding: 0; border: 0; background: none; color: var(--text-3); font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; }
-      .reel-comment-replies { margin: 8px 0 0 6px; padding-left: 9px; border-left: 1px solid var(--border); }
+      .reel-comment-reply,
+      .reel-comment-replies-toggle { margin: 6px 12px 0 0; padding: 0; border: 0; background: none; color: var(--text-3); font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; }
+      .reel-comment-reply:hover,
+      .reel-comment-replies-toggle:hover { color: var(--text-2); }
+      .reel-comment-replies-toggle:disabled { cursor: default; opacity: .7; }
+      .reel-comment-replies { display: grid; grid-template-rows: 0fr; margin-top: 0; opacity: 0; transition: grid-template-rows 180ms ease, opacity 180ms ease, margin-top 180ms ease; }
+      .reel-comment-replies.is-expanded { grid-template-rows: 1fr; margin-top: 8px; opacity: 1; }
+      .reel-comment-replies[hidden] { display: none; }
+      .reel-comment-replies-inner { min-height: 0; overflow: hidden; margin-left: 6px; padding-left: 9px; border-left: 1px solid var(--border); }
+      .reel-comment-replies-inner > .reel-comment:last-child { padding-bottom: 0; }
       .reel-comment.is-reply { padding: 7px 0; border: 0; }
       .reel-comment.is-reply .av { width: 28px; height: 28px; }
       .reel-comment.is-live { animation: reel-comment-arrive 260ms cubic-bezier(.2, .8, .2, 1) both; }
@@ -8394,6 +8402,7 @@
       @media (prefers-reduced-motion: reduce) {
         .reel-comment.is-live,
         .reel-comment.is-notification-target { animation: none; }
+        .reel-comment-replies { transition: none; }
       }
       .reel-comment-form { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
       .reel-comment-form input { min-width: 0; }
@@ -9997,6 +10006,7 @@
       let reelCommentsReelId = "";
       let reelCommentsCursor = null;
       let reelCommentsGeneration = 0;
+      const reelCommentReplyStates = new Map();
       let reelStatsGeneration = 0;
       let reelCommentReplyToId = "";
       let reelActionsId = "";
@@ -13037,7 +13047,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (reel) applyReelCounts(reel, event.counts);
         if (reelCommentsReelId === event.reelId) {
           const exists = $(`[data-reel-comment="${CSS.escape(comment.id)}"]`, $("#reelCommentList"));
-          if (!exists && !insertReelComment(comment, true) && comment.replyToId) {
+          if (!exists && !insertReelComment(comment, true, event.parentReplyCount) && comment.replyToId) {
             void loadReelComments(false, comment.id);
           }
           $("#reelCommentsCount").textContent = `${formatReelCount(reel?.counts?.comments)} comments`;
@@ -13049,9 +13059,33 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const reel = reelItems.find((item) => item.id === event.reelId);
         if (reel) applyReelCounts(reel, event.counts);
         if (reelCommentsReelId === event.reelId) {
+          const parent = event.parentId
+            ? $(`[data-reel-comment="${CSS.escape(event.parentId)}"]`, $("#reelCommentList"))
+            : null;
           event.commentIds.forEach((id) => {
             $(`[data-reel-comment="${CSS.escape(id)}"]`, $("#reelCommentList"))?.remove();
+            reelCommentReplyStates.delete(id);
           });
+          if (parent) {
+            const state = reelCommentReplyStates.get(parent.dataset.reelComment);
+            const replies = $(`[data-reel-replies="${CSS.escape(parent.dataset.reelComment)}"]`, parent);
+            const inner = $(".reel-comment-replies-inner", replies);
+            if (state && inner) {
+              state.loadedCount = inner.querySelectorAll(":scope > .reel-comment").length;
+              if (Number(event.parentReplyCount) <= 0) {
+                state.expanded = false;
+                state.cursor = null;
+                replies.classList.remove("is-expanded");
+                window.setTimeout(() => {
+                  if (!state.expanded && !state.loadedCount) replies.hidden = true;
+                }, reelReducedMotion.matches ? 0 : 190);
+                reelCommentReplyStates.delete(parent.dataset.reelComment);
+              } else if (state.loadedCount >= Number(event.parentReplyCount)) {
+                state.cursor = null;
+              }
+            }
+            syncReelReplyButton(parent, event.parentReplyCount);
+          }
           $("#reelCommentsCount").textContent = `${formatReelCount(reel?.counts?.comments)} comments`;
           if (!$("#reelCommentList").querySelector(".reel-comment")) {
             $("#reelCommentList").innerHTML = '<div class="relay-load-error">No comments yet. Start the conversation.</div>';
@@ -13121,6 +13155,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (actionButton) reelActionRequests.add(actionButton);
         reelCommentsReelId = reelId;
         reelCommentsCursor = null;
+        reelCommentReplyStates.clear();
         reelCommentReplyToId = "";
         $("#reelReplyTarget").hidden = true;
         $("#reelCommentInput").value = "";
@@ -13133,43 +13168,207 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const request = loadReelComments(false, focusCommentId);
         if (actionButton) void request.finally(() => reelActionRequests.delete(actionButton));
       }
+      function reelCommentReplyCount(comment) {
+        return Math.max(0, Number(comment.replyCount ?? comment._count?.replies ?? comment.replies?.length) || 0);
+      }
+      function reelReplyState(parentId) {
+        if (!reelCommentReplyStates.has(parentId)) {
+          reelCommentReplyStates.set(parentId, {
+            cursor: null,
+            loadedCount: 0,
+            expanded: false,
+            loading: false,
+          });
+        }
+        return reelCommentReplyStates.get(parentId);
+      }
+      function reelReplyButtonLabel(parent, state) {
+        const remaining = Math.max(0, Number(parent.dataset.replyCount) - state.loadedCount);
+        if (state.loading) return "Loading…";
+        if (state.expanded && state.cursor) {
+          const count = Math.min(5, remaining || 5);
+          return `View ${count} more ${count === 1 ? "reply" : "replies"}`;
+        }
+        if (state.expanded) return "Hide replies";
+        return `View replies (${parent.dataset.replyCount})`;
+      }
+      function syncReelReplyButton(parent, replyCount) {
+        if (!parent) return;
+        const safeCount = Math.max(0, Number(replyCount) || 0);
+        parent.dataset.replyCount = String(safeCount);
+        const state = reelCommentReplyStates.get(parent.dataset.reelComment);
+        let button = $(":scope > .reel-comment-copy > .reel-comment-replies-toggle", parent);
+        if (!button && (safeCount > 0 || state?.loadedCount)) {
+          button = document.createElement("button");
+          button.className = "reel-comment-replies-toggle";
+          button.type = "button";
+          button.dataset.reelRepliesToggle = parent.dataset.reelComment;
+          button.setAttribute("aria-controls", `reel-replies-${parent.dataset.reelComment}`);
+          parent.querySelector(":scope > .reel-comment-copy > .reel-comment-reply")?.after(button);
+          if (!button.isConnected) parent.querySelector(":scope > .reel-comment-copy").append(button);
+        }
+        if (!button) return;
+        button.hidden = safeCount === 0 && !state?.loadedCount;
+        button.disabled = Boolean(state?.loading);
+        button.setAttribute("aria-expanded", String(Boolean(state?.expanded)));
+        button.setAttribute("aria-busy", String(Boolean(state?.loading)));
+        button.textContent = reelReplyButtonLabel(parent, state || {
+          cursor: null,
+          loadedCount: 0,
+          expanded: false,
+          loading: false,
+        });
+      }
       function reelCommentMarkup(comment, depth = 0, live = false) {
         const author = comment.author || {};
-        const replies = Array.isArray(comment.replies) ? comment.replies : [];
-        return `<div class="reel-comment${depth ? " is-reply" : ""}${live ? " is-live" : ""}" data-reel-comment="${esc(comment.id)}">
+        const replyCount = reelCommentReplyCount(comment);
+        return `<div class="reel-comment${depth ? " is-reply" : ""}${live ? " is-live" : ""}" data-reel-comment="${esc(comment.id)}" data-reply-count="${replyCount}" data-depth="${Math.min(depth, 4)}">
           ${avatarMarkup(author, "sm")}
           <div class="reel-comment-copy">
             <button type="button" class="profile-link" data-profile-id="${esc(author.id || "")}">${esc(author.displayName || author.handle || "Relay user")}</button>
             <p>${esc(comment.body || "")}</p>
-            ${!depth ? `<button type="button" class="reel-comment-reply" data-reel-reply="${esc(comment.id)}" data-reel-reply-handle="${esc(author.handle || "")}">Reply</button>` : ""}
-            ${replies.length ? `<div class="reel-comment-replies">${replies.map((reply) => reelCommentMarkup(reply, depth + 1, live)).join("")}</div>` : ""}
+            <button type="button" class="reel-comment-reply" data-reel-reply="${esc(comment.id)}" data-reel-reply-handle="${esc(author.handle || "")}">Reply</button>
+            <button type="button" class="reel-comment-replies-toggle" data-reel-replies-toggle="${esc(comment.id)}" aria-controls="reel-replies-${esc(comment.id)}" aria-expanded="false"${replyCount ? "" : " hidden"}>View replies (${replyCount})</button>
+            <div class="reel-comment-replies" id="reel-replies-${esc(comment.id)}" data-reel-replies="${esc(comment.id)}" data-depth="${Math.min(depth + 1, 4)}" hidden><div class="reel-comment-replies-inner"></div></div>
           </div>
         </div>`;
       }
-      function insertReelComment(comment, live = false) {
+      function insertReelComment(comment, live = false, parentReplyCount = comment.parentReplyCount) {
         const list = $("#reelCommentList");
-        if ($(`[data-reel-comment="${CSS.escape(comment.id)}"]`, list)) return false;
+        const existing = $(`[data-reel-comment="${CSS.escape(comment.id)}"]`, list);
+        if (existing) {
+          if (comment.replyToId && Number.isFinite(parentReplyCount)) {
+            const parent = $(`[data-reel-comment="${CSS.escape(comment.replyToId)}"]`, list);
+            if (parent) syncReelReplyButton(parent, parentReplyCount);
+          }
+          return false;
+        }
         list.querySelector(".relay-load-error")?.remove();
         if (comment.replyToId) {
           const parent = $(`[data-reel-comment="${CSS.escape(comment.replyToId)}"]`, list);
           if (!parent) return false;
-          let replies = parent.querySelector(".reel-comment-replies");
-          if (!replies) {
-            replies = document.createElement("div");
-            replies.className = "reel-comment-replies";
-            parent.querySelector(".reel-comment-copy").append(replies);
+          const currentCount = Number(parent.dataset.replyCount) || 0;
+          syncReelReplyButton(parent, Number.isFinite(parentReplyCount) ? parentReplyCount : currentCount + 1);
+          const state = reelCommentReplyStates.get(parent.dataset.reelComment);
+          if (state?.expanded) {
+            const replies = $(`[data-reel-replies="${CSS.escape(parent.dataset.reelComment)}"]`, parent);
+            const inner = $(".reel-comment-replies-inner", replies);
+            const depth = Math.min((Number(parent.dataset.depth) || 0) + 1, 4);
+            inner.insertAdjacentHTML("beforeend", reelCommentMarkup(comment, depth, live));
+            state.loadedCount = inner.querySelectorAll(":scope > .reel-comment").length;
+            syncReelReplyButton(parent, parent.dataset.replyCount);
           }
-          replies.insertAdjacentHTML("beforeend", reelCommentMarkup(comment, 1, live));
         } else {
           list.insertAdjacentHTML("afterbegin", reelCommentMarkup(comment, 0, live));
         }
         return true;
+      }
+      async function loadReelReplies(button, focusId = "") {
+        const parentId = button.dataset.reelRepliesToggle;
+        const parent = $(`[data-reel-comment="${CSS.escape(parentId)}"]`, $("#reelCommentList"));
+        const replies = $(`[data-reel-replies="${CSS.escape(parentId)}"]`, parent);
+        const inner = $(".reel-comment-replies-inner", replies);
+        if (!parent || !replies || !inner) return false;
+        const state = reelReplyState(parentId);
+        if (state.loading) return false;
+        const generation = reelCommentsGeneration;
+        const reelId = reelCommentsReelId;
+        const firstPage = state.loadedCount === 0 && !state.cursor;
+        const query = new URLSearchParams({
+          parentId,
+          limit: String(firstPage ? 3 : 5),
+        });
+        if (!firstPage && state.cursor) query.set("cursor", state.cursor);
+        if (focusId) query.set("focusId", focusId);
+        state.loading = true;
+        state.expanded = true;
+        replies.hidden = false;
+        button.setAttribute("aria-expanded", "true");
+        requestAnimationFrame(() => replies.classList.add("is-expanded"));
+        syncReelReplyButton(parent, parent.dataset.replyCount);
+        try {
+          const result = await api(`/reels/${encodeURIComponent(reelId)}/comments?${query}`);
+          if (generation !== reelCommentsGeneration || reelId !== reelCommentsReelId
+            || reelCommentReplyStates.get(parentId) !== state) return false;
+          syncReelReplyButton(parent, result.replyCount);
+          const items = [...result.items].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+          for (const comment of items) {
+            if (!$(`[data-reel-comment="${CSS.escape(comment.id)}"]`, inner)) {
+              const depth = Math.min((Number(parent.dataset.depth) || 0) + 1, 4);
+              inner.insertAdjacentHTML("beforeend", reelCommentMarkup(comment, depth));
+            }
+          }
+          state.cursor = result.nextCursor;
+          state.loadedCount = inner.querySelectorAll(":scope > .reel-comment").length;
+          syncReelReplyButton(parent, parent.dataset.replyCount);
+          return true;
+        } catch (error) {
+          if (generation === reelCommentsGeneration && reelId === reelCommentsReelId) {
+            toast(error.message || "Could not load replies.");
+            if (!state.loadedCount) {
+              state.expanded = false;
+              replies.classList.remove("is-expanded");
+              window.setTimeout(() => {
+                if (!state.expanded) {
+                  replies.hidden = true;
+                  inner.replaceChildren();
+                }
+              }, reelReducedMotion.matches ? 0 : 190);
+            }
+          }
+          return false;
+        } finally {
+          state.loading = false;
+          if (generation === reelCommentsGeneration && reelId === reelCommentsReelId) {
+            syncReelReplyButton(parent, parent.dataset.replyCount);
+          }
+        }
+      }
+      async function hideReelReplies(button) {
+        const parentId = button.dataset.reelRepliesToggle;
+        const parent = $(`[data-reel-comment="${CSS.escape(parentId)}"]`, $("#reelCommentList"));
+        const replies = $(`[data-reel-replies="${CSS.escape(parentId)}"]`, parent);
+        const state = reelCommentReplyStates.get(parentId);
+        if (!parent || !replies || !state || state.loading) return;
+        state.expanded = false;
+        replies.classList.remove("is-expanded");
+        button.disabled = true;
+        button.setAttribute("aria-expanded", "false");
+        await new Promise((resolve) => window.setTimeout(resolve, reelReducedMotion.matches ? 0 : 190));
+        if (reelCommentReplyStates.get(parentId) !== state) return;
+        replies.hidden = true;
+        const inner = $(".reel-comment-replies-inner", replies);
+        inner.querySelectorAll("[data-reel-comment]").forEach((comment) => {
+          reelCommentReplyStates.delete(comment.dataset.reelComment);
+        });
+        inner.replaceChildren();
+        reelCommentReplyStates.delete(parentId);
+        syncReelReplyButton(parent, parent.dataset.replyCount);
+      }
+      async function toggleReelReplies(button) {
+        const state = reelCommentReplyStates.get(button.dataset.reelRepliesToggle);
+        if (state?.expanded && !state.cursor && !state.loading) {
+          await hideReelReplies(button);
+          return;
+        }
+        await loadReelReplies(button);
+      }
+      async function loadFocusedReelReplyPath(focusPath, generation) {
+        if (!Array.isArray(focusPath) || focusPath.length < 2) return;
+        for (let index = 1; index < focusPath.length; index += 1) {
+          if (generation !== reelCommentsGeneration) return;
+          const parentId = focusPath[index - 1];
+          const focusId = focusPath[index];
+          const button = $(`[data-reel-replies-toggle="${CSS.escape(parentId)}"]`, $("#reelCommentList"));
+          if (!button || !await loadReelReplies(button, focusId)) return;
+        }
       }
       async function loadReelComments(append = false, focusCommentId = "") {
         if (!reelCommentsReelId) return;
         const generation = append ? reelCommentsGeneration : ++reelCommentsGeneration;
         const reelId = reelCommentsReelId;
         const commentList = $("#reelCommentList");
+        if (!append) reelCommentReplyStates.clear();
         const query = new URLSearchParams({ limit: "20" });
         if (append && reelCommentsCursor) query.set("cursor", reelCommentsCursor);
         if (focusCommentId) query.set("focusId", focusCommentId);
@@ -13189,6 +13388,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           reelCommentsCursor = result.nextCursor;
           $("#reelCommentMore").hidden = !reelCommentsCursor;
           if (focusCommentId) {
+            await loadFocusedReelReplyPath(result.focusPath, generation);
+            if (generation !== reelCommentsGeneration || reelId !== reelCommentsReelId) return;
             requestAnimationFrame(() => {
               const target = $(`[data-reel-comment="${CSS.escape(focusCommentId)}"]`, commentList);
               if (!target) return;
@@ -13243,7 +13444,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
           if (reelCommentsReelId === reelId) {
             const existing = $(`[data-reel-comment="${CSS.escape(comment.id)}"]`, $("#reelCommentList"));
-            if (!existing && !insertReelComment(comment, true) && comment.replyToId) {
+            if (!existing && !insertReelComment(comment, true, comment.parentReplyCount) && comment.replyToId) {
               await loadReelComments(false, comment.id);
             }
             $("#reelCommentsCount").textContent = `${formatReelCount(reel?.counts?.comments)} comments`;
@@ -14423,6 +14624,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#reelCommentMore").addEventListener("click", () => loadReelComments(true));
         $("#reelCommentList").addEventListener("click", (event) => {
           if (event.target.closest("[data-reel-comments-retry]")) loadReelComments();
+          const replies = event.target.closest("[data-reel-replies-toggle]");
+          if (replies) {
+            void toggleReelReplies(replies);
+            return;
+          }
           const reply = event.target.closest("[data-reel-reply]");
           if (reply) setReelReplyTarget(reply.dataset.reelReply, reply.dataset.reelReplyHandle);
         });
