@@ -5811,49 +5811,6 @@
         flex: none;
       }
       .message-action-menu [data-message-menu-action="delete"] { color: var(--like); }
-      .message-inline-editor {
-        display: grid;
-        min-width: min(240px, 70vw);
-        gap: 8px;
-        white-space: normal;
-      }
-      .message-inline-editor textarea {
-        width: 100%;
-        min-height: 72px;
-        resize: vertical;
-        padding: 8px 10px;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        color: var(--text);
-        background: var(--surface);
-        font: inherit;
-        line-height: 1.4;
-      }
-      .message-inline-editor textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-      .message-inline-editor-actions { display: flex; justify-content: flex-end; gap: 6px; }
-      .message-inline-editor-actions button {
-        min-height: 30px;
-        padding: 0 10px;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        color: var(--text);
-        background: var(--surface);
-        font: inherit;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-      }
-      .message-inline-editor-actions [data-message-edit-save] {
-        border-color: var(--accent);
-        color: #fff;
-        background: var(--accent);
-      }
-      .message-inline-editor [role="alert"] {
-        margin: 0;
-        color: var(--like);
-        font-size: 12px;
-        line-height: 1.4;
-      }
       .message-reaction-picker {
         position: fixed;
         z-index: 101;
@@ -5990,6 +5947,18 @@
         padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
         background: var(--bg);
       }
+      .message-edit-label {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        margin: 0 0 6px 6px;
+        color: var(--text-2);
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 16px;
+      }
+      .message-edit-label[hidden] { display: none; }
+      .message-edit-label .i { width: 13px; height: 13px; }
       .messages-layout:not(.has-conversation) .chat-compose {
         max-height: 0;
         margin-bottom: 0;
@@ -6175,6 +6144,12 @@
       .message-send-text:disabled { opacity: .45; }
       .message-send-text:not(:disabled):hover,
       .message-send-text:not(:disabled):focus-visible { background: var(--surface-2); }
+      .message-send-text.is-editing {
+        color: #fff;
+        background: var(--accent);
+      }
+      .message-send-text.is-editing:not(:disabled):hover,
+      .message-send-text.is-editing:not(:disabled):focus-visible { background: var(--accent-h); }
       .message-send-text:not(:disabled):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       .message-send-text:not(:disabled):active { transform: scale(.94); transition-duration: 80ms; }
       .message-send-text:disabled:hover { background: transparent; }
@@ -8865,6 +8840,7 @@
               </div>
               <form class="chat-compose" id="messageForm">
                 <input id="messageImageInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden />
+                <div class="message-edit-label" id="messageEditLabel" hidden><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5 4 4M4 20l4.2-.8L19 8.4a2.1 2.1 0 0 0-3-3L5.2 16.2 4 20Z"/></svg><span>Edit message</span></div>
                 <div class="message-reply-preview reply-bar" id="messageReplyPreview" hidden></div>
                 <div class="chat-compose-pill" id="messageComposePill">
                   <button class="icon-btn" id="messageStickerButton" type="button" aria-label="Choose sticker" aria-expanded="false" disabled>
@@ -9772,6 +9748,7 @@
       const conversationDrafts = new Map();
       const messagesById = new Map();
       let selectedMessageReply = null;
+      let editingMessageState = null;
       const messageReactionEmojis = ["❤️", "😂", "😮", "😢", "👍", "🙏", "🔥", "🎉"];
       let activeConversationCursor = null;
       let activeConversationLoadGeneration = 0;
@@ -15941,13 +15918,25 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function syncMessageComposer() {
         const input = $("#messageInput");
+        const sendButton = $("#sendMessage");
+        const editing = editingMessageState?.conversationId === activeConversation?.id;
         input.style.height = "24px";
         input.style.height = `${Math.min(120, Math.max(24, input.scrollHeight))}px`;
         $("#messageComposePill").classList.toggle("is-growing", input.scrollHeight > 24);
         const hasText = Boolean(input.value.trim());
-        $("#sendMessage").classList.toggle("is-hidden", !hasText);
+        $("#messageEditLabel").hidden = !editing;
+        $("#messageReplyPreview").hidden = editing || !selectedMessageReply;
+        sendButton.classList.toggle("is-hidden", !hasText);
+        sendButton.classList.toggle("is-editing", editing);
         $("#messageEmptyActions").classList.toggle("is-hidden", hasText);
-        $("#sendMessage").disabled = !hasText;
+        sendButton.disabled = !hasText;
+        sendButton.setAttribute("aria-label", editing ? "Save edited message" : "Send message");
+        input.setAttribute("aria-label", editing ? "Edit message" : "Write a message");
+        input.placeholder = editing ? "Edit message..." : "Message...";
+        const icon = editing
+          ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>'
+          : '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 3 3 9-3 9 19-9Z"/><path d="M6 12h16"/></svg>';
+        if (sendButton.innerHTML !== icon) sendButton.innerHTML = icon;
       }
       function messagePreviewText(message) {
         const body = String(message?.body || "").trim();
@@ -16050,6 +16039,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function setMessageReplyTarget(messageId) {
         const message = messagesById.get(messageId);
         if (!message || message.conversationId !== activeConversation?.id) return;
+        if (editingMessageState) cancelMessageEditing();
         closeMessageReactionPicker();
         selectedMessageReply = { conversationId: message.conversationId, message };
         renderMessageReplyPreview();
@@ -16604,6 +16594,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function receiveMessageDeleted(event) {
         if (!event?.messageId || !event?.conversationId) return;
+        if (editingMessageState?.messageId === event.messageId) cancelMessageEditing();
         messagesById.delete(event.messageId);
         if (selectedMessageReply?.message.id === event.messageId) clearMessageReplyTarget();
         if (activeConversation?.id === event.conversationId
@@ -16617,37 +16608,61 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         renderConversations().catch((error) => console.error("Could not refresh conversations after a message deletion", error));
         refreshMessageBadge();
       }
-      function openInlineMessageEditor(messageId) {
+      function startMessageEditing(messageId) {
         const message = messagesById.get(messageId);
         if (!message || message.senderId !== currentUser?.id
           || message.mediaUrl || message.audioUrl || message.stickerId) return;
-        const bubble = $$(".message-bubble", $("#chatLog"))
-          .find((item) => item.dataset.messageId === messageId);
-        if (!bubble) return;
-        bubble.innerHTML = `<div class="message-inline-editor" data-message-inline-editor><textarea data-message-edit-text aria-label="Edit message" maxlength="2000"></textarea><div class="message-inline-editor-actions"><button type="button" data-message-edit-cancel>Cancel</button><button type="button" data-message-edit-save>Save</button></div><p data-message-edit-error role="alert" hidden></p></div>`;
-        bubble.querySelector("[data-message-edit-text]").value = message.body || "";
-        bubble.querySelector("[data-message-edit-text]").focus();
+        clearMessageReplyTarget();
+        const input = $("#messageInput");
+        const previousDraft = input.value;
+        if (activeConversation) conversationDrafts.set(activeConversation.id, previousDraft);
+        editingMessageState = {
+          messageId,
+          conversationId: message.conversationId,
+          previousDraft,
+          originalBody: message.body || "",
+        };
+        input.value = editingMessageState.originalBody;
+        syncMessageComposer();
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
       }
-      async function saveInlineMessageEdit(button) {
-        const editor = button.closest("[data-message-inline-editor]");
-        const bubble = editor?.closest(".message-bubble");
-        const messageId = bubble?.dataset.messageId;
-        const text = editor?.querySelector("[data-message-edit-text]").value.trim();
-        if (!messageId || !text) return;
-        const errorMessage = editor.querySelector("[data-message-edit-error]");
-        button.disabled = true;
+      function cancelMessageEditing({ restoreDraft = true, focus = false } = {}) {
+        const state = editingMessageState;
+        if (!state) return;
+        editingMessageState = null;
+        if (restoreDraft && activeConversation?.id === state.conversationId
+          && $("#messageForm").dataset.conversationId === state.conversationId) {
+          $("#messageInput").value = state.previousDraft;
+          conversationDrafts.set(state.conversationId, state.previousDraft);
+          syncMessageComposer();
+          if (focus) $("#messageInput").focus();
+        }
+      }
+      async function saveMessageEdit(body) {
+        const state = editingMessageState;
+        if (!state || activeConversation?.id !== state.conversationId
+          || $("#messageForm").dataset.conversationId !== state.conversationId) return;
+        if (!body) {
+          toast("Message cannot be empty.");
+          return;
+        }
+        const submit = $("#sendMessage");
+        submit.disabled = true;
         try {
-          const message = await api(`/messages/${encodeURIComponent(messageId)}`, {
+          const message = await api(`/messages/${encodeURIComponent(state.messageId)}`, {
             method: "PATCH",
-            body: JSON.stringify({ body: text }),
+            body: JSON.stringify({ body }),
           });
           receiveMessageUpdated(message);
+          cancelMessageEditing();
           toast("Message updated.");
         } catch (error) {
-          errorMessage.textContent = error.message || "Could not update this message.";
-          errorMessage.hidden = false;
+          toast(error.message || "Could not update this message.");
         } finally {
-          if (button.isConnected) button.disabled = false;
+          if (activeConversation?.id === state.conversationId && editingMessageState === state) {
+            syncMessageComposer();
+          }
         }
       }
       function updateMessageReactions(messageId, conversationId, reactions, actor = null) {
@@ -17585,11 +17600,15 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function saveActiveConversationDraft() {
         if (activeConversation) {
-          conversationDrafts.set(activeConversation.id, $("#messageInput").value);
+          const draft = editingMessageState?.conversationId === activeConversation.id
+            ? editingMessageState.previousDraft
+            : $("#messageInput").value;
+          conversationDrafts.set(activeConversation.id, draft);
         }
       }
       function clearConversationTransientUi() {
         closeMessageActionMenus();
+        cancelMessageEditing({ restoreDraft: false });
         toggleRecipientMenu(false);
         clearTimeout(typingStopTimer);
         typingStopTimer = null;
@@ -18872,7 +18891,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               await copyMessageText(copyText || "");
               toast("Message copied.");
             } else if (action === "edit" && messageId) {
-              openInlineMessageEditor(messageId);
+              startMessageEditing(messageId);
               return;
             } else if (action === "delete" && messageId) {
               if (!await confirmDialog({
@@ -18889,24 +18908,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             toast(error.message || "Message action failed.");
           }
           trigger?.focus();
-          return;
-        }
-        const editCancel = e.target.closest("[data-message-edit-cancel]");
-        if (editCancel) {
-          const bubble = editCancel.closest(".message-bubble");
-          const message = messagesById.get(bubble?.dataset.messageId);
-          if (message && bubble) {
-            const template = document.createElement("template");
-            template.innerHTML = messageMarkup(message);
-            const replacement = template.content.firstElementChild;
-            if (replacement) bubble.closest(".message-row").replaceWith(replacement);
-            updateMessageRowSpacing($("#chatLog"));
-          }
-          return;
-        }
-        const editSave = e.target.closest("[data-message-edit-save]");
-        if (editSave) {
-          await saveInlineMessageEdit(editSave);
           return;
         }
         if (!e.target.closest(".message-action-menu, .message-tools")) closeMessageActionMenus();
@@ -19644,6 +19645,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const input = $("#messageInput");
           const body = input.value.trim();
           if (!body) return;
+          if (editingMessageState?.conversationId === activeConversation.id) {
+            await saveMessageEdit(body);
+            return;
+          }
           const conversationId = activeConversation.id;
           const replyTo = selectedMessageReply?.conversationId === conversationId
             ? selectedMessageReply.message
@@ -20476,7 +20481,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       $("#messageInput").addEventListener("input", () => {
         if (!activeConversation) return;
         if ($("#messageForm").dataset.conversationId !== activeConversation.id) return;
-        conversationDrafts.set(activeConversation.id, $("#messageInput").value);
+        if (editingMessageState?.conversationId !== activeConversation.id) {
+          conversationDrafts.set(activeConversation.id, $("#messageInput").value);
+        }
         if ($("#messageInput").value.trim()) sendTyping(true);
         else sendTyping(false);
         clearTimeout(typingStopTimer);
@@ -20499,6 +20506,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
       });
       $("#messageInput").addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && editingMessageState?.conversationId === activeConversation?.id) {
+          event.preventDefault();
+          cancelMessageEditing({ focus: true });
+          return;
+        }
         if (event.key === "Enter" && !event.shiftKey) {
           event.preventDefault();
           $("#messageForm").requestSubmit();
