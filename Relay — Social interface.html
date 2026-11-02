@@ -17882,9 +17882,17 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         template.innerHTML = messageMarkup({ ...message, id: pendingId, conversationId: displayConversationId });
         const confirmedRow = template.content.firstElementChild;
         if (!confirmedRow) return;
-        confirmedRow.querySelector(".message-bubble")?.setAttribute("data-message-id", message.id);
-        pendingRow.replaceWith(confirmedRow);
-        animateChatMessages([confirmedRow.querySelector(".message-bubble")].filter(Boolean));
+        const confirmedBubble = confirmedRow.querySelector(".message-bubble");
+        if (!confirmedBubble) return;
+        confirmedBubble.setAttribute("data-message-id", message.id);
+        bubble.replaceWith(confirmedBubble);
+        pendingRow.classList.toggle("mine", confirmedRow.classList.contains("mine"));
+        pendingRow.classList.toggle("has-reactions", confirmedRow.classList.contains("has-reactions"));
+        pendingRow.dataset.conversationId = displayConversationId;
+        pendingRow.dataset.senderId = confirmedRow.dataset.senderId || pendingRow.dataset.senderId;
+        pendingRow.dataset.replyToId = confirmedRow.dataset.replyToId || "";
+        updateMessageRowSpacing($("#chatLog"));
+        animateChatMessages([confirmedBubble]);
         scrollMessageListToBottom(false);
       }
       function receiveMessage(message) {
