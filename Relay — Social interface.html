@@ -17855,6 +17855,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         receivedMessageIds.add(message.id);
         syncInboxConversationPreview(message.conversationId, message, message.createdAt);
         const chatLog = $("#chatLog");
+        if (chatLog.querySelector(`[data-message-id="${CSS.escape(message.id)}"]`)) return;
         if (activeConversation?.id === message.conversationId
           && chatLog.dataset.conversationId === message.conversationId
           && !$("#v-messages").hidden) {
