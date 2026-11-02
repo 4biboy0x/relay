@@ -6964,12 +6964,15 @@
       }
       .post-actions .act [data-count] {
         position: absolute;
-        left: 34px;
+        left: 28px;
         min-width: 2ch;
+        margin-left: 0;
         font-size: 13px;
         text-align: left;
         font-variant-numeric: tabular-nums;
       }
+      #v-home .post-actions .act[data-a="comment"] [data-count="replies"],
+      #v-home .post-actions .act[data-a="like"] [data-count="likes"] { margin-left: 0; }
       .post-actions .act { position: relative; }
       .post-actions .act svg,
       .post-actions .repost-wrap > .act svg { display: block; width: 18px; height: 18px; margin: 0; }
