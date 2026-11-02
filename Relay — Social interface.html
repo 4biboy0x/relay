@@ -12512,7 +12512,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (active) setActiveReel(active.slide.dataset.reelId);
         });
       }
-      function removeReelVideo(stage) {
+      function removeReelFeedVideo(stage) {
         const video = stage?.querySelector(".reel-video");
         if (!video) return;
         video.pause();
@@ -12754,7 +12754,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
           const keepPreviousBuffer = isPrevious && Boolean(video);
           const keepActive = isActive && Boolean(video);
-          if (!keepPreviousBuffer && !keepActive && !shouldPreloadNext && video) removeReelVideo(stage);
+          if (!keepPreviousBuffer && !keepActive && !shouldPreloadNext && video) removeReelFeedVideo(stage);
         });
         updateReelMuteControls();
       }
