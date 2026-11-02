@@ -10650,12 +10650,15 @@
       const refreshSession = () => {
         if (refreshInFlight) return refreshInFlight;
         refreshInFlight = (async () => {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 8000);
           try {
             const response = await fetch(`${API_BASE}/auth/refresh`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               credentials: "include",
               body: "{}",
+              signal: controller.signal,
             });
             if (!response.ok) return false;
             const data = await response.json();
@@ -10668,6 +10671,7 @@
           } catch {
             return false;
           } finally {
+            clearTimeout(timeout);
             refreshInFlight = null;
           }
         })();
