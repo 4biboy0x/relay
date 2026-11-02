@@ -20,6 +20,8 @@ Relay is a Node.js 20+ / TypeScript API using Express, PostgreSQL, Prisma, Zod, 
 
 For production, build the TypeScript app with `npm run build` and generate the Prisma client during the build. Set `DATABASE_URL` to the Neon pooled URL for application traffic and `DIRECT_URL` to the matching unpooled URL (the hostname must not contain `-pooler`) for Prisma migrations. `npm start` runs `prisma migrate deploy` before starting the API, so the deployment environment must provide both URLs and the Prisma CLI. A production deployment also needs TLS, a managed PostgreSQL instance, backups, monitoring, and shared Socket.IO pub/sub when running multiple API instances.
 
+Prisma fields that map to explicitly named snake_case database columns must use matching `@map` attributes. Before pushing Prisma schema changes, run `npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --exit-code --shadow-database-url "$DIRECT_URL"` from the `backend` directory; it should report no drift.
+
 ## Reels media setup and operations
 
 The Reels API requires the `20261101120000_reels` and `20261101130000_reel_storage_cleanup` migrations. Apply them with `npm run db:migrate` locally or `npm run db:deploy` in production; the migrations are additive and have matching `down.sql` rollback scripts. The checked-in migration has not been applied automatically.
