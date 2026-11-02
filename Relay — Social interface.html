@@ -1985,6 +1985,12 @@
         color: #fff;
         background: var(--accent);
       }
+      .post-media-crop-save:hover { background: var(--accent-hover, var(--accent)); }
+      .post-media-crop-save:active { transform: scale(.96); }
+      .post-media-crop-save:focus-visible {
+        outline: 2px solid var(--focus-ring, var(--accent));
+        outline-offset: 2px;
+      }
       .legal-footer .btn-primary:hover,
       .cookie-settings-actions .btn-primary:hover { background: var(--accent-h); }
       .legal-footer .btn-line,
@@ -2425,14 +2431,29 @@
         font-size: 16px;
       }
       .post-media-crop-save {
-        width: auto;
-        min-width: 64px;
-        padding: 0 14px;
-        border-radius: 999px;
+        width: 38px;
+        height: 38px;
+        min-width: 38px;
+        padding: 0;
+        aspect-ratio: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        border-radius: 50%;
         border: 0;
         color: #fff;
         font-weight: 700;
         background: var(--accent);
+      }
+      .post-media-crop-save svg {
+        width: 20px;
+        height: 20px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
       }
       .post-media-crop-tabs {
         margin: 8px 0;
@@ -2504,7 +2525,7 @@
         position: absolute;
         z-index: 2;
         top: 8px;
-        left: 8px;
+        inset-inline-start: 8px;
         min-height: 32px;
         padding: 0 12px;
         border-radius: 999px;
@@ -2516,10 +2537,10 @@
       .media-preview-alt-action {
         margin-top: 6px;
         padding: 0;
-        color: var(--accent);
+        color: var(--text-3);
         background: transparent;
-        font-size: 14px;
-        font-weight: 600;
+        font-size: 13px;
+        font-weight: 500;
       }
       .profile-crop-heading {
         display: flex;
@@ -4335,36 +4356,80 @@
         top: auto;
         right: auto;
         left: auto;
+        display: block;
         width: 100%;
         min-height: 0;
         margin-top: 12px;
         padding: 0;
-        border-radius: 12px;
+        overflow: hidden;
+        border: 0;
+        border-radius: var(--radius);
         box-shadow: none;
+        background: transparent;
+      }
+      .composer #mediaPreview {
+        position: relative;
+        top: auto;
+        right: auto;
+        left: auto;
+        display: block;
+        width: 100%;
+        min-height: 0;
+        margin-top: 12px;
+        padding: 0;
+        overflow: hidden;
+        border: 0;
+        border-radius: var(--radius);
+        box-shadow: none;
+        background: transparent;
       }
       #postEditorMount #mediaPreview[hidden] { display: none !important; }
+      .composer #mediaPreview[hidden] { display: none !important; }
       #postEditorMount #mediaPreview.is-removing { overflow: hidden; }
       #postEditorMount .media-preview-visual {
         display: grid;
         width: 100%;
-        max-height: 360px;
-        aspect-ratio: auto;
+        aspect-ratio: 16 / 9;
         place-items: center;
+        overflow: hidden;
         border: 0;
-        border-radius: 12px;
+        border-radius: var(--radius);
         background: transparent;
       }
       #postEditorMount .media-preview-visual img {
         width: 100%;
-        height: auto;
-        max-height: 360px;
-        object-fit: contain;
+        height: 100%;
+        max-height: none;
+        object-fit: cover;
+      }
+      .composer .media-preview-visual {
+        display: grid;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        place-items: center;
+        overflow: hidden;
+        border: 0;
+        border-radius: var(--radius);
+        background: transparent;
+      }
+      .composer .media-preview-visual img {
+        width: 100%;
+        height: 100%;
+        max-height: none;
+        object-fit: cover;
       }
       #postEditorMount #mediaPreview .grow { display: none; }
+      .composer #mediaPreview .grow { display: none; }
       #postEditorMount #removeMedia {
         position: absolute;
         top: 8px;
-        right: 8px;
+        inset-inline-end: 8px;
+        z-index: 1;
+      }
+      .composer #removeMedia {
+        position: absolute;
+        top: 8px;
+        inset-inline-end: 8px;
         z-index: 1;
       }
       @media (max-width: 640px) {
@@ -8959,6 +9024,17 @@
                 <div class="location-results" id="locationResults" role="listbox" aria-label="Place suggestions" hidden></div>
                 <p class="location-status" id="locationStatus" role="status" hidden></p>
               </div>
+              <div class="media-preview" id="mediaPreview" hidden>
+                <div class="media-preview-visual">
+                  <img id="mediaPreviewImage" alt="Selected image preview" />
+                  <button class="media-preview-edit" id="editMedia" type="button" aria-label="Edit image">Edit</button>
+                </div>
+                <div class="grow" hidden><b id="mediaPreviewName">Image ready</b><small id="mediaUploadStatus">Ready to attach</small></div>
+                <button class="dismiss-btn" id="removeMedia" type="button" aria-label="Remove image">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>
+                </button>
+              </div>
+              <button class="media-preview-alt-action" id="addMediaDescription" type="button" hidden>Add description</button>
               <div class="c-bar">
                 <button class="icon-btn" id="attachImage" aria-label="Attach image" aria-pressed="false">
                   <svg class="i" aria-hidden="true"><use href="#image" /></svg>
@@ -8977,17 +9053,6 @@
                 <span class="count" id="cc" aria-live="polite" hidden>280</span>
                 <button class="btn btn-primary" id="pb" type="button" disabled>Post</button>
               </div>
-              <div class="media-preview" id="mediaPreview" hidden>
-                <div class="media-preview-visual">
-                  <img id="mediaPreviewImage" alt="Selected image preview" />
-                  <button class="media-preview-edit" id="editMedia" type="button">Edit</button>
-                </div>
-                <div class="grow"><b id="mediaPreviewName">Image ready</b><small id="mediaUploadStatus">Ready to attach</small></div>
-                <button class="dismiss-btn" id="removeMedia" type="button" aria-label="Remove attached image">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>
-                </button>
-              </div>
-              <button class="media-preview-alt-action" id="addMediaDescription" type="button" hidden>Add description</button>
             </div>
           </div>
           </div>
@@ -9720,7 +9785,9 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
         </button>
         <h2 class="post-media-crop-heading-title" id="postMediaCropTitle">Crop media</h2>
-        <button class="post-media-crop-save" id="postMediaCropSave" type="button">Save</button>
+        <button class="post-media-crop-save" id="postMediaCropSave" type="button" aria-label="Save" title="Save">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4.5 4.5L19 7" /></svg>
+        </button>
       </header>
       <nav class="tabs post-media-crop-tabs" role="tablist" aria-label="Media editing">
         <button class="tab" id="postMediaCropTab" type="button" role="tab" aria-selected="true">Crop</button>
@@ -11252,6 +11319,7 @@
         naturalPreview.onload = () => {
           if (generation !== composerUploadGeneration) return;
           composerCropNaturalSize = { width: naturalPreview.naturalWidth, height: naturalPreview.naturalHeight };
+          syncComposerMediaPreview(null);
           $("#addMediaDescription").hidden = file.type === "image/gif";
         };
         naturalPreview.src = composerPreviewUrl;
@@ -11288,6 +11356,17 @@
         if (ratio === "1:1") return 1;
         if (ratio === "4:5") return 4 / 5;
         return postMediaOriginalRatio();
+      }
+      function syncComposerMediaPreview(crop = composerMediaCrop) {
+        const visual = $(".composer .media-preview-visual");
+        const image = $("#mediaPreviewImage");
+        if (!visual || !image) return;
+        const x = crop && Number.isFinite(crop.x) ? crop.x * 100 : 50;
+        const y = crop && Number.isFinite(crop.y) ? crop.y * 100 : 50;
+        visual.style.aspectRatio = String(postMediaRatioValue(crop?.ratio));
+        image.style.objectPosition = `${x}% ${y}%`;
+        image.style.transform = `scale(${crop?.zoom ?? 1})`;
+        image.style.transformOrigin = `${x}% ${y}%`;
       }
       function setPostMediaCropTab(tab) {
         const crop = tab === "crop";
@@ -11359,6 +11438,7 @@
         const altAction = $("#addMediaDescription");
         altAction.hidden = !composerMediaUrl;
         altAction.textContent = composerMediaAlt ? "Edit description" : "Add description";
+        syncComposerMediaPreview(composerMediaCrop);
       });
       $("#postMediaCropTab").addEventListener("click", () => setPostMediaCropTab("crop"));
       $("#postMediaAltTab").addEventListener("click", () => setPostMediaCropTab("alt"));
