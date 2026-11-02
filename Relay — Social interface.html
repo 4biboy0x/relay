@@ -17845,8 +17845,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const shouldFollow = chatLog.scrollHeight - chatLog.scrollTop - chatLog.clientHeight <= 80;
           const typingStatus = $("#typingStatus", chatLog);
           clearEmptyMessagesState();
-("beforebegin", messageMarkup(message));
-          else chatLog.insertAdjacentHTML("beforeend", messageMarkup(message));
+          if (shouldFollow) chatLog.insertAdjacentHTML("beforeend", messageMarkup(message));
+          else typingStatus?.insertAdjacentHTML("beforebegin", messageMarkup(message));
           updateMessageRowSpacing(chatLog);
           const insertedMessage = typingStatus?.previousElementSibling || chatLog.lastElementChild;
           if (insertedMessage?.matches(".message-row")) animateChatMessages([insertedMessage]);
