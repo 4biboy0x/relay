@@ -8607,12 +8607,13 @@
       .reel-upload-status:empty { display: none; }
       .reel-upload-status[data-state="error"],
       .reel-report-error { color: var(--like); }
-      .reel-upload-status[data-state="error"] { color: var(--text-2); }
+      .reel-upload-status[data-state="error"] { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; width: 100%; gap: 12px; color: var(--text-2); }
       .reel-upload-status .reel-upload-status-icon { display: inline-grid; width: 16px; height: 16px; flex: 0 0 16px; place-items: center; }
       .reel-upload-status .reel-upload-status-icon svg { width: 16px; height: 16px; }
       .reel-upload-status[data-state="ready"] .reel-upload-status-icon { color: var(--ok); }
       .reel-upload-status[data-state="processing"] .reel-upload-status-icon { border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: reel-spinner .8s linear infinite; }
-      .reel-upload-status-retry { padding: 0; border: 0; background: none; color: inherit; font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+      .reel-upload-status-text { min-width: 0; overflow-wrap: normal; }
+      .reel-upload-status-retry { align-self: start; flex-shrink: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-weight: 600; line-height: 1.4; text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; cursor: pointer; }
       .reel-upload-progress { width: 100%; height: 2px; margin-top: 8px; overflow: hidden; border-radius: 99px; background: var(--border); opacity: 1; transition: opacity 150ms ease; }
       .reel-upload-progress[hidden] { display: none; }
       .reel-upload-progress.is-fading { opacity: 0; }
@@ -10677,15 +10678,7 @@
                   ? "This content is no longer available."
                   : "Something didn’t go through. Please check your details and try again.";
           if (response.status === 429) {
-            const retryAfter = response.headers.get("Retry-After");
-            const retrySeconds = retryAfter
-              ? Number.isFinite(Number(retryAfter))
-                ? Number(retryAfter)
-                : Math.max(0, Math.ceil((Date.parse(retryAfter) - Date.now()) / 1000))
-              : 0;
-            message = retrySeconds > 0
-              ? `Too many requests. Please wait ${Math.max(1, Math.ceil(retrySeconds / 60))} min and try again.`
-              : "Too many requests. Please wait a moment and try again.";
+            message = "Too many requests. Please wait a moment.";
           }
           try {
             const result = await response.json();
@@ -14375,7 +14368,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
           status.append(icon);
         }
-        if (message) status.append(document.createTextNode(message));
+        if (message) {
+          const text = document.createElement("span");
+          text.className = "reel-upload-status-text";
+          text.textContent = message;
+          status.append(text);
+        }
         if (state === "error") {
           const retry = document.createElement("button");
           retry.className = "reel-upload-status-retry";
