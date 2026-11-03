@@ -5694,7 +5694,7 @@
         min-width: 0;
         flex: 1;
         flex-direction: column;
-        gap: 8px;
+        gap: 0;
         overflow-x: hidden;
         overflow-y: auto;
         scroll-behavior: auto;
@@ -6240,7 +6240,7 @@
       }
       .reply-preview-media-static { display: none; }
       .chat-log > .message-row + .message-row { margin-block-start: 4px; }
-      .chat-log > .message-row.same-sender { margin-block-start: 0 !important; }
+      .chat-log > .message-row.same-sender { margin-block-start: 2px !important; }
       .message-row > .reply-stack + .message-bubble { margin-block-start: 4px; }
       @media (hover: none) {
         .message-tool-button { width: 32px; height: 32px; }
@@ -17744,7 +17744,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             && rows[index - 1].dataset.senderId === row.dataset.senderId
             && !rows[index - 1].querySelector(".reply-stack");
           row.classList.toggle("same-sender", grouped);
-          row.style.marginBlockStart = grouped ? "0px" : "";
+          row.style.marginBlockStart = grouped ? "2px" : "";
           const bubble = row.querySelector(":scope > .message-bubble");
           bubble?.classList.remove(
             "message-group-first",
