@@ -15511,7 +15511,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#chatProfileLink").dataset.profileId = profile.id;
         $("#chatProfileLink").setAttribute("aria-label", `View ${profile.displayName || profile.handle}'s profile`);
         $("#chatLog").replaceChildren();
-        $("#chatLog").innerHTML = `${conversationStartMarkup()}<div class="typing-status" id="typingStatus" aria-live="polite"></div>`;
+        $("#chatLog").innerHTML = `<div class="typing-status" id="typingStatus" aria-live="polite"></div>`;
         $("#chatLog").dataset.conversationId = activeConversation.id;
         $("#messageForm").dataset.conversationId = activeConversation.id;
         $("#messageInput").disabled = false;
