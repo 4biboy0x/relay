@@ -14851,7 +14851,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         setReelUploadStatus("Ready to share", "ready");
         if ($("#reelCreateDialog").open) $("#reelCreateDialog").close();
         toast("Your Reel is ready");
-        reelItems = [reel];
+        reelItems = [reel, ...reelItems.filter((item) => item.author?.id === currentUser.id && item.id !== reel.id)];
         reelCursor = null;
         reelFeedScrollTop = 0;
         activeReelId = reel.id;
