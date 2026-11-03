@@ -11,7 +11,9 @@ const configSchema = z.object({
   JWT_ACCESS_SECRET: z.string().min(32),
   POST_VIEW_HMAC_SECRET: z.string().min(32),
   EMAIL_USER: optionalEnvString,
-  EMAIL_PASS: optionalEnvString,
+  GMAIL_CLIENT_ID: optionalEnvString,
+  GMAIL_CLIENT_SECRET: optionalEnvString,
+  GMAIL_REFRESH_TOKEN: optionalEnvString,
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   CLIENT_ORIGIN: z.string().url()
     .transform((value) => new URL(value).origin)
@@ -29,12 +31,23 @@ const configSchema = z.object({
   FFPROBE_PATH: z.string().min(1).default("ffprobe"),
   REEL_KEEP_ORIGINAL: z.enum(["true", "false"]).default("false").transform((value) => value === "true"),
 }).superRefine((value, context) => {
-  if (Boolean(value.EMAIL_USER) !== Boolean(value.EMAIL_PASS)) {
-    context.addIssue({
-      code: "custom",
-      path: ["EMAIL_PASS"],
-      message: "EMAIL_USER and EMAIL_PASS must be configured together",
-    });
+  const gmailSettings = [
+    ["EMAIL_USER", value.EMAIL_USER],
+    ["GMAIL_CLIENT_ID", value.GMAIL_CLIENT_ID],
+    ["GMAIL_CLIENT_SECRET", value.GMAIL_CLIENT_SECRET],
+    ["GMAIL_REFRESH_TOKEN", value.GMAIL_REFRESH_TOKEN],
+  ] as const;
+  const configuredGmailSettings = gmailSettings.filter(([, setting]) => Boolean(setting));
+  if (configuredGmailSettings.length > 0 && configuredGmailSettings.length < gmailSettings.length) {
+    for (const [name, setting] of gmailSettings) {
+      if (!setting) {
+        context.addIssue({
+          code: "custom",
+          path: [name],
+          message: "All Gmail API settings must be configured together",
+        });
+      }
+    }
   }
   if (value.EMAIL_USER && !z.string().email().safeParse(value.EMAIL_USER).success) {
     context.addIssue({

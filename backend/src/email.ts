@@ -1,8 +1,11 @@
-import nodemailer from "nodemailer";
-import type { Transporter } from "nodemailer";
+import { randomUUID } from "node:crypto";
 import { config } from "./config";
 
-let transporter: Transporter | null = null;
+const GOOGLE_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
+const GMAIL_SEND_URL = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send";
+const REQUEST_TIMEOUT_MS = 10_000;
+
+let cachedAccessToken: { value: string; expiresAt: number } | null = null;
 
 export class EmailDeliveryError extends Error {
   constructor() {
@@ -52,31 +55,93 @@ const otpEmailContent = (
     </table>
   </body>
 </html>`;
-  const text = `${title}\\n\\n${instruction}\\n\\n${code}\\n\\nExpires in 10 minutes.\\nDidn't request this? Ignore this email.`;
+  const text = `${title}\n\n${instruction}\n\n${code}\n\nExpires in 10 minutes.\nDidn't request this? Ignore this email.`;
   return { subject, html, text };
 };
 
-const getTransporter = (): Transporter => {
-  if (!transporter) {
-    const password = config.EMAIL_PASS?.replace(/\s/g, "");
-    if (!config.EMAIL_USER || !password) {
-      throw new EmailDeliveryError();
-    }
-
-    transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
-      auth: {
-        user: config.EMAIL_USER,
-        pass: password,
-      },
-      connectionTimeout: 10_000,
-      greetingTimeout: 10_000,
-      socketTimeout: 20_000,
-    });
+const getAccessToken = async (): Promise<string> => {
+  if (cachedAccessToken && cachedAccessToken.expiresAt > Date.now() + 60_000) {
+    return cachedAccessToken.value;
   }
-  return transporter;
+
+  if (!config.GMAIL_CLIENT_ID || !config.GMAIL_CLIENT_SECRET || !config.GMAIL_REFRESH_TOKEN) {
+    console.error("Gmail API OAuth credentials are not configured.");
+    throw new EmailDeliveryError();
+  }
+
+  const body = new URLSearchParams({
+    client_id: config.GMAIL_CLIENT_ID,
+    client_secret: config.GMAIL_CLIENT_SECRET,
+    refresh_token: config.GMAIL_REFRESH_TOKEN,
+    grant_type: "refresh_token",
+  });
+  let response: Response;
+  try {
+    response = await fetch(GOOGLE_OAUTH_TOKEN_URL, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body,
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+  } catch {
+    console.error("Gmail API OAuth token request failed.");
+    throw new EmailDeliveryError();
+  }
+
+  if (!response.ok) {
+    console.error(`Gmail API OAuth token request failed with status ${response.status}.`);
+    throw new EmailDeliveryError();
+  }
+
+  let tokenData: { access_token?: unknown; expires_in?: unknown };
+  try {
+    tokenData = await response.json() as { access_token?: unknown; expires_in?: unknown };
+  } catch {
+    console.error("Gmail API returned an invalid OAuth token response.");
+    throw new EmailDeliveryError();
+  }
+  if (typeof tokenData.access_token !== "string" || typeof tokenData.expires_in !== "number") {
+    console.error("Gmail API returned an invalid OAuth token response.");
+    throw new EmailDeliveryError();
+  }
+
+  cachedAccessToken = {
+    value: tokenData.access_token,
+    expiresAt: Date.now() + tokenData.expires_in * 1000,
+  };
+  return cachedAccessToken.value;
+};
+
+const encodeBase64 = (value: string): string =>
+  Buffer.from(value, "utf8").toString("base64").replace(/.{1,76}/g, "$&\r\n").trimEnd();
+
+const createRawMessage = (
+  sender: string,
+  email: string,
+  content: { subject: string; html: string; text: string },
+): string => {
+  const boundary = `relay-${randomUUID()}`;
+  const message = [
+    `From: Relay <${sender}>`,
+    `To: ${email}`,
+    `Subject: ${content.subject}`,
+    "MIME-Version: 1.0",
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    "",
+    `--${boundary}`,
+    'Content-Type: text/plain; charset="UTF-8"',
+    "Content-Transfer-Encoding: base64",
+    "",
+    encodeBase64(content.text),
+    `--${boundary}`,
+    'Content-Type: text/html; charset="UTF-8"',
+    "Content-Transfer-Encoding: base64",
+    "",
+    encodeBase64(content.html),
+    `--${boundary}--`,
+    "",
+  ].join("\r\n");
+  return Buffer.from(message, "utf8").toString("base64url");
 };
 
 export const sendOtpEmail = async (
@@ -84,24 +149,36 @@ export const sendOtpEmail = async (
   code: string,
   purpose: "signup" | "reset",
 ): Promise<void> => {
-  if (!config.EMAIL_USER || !config.EMAIL_PASS) {
+  if (!config.EMAIL_USER || !config.GMAIL_CLIENT_ID || !config.GMAIL_CLIENT_SECRET || !config.GMAIL_REFRESH_TOKEN) {
     if (process.env.NODE_ENV !== "production") {
       console.info(`[otp-dev] ${purpose} code for ${email}: ${code}`);
       return;
     }
-    console.error("Gmail SMTP OTP delivery is not configured.");
+    console.error("Gmail API OTP delivery is not configured.");
     throw new EmailDeliveryError();
   }
 
   const content = otpEmailContent(code, purpose);
+  const message = createRawMessage(config.EMAIL_USER, email, content);
+  const accessToken = await getAccessToken();
+  let response: Response;
   try {
-    await getTransporter().sendMail({
-      from: { name: "Relay", address: config.EMAIL_USER },
-      to: email,
-      ...content,
+    response = await fetch(GMAIL_SEND_URL, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ raw: message }),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
   } catch {
-    console.error("Gmail SMTP OTP delivery failed.");
+    console.error("Gmail API OTP delivery request failed.");
+    throw new EmailDeliveryError();
+  }
+
+  if (!response.ok) {
+    console.error(`Gmail API OTP delivery failed with status ${response.status}.`);
     throw new EmailDeliveryError();
   }
 };

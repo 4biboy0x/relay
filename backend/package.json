@@ -12,6 +12,7 @@
     "prestart": "npm run db:deploy",
     "start": "node dist/index.js",
     "reel-worker": "tsx src/reel-worker.ts",
+    "test:email": "tsx --test src/email.test.ts",
     "test:reels": "tsx --test src/reels.test.ts",
     "test:realtime": "node scripts/realtime-smoke.mjs",
     "db:generate": "prisma generate",
@@ -33,7 +34,6 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.5.0",
-    "nodemailer": "^10.3.1",
     "socket.io": "^4.8.4",
     "zod": "^4.1.12"
   },
@@ -45,7 +45,6 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.3.0",
     "@types/node": "^22.15.30",
-    "@types/nodemailer": "^8.0.2",
     "prisma": "^6.19.0",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"
