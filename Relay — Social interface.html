@@ -6239,7 +6239,7 @@
         .reply-preview-gif .reply-preview-media-static { display: block; }
       }
       .reply-preview-media-static { display: none; }
-      .chat-log > .message-row + .message-row { margin-block-start: 4px; }
+      .chat-log > .message-row + .message-row { margin-block-start: 8px; }
       .chat-log > .message-row.same-sender { margin-block-start: 2px !important; }
       .message-row > .reply-stack + .message-bubble { margin-block-start: 4px; }
       @media (hover: none) {
@@ -17740,11 +17740,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function updateMessageRowSpacing(container = $("#chatLog")) {
         const rows = [...container.children].filter((element) => element.matches(".message-row"));
         rows.forEach((row, index) => {
-          const grouped = index > 0 && !row.querySelector(".reply-stack")
-            && rows[index - 1].dataset.senderId === row.dataset.senderId
-            && !rows[index - 1].querySelector(".reply-stack");
+          const previous = rows[index - 1];
+          const isReply = Boolean(row.querySelector(".reply-stack"));
+          const grouped = index > 0 && !isReply && previous
+            && !previous.querySelector(".reply-stack")
+            && previous.dataset.senderId === row.dataset.senderId;
           row.classList.toggle("same-sender", grouped);
-          row.style.marginBlockStart = grouped ? "2px" : "";
+          row.style.marginBlockStart = grouped ? "2px" : index > 0 ? "8px" : "";
           const bubble = row.querySelector(":scope > .message-bubble");
           bubble?.classList.remove(
             "message-group-first",
@@ -17752,7 +17754,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             "message-group-last",
           );
           if (!bubble || row.querySelector(".reply-stack")) return;
-          const previous = rows[index - 1];
           const next = rows[index + 1];
           const hasPrevious = Boolean(previous && !previous.querySelector(".reply-stack")
             && previous.dataset.senderId === row.dataset.senderId);
