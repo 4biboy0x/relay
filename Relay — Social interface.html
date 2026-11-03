@@ -15467,6 +15467,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (existing) {
             await renderConversations();
             await openConversation(existing);
+            scrollMessageListToBottom(false);
             return;
           }
           await startConversationDraft(userId, people.find((person) => person.id === userId));
@@ -15482,6 +15483,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (existing) {
           go("messages");
           await openConversation(existing);
+          scrollMessageListToBottom(false);
           return;
         }
         const profile = recipient || people.find((person) => person.id === userId) || {
@@ -19106,7 +19108,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
           return;
         }
-        openConversation(conversation, true, targetMessageId);
+        await openConversation(conversation, true, targetMessageId);
+        if (!targetMessageId) {
+          scrollMessageListToBottom(false);
+        }
       }
       function openConversation(conversation, updateRoute = true, targetMessageId = "") {
         syncConversationSelection(conversation.id);
@@ -21068,7 +21073,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         if (e.target.closest("#profileMessage")) {
           if (!requireAuth()) return;
-          startConversationDraft(viewedProfileId, {
+          await startConversationDraft(viewedProfileId, {
             id: viewedProfileId,
             displayName: $("#profileName").textContent,
             handle: $("#profileHandle").textContent.replace(/^@/, ""),
