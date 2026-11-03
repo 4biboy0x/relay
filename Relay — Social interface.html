@@ -18809,6 +18809,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           row.type = "button";
           row.className = "conversation-item is-search-result message-search-result";
           row.dataset.conversation = item.id;
+          row.dataset.searchMode = "messages";
           row.dataset.searchMessageId = message.id;
           row.setAttribute("aria-current", "false");
           row.setAttribute("aria-selected", "false");
