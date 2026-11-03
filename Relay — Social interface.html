@@ -5853,6 +5853,24 @@
         color: #fff;
         background: var(--accent);
       }
+      .message-bubble.message-group-first:not(.mine) {
+        border-radius: 12px 12px 12px 4px;
+      }
+      .message-bubble.message-group-middle:not(.mine) {
+        border-radius: 4px 12px 12px 4px;
+      }
+      .message-bubble.message-group-last:not(.mine) {
+        border-radius: 4px 12px 12px 12px;
+      }
+      .message-bubble.message-group-first.mine {
+        border-radius: 12px 12px 4px 12px;
+      }
+      .message-bubble.message-group-middle.mine {
+        border-radius: 12px 4px 4px 12px;
+      }
+      .message-bubble.message-group-last.mine {
+        border-radius: 12px 4px 12px 12px;
+      }
       .message-row {
         position: relative;
         display: grid;
@@ -17727,6 +17745,24 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             && !rows[index - 1].querySelector(".reply-stack");
           row.classList.toggle("same-sender", grouped);
           row.style.marginBlockStart = grouped ? "0px" : "";
+          const bubble = row.querySelector(":scope > .message-bubble");
+          bubble?.classList.remove(
+            "message-group-first",
+            "message-group-middle",
+            "message-group-last",
+          );
+          if (!bubble || row.querySelector(".reply-stack")) return;
+          const previous = rows[index - 1];
+          const next = rows[index + 1];
+          const hasPrevious = Boolean(previous && !previous.querySelector(".reply-stack")
+            && previous.dataset.senderId === row.dataset.senderId);
+          const hasNext = Boolean(next && !next.querySelector(".reply-stack")
+            && next.dataset.senderId === row.dataset.senderId);
+          const groupClass = hasPrevious && hasNext ? "message-group-middle"
+            : hasPrevious ? "message-group-last"
+              : hasNext ? "message-group-first"
+                : "";
+          if (groupClass) bubble.classList.add(groupClass);
         });
       }
       function bindVoiceMessages(container = document) {
