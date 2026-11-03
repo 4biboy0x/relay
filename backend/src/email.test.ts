@@ -41,5 +41,15 @@ test("sends OTP emails through Gmail SMTP without exposing credentials", async (
   assert.equal(sentMessages.length, 1);
   assert.equal(sentMessages[0].to, "recipient@example.com");
   assert.equal(sentMessages[0].subject, "Verify your Relay account");
-  assert.match(String(sentMessages[0].html), /123456/);
+  const html = String(sentMessages[0].html);
+  assert.match(html, /123456/);
+  assert.match(html, /font-family: ?"Piazzolla"/);
+  assert.match(html, /assets\/fonts\/Piazzolla-Light\.woff2/);
+  assert.match(html, /background:#f4f4f5/);
+  assert.match(String(sentMessages[0].text), /Expires in 10 minutes/);
+
+  await sendOtpEmail("recipient@example.com", "654321", "reset");
+  assert.equal(sentMessages[1].subject, "Reset your Relay password");
+  assert.match(String(sentMessages[1].html), /Reset your password/);
+  assert.match(String(sentMessages[1].text), /654321/);
 });
