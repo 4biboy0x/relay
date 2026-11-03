@@ -22,6 +22,7 @@ import { createViewerKey, viewRateLimiter, viewRequestGuard } from "./view-track
 import {
   loginSchema,
   messageSchema,
+  changeVerificationEmailSchema,
   otpRequestSchema,
   otpVerifySchema,
   pageSchema,
@@ -166,9 +167,15 @@ const enforceOtpRequestLimit = (req: { ip?: string; socket?: { remoteAddress?: s
   }
 };
 
-const createAuthCode = async (req: { ip?: string; socket?: { remoteAddress?: string } }, userId: string | null, email: string, purpose: "signup" | "reset") => {
+const createAuthCode = async (
+  req: { ip?: string; socket?: { remoteAddress?: string } },
+  userId: string | null,
+  email: string,
+  purpose: "signup" | "reset",
+  limitAlreadyChecked = false,
+) => {
   const normalizedEmail = normalizeEmail(email);
-  enforceOtpRequestLimit(req, normalizedEmail, purpose);
+  if (!limitAlreadyChecked) enforceOtpRequestLimit(req, normalizedEmail, purpose);
   const existingCodes = await prisma.authCode.findMany({
     where: {
       email: normalizedEmail,
@@ -720,12 +727,19 @@ api.post("/auth/register", asyncRoute(async (req, res) => {
     },
     select: { ...publicUser, email: true, id: true },
   });
-  await createAuthCode(req, user.id, email, "signup");
+  let emailDeliveryFailed = false;
+  try {
+    await createAuthCode(req, user.id, email, "signup");
+  } catch (error) {
+    if (!(error instanceof EmailDeliveryError)) throw error;
+    emailDeliveryFailed = true;
+  }
   emitToAuthenticated("user:suggestion:new", user);
   res.status(202).json({
     email,
     requiresVerification: true,
-    message: "Check your email for the 6-digit verification code.",
+    emailDeliveryFailed,
+    message: emailDeliveryFailed ? "Your account is ready. Request a code to continue." : "Check your email for the 6-digit verification code.",
   });
 }));
 
@@ -783,6 +797,52 @@ api.post("/auth/verify-otp", asyncRoute(async (req, res) => {
     email,
     purpose: "reset",
   });
+}));
+
+api.post("/auth/change-verification-email", asyncRoute(async (req, res) => {
+  const input = changeVerificationEmailSchema.parse(req.body);
+  const currentEmail = normalizeEmail(input.currentEmail);
+  const newEmail = normalizeEmail(input.newEmail);
+  if (currentEmail === newEmail) throw new HttpError(400, "Enter a different email address.");
+
+  const user = await prisma.user.findUnique({
+    where: { email: currentEmail },
+    select: { id: true, passwordHash: true, emailVerifiedAt: true, createdAt: true },
+  });
+  if (!user || !(await verifyPassword(input.password, user.passwordHash))) {
+    throw new HttpError(401, "Could not verify this account. Check your password.");
+  }
+  if (user.emailVerifiedAt !== null || user.createdAt <= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)) {
+    throw new HttpError(403, "This account does not need email verification.");
+  }
+
+  const existingEmail = await prisma.user.findUnique({ where: { email: newEmail }, select: { id: true } });
+  if (existingEmail) throw new HttpError(409, "That email is already in use.");
+  enforceOtpRequestLimit(req, newEmail, "signup");
+  try {
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: user.id }, data: { email: newEmail } }),
+      prisma.authCode.deleteMany({ where: { email: currentEmail, purpose: "signup" } }),
+    ]);
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      throw new HttpError(409, "That email is already in use.");
+    }
+    throw error;
+  }
+
+  try {
+    await createAuthCode(req, user.id, newEmail, "signup", true);
+  } catch (error) {
+    if (!(error instanceof EmailDeliveryError)) throw error;
+    res.status(503).json({
+      email: newEmail,
+      emailUpdated: true,
+      message: "Email changed, but the code could not be sent. Try again.",
+    });
+    return;
+  }
+  res.status(200).json({ email: newEmail, message: "Code sent." });
 }));
 
 api.post("/auth/resend-otp", asyncRoute(async (req, res) => {

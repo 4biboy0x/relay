@@ -50,6 +50,14 @@ export const otpVerifySchema = z.object({
   purpose: z.enum(["signup", "reset"]).default("signup"),
 });
 
+export const changeVerificationEmailSchema = z.object({
+  currentEmail: z.string().trim().toLowerCase().email().max(254),
+  newEmail: z.string().trim().toLowerCase().email().max(254),
+  password: z.string().min(1).max(128).refine((value) => Buffer.byteLength(value, "utf8") <= 72, {
+    message: "Password must not exceed 72 UTF-8 bytes",
+  }),
+});
+
 export const resetPasswordSchema = z.object({
   email: z.string().trim().toLowerCase().email().max(254),
   code: z.string().trim().regex(/^\d{6}$/),

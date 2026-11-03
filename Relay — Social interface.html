@@ -4230,8 +4230,8 @@
       #authDialog .auth-forgot:hover { text-decoration: underline; }
       .auth-otp-panel {
         display: none;
-        gap: 12px;
-        margin-top: 8px;
+        gap: 14px;
+        margin-top: 4px;
       }
       .auth-otp-panel.is-visible {
         display: grid;
@@ -4256,6 +4256,34 @@
         color: var(--text-2);
         font-size: 12px;
       }
+      .auth-change-email-panel {
+        gap: 14px;
+        margin-top: 4px;
+      }
+      #authDialog #authChangeEmailPanel { display: none; }
+      .auth-change-email-copy {
+        margin: -8px 0 0;
+        color: var(--text-2);
+        font-size: 13px;
+      }
+      .auth-change-email-panel label {
+        display: grid;
+        gap: 6px;
+        color: var(--text-2);
+        font-size: 13px;
+      }
+      #authDialog #authChangeEmailSubmit {
+        width: 100%;
+        height: 44px;
+        padding: 0 16px;
+        border-radius: 10px;
+        background: var(--auth-submit-bg);
+        color: #fff;
+        font-size: 15px;
+        font-weight: 600;
+      }
+      #authDialog #authChangeEmailSubmit:hover:not(:disabled) { background: var(--auth-submit-hover); }
+      #authDialog #authChangeEmailSubmit:disabled { opacity: .55; cursor: not-allowed; }
       .auth-otp-actions {
         display: flex;
         align-items: center;
@@ -4281,6 +4309,7 @@
         cursor: pointer;
       }
       .auth-otp-link:hover { text-decoration: underline; }
+      .auth-otp-link:disabled { cursor: default; opacity: .55; text-decoration: none; }
       .auth-otp-timer {
         color: var(--text-3);
         font-size: 12px;
@@ -4292,6 +4321,12 @@
         font-size: 13px;
       }
       .auth-otp-error:empty { display: none; }
+      .auth-change-email-error {
+        margin: -6px 0 0;
+        color: var(--like);
+        font-size: 13px;
+      }
+      .auth-change-email-error:empty { display: none; }
       #authError { min-height: 0; margin: 0; color: var(--like); font-size: 13px; }
       #authError:empty { display: none; }
       #authDialog #authSubmit {
@@ -10015,16 +10050,24 @@
           <input inputmode="numeric" maxlength="1" aria-label="Digit 6" />
         </div>
         <div class="auth-otp-meta">
-          <span id="authOtpMessage">Enter the 6-digit code we emailed you.</span>
-          <span class="auth-otp-timer" id="authOtpTimer">01:00</span>
+          <span id="authOtpMessage">Code sent to your email.</span>
         </div>
         <button class="btn btn-primary" id="authOtpVerify" type="button" disabled>Verify email</button>
         <div class="auth-otp-actions">
-          <button class="auth-otp-link" id="authOtpResend" type="button">Resend code</button>
+          <button class="auth-otp-link" id="authOtpResend" type="button" disabled>Resend · <span class="auth-otp-timer" id="authOtpTimer">01:00</span></button>
           <button class="auth-otp-link" id="authOtpChangeEmail" type="button">Change email</button>
         </div>
         <p class="auth-otp-error" id="authOtpError" aria-live="polite"></p>
       </div>
+      <form class="auth-change-email-panel" id="authChangeEmailPanel" novalidate>
+        <p class="auth-change-email-copy">We'll send a new verification code.</p>
+        <label for="authNewEmail">New email
+          <input id="authNewEmail" name="newEmail" type="email" maxlength="254" autocomplete="email" required />
+        </label>
+        <p class="auth-change-email-error" id="authChangeEmailError" role="alert"></p>
+        <button class="btn btn-primary" id="authChangeEmailSubmit" type="submit">Send code</button>
+        <button class="auth-otp-link" id="authChangeEmailCancel" type="button">Back</button>
+      </form>
       <p class="auth-switch-row"><span id="authSwitchPrompt">New to Relay?</span> <button class="auth-switch" id="authSwitch" type="button">Create an account</button></p>
       <section class="auth-cookie-prompt" id="cookieAuthPrompt" aria-label="Cookie preferences" hidden>
         <p>Relay uses only necessary cookies for sign‑in.</p>
@@ -19678,9 +19721,25 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       const authOtpState = {
         email: "",
         purpose: "signup",
+        password: "",
         timerMs: 60000,
         timerId: null,
       };
+
+      function authFriendlyError(error, context) {
+        if (error?.status === 429) return "Too many tries. Please wait and try again.";
+        if (context === "verify" && error?.status === 401) return "That code is wrong or expired.";
+        if (context === "credentials" && error?.status === 401) return "Email or password is incorrect.";
+        if (context === "change-email" && error?.status === 401) return "Check your password and try again.";
+        if (error?.status === 409) return "That email is already in use.";
+        if (error?.status === 503) return "Couldn't send the code. Try again shortly.";
+        return "Something went wrong. Please try again.";
+      }
+
+      function maskedEmail(email) {
+        const [name, domain] = String(email || "").split("@");
+        return name && domain ? `${name.slice(0, 1)}***@${domain}` : "your email";
+      }
 
       function setOtpTimer(seconds) {
         const timerEl = $("#authOtpTimer");
@@ -19706,22 +19765,25 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }, 1000);
       }
 
-      function showOtpScreen(email, purpose, messageText) {
+      function showOtpScreen(email, purpose, messageText, password, resetTimer = true) {
         authOtpState.email = email;
         authOtpState.purpose = purpose;
+        if (password !== undefined) authOtpState.password = password;
         const panel = $("#authOtpPanel");
         const message = $("#authOtpMessage");
         const error = $("#authOtpError");
         panel.classList.add("is-visible");
         error.textContent = "";
-        message.textContent = messageText || (purpose === "signup"
-          ? "Enter the 6-digit code we emailed you."
-          : "Enter the 6-digit code for your password reset.");
+        message.textContent = messageText || `Code sent to ${maskedEmail(email)}.`;
+        $("#signin-title").textContent = "Verify email";
         fillOtpInputs("");
         $("#authOtpVerify").disabled = true;
-        resetOtpTimer();
+        if (resetTimer) resetOtpTimer();
         $("#authDialog form").style.display = "none";
+        $("#authChangeEmailPanel").style.display = "none";
+        $(".auth-switch-row").style.display = "none";
         panel.style.display = "grid";
+        $("#authPassword").value = "";
         $("#authOtpCode input").focus();
       }
 
@@ -19729,10 +19791,29 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const panel = $("#authOtpPanel");
         panel.classList.remove("is-visible");
         panel.style.display = "none";
+        $("#authChangeEmailPanel").style.display = "none";
         $("#authDialog form").style.display = "grid";
+        $(".auth-switch-row").style.display = "";
+        $("#signin-title").innerHTML = registering
+          ? 'Create your <span class="wordmark">Relay</span> account'
+          : 'Welcome to <span class="wordmark">Relay</span>';
         $("#authOtpError").textContent = "";
+        $("#authChangeEmailError").textContent = "";
+        authOtpState.password = "";
         clearInterval(authOtpState.timerId);
         authOtpState.timerId = null;
+      }
+      authDialog.addEventListener("close", hideOtpScreen);
+
+      function showChangeEmailScreen() {
+        if (authOtpState.purpose !== "signup") return;
+        $("#authOtpPanel").style.display = "none";
+        $("#authChangeEmailPanel").style.display = "grid";
+        $(".auth-switch-row").style.display = "none";
+        $("#signin-title").textContent = "Change email";
+        $("#authNewEmail").value = "";
+        $("#authChangeEmailError").textContent = "";
+        $("#authNewEmail").focus();
       }
 
       function collectOtpCode() {
@@ -19815,7 +19896,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           startNotificationStream();
           toast("Email verified. Welcome to Relay");
         } catch (error) {
-          $("#authOtpError").textContent = error.message || "Could not verify this code.";
+          $("#authOtpError").textContent = authFriendlyError(error, "verify");
         } finally {
           setPendingButton(button, false);
           button.disabled = collectOtpCode().length !== 6;
@@ -19830,25 +19911,28 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         $("#authOtpError").textContent = "";
         try {
-          const response = await fetch("/api/auth/resend-otp", {
+          await api("/auth/resend-otp", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email, purpose: authOtpState.purpose }),
-          });
-          const data = await response.json().catch(() => ({}));
-          if (!response.ok) {
-            throw new Error(data.message || "Could not resend the code.");
-          }
+          }, false);
           resetOtpTimer();
-          $("#authOtpError").textContent = data.message || "A fresh verification code has been sent.";
+          $("#authOtpMessage").textContent = `Code sent to ${maskedEmail(email)}.`;
         } catch (error) {
-          $("#authOtpError").textContent = error.message || "Could not resend the code.";
+          $("#authOtpError").textContent = authFriendlyError(error, "resend");
         }
       });
 
       $("#authOtpChangeEmail").addEventListener("click", () => {
-        hideOtpScreen();
-        $("#authEmail").focus();
+        showChangeEmailScreen();
+      });
+      $("#authChangeEmailCancel").addEventListener("click", () => {
+        showOtpScreen(
+          authOtpState.email,
+          authOtpState.purpose,
+          `Code sent to ${maskedEmail(authOtpState.email)}.`,
+          undefined,
+          false,
+        );
       });
 
       const actionDialog = $("#actionDialog");
@@ -21883,6 +21967,52 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
           return;
         }
+        if (e.target.id === "authChangeEmailPanel") {
+          e.preventDefault();
+          const submit = $("#authChangeEmailSubmit");
+          const newEmail = $("#authNewEmail").value.trim().toLowerCase();
+          const errorElement = $("#authChangeEmailError");
+          errorElement.textContent = "";
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+            errorElement.textContent = "Enter a valid email address.";
+            $("#authNewEmail").focus();
+            return;
+          }
+          if (newEmail === authOtpState.email) {
+            errorElement.textContent = "Enter a different email address.";
+            $("#authNewEmail").focus();
+            return;
+          }
+          if (!authOtpState.password) {
+            errorElement.textContent = "Please sign in again to change your email.";
+            return;
+          }
+          setPendingButton(submit, true);
+          try {
+            await api("/auth/change-verification-email", {
+              method: "POST",
+              body: JSON.stringify({
+                currentEmail: authOtpState.email,
+                newEmail,
+                password: authOtpState.password,
+              }),
+            }, false);
+            $("#authEmail").value = newEmail;
+            showOtpScreen(newEmail, "signup", `Code sent to ${maskedEmail(newEmail)}.`);
+          } catch (error) {
+            if (error?.data?.emailUpdated && error.data.email) {
+              authOtpState.email = error.data.email;
+              $("#authEmail").value = error.data.email;
+              showOtpScreen(error.data.email, "signup", `Code sent to ${maskedEmail(error.data.email)}.`);
+              $("#authOtpError").textContent = authFriendlyError(error, "resend");
+              return;
+            }
+            errorElement.textContent = authFriendlyError(error, "change-email");
+          } finally {
+            setPendingButton(submit, false);
+          }
+          return;
+        }
         if (e.target.id === "authForm") {
           e.preventDefault();
           const submit = $("#authSubmit");
@@ -21930,8 +22060,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               showOtpScreen(
                 result.email || email,
                 "signup",
-                "We sent a 6-digit code to your email. Enter it below to finish creating your account.",
+                `Code sent to ${maskedEmail(result.email || email)}.`,
+                password,
               );
+              if (result.emailDeliveryFailed) {
+                $("#authOtpError").textContent = "Couldn't send the code. Try again shortly.";
+              }
               return;
             }
             setAccessToken(result.accessToken);
@@ -21949,11 +22083,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               showOtpScreen(
                 error.data.email || email,
                 "signup",
-                "This account needs email verification. Enter your code, or resend it if you haven't received one.",
+                `Code sent to ${maskedEmail(error.data.email || email)}.`,
+                password,
               );
               return;
             }
-            $("#authError").textContent = error.message;
+            $("#authError").textContent = authFriendlyError(error, "credentials");
           } finally {
             setPendingButton(submit, false);
             submit.disabled = false;
