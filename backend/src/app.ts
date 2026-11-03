@@ -4,7 +4,7 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import bcrypt from "bcryptjs";
-import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
 import path from "node:path";
 import { NotificationType, Prisma, type InteractionType, type NotificationType as NotificationTypeValue } from "@prisma/client";
 import { z } from "zod";
@@ -216,7 +216,7 @@ const createAuthCode = async (req: { ip?: string; socket?: { remoteAddress?: str
       purpose,
     },
   });
-  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const code = String(randomInt(100000, 1000000));
   const record = await prisma.authCode.create({
     data: {
       userId,
@@ -761,10 +761,22 @@ api.post("/auth/register", asyncRoute(async (req, res) => {
 api.post("/auth/login", asyncRoute(async (req, res) => {
   const input = loginSchema.parse(req.body);
   const user = await prisma.user.findUnique({ where: { email: normalizeEmail(input.email) } });
-  const valid = user
-    ? await verifyPassword(input.password, user.passwordHash)
-    : await bcrypt.compare(input.password, await dummyPasswordHash);
-  if (!user || !valid) throw new HttpError(401, "Invalid email or password");
+  if (!user) {
+    const valid = await bcrypt.compare(input.password, await dummyPasswordHash);
+    if (!valid) throw new HttpError(401, "Invalid email or password");
+    throw new HttpError(401, "Invalid email or password");
+  }
+  const valid = await verifyPassword(input.password, user.passwordHash);
+  if (!valid) throw new HttpError(401, "Invalid email or password");
+  const requiresVerification = user.emailVerifiedAt === null && user.createdAt > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  if (requiresVerification) {
+    res.status(403).json({
+      requiresVerification: true,
+      email: user.email,
+      message: "Please verify your email before continuing.",
+    });
+    return;
+  }
   const refreshToken = await issueRefreshToken(user.id);
   res.cookie(refreshCookie, refreshToken, refreshCookieOptions);
   const { passwordHash: _passwordHash, ...safeUser } = user;
