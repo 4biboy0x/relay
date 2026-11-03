@@ -4,7 +4,7 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import bcrypt from "bcryptjs";
-import { randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import path from "node:path";
 import { NotificationType, Prisma, type InteractionType, type NotificationType as NotificationTypeValue } from "@prisma/client";
 import { z } from "zod";
@@ -21,10 +21,13 @@ import { createViewerKey, viewRateLimiter, viewRequestGuard } from "./view-track
 import {
   loginSchema,
   messageSchema,
+  otpRequestSchema,
+  otpVerifySchema,
   pageSchema,
   postSchema,
   profileSchema,
   registerSchema,
+  resetPasswordSchema,
   updateEmailSchema,
   updatePasswordSchema,
   updatePostSchema,
@@ -124,6 +127,146 @@ const refreshCookieOptions = {
   sameSite: isProduction ? "none" as const : "strict" as const,
   path: "/api/auth",
   maxAge: 30 * 24 * 60 * 60 * 1000,
+};
+
+const normalizeEmail = (email: string): string => email.trim().toLowerCase();
+const hashOtpCode = (code: string): string => createHash("sha256").update(code).digest("hex");
+const safeEqualHex = (left: string, right: string): boolean => {
+  try {
+    return timingSafeEqual(Buffer.from(left, "hex"), Buffer.from(right, "hex"));
+  } catch {
+    return false;
+  }
+};
+const otpRequestTracker = new Map<string, { count: number; resetAt: number }>();
+const otpCooldownWindowMs = 60 * 1000;
+const otpMaxPerEmailOrIpPerHour = 5;
+const authCodePurposes = ["signup", "reset"] as const;
+
+const getClientIp = (req: { ip?: string; socket?: { remoteAddress?: string } }): string =>
+  req.ip || req.socket?.remoteAddress || "unknown";
+
+const enforceOtpRequestLimit = (req: { ip?: string; socket?: { remoteAddress?: string } }, email: string, purpose: "signup" | "reset") => {
+  const now = Date.now();
+  const normalizedEmail = normalizeEmail(email);
+  const ip = getClientIp(req);
+  const bucketKeys = [`${purpose}:${normalizedEmail}`, `${purpose}:${ip}`];
+  for (const key of bucketKeys) {
+    const entry = otpRequestTracker.get(key);
+    if (!entry || entry.resetAt <= now) {
+      otpRequestTracker.set(key, { count: 1, resetAt: now + 60 * 60 * 1000 });
+      continue;
+    }
+    if (entry.count >= otpMaxPerEmailOrIpPerHour) {
+      throw new HttpError(429, "Too many OTP requests. Please try again later.");
+    }
+    entry.count += 1;
+    otpRequestTracker.set(key, entry);
+  }
+};
+
+const sendOtpEmail = async (email: string, code: string, purpose: "signup" | "reset"): Promise<void> => {
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const resendFromEmail = process.env.RESEND_FROM_EMAIL || "no-reply@relay.app";
+  if (!resendApiKey) {
+    if (process.env.NODE_ENV !== "production") {
+      console.info(`[otp-dev] ${purpose} code for ${email}: ${code}`);
+    }
+    return;
+  }
+
+  const body = {
+    from: resendFromEmail,
+    to: [email],
+    subject: purpose === "signup" ? "Verify your Relay account" : "Reset your Relay password",
+    html: `<p>Your Relay verification code is <strong>${code}</strong>.</p><p>It expires in 10 minutes.</p><p>If you did not request this, you can safely ignore it.</p>`,
+  };
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${resendApiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    console.error("Resend OTP email failed", { status: response.status, body: text });
+  }
+};
+
+const createAuthCode = async (req: { ip?: string; socket?: { remoteAddress?: string } }, userId: string | null, email: string, purpose: "signup" | "reset") => {
+  const normalizedEmail = normalizeEmail(email);
+  enforceOtpRequestLimit(req, normalizedEmail, purpose);
+  const existingCodes = await prisma.authCode.findMany({
+    where: {
+      email: normalizedEmail,
+      purpose,
+    },
+    select: { id: true },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+  if (existingCodes.length >= 5) {
+    throw new HttpError(429, "Too many verification codes have been sent. Please try again later.");
+  }
+  await prisma.authCode.deleteMany({
+    where: {
+      email: normalizedEmail,
+      purpose,
+    },
+  });
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const record = await prisma.authCode.create({
+    data: {
+      userId,
+      email: normalizedEmail,
+      purpose,
+      codeHash: hashOtpCode(code),
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      attempts: 0,
+      createdAt: new Date(),
+    },
+  });
+  await sendOtpEmail(normalizedEmail, code, purpose);
+  return record;
+};
+
+const verifyOneTimePasscode = async (email: string, purpose: "signup" | "reset", code: string) => {
+  const normalizedEmail = normalizeEmail(email);
+  const record = await prisma.authCode.findFirst({
+    where: {
+      email: normalizedEmail,
+      purpose,
+      consumedAt: null,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  if (!record) throw new HttpError(401, "Invalid or expired verification code");
+  if (record.expiresAt <= new Date()) {
+    await prisma.authCode.update({ where: { id: record.id }, data: { consumedAt: new Date() } });
+    throw new HttpError(401, "Verification code expired");
+  }
+  if (record.attempts >= 5) {
+    await prisma.authCode.update({ where: { id: record.id }, data: { consumedAt: new Date() } });
+    throw new HttpError(401, "This verification code has been locked. Please request a new one.");
+  }
+  const valid = safeEqualHex(record.codeHash, hashOtpCode(code));
+  if (!valid) {
+    await prisma.authCode.update({
+      where: { id: record.id },
+      data: { attempts: record.attempts + 1 },
+    });
+    if (record.attempts + 1 >= 5) {
+      await prisma.authCode.update({ where: { id: record.id }, data: { consumedAt: new Date() } });
+    }
+    throw new HttpError(401, "Invalid verification code");
+  }
+  await prisma.authCode.update({
+    where: { id: record.id },
+    data: { consumedAt: new Date(), attempts: record.attempts + 1 },
+  });
+  return record;
 };
 
 app.disable("x-powered-by");
@@ -593,24 +736,31 @@ const listPosts = async (
 
 api.post("/auth/register", asyncRoute(async (req, res) => {
   const input = registerSchema.parse(req.body);
+  const email = normalizeEmail(input.email);
+  const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  if (existing) throw new HttpError(409, "An account with that email already exists");
   const user = await prisma.user.create({
     data: {
       handle: input.handle,
-      email: input.email,
+      email,
       passwordHash: await hashPassword(input.password),
       displayName: input.displayName,
+      emailVerifiedAt: null,
     },
-    select: publicUser,
+    select: { ...publicUser, email: true, id: true },
   });
-  const refreshToken = await issueRefreshToken(user.id);
-  res.cookie(refreshCookie, refreshToken, refreshCookieOptions);
+  await createAuthCode(req, user.id, email, "signup");
   emitToAuthenticated("user:suggestion:new", user);
-  res.status(201).json({ user, accessToken: createAccessToken(user.id) });
+  res.status(202).json({
+    email,
+    requiresVerification: true,
+    message: "Check your email for the 6-digit verification code.",
+  });
 }));
 
 api.post("/auth/login", asyncRoute(async (req, res) => {
   const input = loginSchema.parse(req.body);
-  const user = await prisma.user.findUnique({ where: { email: input.email } });
+  const user = await prisma.user.findUnique({ where: { email: normalizeEmail(input.email) } });
   const valid = user
     ? await verifyPassword(input.password, user.passwordHash)
     : await bcrypt.compare(input.password, await dummyPasswordHash);
@@ -619,6 +769,83 @@ api.post("/auth/login", asyncRoute(async (req, res) => {
   res.cookie(refreshCookie, refreshToken, refreshCookieOptions);
   const { passwordHash: _passwordHash, ...safeUser } = user;
   res.json({ user: safeUser, accessToken: createAccessToken(user.id) });
+}));
+
+api.post("/auth/verify-otp", asyncRoute(async (req, res) => {
+  const input = otpVerifySchema.parse(req.body);
+  const email = normalizeEmail(input.email);
+  const record = await verifyOneTimePasscode(email, input.purpose, input.code);
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true, emailVerifiedAt: true } });
+  if (!user) throw new HttpError(404, "User not found");
+  if (input.purpose === "signup") {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { emailVerifiedAt: new Date() },
+    });
+    const refreshToken = await issueRefreshToken(user.id);
+    res.cookie(refreshCookie, refreshToken, refreshCookieOptions);
+    const finalUser = await prisma.user.findUnique({ where: { id: user.id }, select: { ...publicUser, email: true } });
+    if (!finalUser) throw new HttpError(404, "User not found");
+    res.status(200).json({
+      user: finalUser,
+      accessToken: createAccessToken(user.id),
+      message: "Email verified successfully.",
+    });
+    return;
+  }
+
+  res.status(200).json({
+    valid: true,
+    message: "Code is valid. Set a new password.",
+    email,
+    purpose: "reset",
+  });
+}));
+
+api.post("/auth/resend-otp", asyncRoute(async (req, res) => {
+  const input = otpRequestSchema.parse(req.body);
+  const email = normalizeEmail(input.email);
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  if (!user && input.purpose === "signup") throw new HttpError(404, "Account not found");
+  if (user) {
+    await createAuthCode(req, user.id, email, input.purpose);
+  }
+  res.status(200).json({
+    message: "If the account exists, a new verification code has been sent.",
+  });
+}));
+
+api.post("/auth/forgot-password", asyncRoute(async (req, res) => {
+  const input = otpRequestSchema.parse({ ...req.body, purpose: "reset" });
+  const email = normalizeEmail(input.email);
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  if (user) {
+    await createAuthCode(req, user.id, email, "reset");
+  }
+  res.status(200).json({
+    message: "If the account exists, we sent a verification code.",
+  });
+}));
+
+api.post("/auth/reset-password", asyncRoute(async (req, res) => {
+  const input = resetPasswordSchema.parse(req.body);
+  const email = normalizeEmail(input.email);
+  const codeRecord = await verifyOneTimePasscode(email, "reset", input.code);
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  if (!user) throw new HttpError(404, "User not found");
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: user.id },
+      data: { passwordHash: await hashPassword(input.password) },
+    });
+    await tx.refreshToken.deleteMany({ where: { userId: user.id } });
+    await tx.authCode.update({
+      where: { id: codeRecord.id },
+      data: { consumedAt: new Date() },
+    });
+  });
+  res.clearCookie(refreshCookie, { ...refreshCookieOptions, maxAge: undefined });
+  res.status(200).json({ message: "Password updated successfully." });
 }));
 
 api.get("/realtime-demo/live", authRequired, asyncRoute(async (req, res) => {

@@ -11,11 +11,12 @@ datasource db {
 }
 
 model User {
-  id            String               @id @default(cuid())
-  handle        String               @unique @db.VarChar(30)
-  email         String               @unique @db.VarChar(254)
-  passwordHash  String
-  displayName   String               @db.VarChar(60)
+  id               String               @id @default(cuid())
+  handle           String               @unique @db.VarChar(30)
+  email            String               @unique @db.VarChar(254)
+  passwordHash     String
+  emailVerifiedAt  DateTime?
+  displayName      String               @db.VarChar(60)
   bio           String               @default("") @db.VarChar(280)
   avatarUrl     String?
   bannerUrl     String?
@@ -28,6 +29,7 @@ model User {
   interactions  Interaction[]
   sentNotifs    Notification[]       @relation("NotificationActor")
   notifications Notification[]       @relation("NotificationRecipient")
+  authCodes     AuthCode[]
   postViews     PostView[]
   reelViews     ReelView[]
   reels         Reel[]
@@ -296,6 +298,27 @@ model Notification {
 
   @@index([recipientId, createdAt(sort: Desc), id(sort: Desc)])
   @@index([recipientId, readAt])
+}
+
+enum AuthCodePurpose {
+  signup
+  reset
+}
+
+model AuthCode {
+  id        String           @id @default(cuid())
+  userId    String?
+  email     String           @db.VarChar(254)
+  purpose   AuthCodePurpose
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int              @default(0)
+  consumedAt DateTime?
+  createdAt DateTime         @default(now())
+  user      User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([email, purpose, createdAt(sort: Desc)])
+  @@index([userId, purpose, createdAt(sort: Desc)])
 }
 
 model RefreshToken {

@@ -39,6 +39,27 @@ export const loginSchema = z.object({
   }),
 });
 
+export const otpRequestSchema = z.object({
+  email: z.string().trim().toLowerCase().email().max(254),
+  purpose: z.enum(["signup", "reset"]).default("signup"),
+});
+
+export const otpVerifySchema = z.object({
+  email: z.string().trim().toLowerCase().email().max(254),
+  code: z.string().trim().regex(/^\d{6}$/),
+  purpose: z.enum(["signup", "reset"]).default("signup"),
+});
+
+export const resetPasswordSchema = z.object({
+  email: z.string().trim().toLowerCase().email().max(254),
+  code: z.string().trim().regex(/^\d{6}$/),
+  password: passwordSchema,
+  confirmPassword: z.string().min(1).max(128),
+}).refine((value) => value.password === value.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
+
 export const postSchema = z.object({
   body: z.string().trim().min(1).max(280),
   mediaUrl: mediaUrlSchema.optional(),
