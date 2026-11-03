@@ -22086,6 +22086,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 `Code sent to ${maskedEmail(error.data.email || email)}.`,
                 password,
               );
+              if (error.data.emailDeliveryFailed) {
+                $("#authOtpError").textContent = "Couldn't send the code. Try again shortly.";
+              }
               return;
             }
             $("#authError").textContent = authFriendlyError(error, "credentials");

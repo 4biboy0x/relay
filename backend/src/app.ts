@@ -755,9 +755,17 @@ api.post("/auth/login", asyncRoute(async (req, res) => {
   if (!valid) throw new HttpError(401, "Invalid email or password");
   const requiresVerification = user.emailVerifiedAt === null && user.createdAt > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   if (requiresVerification) {
+    let emailDeliveryFailed = false;
+    try {
+      await createAuthCode(req, user.id, user.email, "signup");
+    } catch (error) {
+      if (!(error instanceof EmailDeliveryError)) throw error;
+      emailDeliveryFailed = true;
+    }
     res.status(403).json({
       requiresVerification: true,
       email: user.email,
+      emailDeliveryFailed,
       message: "Please verify your email before continuing.",
     });
     return;
