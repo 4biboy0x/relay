@@ -19776,10 +19776,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         error.textContent = "";
         message.textContent = messageText || `Code sent to ${maskedEmail(email)}.`;
         $("#signin-title").textContent = "Verify email";
+        $("#authOtpChangeEmail").hidden = !authOtpState.password;
         fillOtpInputs("");
         $("#authOtpVerify").disabled = true;
         if (resetTimer) resetOtpTimer();
-        $("#authDialog form").style.display = "none";
+        $("#authForm").style.display = "none";
         $("#authChangeEmailPanel").style.display = "none";
         $(".auth-switch-row").style.display = "none";
         panel.style.display = "grid";
@@ -19792,7 +19793,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         panel.classList.remove("is-visible");
         panel.style.display = "none";
         $("#authChangeEmailPanel").style.display = "none";
-        $("#authDialog form").style.display = "grid";
+        $("#authForm").style.display = "grid";
         $(".auth-switch-row").style.display = "";
         $("#signin-title").innerHTML = registering
           ? 'Create your <span class="wordmark">Relay</span> account'
@@ -21802,11 +21803,26 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           setPendingButton(submit, true);
           try {
             const data = new FormData(e.target);
-            const user = await api("/users/me/email", { method: "PATCH", body: JSON.stringify({ email: data.get("email"), currentPassword: data.get("currentPassword") }) });
-            currentUser = user;
-            updateAccountUI();
+            const result = await api("/users/me/email", { method: "PATCH", body: JSON.stringify({ email: data.get("email"), currentPassword: data.get("currentPassword") }) });
+            if (result.requiresVerification) {
+              const email = result.email;
+              e.target.elements.currentPassword.value = "";
+              $("#settingsEmail").value = email;
+              clearSession();
+              setAuthMode(false);
+              $("#authEmail").value = email;
+              showAuth();
+              showOtpScreen(email, "signup", `Code sent to ${maskedEmail(email)}.`);
+              if (result.emailDeliveryFailed) {
+                $("#authOtpError").textContent = "Couldn't send the code. Try again shortly.";
+              }
+              return;
+            }
             e.target.elements.currentPassword.value = "";
-            toast("Email updated");
+            if (result.unchanged) {
+              toast("Email is unchanged");
+              return;
+            }
             $("#settingsEmailPassword").classList.remove("is-visible");
             syncSettingsEmail();
           } catch (requestError) { error.textContent = requestError.message || "Could not update email."; }

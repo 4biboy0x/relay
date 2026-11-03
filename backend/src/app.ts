@@ -753,7 +753,14 @@ api.post("/auth/login", asyncRoute(async (req, res) => {
   }
   const valid = await verifyPassword(input.password, user.passwordHash);
   if (!valid) throw new HttpError(401, "Invalid email or password");
-  const requiresVerification = user.emailVerifiedAt === null && user.createdAt > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const hasPendingEmailVerification = user.emailVerifiedAt === null && (
+    user.createdAt > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    || await prisma.authCode.findFirst({
+      where: { email: user.email, purpose: "signup" },
+      select: { id: true },
+    }) !== null
+  );
+  const requiresVerification = hasPendingEmailVerification;
   if (requiresVerification) {
     let emailDeliveryFailed = false;
     try {
@@ -977,22 +984,54 @@ api.get("/users/me", authRequired, asyncRoute(async (req, res) => {
 
 api.patch("/users/me/email", authRequired, asyncRoute(async (req, res) => {
   const input = updateEmailSchema.parse(req.body);
-  const account = await prisma.user.findUnique({ where: { id: req.userId! }, select: { passwordHash: true } });
+  const email = normalizeEmail(input.email);
+  const account = await prisma.user.findUnique({
+    where: { id: req.userId! },
+    select: { id: true, email: true, passwordHash: true },
+  });
   if (!account || !(await verifyPassword(input.currentPassword, account.passwordHash))) {
     throw new HttpError(401, "Current password is incorrect");
   }
-  const existing = await prisma.user.findUnique({ where: { email: input.email }, select: { id: true } });
+  if (email === account.email) {
+    res.json({ email, unchanged: true });
+    return;
+  }
+  const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
   if (existing && existing.id !== req.userId) throw new HttpError(409, "That email is already in use");
-  const user = await prisma.$transaction(async (tx) => {
-    await tx.refreshToken.deleteMany({ where: { userId: req.userId! } });
-    return tx.user.update({
-      where: { id: req.userId! },
-      data: { email: input.email },
-      select: { ...publicUser, email: true },
-    });
+  enforceOtpRequestLimit(req, email, "signup");
+  const existingCodes = await prisma.authCode.findMany({
+    where: { email, purpose: "signup" },
+    select: { id: true },
+    take: 5,
   });
+  if (existingCodes.length >= 5) {
+    throw new HttpError(429, "Too many verification codes have been sent. Please try again later.");
+  }
+  try {
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: req.userId! },
+        data: { email, emailVerifiedAt: null },
+      }),
+      prisma.authCode.deleteMany({ where: { email: account.email, purpose: "signup" } }),
+      prisma.refreshToken.deleteMany({ where: { userId: req.userId! } }),
+    ]);
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      throw new HttpError(409, "That email is already in use");
+    }
+    throw error;
+  }
+
+  let emailDeliveryFailed = false;
+  try {
+    await createAuthCode(req, account.id, email, "signup", true);
+  } catch (error) {
+    if (!(error instanceof EmailDeliveryError)) throw error;
+    emailDeliveryFailed = true;
+  }
   res.clearCookie(refreshCookie, { ...refreshCookieOptions, maxAge: undefined });
-  res.json(user);
+  res.json({ email, requiresVerification: true, emailDeliveryFailed });
 }));
 
 api.patch("/users/me/password", authRequired, asyncRoute(async (req, res) => {
