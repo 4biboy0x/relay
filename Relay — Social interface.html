@@ -5880,6 +5880,10 @@
         grid-template-columns: minmax(0, 1fr);
       }
       .message-row:empty { display: none; }
+      .message-row.is-preparing-layout {
+        visibility: hidden;
+        contain: layout paint;
+      }
       .message-row:not(.mine) > * { justify-self: left; }
       .message-row.mine > * { justify-self: right; }
       .message-row > .message-bubble {
@@ -17766,6 +17770,20 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (groupClass) bubble.classList.add(groupClass);
         });
       }
+      function insertPreparedMessageRow(markup, { before = null, append = false } = {}) {
+        const template = document.createElement("template");
+        template.innerHTML = markup.trim();
+        const row = template.content.firstElementChild;
+        if (!row?.matches(".message-row")) return null;
+        row.classList.add("is-preparing-layout");
+        const container = $("#chatLog");
+        if (before?.isConnected) before.before(row);
+        else if (append) container.append(row);
+        else container.append(row);
+        updateMessageRowSpacing(container);
+        row.classList.remove("is-preparing-layout");
+        return row;
+      }
       function bindVoiceMessages(container = document) {
         container.querySelectorAll(".relay-voice audio:not([data-relay-bound])").forEach((audio) => {
           audio.dataset.relayBound = "true";
@@ -17945,10 +17963,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const shouldFollow = chatLog.scrollHeight - chatLog.scrollTop - chatLog.clientHeight <= 80;
           const typingStatus = $("#typingStatus", chatLog);
           clearEmptyMessagesState();
-          if (shouldFollow) chatLog.insertAdjacentHTML("beforeend", messageMarkup(message));
-          else typingStatus?.insertAdjacentHTML("beforebegin", messageMarkup(message));
-          updateMessageRowSpacing(chatLog);
-          const insertedMessage = typingStatus?.previousElementSibling || chatLog.lastElementChild;
+          const insertedMessage = insertPreparedMessageRow(messageMarkup(message), {
+            before: shouldFollow ? null : typingStatus,
+            append: shouldFollow,
+          });
           if (insertedMessage?.matches(".message-row")) animateChatMessages([insertedMessage]);
           bindVoiceMessages(chatLog);
           bindMessageMediaScroll(chatLog);
@@ -21292,22 +21310,17 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const pendingId = `pending-${Date.now()}`;
           clearEmptyMessagesState();
           const typingStatus = $("#typingStatus");
-          if (typingStatus) typingStatus.insertAdjacentHTML("beforebegin", messageMarkup({
+          const pendingMarkup = messageMarkup({
             id: pendingId,
             conversationId: sendConversationId,
             senderId: currentUser.id,
             body,
             ...(replyTo ? { replyToId: replyTo.id, replyTo } : {}),
-          }));
-          else $("#chatLog").insertAdjacentHTML("beforeend", messageMarkup({
-            id: pendingId,
-            conversationId: sendConversationId,
-            senderId: currentUser.id,
-            body,
-            ...(replyTo ? { replyToId: replyTo.id, replyTo } : {}),
-          }));
-          updateMessageRowSpacing($("#chatLog"));
-          const pendingMessage = typingStatus?.previousElementSibling || $("#chatLog").lastElementChild;
+          });
+          const pendingMessage = insertPreparedMessageRow(pendingMarkup, {
+            before: typingStatus,
+            append: !typingStatus,
+          });
           if (pendingMessage) animateChatMessages([pendingMessage.querySelector(".message-bubble") || pendingMessage]);
           scrollMessageListToBottom(false);
           input.value = "";
