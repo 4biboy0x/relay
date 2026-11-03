@@ -14803,7 +14803,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         reelRenderGeneration += 1;
         reelLoading = false;
         reelItems = [reel, ...reelItems.filter((item) => item.id !== reel.id)];
-        writeReelCache();
+        if (activateInFeed) writeReelCache();
+        else {
+          try {
+            sessionStorage.removeItem(reelCacheKey());
+          } catch {}
+        }
         if (!activateInFeed || $("#v-reels").hidden) return;
         const container = $("#reelItems");
         $$(".reel-skeleton", container).forEach((skeleton) => skeleton.remove());
@@ -14841,11 +14846,18 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         return result;
       }
       async function finishReelUpload(reelId) {
-        await fetchReadyReel(reelId, true);
+        const reel = await fetchReadyReel(reelId, false);
         hideReelUploadProgress();
         setReelUploadStatus("Ready to share", "ready");
         if ($("#reelCreateDialog").open) $("#reelCreateDialog").close();
         toast("Your Reel is ready");
+        reelItems = [reel];
+        reelCursor = null;
+        reelFeedScrollTop = 0;
+        activeReelId = reel.id;
+        deepLinkedReelId = reel.id;
+        profileScopedReelHandle = currentUser.handle;
+        location.hash = `#/reel/${encodeURIComponent(reel.id)}`;
       }
       async function retryReelStatus(reelId) {
         if (reelUploadBusy || !reelId || reelId !== reelUploadCreatedId) return;
