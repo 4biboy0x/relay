@@ -8485,9 +8485,9 @@
       .reel-create-dialog .reel-upload-preview.is-dragging { border-color: rgba(255,255,255,.8); background: #1a1a1a; }
       .reel-upload-preview:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       .reel-upload-preview video { display: block; width: 100%; height: 100%; object-fit: cover; background: #000; cursor: pointer; }
+      .reel-upload-cover { position: absolute; z-index: 1; inset: 0; display: none; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+      .reel-upload-cover.is-visible { display: block; }
       .reel-upload-preview[data-fit-mode="fit"] video { object-fit: contain; }
-      .reel-upload-fit-background { position: absolute; inset: -12px; z-index: 0; display: none; width: calc(100% + 24px); height: calc(100% + 24px); object-fit: cover; filter: blur(18px) brightness(.58); transform: scale(1.08); pointer-events: none; }
-      .reel-upload-preview[data-fit-mode="fit"] .reel-upload-fit-background { display: block; }
       .reel-upload-preview[data-fit-mode="fit"] video { position: relative; z-index: 1; }
       .reel-upload-preview video[hidden] { display: none !important; }
       .reel-upload-placeholder { display: grid; width: 100%; height: 100%; align-content: center; justify-items: center; gap: 10px; padding: 20px 12px; border: 0; background: transparent !important; color: #fff; font: inherit; text-align: center; cursor: pointer; }
@@ -8542,20 +8542,6 @@
       .reel-upload-mute[data-muted="false"] [data-mute-icon="unmuted"] { display: block !important; }
       .reel-upload-mute { position: absolute; z-index: 3; inset-inline-end: 10px; bottom: 10px; }
       .reel-upload-mute[hidden] { display: none; }
-      .reel-upload-editor { display: grid; gap: 16px; padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); }
-      .reel-upload-editor[hidden] { display: none; }
-      .reel-upload-editor-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-      .reel-upload-editor-header strong { font-size: 14px; }
-      .reel-upload-editor-close { width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text-2); cursor: pointer; }
-      .reel-upload-editor-close:hover { background: var(--surface-3); color: var(--text); }
-      .reel-upload-editor-section { display: grid; gap: 8px; }
-      .reel-upload-editor-section > span { color: var(--text-2); font-size: 12px; font-weight: 600; }
-      .reel-upload-editor-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-      .reel-upload-editor-action { min-height: 34px; padding: 0 11px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); color: var(--text); font-size: 12px; font-weight: 600; cursor: pointer; }
-      .reel-upload-editor-action.is-active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); color: var(--accent); }
-      .reel-upload-trim { display: grid; grid-template-columns: 42px minmax(0, 1fr) 42px; align-items: center; gap: 8px; color: var(--text-3); font-size: 11px; font-variant-numeric: tabular-nums; }
-      .reel-upload-trim input { width: 100%; accent-color: var(--accent); }
-      .reel-upload-editor input[type="range"] { direction: ltr; }
       @media (hover: none) {
         .reel-upload-preview[data-has-video="true"] .reel-upload-control,
         .reel-upload-preview[data-has-video="true"] .reel-upload-mute {
@@ -9700,16 +9686,16 @@
         <div class="reel-upload-layout">
           <div class="reel-upload-media">
             <div class="reel-upload-preview" id="reelUploadPreviewFrame" role="group" aria-label="Reel video preview">
-              <img class="reel-upload-fit-background" id="reelUploadFitBackground" alt="" aria-hidden="true">
               <video id="reelUploadPreview" playsinline muted loop preload="metadata" tabindex="0" aria-label="Video preview" hidden></video>
+              <img class="reel-upload-cover" id="reelUploadCover" alt="" aria-hidden="true">
               <button class="reel-upload-placeholder" id="reelUploadPlaceholder" type="button" aria-label="Choose a video">
                 <svg class="i reels-symbol" aria-hidden="true"><use href="#reels" /></svg>
                 <strong>Choose a video</strong>
                 <span>MP4, MOV, WebM · up to 60 s · 100 MB</span>
               </button>
               <div class="reel-upload-controls" id="reelUploadControls" hidden>
-                <button class="reel-upload-control" id="reelEditPreview" type="button" aria-label="Edit Reel" title="Edit Reel">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4z"/></svg>
+                <button class="reel-upload-control" id="reelEditPreview" type="button" aria-label="Change cover" title="Change cover">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="m21 15-4-4-8 8"/></svg>
                 </button>
                 <button class="reel-upload-control" id="reelReplaceVideo" type="button" aria-label="Replace video" title="Replace video">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.64 9a7 7 0 0 1 11.55-2.6L20 9M4 15l2.81 2.6A7 7 0 0 0 18.36 15"/></svg>
@@ -9731,37 +9717,8 @@
           </div>
           <div class="reel-upload-fields">
             <input id="reelFileInput" type="file" accept="video/mp4,video/quicktime,video/webm" hidden>
+            <input id="reelCoverFileInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
             <textarea id="reelCaption" rows="2" placeholder="Write a caption..." aria-label="Caption"></textarea>
-            <div class="reel-upload-editor" id="reelUploadEditor" hidden>
-              <div class="reel-upload-editor-header">
-                <strong>Edit Reel</strong>
-                <button class="reel-upload-editor-close" id="reelUploadEditorClose" type="button" aria-label="Close editor">×</button>
-              </div>
-              <div class="reel-upload-editor-section">
-                <span>Cover</span>
-                <div class="reel-upload-editor-actions">
-                  <button class="reel-upload-editor-action" id="reelUseCurrentFrame" type="button">Use current frame</button>
-                  <button class="reel-upload-editor-action" id="reelChooseCover" type="button">Upload cover</button>
-                </div>
-                <input id="reelCoverFileInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
-              </div>
-              <div class="reel-upload-editor-section">
-                <span>Trim</span>
-                <div class="reel-upload-trim">
-                  <span id="reelTrimStartLabel">0:00</span>
-                  <input id="reelTrimEnd" type="range" min="1" max="60" value="60" aria-label="Trim Reel duration">
-                  <span id="reelTrimEndLabel">0:60</span>
-                </div>
-                <button class="reel-upload-editor-action" id="reelSplitAtCurrent" type="button">Split at current frame</button>
-              </div>
-              <div class="reel-upload-editor-section">
-                <span>Fit</span>
-                <div class="reel-upload-editor-actions" id="reelFitOptions">
-                  <button class="reel-upload-editor-action is-active" type="button" data-reel-fit="crop">Crop</button>
-                  <button class="reel-upload-editor-action" type="button" data-reel-fit="fit">Fit with blur</button>
-                </div>
-              </div>
-            </div>
             <div class="reel-upload-status" id="reelUploadStatus" role="status" aria-live="polite"></div>
             <div class="reel-upload-progress" id="reelUploadProgressWrap" role="progressbar" aria-label="Video upload progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden>
               <span id="reelUploadProgress"></span>
@@ -10386,8 +10343,6 @@
       let reelUploadPreuploaded = false;
       let reelUploadValidationGeneration = 0;
       let reelUploadProgressTimer = null;
-      let reelUploadTrimEnd = 60;
-      let reelUploadFitMode = "crop";
       let reelUploadCoverUrl = "";
       let reelPreviewFeedbackTimer = null;
       const reelStatusPollers = new Map();
@@ -14619,16 +14574,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#reelUploadPreviewFrame").classList.remove("is-preview-paused", "is-preview-feedback", "is-preview-playing", "is-preview-pause", "is-preview-fading");
         $("#reelUploadControls").hidden = true;
         $("#reelPreviewMute").hidden = true;
-        $("#reelUploadEditor").hidden = true;
         $("#reelUploadPreviewFrame").removeAttribute("data-fit-mode");
         if (reelUploadCoverUrl.startsWith("blob:")) URL.revokeObjectURL(reelUploadCoverUrl);
         reelUploadCoverUrl = "";
-        $("#reelUploadFitBackground").removeAttribute("src");
-        $("#reelUseCurrentFrame").classList.remove("is-active");
-        $("#reelChooseCover").classList.remove("is-active");
-        reelUploadFitMode = "crop";
-        reelUploadTrimEnd = 60;
-        $("#reelTrimStartLabel").textContent = "0:00";
+        $("#reelUploadCover").removeAttribute("src");
+        $("#reelUploadCover").classList.remove("is-visible");
         $("#reelUploadPlaceholder").hidden = false;
         setReelPreviewError("");
         setReelUploadStatus("");
@@ -15132,6 +15082,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (preview.hidden || !preview.src) return;
         if (!preview.paused) {
           preview.pause();
+          $("#reelUploadCover").classList.toggle("is-visible", Boolean(reelUploadCoverUrl));
           frame.classList.add("is-preview-paused");
           showReelPreviewFeedback("pause");
           return;
@@ -15139,6 +15090,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         frame.classList.remove("is-preview-paused");
         try {
           await preview.play();
+          $("#reelUploadCover").classList.remove("is-visible");
           showReelPreviewFeedback("playing");
         } catch (error) {
           frame.classList.add("is-preview-paused");
@@ -15304,69 +15256,29 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         });
         $("#reelEditPreview").addEventListener("click", (event) => {
           event.stopPropagation();
-          $("#reelUploadEditor").hidden = false;
-        });
-        $("#reelUploadEditorClose").addEventListener("click", () => {
-          $("#reelUploadEditor").hidden = true;
-        });
-        $("#reelChooseCover").addEventListener("click", () => $("#reelCoverFileInput").click());
-        $("#reelUseCurrentFrame").addEventListener("click", () => {
-          const preview = $("#reelUploadPreview");
-          const canvas = document.createElement("canvas");
-          canvas.width = preview.videoWidth || 1080;
-          canvas.height = preview.videoHeight || 1920;
-          const context = canvas.getContext("2d");
-          if (!context) return;
-          context.drawImage(preview, 0, 0, canvas.width, canvas.height);
-          reelUploadCoverUrl = canvas.toDataURL("image/jpeg", .86);
-          $("#reelUploadFitBackground").src = reelUploadCoverUrl;
-          $("#reelUseCurrentFrame").classList.add("is-active");
-          $("#reelChooseCover").classList.remove("is-active");
+          $("#reelCoverFileInput").click();
         });
         $("#reelCoverFileInput").addEventListener("change", (event) => {
           const file = event.target.files?.[0];
           if (!file) return;
+          if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+            setReelPreviewError("Choose a JPG, PNG, or WebP cover image.");
+            event.target.value = "";
+            return;
+          }
+          if (file.size > 10 * 1024 * 1024) {
+            setReelPreviewError("Cover image must be 10 MB or less.");
+            event.target.value = "";
+            return;
+          }
           if (reelUploadCoverUrl.startsWith("blob:")) URL.revokeObjectURL(reelUploadCoverUrl);
           reelUploadCoverUrl = URL.createObjectURL(file);
-          $("#reelUploadFitBackground").src = reelUploadCoverUrl;
-          $("#reelChooseCover").classList.add("is-active");
-          $("#reelUseCurrentFrame").classList.remove("is-active");
+          const cover = $("#reelUploadCover");
+          cover.src = reelUploadCoverUrl;
+          cover.classList.add("is-visible");
+          $("#reelUploadPreview").poster = reelUploadCoverUrl;
+          setReelPreviewError("");
           event.target.value = "";
-        });
-        $("#reelFitOptions").addEventListener("click", (event) => {
-          const button = event.target.closest("[data-reel-fit]");
-          if (!button) return;
-          reelUploadFitMode = button.dataset.reelFit;
-          $("#reelUploadPreviewFrame").dataset.fitMode = reelUploadFitMode;
-          if (reelUploadFitMode === "fit" && !$("#reelUploadFitBackground").getAttribute("src")) {
-            $("#reelUseCurrentFrame").click();
-          }
-          $("#reelFitOptions").querySelectorAll("[data-reel-fit]").forEach((item) => {
-            item.classList.toggle("is-active", item === button);
-          });
-        });
-        $("#reelTrimEnd").addEventListener("input", (event) => {
-          reelUploadTrimEnd = Number(event.target.value);
-          $("#reelTrimEndLabel").textContent = formatReelDuration(reelUploadTrimEnd);
-          $("#reelUploadPreview").currentTime = Math.min($("#reelUploadPreview").currentTime, reelUploadTrimEnd);
-        });
-        $("#reelSplitAtCurrent").addEventListener("click", () => {
-          const preview = $("#reelUploadPreview");
-          const splitAt = Math.max(0, preview.currentTime || 0);
-          $("#reelTrimStartLabel").textContent = formatReelDuration(splitAt);
-          preview.currentTime = splitAt;
-        });
-        $("#reelUploadPreview").addEventListener("loadedmetadata", () => {
-          const duration = Math.max(1, Math.min(60, Math.floor($("#reelUploadPreview").duration || 60)));
-          reelUploadTrimEnd = duration;
-          $("#reelTrimEnd").max = String(duration);
-          $("#reelTrimEnd").value = String(duration);
-          $("#reelTrimEndLabel").textContent = formatReelDuration(duration);
-          $("#reelTrimStartLabel").textContent = "0:00";
-        });
-        $("#reelUploadPreview").addEventListener("timeupdate", () => {
-          const preview = $("#reelUploadPreview");
-          if (preview.currentTime >= reelUploadTrimEnd) preview.currentTime = 0;
         });
         $("#reelFileInput").addEventListener("change", (event) => {
           selectReelFile(event.target.files?.[0]);
