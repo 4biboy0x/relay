@@ -17097,6 +17097,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             || (viewedProfileId === userId ? { id: userId, viewerFollows: button.getAttribute("aria-pressed") === "true", followsYou } : null);
           if (person && !person.viewerFollows) animateFollowButtonLabel(button, { ...person, followsYou });
         });
+        if (!$("#v-profile").hidden && viewedProfileId === userId) {
+          const profileFollow = $("#profileFollow");
+          const viewerFollows = profileFollow?.getAttribute("aria-pressed") === "true";
+          if (profileFollow && !viewerFollows) {
+            animateFollowButtonLabel(profileFollow, { id: userId, viewerFollows, followsYou });
+          }
+        }
         if (changed && !$("#v-profile").hidden && viewedProfileId === userId) renderProfile();
       }
       function receiveProfileUpdate(user) {
