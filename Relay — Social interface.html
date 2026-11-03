@@ -4263,6 +4263,18 @@
         gap: 12px;
         flex-wrap: wrap;
       }
+      #authDialog #authOtpVerify {
+        width: 100%;
+        height: 44px;
+        padding: 0 16px;
+        border-radius: 10px;
+        background: var(--auth-submit-bg);
+        color: #fff;
+        font-size: 15px;
+        font-weight: 600;
+      }
+      #authDialog #authOtpVerify:hover:not(:disabled) { background: var(--auth-submit-hover); }
+      #authDialog #authOtpVerify:disabled { opacity: .55; cursor: not-allowed; }
       .auth-otp-link {
         color: var(--accent);
         font-size: 13px;
@@ -9995,7 +10007,7 @@
       </form>
       <div class="auth-otp-panel" id="authOtpPanel" aria-live="polite">
         <div class="auth-otp-code" id="authOtpCode">
-          <input inputmode="numeric" maxlength="1" aria-label="Digit 1" />
+          <input inputmode="numeric" maxlength="1" autocomplete="one-time-code" aria-label="Digit 1" />
           <input inputmode="numeric" maxlength="1" aria-label="Digit 2" />
           <input inputmode="numeric" maxlength="1" aria-label="Digit 3" />
           <input inputmode="numeric" maxlength="1" aria-label="Digit 4" />
@@ -10006,6 +10018,7 @@
           <span id="authOtpMessage">Enter the 6-digit code we emailed you.</span>
           <span class="auth-otp-timer" id="authOtpTimer">01:00</span>
         </div>
+        <button class="btn btn-primary" id="authOtpVerify" type="button" disabled>Verify email</button>
         <div class="auth-otp-actions">
           <button class="auth-otp-link" id="authOtpResend" type="button">Resend code</button>
           <button class="auth-otp-link" id="authOtpChangeEmail" type="button">Change email</button>
@@ -10772,11 +10785,15 @@
           if (response.status === 429) {
             message = "Too many requests. Please wait a moment.";
           }
+          let responseData = null;
           try {
-            const result = await response.json();
-            if (response.status !== 429) message = result.error || result.message || message;
+            responseData = await response.json();
+            if (response.status !== 429) message = responseData.error || responseData.message || message;
           } catch {}
-          throw new Error(message);
+          const error = new Error(message);
+          error.status = response.status;
+          error.data = responseData;
+          throw error;
         }
         return response.status === 204 ? null : response.json();
       };
@@ -19677,17 +19694,19 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         clearInterval(authOtpState.timerId);
         authOtpState.timerMs = 60000;
         setOtpTimer(60);
+        $("#authOtpResend").disabled = true;
         authOtpState.timerId = setInterval(() => {
           authOtpState.timerMs = Math.max(0, authOtpState.timerMs - 1000);
           setOtpTimer(Math.ceil(authOtpState.timerMs / 1000));
           if (authOtpState.timerMs <= 0) {
             clearInterval(authOtpState.timerId);
             authOtpState.timerId = null;
+            $("#authOtpResend").disabled = false;
           }
         }, 1000);
       }
 
-      function showOtpScreen(email, purpose) {
+      function showOtpScreen(email, purpose, messageText) {
         authOtpState.email = email;
         authOtpState.purpose = purpose;
         const panel = $("#authOtpPanel");
@@ -19695,16 +19714,21 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const error = $("#authOtpError");
         panel.classList.add("is-visible");
         error.textContent = "";
-        message.textContent = purpose === "signup"
+        message.textContent = messageText || (purpose === "signup"
           ? "Enter the 6-digit code we emailed you."
-          : "Enter the 6-digit code for your password reset.";
+          : "Enter the 6-digit code for your password reset.");
+        fillOtpInputs("");
+        $("#authOtpVerify").disabled = true;
         resetOtpTimer();
         $("#authDialog form").style.display = "none";
         panel.style.display = "grid";
+        $("#authOtpCode input").focus();
       }
 
       function hideOtpScreen() {
-        $("#authOtpPanel").classList.remove("is-visible");
+        const panel = $("#authOtpPanel");
+        panel.classList.remove("is-visible");
+        panel.style.display = "none";
         $("#authDialog form").style.display = "grid";
         $("#authOtpError").textContent = "";
         clearInterval(authOtpState.timerId);
@@ -19729,6 +19753,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             list[index + 1].focus();
           }
           const code = collectOtpCode();
+          $("#authOtpVerify").disabled = code.length !== 6;
           if (code.length === 6) {
             $("#authOtpError").textContent = "";
           }
@@ -19743,6 +19768,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (event.key === "ArrowRight" && index < list.length - 1) {
             list[index + 1].focus();
           }
+          if (event.key === "Enter") {
+            event.preventDefault();
+            $("#authOtpVerify").click();
+          }
         });
         input.addEventListener("paste", (event) => {
           const clipboard = (event.clipboardData || window.clipboardData)?.getData("text") || "";
@@ -19750,9 +19779,47 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (!digits) return;
           event.preventDefault();
           fillOtpInputs(digits);
+          $("#authOtpVerify").disabled = digits.length !== 6;
           const lastDigit = list[Math.min(digits.length, list.length - 1)];
           lastDigit.focus();
         });
+      });
+
+      $("#authOtpVerify").addEventListener("click", async () => {
+        const code = collectOtpCode();
+        if (code.length !== 6) {
+          $("#authOtpError").textContent = "Enter all 6 digits.";
+          return;
+        }
+        const button = $("#authOtpVerify");
+        setPendingButton(button, true);
+        button.disabled = true;
+        $("#authOtpError").textContent = "";
+        try {
+          const result = await api("/auth/verify-otp", {
+            method: "POST",
+            body: JSON.stringify({ email: authOtpState.email, purpose: authOtpState.purpose, code }),
+          }, false);
+          if (!result.user || !result.accessToken) {
+            throw new Error("This verification flow is not available yet. Please try again.");
+          }
+          setAccessToken(result.accessToken);
+          currentUser = result.user;
+          authDialog.close();
+          hideOtpScreen();
+          updateAccountUI();
+          await Promise.all([renderFeed(), renderSide()]);
+          connectRealtime();
+          renderConversations();
+          refreshNotificationBadge();
+          startNotificationStream();
+          toast("Email verified. Welcome to Relay");
+        } catch (error) {
+          $("#authOtpError").textContent = error.message || "Could not verify this code.";
+        } finally {
+          setPendingButton(button, false);
+          button.disabled = collectOtpCode().length !== 6;
+        }
       });
 
       $("#authOtpResend").addEventListener("click", async () => {
@@ -21859,6 +21926,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               body.displayName = displayName;
             }
             const result = await api(endpoint, { method: "POST", body: JSON.stringify(body) }, false);
+            if (result.requiresVerification) {
+              showOtpScreen(
+                result.email || email,
+                "signup",
+                "We sent a 6-digit code to your email. Enter it below to finish creating your account.",
+              );
+              return;
+            }
             setAccessToken(result.accessToken);
             currentUser = result.user;
             authDialog.close();
@@ -21870,6 +21945,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             startNotificationStream();
             toast(`Welcome${registering ? " to Relay" : " back"}`);
           } catch (error) {
+            if (!registering && error.status === 403 && error.data?.requiresVerification) {
+              showOtpScreen(
+                error.data.email || email,
+                "signup",
+                "This account needs email verification. Enter your code, or resend it if you haven't received one.",
+              );
+              return;
+            }
             $("#authError").textContent = error.message;
           } finally {
             setPendingButton(submit, false);
