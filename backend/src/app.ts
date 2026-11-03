@@ -8,7 +8,7 @@ import { createHash, randomBytes, randomInt, randomUUID, timingSafeEqual } from 
 import path from "node:path";
 import { NotificationType, Prisma, type InteractionType, type NotificationType as NotificationTypeValue } from "@prisma/client";
 import { z } from "zod";
-import { authOptional, authRequired, createAccessToken, hashPassword, hashRefreshToken, issueRefreshToken, verifyPassword } from "./auth";
+import { authOptional, authRequired, createAccessToken, hashPassword, hashRefreshToken, issueRefreshToken, verifiedEmailRequired, verifyPassword } from "./auth";
 import { clientOrigins, config } from "./config";
 import { EmailDeliveryError, sendOtpEmail } from "./email";
 import { prisma } from "./db";
@@ -725,22 +725,12 @@ api.post("/auth/register", asyncRoute(async (req, res) => {
       displayName: input.displayName,
       emailVerifiedAt: null,
     },
-    select: { ...publicUser, email: true, id: true },
+    select: { ...publicUser, email: true, emailVerifiedAt: true },
   });
-  let emailDeliveryFailed = false;
-  try {
-    await createAuthCode(req, user.id, email, "signup");
-  } catch (error) {
-    if (!(error instanceof EmailDeliveryError)) throw error;
-    emailDeliveryFailed = true;
-  }
   emitToAuthenticated("user:suggestion:new", user);
-  res.status(202).json({
-    email,
-    requiresVerification: true,
-    emailDeliveryFailed,
-    message: emailDeliveryFailed ? "Your account is ready. Request a code to continue." : "Check your email for the 6-digit verification code.",
-  });
+  const refreshToken = await issueRefreshToken(user.id);
+  res.cookie(refreshCookie, refreshToken, refreshCookieOptions);
+  res.status(201).json({ user, accessToken: createAccessToken(user.id) });
 }));
 
 api.post("/auth/login", asyncRoute(async (req, res) => {
@@ -753,30 +743,6 @@ api.post("/auth/login", asyncRoute(async (req, res) => {
   }
   const valid = await verifyPassword(input.password, user.passwordHash);
   if (!valid) throw new HttpError(401, "Invalid email or password");
-  const hasPendingEmailVerification = user.emailVerifiedAt === null && (
-    user.createdAt > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-    || await prisma.authCode.findFirst({
-      where: { email: user.email, purpose: "signup" },
-      select: { id: true },
-    }) !== null
-  );
-  const requiresVerification = hasPendingEmailVerification;
-  if (requiresVerification) {
-    let emailDeliveryFailed = false;
-    try {
-      await createAuthCode(req, user.id, user.email, "signup");
-    } catch (error) {
-      if (!(error instanceof EmailDeliveryError)) throw error;
-      emailDeliveryFailed = true;
-    }
-    res.status(403).json({
-      requiresVerification: true,
-      email: user.email,
-      emailDeliveryFailed,
-      message: "Please verify your email before continuing.",
-    });
-    return;
-  }
   const refreshToken = await issueRefreshToken(user.id);
   res.cookie(refreshCookie, refreshToken, refreshCookieOptions);
   const { passwordHash: _passwordHash, ...safeUser } = user;
@@ -796,7 +762,10 @@ api.post("/auth/verify-otp", asyncRoute(async (req, res) => {
     });
     const refreshToken = await issueRefreshToken(user.id);
     res.cookie(refreshCookie, refreshToken, refreshCookieOptions);
-    const finalUser = await prisma.user.findUnique({ where: { id: user.id }, select: { ...publicUser, email: true } });
+    const finalUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { ...publicUser, email: true, emailVerifiedAt: true },
+    });
     if (!finalUser) throw new HttpError(404, "User not found");
     res.status(200).json({
       user: finalUser,
@@ -977,7 +946,10 @@ api.post("/auth/logout", authRequired, asyncRoute(async (req, res) => {
 }));
 
 api.get("/users/me", authRequired, asyncRoute(async (req, res) => {
-  const user = await prisma.user.findUnique({ where: { id: req.userId! }, select: { ...publicUser, email: true } });
+  const user = await prisma.user.findUnique({
+    where: { id: req.userId! },
+    select: { ...publicUser, email: true, emailVerifiedAt: true },
+  });
   if (!user) throw new HttpError(404, "User not found");
   res.json(user);
 }));
@@ -1014,7 +986,6 @@ api.patch("/users/me/email", authRequired, asyncRoute(async (req, res) => {
         data: { email, emailVerifiedAt: null },
       }),
       prisma.authCode.deleteMany({ where: { email: account.email, purpose: "signup" } }),
-      prisma.refreshToken.deleteMany({ where: { userId: req.userId! } }),
     ]);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
@@ -1030,7 +1001,6 @@ api.patch("/users/me/email", authRequired, asyncRoute(async (req, res) => {
     if (!(error instanceof EmailDeliveryError)) throw error;
     emailDeliveryFailed = true;
   }
-  res.clearCookie(refreshCookie, { ...refreshCookieOptions, maxAge: undefined });
   res.json({ email, requiresVerification: true, emailDeliveryFailed });
 }));
 
@@ -1062,13 +1032,13 @@ api.patch("/users/me", authRequired, asyncRoute(async (req, res) => {
   res.json(user);
 }));
 
-api.post("/uploads/audio", authRequired, uploadLimiter, audioUpload, asyncRoute(async (req, res) => {
+api.post("/uploads/audio", authRequired, verifiedEmailRequired, uploadLimiter, audioUpload, asyncRoute(async (req, res) => {
   if (!req.file) throw new HttpError(400, "Choose an audio recording");
   const url = await saveAudio(req.file);
   res.status(201).json({ url });
 }));
 
-api.post("/uploads/:kind", authRequired, uploadLimiter, imageUpload, asyncRoute(async (req, res) => {
+api.post("/uploads/:kind", authRequired, verifiedEmailRequired, uploadLimiter, imageUpload, asyncRoute(async (req, res) => {
   const kind = z.enum(["post", "avatar", "banner", "message"]).parse(req.params.kind);
   if (!req.file) throw new HttpError(400, "Choose an image to upload");
   const url = await saveImage(req.file);
@@ -1322,7 +1292,7 @@ api.get("/users/:handle", authRequired, asyncRoute(async (req, res) => {
   });
 }));
 
-api.put("/users/:userId/follow", authRequired, asyncRoute(async (req, res) => {
+api.put("/users/:userId/follow", authRequired, verifiedEmailRequired, asyncRoute(async (req, res) => {
   const targetId = z.string().cuid().parse(req.params.userId);
   if (targetId === req.userId) throw new HttpError(400, "You cannot follow yourself");
   const key = { followerId_followedId: { followerId: req.userId!, followedId: targetId } };
@@ -1456,7 +1426,7 @@ api.get("/posts/:postId/thread", authRequired, asyncRoute(async (req, res) => {
   });
 }));
 
-api.post("/posts", authRequired, asyncRoute(async (req, res) => {
+api.post("/posts", authRequired, verifiedEmailRequired, asyncRoute(async (req, res) => {
   const input = postSchema.parse(req.body);
   let replyRecipientId: string | undefined;
   if (input.replyToId) {
@@ -2123,7 +2093,7 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
   });
 }));
 
-api.post("/conversations", authRequired, asyncRoute(async (req, res) => {
+api.post("/conversations", authRequired, verifiedEmailRequired, asyncRoute(async (req, res) => {
   const { userId: recipientId } = z.object({ userId: z.string().cuid() }).parse(req.body);
   if (recipientId === req.userId) throw new HttpError(400, "You cannot message yourself");
   const recipient = await prisma.user.findUnique({ where: { id: recipientId }, select: { id: true } });
@@ -2182,7 +2152,7 @@ api.get("/conversations/:conversationId/messages", authRequired, asyncRoute(asyn
   });
 }));
 
-api.post("/conversations/:conversationId/messages", authRequired, messageLimiter, asyncRoute(async (req, res) => {
+api.post("/conversations/:conversationId/messages", authRequired, verifiedEmailRequired, messageLimiter, asyncRoute(async (req, res) => {
   const routeConversationId = req.params.conversationId;
   const messageInput = messageSchema.parse(req.body);
   const { recipientId } = z.object({ recipientId: z.string().cuid().optional() }).parse(req.body);

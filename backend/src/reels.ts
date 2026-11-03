@@ -12,7 +12,7 @@ import {
   Prisma,
 } from "@prisma/client";
 import { z } from "zod";
-import { authOptional, authRequired } from "./auth";
+import { authOptional, authRequired, verifiedEmailRequired } from "./auth";
 import { config } from "./config";
 import { prisma } from "./db";
 import { asyncRoute, HttpError } from "./http";
@@ -297,7 +297,7 @@ router.get("/bookmarks", authRequired, asyncRoute(async (req, res) => {
   });
 }));
 
-router.post("/uploads", authRequired, uploadLimiter, asyncRoute(async (req, res) => {
+router.post("/uploads", authRequired, verifiedEmailRequired, uploadLimiter, asyncRoute(async (req, res) => {
   const input = uploadSchema.parse(req.body);
   const userId = viewerIdFrom(req);
   const reelId = randomUUID();
@@ -325,7 +325,7 @@ router.post("/uploads", authRequired, uploadLimiter, asyncRoute(async (req, res)
   });
 }));
 
-router.post("/local-upload", authRequired, writeLimiter, localUploadOnly, reelMultipartUpload, asyncRoute(async (req, res) => {
+router.post("/local-upload", authRequired, verifiedEmailRequired, writeLimiter, localUploadOnly, reelMultipartUpload, asyncRoute(async (req, res) => {
   const reelId = uuidSchema.parse(req.body.reelId);
   const file = req.file;
   if (!file) throw new HttpError(400, "Choose a video to upload");
@@ -346,7 +346,7 @@ router.post("/local-upload", authRequired, writeLimiter, localUploadOnly, reelMu
   res.status(204).end();
 }));
 
-router.post("/:id/complete", authRequired, writeLimiter, asyncRoute(async (req, res) => {
+router.post("/:id/complete", authRequired, verifiedEmailRequired, writeLimiter, asyncRoute(async (req, res) => {
   const reelId = reelIdFrom(req.params.id);
   const input = completeSchema.parse(req.body ?? {});
   const reel = await prisma.reel.findFirst({
@@ -893,7 +893,7 @@ router.get("/:id/comments", authOptional, asyncRoute(async (req, res) => {
   });
 }));
 
-router.post("/:id/comments", authRequired, writeLimiter, asyncRoute(async (req, res) => {
+router.post("/:id/comments", authRequired, verifiedEmailRequired, writeLimiter, asyncRoute(async (req, res) => {
   const reelId = reelIdFrom(req.params.id);
   const userId = viewerIdFrom(req);
   const input = commentSchema.parse(req.body);

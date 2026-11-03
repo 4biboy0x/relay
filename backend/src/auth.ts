@@ -85,6 +85,28 @@ export const authOptional: RequestHandler = (req, _res, next) => {
   }
 };
 
+export const verifiedEmailRequired: RequestHandler = (req, _res, next) => {
+  const userId = req.userId;
+  if (!userId) {
+    next(new HttpError(401, "Authentication required"));
+    return;
+  }
+  void prisma.user.findUnique({
+    where: { id: userId },
+    select: { emailVerifiedAt: true },
+  }).then((user) => {
+    if (!user) {
+      next(new HttpError(401, "Authentication required"));
+      return;
+    }
+    if (!user.emailVerifiedAt) {
+      next(new HttpError(403, "Verify your email to unlock this feature."));
+      return;
+    }
+    next();
+  }).catch(next);
+};
+
 export const hashPassword = (password: string): Promise<string> =>
   bcrypt.hash(password, 12);
 

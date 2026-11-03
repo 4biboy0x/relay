@@ -740,6 +740,41 @@
         min-height: 100vh;
         min-width: 0;
       }
+      .email-verification-notice {
+        position: sticky;
+        top: 0;
+        z-index: 8;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 48px;
+        padding: 8px 16px;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text-2);
+        font-size: 13px;
+      }
+      .email-verification-notice[hidden] { display: none; }
+      .email-verification-notice > span { flex: 1; min-width: 0; }
+      .email-verification-notice button {
+        flex: none;
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .email-verification-notice button:hover { text-decoration: underline; }
+      .email-verification-dismiss {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        color: var(--text-3) !important;
+        font-size: 18px !important;
+        font-weight: 400 !important;
+      }
+      @media (max-width: 520px) {
+        .email-verification-notice { gap: 8px; padding-inline: 10px; font-size: 12px; }
+        .email-verification-notice button { font-size: 12px; }
+      }
       .top {
         position: sticky;
         top: 0;
@@ -9142,6 +9177,11 @@
       </nav>
 
       <main id="main">
+        <div class="email-verification-notice" id="emailVerificationNotice" role="status" hidden>
+          <span>Your email isn't verified. Verify it to unlock posting, follows, messages and uploads.</span>
+          <button type="button" id="emailVerificationStart">Verify email</button>
+          <button type="button" class="email-verification-dismiss" id="emailVerificationDismiss" aria-label="Dismiss reminder">×</button>
+        </div>
         <section id="v-home" data-v>
           <header class="top">
             <h1>Home</h1>
@@ -10877,6 +10917,7 @@
       function clearSession() {
         accessToken = "";
         currentUser = null;
+        verificationNoticeDismissed = false;
         viewedProfileId = null;
         clearInterval(presenceHeartbeatTimer);
         presenceHeartbeatTimer = null;
@@ -19725,6 +19766,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         timerMs: 60000,
         timerId: null,
       };
+      let verificationNoticeDismissed = false;
+
+      function updateEmailVerificationNotice() {
+        const notice = $("#emailVerificationNotice");
+        const unverified = Boolean(currentUser && !currentUser.emailVerifiedAt);
+        notice.hidden = !unverified || verificationNoticeDismissed;
+      }
 
       function authFriendlyError(error, context) {
         if (error?.status === 429) return "Too many tries. Please wait and try again.";
@@ -19926,6 +19974,25 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       $("#authOtpChangeEmail").addEventListener("click", () => {
         showChangeEmailScreen();
       });
+      $("#emailVerificationStart").addEventListener("click", async () => {
+        if (!currentUser?.email || currentUser.emailVerifiedAt) return;
+        const email = currentUser.email;
+        setAuthMode(false);
+        showAuth();
+        showOtpScreen(email, "signup", `Code sent to ${maskedEmail(email)}.`);
+        try {
+          await api("/auth/resend-otp", {
+            method: "POST",
+            body: JSON.stringify({ email, purpose: "signup" }),
+          }, false);
+        } catch (error) {
+          $("#authOtpError").textContent = authFriendlyError(error, "resend");
+        }
+      });
+      $("#emailVerificationDismiss").addEventListener("click", () => {
+        verificationNoticeDismissed = true;
+        updateEmailVerificationNotice();
+      });
       $("#authChangeEmailCancel").addEventListener("click", () => {
         showOtpScreen(
           authOtpState.email,
@@ -19953,6 +20020,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         updateCookieConsentVisibility(showAuthCookieNoticeForCurrentDialog);
       }
       function updateAccountUI() {
+        updateEmailVerificationNotice();
         $("#navName").textContent = currentUser?.displayName || "Sign in to Relay";
         $("#navHandle").textContent = currentUser ? `@${currentUser.handle}` : "Your account";
         setAvatar($("#navAvatar"), currentUser, "sm");
@@ -21808,7 +21876,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               const email = result.email;
               e.target.elements.currentPassword.value = "";
               $("#settingsEmail").value = email;
-              clearSession();
+              currentUser = { ...currentUser, email, emailVerifiedAt: null };
+              updateAccountUI();
               setAuthMode(false);
               $("#authEmail").value = email;
               showAuth();
