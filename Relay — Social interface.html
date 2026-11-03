@@ -14857,7 +14857,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         activeReelId = reel.id;
         deepLinkedReelId = reel.id;
         profileScopedReelHandle = currentUser.handle;
-        location.hash = `#/reel/${encodeURIComponent(reel.id)}`;
+        const reelRoute = `#/reel/${encodeURIComponent(reel.id)}`;
+        if (location.hash === reelRoute && !$("#v-reels").hidden) {
+          await renderReels(false, reel.id);
+        } else {
+          location.hash = reelRoute;
+        }
       }
       async function retryReelStatus(reelId) {
         if (reelUploadBusy || !reelId || reelId !== reelUploadCreatedId) return;
@@ -20395,7 +20400,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if ($("#v-reels").hidden) {
             deepLinkedReelId = requestedReelId;
             go("reels", false);
-          } else if (requestedReelId && requestedReelId !== activeReelId) {
+          } else {
             deepLinkedReelId = requestedReelId;
             renderReels(false, requestedReelId);
           }
