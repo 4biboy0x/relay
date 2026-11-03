@@ -10307,6 +10307,7 @@
       const reelVideoReadyIds = new Set();
       let activeReelId = "";
       let deepLinkedReelId = "";
+      let profileScopedReelHandle = "";
       let joinedReelRoomId = "";
       let pendingReelNotification = null;
       let reelFeedObserver = null;
@@ -12997,12 +12998,20 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           let page;
           if (requestedReelId) {
             try {
-              [selected, page] = await Promise.all([
-                api(`/reels/${encodeURIComponent(requestedReelId)}`),
-                api(`/reels/feed?${new URLSearchParams(resumeFallback
-                  ? { limit: "8" }
-                  : { limit: "8", afterId: requestedReelId })}`),
-              ]);
+              if (/^#\/reel\/[^/?]+$/.test(location.hash)) {
+                selected = await api(`/reels/${encodeURIComponent(requestedReelId)}`);
+                const profileHandle = profileScopedReelHandle || selected.author?.handle;
+                if (!profileHandle) throw new Error("Could not determine this profile.");
+                profileScopedReelHandle = profileHandle;
+                page = await api(`/users/${encodeURIComponent(profileHandle)}/reels?limit=8`);
+              } else {
+                [selected, page] = await Promise.all([
+                  api(`/reels/${encodeURIComponent(requestedReelId)}`),
+                  api(`/reels/feed?${new URLSearchParams(resumeFallback
+                    ? { limit: "8" }
+                    : { limit: "8", afterId: requestedReelId })}`),
+                ]);
+              }
               if (selected.status !== "READY" || !selected.videoUrl) {
                 throw new Error("This Reel isn’t ready to play yet.");
               }
@@ -13132,7 +13141,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             reelItems.at(-1)?.id === activeReelId ? "You're all caught up." : "",
           );
         }
-        if (location.hash.startsWith("#/reels")) {
+        if (location.hash.startsWith("#/reel/")) {
+          history.replaceState(null, "", `#/reel/${encodeURIComponent(id)}`);
+        } else if (location.hash.startsWith("#/reels")) {
           history.replaceState(null, "", `#/reels/${encodeURIComponent(id)}`);
         }
         syncReelPlayback();
@@ -13567,8 +13578,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function openReelById(reelId) {
         if (!reelId) return;
         deepLinkedReelId = reelId;
+        profileScopedReelHandle = viewedProfileHandle || "";
         reelFeedScrollTop = 0;
-        const route = `#/reels/${encodeURIComponent(reelId)}`;
+        const route = `#/reel/${encodeURIComponent(reelId)}`;
         if (location.hash === route) {
           if ($("#v-reels").hidden) routeFromHash();
           else renderReels(false, reelId);
@@ -20210,7 +20222,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         reelResumeSeek = null;
       }
       function normalizeClosedReelRoute() {
-        if (!/^#\/reels\/[^/?]+$/.test(location.hash)) return;
+        if (!/^#\/(?:reels|reel)\/[^/?]+$/.test(location.hash)) return;
         const navigationType = performance.getEntriesByType("navigation")[0]?.type;
         if (navigationType !== "reload" && navigationType !== "back_forward") return;
         history.replaceState(null, "", `${location.pathname}${location.search}#/reels`);
@@ -20279,6 +20291,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (isActive) button.setAttribute("aria-current", "page");
           else button.removeAttribute("aria-current");
         });
+        if (/^#\/reel\/[^/?]+$/.test(location.hash)) {
+          $$(".nav-item").forEach((button) => button.removeAttribute("aria-current"));
+        }
         if (activeView) {
           if (v === "explore") {
             clearTimeout(exploreTimer);
@@ -20355,6 +20370,24 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (!accessToken || !currentUser) return;
         const hash = location.hash || "#/home";
         if (hash === "#privacy" || hash === "#terms") return;
+        const profileReelMatch = hash.match(/^#\/reel\/([^/?]+)$/);
+        if (profileReelMatch) {
+          let requestedReelId = "";
+          try {
+            requestedReelId = decodeURIComponent(profileReelMatch[1]);
+          } catch {
+            toast("This Reel link is invalid.");
+            return;
+          }
+          if ($("#v-reels").hidden) {
+            deepLinkedReelId = requestedReelId;
+            go("reels", false);
+          } else if (requestedReelId && requestedReelId !== activeReelId) {
+            deepLinkedReelId = requestedReelId;
+            renderReels(false, requestedReelId);
+          }
+          return;
+        }
         const reelMatch = hash.match(/^#\/reels(?:\/([^/?]+))?$/);
         if (reelMatch) {
           let requestedReelId = "";
@@ -20774,6 +20807,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const sameProfile = targetView !== "profile"
             || !viewedProfileId
             || viewedProfileId === currentUser?.id;
+          if (targetView === "reels" && /^#\/reel\/[^/?]+$/.test(location.hash)) {
+            profileScopedReelHandle = "";
+            deepLinkedReelId = "";
+            location.hash = "#/reels";
+            return;
+          }
           if (targetView === currentView && sameProfile) {
             if (targetView === "messages" && activeConversation) {
               resetActiveConversation();
