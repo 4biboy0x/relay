@@ -5884,6 +5884,10 @@
         visibility: hidden;
         contain: layout paint;
       }
+      .chat-log.is-render-stable .message-bubble {
+        animation: none !important;
+        transition: none !important;
+      }
       .message-row:not(.mine) > * { justify-self: left; }
       .message-row.mine > * { justify-self: right; }
       .message-row > .message-bubble {
@@ -17940,14 +17944,16 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const confirmedBubble = confirmedRow.querySelector(".message-bubble");
         if (!confirmedBubble) return;
         confirmedBubble.setAttribute("data-message-id", message.id);
-        bubble.replaceWith(confirmedBubble);
+        pendingRow.dataset.confirmingMessageId = message.id;
+        confirmedBubble.classList.add("message-bubble-confirmed");
+        pendingRow.replaceChildren(...confirmedRow.childNodes);
+        pendingRow.dataset.confirmingMessageId = message.id;
         pendingRow.classList.toggle("mine", confirmedRow.classList.contains("mine"));
         pendingRow.classList.toggle("has-reactions", confirmedRow.classList.contains("has-reactions"));
         pendingRow.dataset.conversationId = displayConversationId;
         pendingRow.dataset.senderId = confirmedRow.dataset.senderId || pendingRow.dataset.senderId;
         pendingRow.dataset.replyToId = confirmedRow.dataset.replyToId || "";
         updateMessageRowSpacing($("#chatLog"));
-        animateChatMessages([confirmedBubble]);
         scrollMessageListToBottom(false);
       }
       function receiveMessage(message) {
