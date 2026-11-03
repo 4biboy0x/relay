@@ -6222,7 +6222,7 @@
       }
       .reply-preview-media-static { display: none; }
       .chat-log > .message-row + .message-row { margin-block-start: 4px; }
-      .chat-log > .message-row.same-sender { margin-block-start: 0; }
+      .chat-log > .message-row.same-sender { margin-block-start: 0 !important; }
       .message-row > .reply-stack + .message-bubble { margin-block-start: 4px; }
       @media (hover: none) {
         .message-tool-button { width: 32px; height: 32px; }
@@ -17722,11 +17722,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function updateMessageRowSpacing(container = $("#chatLog")) {
         const rows = [...container.children].filter((element) => element.matches(".message-row"));
         rows.forEach((row, index) => {
-          row.classList.toggle(
-            "same-sender",
-            index > 0 && !row.querySelector(".reply-stack")
-              && rows[index - 1].dataset.senderId === row.dataset.senderId,
-          );
+          const grouped = index > 0 && !row.querySelector(".reply-stack")
+            && rows[index - 1].dataset.senderId === row.dataset.senderId
+            && !rows[index - 1].querySelector(".reply-stack");
+          row.classList.toggle("same-sender", grouped);
+          row.style.marginBlockStart = grouped ? "0px" : "";
         });
       }
       function bindVoiceMessages(container = document) {
