@@ -8704,6 +8704,7 @@
         text-align: left;
         cursor: pointer;
       }
+      .reel-upload-control[hidden] { display: none; }
       .reel-menu-actions button:hover { background: var(--surface-2); }
       .reel-menu-actions .is-danger { color: var(--danger, #c43b52); }
       .reel-report-dialog { width: min(100% - 32px, 480px); }
@@ -9696,6 +9697,9 @@
               <div class="reel-upload-controls" id="reelUploadControls" hidden>
                 <button class="reel-upload-control" id="reelEditPreview" type="button" aria-label="Change cover" title="Change cover">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="m21 15-4-4-8 8"/></svg>
+                </button>
+                <button class="reel-upload-control" id="reelRemoveCover" type="button" aria-label="Remove cover" title="Remove cover" hidden>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m9 9 6 6M15 9l-6 6"/></svg>
                 </button>
                 <button class="reel-upload-control" id="reelReplaceVideo" type="button" aria-label="Replace video" title="Replace video">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.64 9a7 7 0 0 1 11.55-2.6L20 9M4 15l2.81 2.6A7 7 0 0 0 18.36 15"/></svg>
@@ -14579,6 +14583,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         reelUploadCoverUrl = "";
         $("#reelUploadCover").removeAttribute("src");
         $("#reelUploadCover").classList.remove("is-visible");
+        $("#reelRemoveCover").hidden = true;
         $("#reelUploadPlaceholder").hidden = false;
         setReelPreviewError("");
         setReelUploadStatus("");
@@ -15258,6 +15263,15 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           event.stopPropagation();
           $("#reelCoverFileInput").click();
         });
+        $("#reelRemoveCover").addEventListener("click", (event) => {
+          event.stopPropagation();
+          if (reelUploadCoverUrl.startsWith("blob:")) URL.revokeObjectURL(reelUploadCoverUrl);
+          reelUploadCoverUrl = "";
+          $("#reelUploadCover").removeAttribute("src");
+          $("#reelUploadCover").classList.remove("is-visible");
+          $("#reelUploadPreview").removeAttribute("poster");
+          $("#reelRemoveCover").hidden = true;
+        });
         $("#reelCoverFileInput").addEventListener("change", (event) => {
           const file = event.target.files?.[0];
           if (!file) return;
@@ -15277,6 +15291,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           cover.src = reelUploadCoverUrl;
           cover.classList.add("is-visible");
           $("#reelUploadPreview").poster = reelUploadCoverUrl;
+          $("#reelRemoveCover").hidden = false;
           setReelPreviewError("");
           event.target.value = "";
         });
