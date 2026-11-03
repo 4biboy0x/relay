@@ -20332,9 +20332,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const currentView = $("[data-v]:not([hidden])")?.id?.replace(/^v-/, "");
         const enteringGlobalReels = v === "reels" && !explicitReelId && currentView !== "reels";
         if (enteringGlobalReels) {
+          const lastGlobalReelId = readLastGlobalReel();
+          profileScopedReelHandle = "";
           reelItems = [];
           reelCursor = null;
-          activeReelId = "";
+          activeReelId = lastGlobalReelId;
+          deepLinkedReelId = lastGlobalReelId;
           reelFeedScrollTop = 0;
         }
         const reelResumeMode = v === "reels" && !explicitReelId && !enteringGlobalReels
