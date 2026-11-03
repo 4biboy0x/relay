@@ -10,10 +10,8 @@ const configSchema = z.object({
   DATABASE_URL: z.string().url(),
   JWT_ACCESS_SECRET: z.string().min(32),
   POST_VIEW_HMAC_SECRET: z.string().min(32),
-  GMAIL_OAUTH_CLIENT_ID: optionalEnvString,
-  GMAIL_OAUTH_CLIENT_SECRET: optionalEnvString,
-  GMAIL_OAUTH_REFRESH_TOKEN: optionalEnvString,
-  GMAIL_FROM_EMAIL: optionalEnvString,
+  EMAIL_USER: optionalEnvString,
+  EMAIL_PASS: optionalEnvString,
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   CLIENT_ORIGIN: z.string().url()
     .transform((value) => new URL(value).origin)
@@ -31,24 +29,18 @@ const configSchema = z.object({
   FFPROBE_PATH: z.string().min(1).default("ffprobe"),
   REEL_KEEP_ORIGINAL: z.enum(["true", "false"]).default("false").transform((value) => value === "true"),
 }).superRefine((value, context) => {
-  const gmailConfig = [
-    value.GMAIL_OAUTH_CLIENT_ID,
-    value.GMAIL_OAUTH_CLIENT_SECRET,
-    value.GMAIL_OAUTH_REFRESH_TOKEN,
-    value.GMAIL_FROM_EMAIL,
-  ];
-  if (gmailConfig.some(Boolean) && gmailConfig.some((entry) => !entry)) {
+  if (Boolean(value.EMAIL_USER) !== Boolean(value.EMAIL_PASS)) {
     context.addIssue({
       code: "custom",
-      path: ["GMAIL_OAUTH_CLIENT_ID"],
-      message: "GMAIL_OAUTH_CLIENT_ID, GMAIL_OAUTH_CLIENT_SECRET, GMAIL_OAUTH_REFRESH_TOKEN, and GMAIL_FROM_EMAIL must be configured together",
+      path: ["EMAIL_PASS"],
+      message: "EMAIL_USER and EMAIL_PASS must be configured together",
     });
   }
-  if (value.GMAIL_FROM_EMAIL && !z.string().email().safeParse(value.GMAIL_FROM_EMAIL).success) {
+  if (value.EMAIL_USER && !z.string().email().safeParse(value.EMAIL_USER).success) {
     context.addIssue({
       code: "custom",
-      path: ["GMAIL_FROM_EMAIL"],
-      message: "GMAIL_FROM_EMAIL must be a valid email address",
+      path: ["EMAIL_USER"],
+      message: "EMAIL_USER must be a valid email address",
     });
   }
   if (value.REEL_STORAGE_DRIVER === "s3" && !value.REEL_S3_BUCKET) {
