@@ -10,6 +10,7 @@ import { NotificationType, Prisma, type InteractionType, type NotificationType a
 import { z } from "zod";
 import { authOptional, authRequired, createAccessToken, hashPassword, hashRefreshToken, issueRefreshToken, verifyPassword } from "./auth";
 import { clientOrigins, config } from "./config";
+import { EmailDeliveryError, sendOtpEmail } from "./email";
 import { prisma } from "./db";
 import { getNeonRealtime } from "./neon-realtime";
 import { asyncRoute, errorHandler, HttpError } from "./http";
@@ -162,36 +163,6 @@ const enforceOtpRequestLimit = (req: { ip?: string; socket?: { remoteAddress?: s
     }
     entry.count += 1;
     otpRequestTracker.set(key, entry);
-  }
-};
-
-const sendOtpEmail = async (email: string, code: string, purpose: "signup" | "reset"): Promise<void> => {
-  const resendApiKey = process.env.RESEND_API_KEY;
-  const resendFromEmail = process.env.RESEND_FROM_EMAIL || "no-reply@relay.app";
-  if (!resendApiKey) {
-    if (process.env.NODE_ENV !== "production") {
-      console.info(`[otp-dev] ${purpose} code for ${email}: ${code}`);
-    }
-    return;
-  }
-
-  const body = {
-    from: resendFromEmail,
-    to: [email],
-    subject: purpose === "signup" ? "Verify your Relay account" : "Reset your Relay password",
-    html: `<p>Your Relay verification code is <strong>${code}</strong>.</p><p>It expires in 10 minutes.</p><p>If you did not request this, you can safely ignore it.</p>`,
-  };
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${resendApiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-  if (!response.ok) {
-    const text = await response.text();
-    console.error("Resend OTP email failed", { status: response.status, body: text });
   }
 };
 
@@ -832,7 +803,11 @@ api.post("/auth/forgot-password", asyncRoute(async (req, res) => {
   const email = normalizeEmail(input.email);
   const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
   if (user) {
-    await createAuthCode(req, user.id, email, "reset");
+    try {
+      await createAuthCode(req, user.id, email, "reset");
+    } catch (error) {
+      if (!(error instanceof EmailDeliveryError)) throw error;
+    }
   }
   res.status(200).json({
     message: "If the account exists, we sent a verification code.",
