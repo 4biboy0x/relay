@@ -10363,6 +10363,13 @@
       const reelWatchMs = new Map();
       const reelLastTime = new Map();
       const reelResumeWindowMs = 5 * 60_000;
+      const reelLastGlobalKey = () => `relay_last_global_reel:${currentUser?.id || "anonymous"}`;
+      function readLastGlobalReel() {
+        try { return localStorage.getItem(reelLastGlobalKey()) || ""; } catch { return ""; }
+      }
+      function writeLastGlobalReel(reelId) {
+        try { localStorage.setItem(reelLastGlobalKey(), reelId); } catch {}
+      }
       const reelViewedIds = new Set();
       const reelReducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
       const defaultReelSettings = {
@@ -13150,6 +13157,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         if ($("#reelActionsDialog").open) $("#reelActionsDialog").close();
         activeReelId = id;
+        if (!profileScopedReelHandle && /^#\/reels(?:\/[^/?]+)?$/.test(location.hash)) {
+          writeLastGlobalReel(id);
+        }
         syncActiveReelRoom();
         if (reelManualPlayback !== id) reelManualPlayback = "";
         const status = $("#reelFeedState");
@@ -20479,9 +20489,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         const reelMatch = hash.match(/^#\/reels(?:\/([^/?]+))?$/);
         if (reelMatch) {
-          let requestedReelId = "";
+          profileScopedReelHandle = "";
           try {
-            requestedReelId = reelMatch[1] ? decodeURIComponent(reelMatch[1]) : "";
+            var requestedReelId = reelMatch[1]
+              ? decodeURIComponent(reelMatch[1])
+              : readLastGlobalReel();
           } catch {
             toast("This Reel link is invalid.");
             return;
