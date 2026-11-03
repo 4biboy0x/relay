@@ -18703,7 +18703,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             ? (searchMode === "messages" ? item.matchedMessage?.id : matchingLastMessage ? lastMessage?.id : "")
             : "";
           const searchMessageCandidate = Boolean(searchQuery && searchMode === "conversations" && !searchMessageId);
-          return `<button class="conversation-item${searchQuery ? " is-search-result" : ""}${searchMode === "messages" ? " message-search-result" : ""}${unreadCount ? " has-unread" : ""}" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}"${searchQuery ? ` aria-selected="${current}"` : ""}>${presenceAvatarMarkup(other, "sm")}<span class="grow"><span class="conversation-item-heading"><b>${esc(other?.displayName || "Relay user")}</b>${messageTime}</span><small>${preview}</small></span>${unreadCount ? `<span class="unread-count" aria-label="${unreadCount} unread messages">${unreadLabel}</span>` : ""}</button>`;
+          return `<button class="conversation-item${searchQuery ? " is-search-result" : ""}${searchMode === "messages" ? " message-search-result" : ""}${unreadCount ? " has-unread" : ""}" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-mode="${esc(searchMode)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}"${searchQuery ? ` aria-selected="${current}"` : ""}>${presenceAvatarMarkup(other, "sm")}<span class="grow"><span class="conversation-item-heading"><b>${esc(other?.displayName || "Relay user")}</b>${messageTime}</span><small>${preview}</small></span>${unreadCount ? `<span class="unread-count" aria-label="${unreadCount} unread messages">${unreadLabel}</span>` : ""}</button>`;
         }).join("");
         if (append) resultList.insertAdjacentHTML("beforeend", markup);
         else if (resultList.id !== "conversationList") resultList.innerHTML = markup;
@@ -19057,6 +19057,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       async function selectConversationItem(conversationButton) {
         const conversationId = conversationButton.dataset.conversation;
+        const searchMode = conversationButton.dataset.searchMode || "";
+        const isMessageResult = searchMode === "messages";
         const searchResult = conversationSearchState.results.messages.find((item) =>
           item.id === conversationId && item.matchedMessage?.id === conversationButton.dataset.searchMessageId)
           || conversationSearchState.results.conversations.find((item) => item.id === conversationId);
@@ -19071,12 +19073,15 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           conversationButton.setAttribute("aria-selected", "true");
         }
         const searchGeneration = conversationSearchState.generation;
-        let targetMessageId = conversationButton.dataset.searchMessageId || "";
+        let targetMessageId = isMessageResult ? (conversationButton.dataset.searchMessageId || "") : "";
         if (activeConversation?.id === conversation.id && !targetMessageId
           && conversationButton.dataset.searchMessageCandidate !== "true") {
+          if (!isMessageResult) {
+            scrollMessageListToBottom(false);
+          }
           return;
         }
-        if (!targetMessageId && query) {
+        if (isMessageResult && !targetMessageId && query) {
           try {
             const params = new URLSearchParams({
               q: query,
@@ -19107,7 +19112,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (activeConversation?.id === conversation.id) {
           const route = `#/messages?conversation=${encodeURIComponent(conversation.id)}`;
           if (updateRoute || location.hash !== route) location.hash = route;
-          if (!targetMessageId) return Promise.resolve();
+          if (!targetMessageId) {
+            requestAnimationFrame(() => scrollMessageListToBottom(false));
+            return Promise.resolve();
+          }
           const loadGeneration = activeConversationLoadGeneration;
           const target = $$(".message-bubble", $("#chatLog")).find((bubble) => bubble.dataset.messageId === targetMessageId);
           const targetPromise = target
