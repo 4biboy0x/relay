@@ -8607,6 +8607,7 @@
       .reel-upload-status:empty { display: none; }
       .reel-upload-status[data-state="error"],
       .reel-report-error { color: var(--like); }
+      .reel-upload-status[data-state="error"] { color: var(--text-2); }
       .reel-upload-status .reel-upload-status-icon { display: inline-grid; width: 16px; height: 16px; flex: 0 0 16px; place-items: center; }
       .reel-upload-status .reel-upload-status-icon svg { width: 16px; height: 16px; }
       .reel-upload-status[data-state="ready"] .reel-upload-status-icon { color: var(--ok); }
@@ -10666,8 +10667,16 @@
           throw new Error("Your session expired. Sign in again.");
         }
         if (!response.ok) {
-          let message = `Request failed (${response.status})`;
-          if (response.status === 429 && path.startsWith("/auth/")) {
+          let message = response.status >= 500
+            ? "Relay is having trouble right now. Please try again shortly."
+            : response.status === 401
+              ? "Your session expired. Sign in again."
+              : response.status === 403
+                ? "You don’t have permission to do this."
+                : response.status === 404
+                  ? "This content is no longer available."
+                  : "Something didn’t go through. Please check your details and try again.";
+          if (response.status === 429) {
             const retryAfter = response.headers.get("Retry-After");
             const retrySeconds = retryAfter
               ? Number.isFinite(Number(retryAfter))
@@ -10675,8 +10684,8 @@
                 : Math.max(0, Math.ceil((Date.parse(retryAfter) - Date.now()) / 1000))
               : 0;
             message = retrySeconds > 0
-              ? `Too many attempts. Try again in ${Math.ceil(retrySeconds / 60)} min.`
-              : "Too many attempts. Try again shortly.";
+              ? `Too many requests. Please wait ${Math.max(1, Math.ceil(retrySeconds / 60))} min and try again.`
+              : "Too many requests. Please wait a moment and try again.";
           }
           try {
             const result = await response.json();
