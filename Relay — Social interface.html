@@ -741,39 +741,118 @@
         min-width: 0;
       }
       .email-verification-notice {
-        position: sticky;
-        top: 0;
-        z-index: 8;
+        position: fixed;
+        z-index: 20;
+        top: max(10px, env(safe-area-inset-top, 0px));
+        left: 50%;
         display: flex;
+        width: min(520px, calc(100vw - 24px));
         align-items: center;
-        gap: 12px;
-        min-height: 48px;
-        padding: 8px 16px;
-        border-bottom: 1px solid var(--border);
-        background: var(--surface);
-        color: var(--text-2);
-        font-size: 13px;
+        gap: 11px;
+        min-height: 62px;
+        padding: 9px 10px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--surface-2);
+        color: var(--text);
+        opacity: 0;
+        pointer-events: none;
+        transform: translate(-50%, -5px);
+        transition: opacity 160ms ease, transform 160ms ease;
       }
       .email-verification-notice[hidden] { display: none; }
-      .email-verification-notice > span { flex: 1; min-width: 0; }
-      .email-verification-notice button {
-        flex: none;
-        color: var(--text);
-        font-size: 13px;
-        font-weight: 600;
+      .email-verification-notice[data-state="visible"] {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translate(-50%, 0);
       }
-      .email-verification-notice button:hover { text-decoration: underline; }
-      .email-verification-dismiss {
-        width: 28px;
-        height: 28px;
-        border-radius: 6px;
-        color: var(--text-3) !important;
-        font-size: 18px !important;
-        font-weight: 400 !important;
+      @media (prefers-reduced-motion: reduce) {
+        .email-verification-notice { transition-duration: 1ms; }
+      }
+      .email-verification-icon {
+        position: relative;
+        display: grid;
+        width: 36px;
+        height: 36px;
+        flex: none;
+        place-items: center;
+        border: 1px solid var(--border);
+        border-radius: 50%;
+        background: var(--surface);
+        color: var(--text-2);
+      }
+      .email-verification-icon::after {
+        position: absolute;
+        top: 1px;
+        right: 0;
+        width: 8px;
+        height: 8px;
+        border: 2px solid var(--surface-2);
+        border-radius: 50%;
+        background: var(--accent);
+        content: "";
+      }
+      .email-verification-copy {
+        display: grid;
+        flex: 1;
+        min-width: 0;
+        gap: 1px;
+      }
+      .email-verification-copy strong {
+        font-size: 13px;
+        font-weight: 650;
+        line-height: 1.35;
+      }
+      .email-verification-copy span {
+        color: var(--text-2);
+        font-size: 12px;
+        line-height: 1.35;
+      }
+      .email-verification-notice .email-verification-action {
+        display: inline-flex;
+        min-height: 34px;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        padding: 0 12px;
+        border-radius: 8px;
+        background: var(--text);
+        color: var(--bg);
+        font-size: 12px;
+        font-weight: 600;
+        transition: opacity 140ms ease, transform 140ms ease;
+      }
+      .email-verification-notice .email-verification-action:hover { opacity: .84; }
+      .email-verification-notice .email-verification-action:active { transform: scale(.97); }
+      .email-verification-notice .email-verification-dismiss {
+        display: grid;
+        width: 32px;
+        height: 32px;
+        flex: none;
+        place-items: center;
+        border-radius: 50%;
+        color: var(--text-3);
+        transition: background-color 140ms ease, color 140ms ease;
+      }
+      .email-verification-notice .email-verification-dismiss:hover {
+        background: color-mix(in srgb, var(--text) 7%, transparent);
+        color: var(--text);
+      }
+      .email-verification-notice .email-verification-dismiss svg {
+        width: 16px;
+        height: 16px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.7;
+        stroke-linecap: round;
       }
       @media (max-width: 520px) {
-        .email-verification-notice { gap: 8px; padding-inline: 10px; font-size: 12px; }
-        .email-verification-notice button { font-size: 12px; }
+        .email-verification-notice { gap: 8px; padding: 8px; }
+        .email-verification-icon { width: 32px; height: 32px; }
+        .email-verification-copy strong { font-size: 12px; }
+        .email-verification-copy span { font-size: 11px; }
+        .email-verification-notice .email-verification-action { min-height: 32px; padding-inline: 10px; }
+        .email-verification-notice .email-verification-dismiss { width: 28px; height: 28px; }
       }
       .top {
         position: sticky;
@@ -9178,9 +9257,17 @@
 
       <main id="main">
         <div class="email-verification-notice" id="emailVerificationNotice" role="status" hidden>
-          <span>Your email isn't verified. Verify it to unlock posting, follows, messages and uploads.</span>
-          <button type="button" id="emailVerificationStart">Verify email</button>
-          <button type="button" class="email-verification-dismiss" id="emailVerificationDismiss" aria-label="Dismiss reminder">×</button>
+          <span class="email-verification-icon" aria-hidden="true">
+            <svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m4 7 8 6 8-6"></path></svg>
+          </span>
+          <span class="email-verification-copy">
+            <strong>Email not verified</strong>
+            <span>Verify to unlock all features.</span>
+          </span>
+          <button type="button" class="email-verification-action" id="emailVerificationStart">Verify</button>
+          <button type="button" class="email-verification-dismiss" id="emailVerificationDismiss" aria-label="Dismiss reminder" title="Dismiss reminder">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
+          </button>
         </div>
         <section id="v-home" data-v>
           <header class="top">
@@ -19767,12 +19854,38 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         timerId: null,
       };
       let verificationNoticeDismissed = false;
+      let verificationNoticeTransitionTimer = null;
 
       function updateEmailVerificationNotice() {
         const notice = $("#emailVerificationNotice");
-        const unverified = Boolean(currentUser && !currentUser.emailVerifiedAt);
-        notice.hidden = !unverified || verificationNoticeDismissed;
+        const shouldShow = Boolean(currentUser && !currentUser.emailVerifiedAt && !verificationNoticeDismissed);
+        window.clearTimeout(verificationNoticeTransitionTimer);
+
+        if (shouldShow) {
+          if (!notice.hidden && notice.dataset.state === "visible") return;
+          notice.hidden = false;
+          notice.dataset.state = "entering";
+          requestAnimationFrame(() => {
+            if (!notice.hidden && currentUser && !currentUser.emailVerifiedAt && !verificationNoticeDismissed) {
+              notice.dataset.state = "visible";
+            }
+          });
+          return;
+        }
+
+        if (notice.hidden) return;
+        notice.dataset.state = "leaving";
+        verificationNoticeTransitionTimer = window.setTimeout(() => {
+          if (notice.dataset.state === "leaving") notice.hidden = true;
+        }, 180);
       }
+
+      $("#emailVerificationNotice").addEventListener("transitionend", (event) => {
+        const notice = event.currentTarget;
+        if (event.propertyName !== "opacity" || notice.dataset.state !== "leaving") return;
+        window.clearTimeout(verificationNoticeTransitionTimer);
+        notice.hidden = true;
+      });
 
       function authFriendlyError(error, context) {
         if (error?.status === 429) return "Too many tries. Please wait and try again.";
