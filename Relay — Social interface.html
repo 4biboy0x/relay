@@ -17882,6 +17882,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function scrollMessageListToBottom(smooth = false) {
         const list = $("#chatLog");
+        list.scrollTo({ top: list.scrollHeight, behavior: smooth ? "smooth" : "auto" });
         requestAnimationFrame(() => {
           list.scrollTo({ top: list.scrollHeight, behavior: smooth ? "smooth" : "auto" });
           syncChatScrollButtonVisibility();
@@ -17946,7 +17947,26 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         confirmedBubble.setAttribute("data-message-id", message.id);
         pendingRow.dataset.confirmingMessageId = message.id;
         confirmedBubble.classList.add("message-bubble-confirmed");
-        pendingRow.replaceChildren(...confirmedRow.childNodes);
+        if (bubble.innerHTML !== confirmedBubble.innerHTML) bubble.innerHTML = confirmedBubble.innerHTML;
+        bubble.className = confirmedBubble.className.replace(/\bchat-message-entering\b/g, "").trim();
+        bubble.className = `${bubble.className} ${pendingRow.dataset.senderId === currentUser?.id ? "mine" : ""}`.trim();
+        bubble.dataset.messageId = message.id;
+        for (const attribute of [...bubble.attributes]) {
+          if (!["class", "data-message-id"].includes(attribute.name)) bubble.removeAttribute(attribute.name);
+        }
+        for (const attribute of [...confirmedBubble.attributes]) {
+          if (!["class", "data-message-id"].includes(attribute.name)) {
+            bubble.setAttribute(attribute.name, attribute.value);
+          }
+        }
+        const existingReplyStack = pendingRow.querySelector(":scope > .reply-stack");
+        const confirmedReplyStack = confirmedRow.querySelector(":scope > .reply-stack");
+        if (!existingReplyStack && confirmedReplyStack) pendingRow.prepend(confirmedReplyStack.cloneNode(true));
+        else if (existingReplyStack && !confirmedReplyStack) existingReplyStack.remove();
+        else if (existingReplyStack && confirmedReplyStack
+          && existingReplyStack.innerHTML !== confirmedReplyStack.innerHTML) {
+          existingReplyStack.innerHTML = confirmedReplyStack.innerHTML;
+        }
         pendingRow.dataset.confirmingMessageId = message.id;
         pendingRow.classList.toggle("mine", confirmedRow.classList.contains("mine"));
         pendingRow.classList.toggle("has-reactions", confirmedRow.classList.contains("has-reactions"));
@@ -17956,7 +17976,30 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         updateMessageRowSpacing($("#chatLog"));
         scrollMessageListToBottom(false);
       }
+      function reconcileMatchingPendingMessage(message) {
+        const bubble = $$(".message-bubble", $("#chatLog")).find((candidate) => {
+          if (!candidate.dataset.messageId.startsWith("pending-")) return false;
+          const row = candidate.closest(".message-row");
+          const optimistic = messagesById.get(candidate.dataset.messageId);
+          const senderMatches = String(row?.dataset.senderId || optimistic?.senderId || "") === String(message.senderId || "");
+          const bodyMatches = String(optimistic?.body ?? row?.querySelector(".message-text")?.textContent ?? "").trim()
+            === String(message.body ?? "").trim();
+          const optimisticReplyId = optimistic?.replyToId || optimistic?.replyTo?.id || row?.dataset.replyToId || "";
+          const replyMatches = !message.replyToId || String(optimisticReplyId) === String(message.replyToId);
+          return senderMatches && bodyMatches && replyMatches;
+        });
+        if (!bubble) return false;
+        reconcilePendingMessageRow(bubble.dataset.messageId, message, message.conversationId);
+        return true;
+      }
       function receiveMessage(message) {
+        if (reconcileMatchingPendingMessage(message)) {
+          if (!receivedMessageIds.has(message.id)) receivedMessageIds.add(message.id);
+          syncInboxConversationPreview(message.conversationId, message, message.createdAt);
+          scrollMessageListToBottom(false);
+          refreshMessageBadge();
+          return;
+        }
         removePendingMessageRow("", message);
         if (receivedMessageIds.has(message.id)) return;
         receivedMessageIds.add(message.id);
