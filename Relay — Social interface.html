@@ -20218,7 +20218,17 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function go(v, updateRoute = true, preserveProfile = false, restoreConversationId = "") {
         if (!requireAuth()) return;
         const explicitReelId = deepLinkedReelId;
-        const reelResumeMode = v === "reels" && !explicitReelId ? restoreReelAwayState() : "";
+        const currentView = $("[data-v]:not([hidden])")?.id?.replace(/^v-/, "");
+        const enteringGlobalReels = v === "reels" && !explicitReelId && currentView !== "reels";
+        if (enteringGlobalReels) {
+          reelItems = [];
+          reelCursor = null;
+          activeReelId = "";
+          reelFeedScrollTop = 0;
+        }
+        const reelResumeMode = v === "reels" && !explicitReelId && !enteringGlobalReels
+          ? restoreReelAwayState()
+          : "";
         if (v !== "reels") {
           closeReelDeleteConfirmation();
           if ($("#reelActionsDialog").open) $("#reelActionsDialog").close();
