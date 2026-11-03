@@ -12776,6 +12776,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             renderFollowButton($("#profileFollow"), {
               id: targetId,
               viewerFollows: !!profile.viewerFollows,
+              followsYou: !!profile.followsYou,
             });
             $("#profileBody").dataset.profileUserId = targetId;
             $("#profileBody").classList.remove("is-loading");

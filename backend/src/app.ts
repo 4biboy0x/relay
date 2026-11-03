@@ -947,6 +947,7 @@ api.get("/users/:id/profile", authRequired, asyncRoute(async (req, res) => {
       ...publicUser,
       _count: { select: { followers: true, following: true } },
       followers: { where: { followerId: req.userId! }, select: { followerId: true } },
+      following: { where: { followedId: req.userId! }, select: { followedId: true } },
     },
   });
   if (!profile) throw new HttpError(404, "User not found");
@@ -958,7 +959,7 @@ api.get("/users/:id/profile", authRequired, asyncRoute(async (req, res) => {
     if (tab === "Media") where.mediaUrl = { not: null };
   }
   const posts = await listPosts(req.userId!, page, where);
-  const { _count, followers, ...user } = profile;
+  const { _count, followers, following, ...user } = profile;
   const postCount = await prisma.post.count({
     where: {
       authorId: profile.id,
@@ -970,6 +971,7 @@ api.get("/users/:id/profile", authRequired, asyncRoute(async (req, res) => {
     user: {
       ...user,
       viewerFollows: followers.length > 0,
+      followsYou: following.length > 0,
       counts: { followers: _count.followers, following: _count.following, posts: postCount },
     },
     posts,
@@ -984,14 +986,17 @@ api.get("/users/:handle", authRequired, asyncRoute(async (req, res) => {
       ...publicUser,
       _count: { select: { followers: true, following: true, posts: true } },
       followers: { where: { followerId: req.userId! }, select: { followerId: true } },
+      following: { where: { followedId: req.userId! }, select: { followedId: true } },
     },
   });
   if (!user) throw new HttpError(404, "User not found");
   res.json({
     ...user,
     viewerFollows: user.followers.length > 0,
+    followsYou: user.following.length > 0,
     counts: user._count,
     followers: undefined,
+    following: undefined,
     _count: undefined,
   });
 }));
