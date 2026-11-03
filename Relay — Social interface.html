@@ -10092,7 +10092,7 @@
         <div class="auth-otp-meta">
           <span id="authOtpMessage">Code sent to your email.</span>
         </div>
-        <button class="btn btn-primary" id="authOtpVerify" type="button" disabled>Verify email</button>
+        <button class="btn btn-primary" id="authOtpVerify" type="button" disabled>Verify</button>
         <div class="auth-otp-actions">
           <button class="auth-otp-link" id="authOtpResend" type="button" disabled>Resend · <span class="auth-otp-timer" id="authOtpTimer">01:00</span></button>
           <button class="auth-otp-link" id="authOtpChangeEmail" type="button">Change email</button>
@@ -19823,7 +19823,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         panel.classList.add("is-visible");
         error.textContent = "";
         message.textContent = messageText || `Code sent to ${maskedEmail(email)}.`;
-        $("#signin-title").textContent = "Verify email";
+        $("#signin-title").textContent = "Confirm your email";
         $("#authOtpChangeEmail").hidden = !authOtpState.password;
         fillOtpInputs("");
         $("#authOtpVerify").disabled = true;
