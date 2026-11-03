@@ -12899,6 +12899,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
       }
       function writeReelCache() {
+        if (/^#\/reel\/[^/?]+$/.test(location.hash)) return;
         try {
           sessionStorage.setItem(reelCacheKey(), JSON.stringify({
             savedAt: Date.now(),
@@ -20397,6 +20398,20 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             toast("This Reel link is invalid.");
             return;
           }
+          if (!requestedReelId) {
+            profileScopedReelHandle = "";
+            reelItems = [];
+            reelCursor = null;
+            activeReelId = "";
+            reelFeedScrollTop = 0;
+            deepLinkedReelId = "";
+            try {
+              sessionStorage.removeItem(reelCacheKey());
+            } catch {}
+            const reelsNavButton = $$(".nav-item").find((button) => button.dataset.view === "reels");
+            $$(".nav-item").forEach((button) => button.removeAttribute("aria-current"));
+            reelsNavButton?.setAttribute("aria-current", "page");
+          }
           if ($("#v-reels").hidden) {
             deepLinkedReelId = requestedReelId;
             go("reels", false);
@@ -20405,8 +20420,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             if ($("#reelActionsDialog").open) $("#reelActionsDialog").close();
             deepLinkedReelId = requestedReelId;
             renderReels(false, requestedReelId);
-          } else if (!requestedReelId && deepLinkedReelId) {
-            deepLinkedReelId = "";
+          } else if (!requestedReelId) {
             renderReels(false);
           }
           return;
