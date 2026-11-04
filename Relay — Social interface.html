@@ -5998,12 +5998,16 @@
         min-height: 0;
         min-width: 0;
         flex: 1;
+        container-type: inline-size;
+        --msg-media-w: min(340px, 55cqw);
+        --msg-media-max-h: min(544px, 88cqw, 65dvh);
+        --msg-media-min-h: min(136px, 22cqw, 65dvh);
         flex-direction: column;
         gap: 0;
         overflow-x: hidden;
         overflow-y: auto;
         scroll-behavior: auto;
-        overflow-anchor: none;
+        overflow-anchor: auto;
         overscroll-behavior: contain;
         padding: 18px 16px 24px;
         background:
@@ -6200,6 +6204,8 @@
         max-width: min(90%, 720px);
         align-self: auto;
       }
+      .message-row:not(.mine) > .message-bubble.has-message-image { justify-self: start; }
+      .message-row.mine > .message-bubble.has-message-image { justify-self: end; }
       .reply-stack {
         display: flex;
         width: min(70%, 720px);
@@ -6586,9 +6592,6 @@
         .message-row:is(:hover, :focus-within, .tools-visible, .has-message-popover) > .reply-stack {
           max-width: calc(100% - 176px);
         }
-        .message-row:is(:hover, :focus-within, .tools-visible, .has-message-popover) .message-image-list:not([data-count="1"]) {
-          grid-template-columns: minmax(0, 1fr);
-        }
       }
       @media (max-width: 640px) and (hover: none) {
         .message-tools { gap: 4px; }
@@ -6875,13 +6878,15 @@
         padding: 4px;
         gap: 6px;
       }
+      .message-bubble.has-message-image {
+        max-width: min(calc(var(--msg-media-w) + 22px), 100%);
+      }
       .message-bubble.image-message {
         display: flex;
-        width: min(300px, 100%);
+        width: var(--msg-media-w);
         min-width: 0;
-        max-width: min(300px, 100%);
+        max-width: 100%;
         flex-direction: column;
-        gap: 2px;
         padding: 0;
         overflow: visible;
         border-radius: 12px;
@@ -6901,32 +6906,25 @@
       }
       .message-image-item {
         position: relative;
-        width: fit-content;
+        width: 100%;
         min-width: 0;
         max-width: 100%;
       }
       .message-image-list {
-        display: grid;
-        width: 100%;
+        display: flex;
+        width: var(--msg-media-w);
         max-width: 100%;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 4px;
+        flex-direction: column;
+        gap: 2px;
         white-space: normal;
-      }
-      .message-image-list[data-count="1"] {
-        display: block;
-        width: 100%;
-      }
-      .message-image-list[data-count="1"] .message-image-item {
-        width: 100%;
-      }
-      .message-image-list:not([data-count="1"]) .message-image-item {
-        width: 100%;
+        transition: width 140ms ease;
       }
       .message-image-frame {
         width: 100%;
+        height: auto;
+        min-height: var(--msg-media-min-h);
         max-width: 100%;
-        max-height: 420px;
+        max-height: var(--msg-media-max-h);
         overflow: hidden;
         border-radius: 16px;
         background: var(--surface-2);
@@ -6936,9 +6934,9 @@
         width: 100%;
         height: 100%;
         max-width: 100%;
-        max-height: 420px;
+        max-height: none;
         border-radius: inherit;
-        object-fit: contain;
+        object-fit: cover;
         object-position: center;
         opacity: 0;
         transition: opacity 150ms ease;
@@ -7022,15 +7020,64 @@
       .relay-voice-duration { width: 32px; min-width: 32px; flex: none; color: var(--voice-time); font-size: 11px; font-variant-numeric: tabular-nums; line-height: 1; text-align: right; pointer-events: none; }
       @media (prefers-reduced-motion: reduce) {
         .relay-voice-play, .relay-voice-play-icons svg { transition: none; }
+        .message-image-list { transition: none; }
         #messageAudioButton.recording { animation: none; }
       }
+      @media (max-width: 359px) {
+        .chat-log {
+          --msg-media-w: min(200px, 78cqw);
+          --msg-media-max-h: min(320px, 124.8cqw, 65dvh);
+          --msg-media-min-h: min(80px, 31.2cqw, 65dvh);
+        }
+      }
+      @media (min-width: 360px) and (max-width: 480px) {
+        .chat-log {
+          --msg-media-w: min(220px, 75cqw);
+          --msg-media-max-h: min(352px, 120cqw, 65dvh);
+          --msg-media-min-h: min(88px, 30cqw, 65dvh);
+        }
+      }
+      @media (min-width: 481px) and (max-width: 768px) {
+        .chat-log {
+          --msg-media-w: min(260px, 70cqw);
+          --msg-media-max-h: min(416px, 112cqw, 65dvh);
+          --msg-media-min-h: min(104px, 28cqw, 65dvh);
+        }
+      }
+      @media (min-width: 769px) and (max-width: 1024px) {
+        .chat-log {
+          --msg-media-w: min(280px, 65cqw);
+          --msg-media-max-h: min(448px, 104cqw, 65dvh);
+          --msg-media-min-h: min(112px, 26cqw, 65dvh);
+        }
+      }
+      @media (min-width: 1025px) and (max-width: 1439px) {
+        .chat-log {
+          --msg-media-w: min(300px, 60cqw);
+          --msg-media-max-h: min(480px, 96cqw, 65dvh);
+          --msg-media-min-h: min(120px, 24cqw, 65dvh);
+        }
+      }
       @media (max-width: 640px) {
-        .message-bubble.image-message { max-width: min(220px, 100%); }
-        .message-image-list { width: min(220px, 100%); }
-        .message-image-list[data-count="1"] { width: min(220px, 100%); }
-        .message-media { width: 100%; }
         .message-bubble.audio-message,
         .relay-voice { width: 220px; max-width: 100%; }
+      }
+      @media (hover: none) and (pointer: coarse) {
+        .message-tool-button { width: 40px; height: 40px; }
+        .message-image-item:not(.mine) > .message-tools,
+        .message-image-item.mine > .message-tools {
+          top: 4px;
+          right: auto;
+          bottom: auto;
+          left: auto;
+          inset-inline-start: auto;
+          inset-inline-end: 4px;
+          margin: 0;
+          flex-direction: row;
+          padding: 2px;
+          border-radius: 999px;
+          background: var(--surface);
+        }
       }
       .typing-status {
         display: flex;
@@ -7957,9 +8004,6 @@
         }
         .message-bubble {
           max-width: min(90%, 720px);
-        }
-        .message-media {
-          width: min(260px, 100%);
         }
         .relay-voice {
           width: 220px;
@@ -18307,7 +18351,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           ? `<div class="reply-stack">${replyHeaderMarkup(replySenderName(replyTo), replyTo?.id || "")}${replyPreviewMarkup(replyTo, { jump: Boolean(replyTo?.id) })}</div>`
           : "";
         const reactions = messageReactionsMarkup(message);
-        return `<div class="message-row${mine ? " mine" : ""}${reactions ? " has-reactions" : ""}" data-message-row data-conversation-id="${esc(message.conversationId)}" data-sender-id="${esc(message.senderId || "")}" data-reply-to-id="${esc(message.replyToId || replyTo?.id || "")}">${replyStack}<div class="message-bubble${mine ? " mine" : ""}${mediaOnly ? " media-message" : ""}${imageOnly ? " image-message" : ""}${audioOnly ? " audio-message" : ""}${stickerOnly ? " sticker-message" : ""}" data-message-id="${esc(message.id)}">${image}${audio}${sticker}${text}${bubbleActions}${reactions}</div></div>`;
+        return `<div class="message-row${mine ? " mine" : ""}${reactions ? " has-reactions" : ""}" data-message-row data-conversation-id="${esc(message.conversationId)}" data-sender-id="${esc(message.senderId || "")}" data-reply-to-id="${esc(message.replyToId || replyTo?.id || "")}">${replyStack}<div class="message-bubble${mine ? " mine" : ""}${image ? " has-message-image" : ""}${mediaOnly ? " media-message" : ""}${imageOnly ? " image-message" : ""}${audioOnly ? " audio-message" : ""}${stickerOnly ? " sticker-message" : ""}" data-message-id="${esc(message.id)}">${image}${audio}${sticker}${text}${bubbleActions}${reactions}</div></div>`;
       }
       function updateMessageRowSpacing(container = $("#chatLog")) {
         const rows = [...container.children].filter((element) => element.matches(".message-row"));
@@ -18444,11 +18488,32 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }, { once: true });
         });
       }
+      const chatLogBottomThreshold = 50;
+      let chatLogWasNearBottom = true;
+      let messageMediaResizeTimeout = 0;
+      function isChatLogNearBottom() {
+        const log = $("#chatLog");
+        return log.scrollHeight - log.scrollTop - log.clientHeight <= chatLogBottomThreshold;
+      }
+      function preserveChatBottomAfterViewportResize() {
+        const log = $("#chatLog");
+        if (!chatLogWasNearBottom || !log.clientHeight) return;
+        clearTimeout(messageMediaResizeTimeout);
+        messageMediaResizeTimeout = setTimeout(() => {
+          messageMediaResizeTimeout = 0;
+          if (!chatLogWasNearBottom || !log.clientHeight) return;
+          log.scrollTop = log.scrollHeight;
+          chatLogWasNearBottom = true;
+          syncChatScrollButtonVisibility();
+        }, 220);
+      }
       function scrollMessageListToBottom(smooth = false) {
         const list = $("#chatLog");
         list.scrollTo({ top: list.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+        chatLogWasNearBottom = true;
         requestAnimationFrame(() => {
           list.scrollTo({ top: list.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+          chatLogWasNearBottom = true;
           syncChatScrollButtonVisibility();
         });
       }
@@ -23477,8 +23542,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       $("#chatLog").addEventListener("scroll", () => {
         closeMessageActionMenus();
         syncChatScrollButtonVisibility();
+        if (!messageMediaResizeTimeout) chatLogWasNearBottom = isChatLogNearBottom();
         if ($("#chatLog").scrollTop <= 24) loadOlderMessages();
       }, { passive: true });
+      window.addEventListener("resize", preserveChatBottomAfterViewportResize, { passive: true });
+      window.addEventListener("orientationchange", preserveChatBottomAfterViewportResize, { passive: true });
       $("#chatScrollToBottom").addEventListener("click", () => {
         const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
         scrollMessageListToBottom(!reduceMotion);
