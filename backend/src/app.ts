@@ -271,6 +271,7 @@ const mediaUrlFields = new Set([
   "avatarUrl",
   "bannerUrl",
   "coverUrl",
+  "attachments",
   "imageUrl",
   "mediaUrl",
   "posterUrl",
@@ -1052,7 +1053,11 @@ api.post("/uploads/:kind", authRequired, verifiedEmailRequired, uploadLimiter, i
     res.status(201).json({ url, kind, user });
     return;
   }
-  res.status(201).json({ url, kind });
+  res.status(201).json({
+    url,
+    kind,
+    ...(kind === "message" ? { messageAttachmentUrl: url } : {}),
+  });
 }));
 
 api.get("/users/suggestions", authRequired, asyncRoute(async (req, res) => {
@@ -2155,6 +2160,15 @@ api.get("/conversations/:conversationId/messages", authRequired, asyncRoute(asyn
 api.post("/conversations/:conversationId/messages", authRequired, verifiedEmailRequired, messageLimiter, asyncRoute(async (req, res) => {
   const routeConversationId = req.params.conversationId;
   const messageInput = messageSchema.parse(req.body);
+  const storedAttachments = messageInput.attachments?.map((url) =>
+    url.startsWith("/uploads/") ? url.split(/[?#]/, 1)[0] : url,
+  );
+  const messageData = {
+    ...messageInput,
+    ...(storedAttachments?.length
+      ? { attachments: storedAttachments, mediaUrl: storedAttachments[0] }
+      : {}),
+  };
   const { recipientId } = z.object({ recipientId: z.string().cuid().optional() }).parse(req.body);
   const message = await prisma.$transaction(async (tx) => {
     let conversationId = routeConversationId === "draft" ? "" : z.string().cuid().parse(routeConversationId);
@@ -2188,7 +2202,7 @@ api.post("/conversations/:conversationId/messages", authRequired, verifiedEmailR
       if (!replyTarget) throw new HttpError(404, "Reply target not found");
     }
     const created = await tx.message.create({
-      data: { conversationId, senderId: req.userId!, ...messageInput },
+      data: { conversationId, senderId: req.userId!, ...messageData },
       include: {
         sender: { select: publicUser },
         replyTo: { include: { sender: { select: publicUser } } },
@@ -2207,10 +2221,11 @@ api.post("/conversations/:conversationId/messages", authRequired, verifiedEmailR
     where: { conversationId },
     select: { userId: true },
   });
-  emitToConversation(conversationId, "message:new", response);
+  const realtimeResponse = await normalizeMediaResponse(response, "", req.userId);
+  emitToConversation(conversationId, "message:new", realtimeResponse);
   for (const member of members) {
     if (member.userId !== req.userId) {
-      emitToUser(member.userId, "message:new", response);
+      emitToUser(member.userId, "message:new", realtimeResponse);
       emitToUser(member.userId, "messages:unread-increment", { conversationId });
     }
   }

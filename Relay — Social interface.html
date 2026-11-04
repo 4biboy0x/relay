@@ -6206,6 +6206,24 @@
       }
       .message-row:not(.mine) > .message-bubble.has-message-image { justify-self: start; }
       .message-row.mine > .message-bubble.has-message-image { justify-self: end; }
+      .message-attachment-group {
+        display: flex;
+        width: fit-content;
+        max-width: 100%;
+        min-width: 0;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+      }
+      .message-row:not(.mine) > .message-attachment-group { justify-self: start; }
+      .message-row.mine > .message-attachment-group {
+        justify-self: end;
+        align-items: flex-end;
+      }
+      .message-attachment-group > .message-bubble {
+        width: fit-content;
+        max-width: min(90cqw, 720px);
+      }
       .reply-stack {
         display: flex;
         width: min(70%, 720px);
@@ -6560,7 +6578,8 @@
       .reply-preview-media-static { display: none; }
       .chat-log > .message-row + .message-row { margin-block-start: 8px; }
       .chat-log > .message-row.same-sender { margin-block-start: 2px !important; }
-      .message-row > .reply-stack + .message-bubble { margin-block-start: 4px; }
+      .message-row > .reply-stack + .message-bubble,
+      .message-row > .reply-stack + .message-attachment-group { margin-block-start: 4px; }
       @media (hover: none) {
         .message-tool-button { width: 32px; height: 32px; }
         .message-tools { margin-top: -16px; }
@@ -6592,6 +6611,9 @@
         .message-row:is(:hover, :focus-within, .tools-visible, .has-message-popover) > .reply-stack {
           max-width: calc(100% - 176px);
         }
+        .message-row:is(:hover, :focus-within, .tools-visible, .has-message-popover) > .message-attachment-group > .message-bubble {
+          max-width: min(calc(100cqw - 176px), 720px);
+        }
       }
       @media (max-width: 640px) and (hover: none) {
         .message-tools { gap: 4px; }
@@ -6618,7 +6640,9 @@
         position: sticky;
         bottom: 0;
         flex: none;
-        max-height: 190px;
+        max-height: min(74dvh, 640px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
         padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
         background: var(--bg);
       }
@@ -6653,18 +6677,179 @@
       }
       .chat-compose-pill {
         display: flex;
-        align-items: center;
+        flex-direction: column;
+        align-items: stretch;
         min-width: 0;
         min-height: 48px;
-        gap: 8px;
         border-top: 1px solid var(--border);
         border-right: 1px solid var(--border);
         border-bottom: 1px solid var(--border);
         border-left: 1px solid var(--border);
         border-radius: 999px;
-        padding: 0 6px;
+        padding: 0;
         background: var(--bg);
         transition: border-radius 120ms ease;
+      }
+      .chat-compose-pill.has-attachments { border-radius: 24px; }
+      .chat-compose-row {
+        display: flex;
+        min-width: 0;
+        min-height: 48px;
+        align-items: center;
+        gap: 8px;
+        padding: 0 6px;
+      }
+      .message-attachment-error {
+        margin: 0 6px 8px;
+        color: var(--text-2);
+        font-size: 12px;
+        line-height: 16px;
+      }
+      .message-attachment-error[hidden] { display: none; }
+      .message-attachment-preview {
+        display: grid;
+        min-height: 0;
+        grid-template-rows: 0fr;
+        overflow: hidden;
+        border-bottom: 1px solid transparent;
+        opacity: 0;
+        transition: grid-template-rows 180ms cubic-bezier(.2, .8, .2, 1), border-color 120ms ease, opacity 120ms ease;
+      }
+      .message-attachment-preview.is-open {
+        grid-template-rows: 1fr;
+        border-color: var(--border);
+        opacity: 1;
+      }
+      .message-attachment-preview-inner {
+        min-height: 0;
+        overflow: hidden;
+        padding: 0 8px;
+        transform: scale(.96);
+        transform-origin: center bottom;
+        transition: padding-block 180ms cubic-bezier(.2, .8, .2, 1), transform 180ms cubic-bezier(.2, .8, .2, 1);
+      }
+      .message-attachment-preview.is-open .message-attachment-preview-inner {
+        padding-block: 8px;
+        transform: scale(1);
+      }
+      .message-attachment-grid {
+        display: flex;
+        width: fit-content;
+        max-width: 100%;
+        gap: 4px;
+      }
+      .message-attachment-preview.is-multiple .message-attachment-grid {
+        display: grid;
+        width: 100%;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .message-attachment-tile {
+        position: relative;
+        display: grid;
+        min-width: 0;
+        max-width: 100%;
+        place-items: center;
+        overflow: hidden;
+        border-radius: 12px;
+        background: var(--surface-2);
+        opacity: 1;
+        transform: scale(1);
+        transition: opacity 140ms ease, transform 140ms ease;
+      }
+      .message-attachment-tile.is-removing {
+        opacity: 0;
+        transform: scale(.96);
+      }
+      .message-attachment-tile > img {
+        display: block;
+        width: auto;
+        height: auto;
+        max-width: 100%;
+        max-height: min(220px, 26dvh);
+        object-fit: cover;
+      }
+      .message-attachment-preview.is-multiple .message-attachment-tile {
+        aspect-ratio: 1;
+        max-height: min(220px, 26dvh);
+      }
+      .message-attachment-preview.is-multiple .message-attachment-tile > img {
+        width: 100%;
+        height: 100%;
+      }
+      .message-attachment-remove {
+        position: absolute;
+        inset-block-start: 2px;
+        inset-inline-end: 2px;
+        display: grid;
+        width: 40px;
+        height: 40px;
+        place-items: center;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        color: #fff;
+        background: transparent;
+        cursor: pointer;
+      }
+      .message-attachment-remove::before {
+        position: absolute;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, .6);
+        content: "";
+        backdrop-filter: blur(4px);
+        transition: background-color 120ms ease;
+      }
+      .message-attachment-remove:hover::before { background: rgba(0, 0, 0, .78); }
+      .message-attachment-remove:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: -2px;
+      }
+      .message-attachment-remove svg {
+        z-index: 1;
+        width: 14px;
+        height: 14px;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-width: 2;
+      }
+      .message-attachment-gif {
+        position: absolute;
+        inset-inline-start: 6px;
+        inset-block-end: 6px;
+        padding: 2px 5px;
+        border-radius: 4px;
+        color: #fff;
+        background: rgba(0, 0, 0, .6);
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 14px;
+      }
+      .message-attachment-progress {
+        position: absolute;
+        inset-block-end: 8px;
+        inset-inline-end: 8px;
+        width: 16px;
+        height: 16px;
+        border: 2px solid var(--surface);
+        border-inline-start-color: var(--accent);
+        border-radius: 50%;
+        animation: message-attachment-spin 700ms linear infinite;
+      }
+      @keyframes message-attachment-spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) {
+        .message-attachment-preview { transition: opacity 80ms ease, border-color 80ms ease; }
+        .message-attachment-preview-inner,
+        .message-attachment-tile { transition-duration: 80ms; }
+        .message-attachment-progress { animation: none; }
+      }
+      .chat-compose-pill.has-text #messageAudioButton,
+      .chat-compose-pill.has-attachments #messageAudioButton { display: none; }
+      .chat-compose.is-drag-over .chat-compose-pill {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
       }
       .message-reply-preview {
         box-sizing: border-box;
@@ -7052,6 +7237,13 @@
         }
       }
       @media (min-width: 1025px) and (max-width: 1439px) {
+        .chat-log {
+          --msg-media-w: min(250px, 55cqw);
+          --msg-media-max-h: min(400px, 88cqw, 65dvh);
+          --msg-media-min-h: min(100px, 22cqw, 65dvh);
+        }
+      }
+      @media (min-width: 1440px) {
         .chat-log {
           --msg-media-w: min(250px, 55cqw);
           --msg-media-max-h: min(400px, 88cqw, 65dvh);
@@ -9627,40 +9819,48 @@
                 </button>
               </div>
               <form class="chat-compose" id="messageForm">
-                <input id="messageImageInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden />
+                <input id="messageImageInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden />
                 <div class="message-edit-label" id="messageEditLabel" hidden><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5 4 4M4 20l4.2-.8L19 8.4a2.1 2.1 0 0 0-3-3L5.2 16.2 4 20Z"/></svg><span>Edit message</span></div>
                 <div class="message-reply-preview reply-bar" id="messageReplyPreview" hidden></div>
+                <p class="message-attachment-error" id="messageAttachmentError" role="alert" hidden></p>
                 <div class="chat-compose-pill" id="messageComposePill">
-                  <button class="icon-btn" id="messageStickerButton" type="button" aria-label="Choose sticker" aria-expanded="false" disabled>
-                    <svg class="i" aria-hidden="true"><use href="#smile" /></svg>
-                  </button>
-                  <div class="chat-compose-field" id="messageComposeField">
-                    <textarea id="messageInput" rows="1" maxlength="2000" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Message..." aria-label="Write a message" disabled></textarea>
+                  <div class="message-attachment-preview" id="messageAttachmentPreview" role="group" aria-label="Message attachments" aria-hidden="true">
+                    <div class="message-attachment-preview-inner">
+                      <div class="message-attachment-grid" id="messageAttachmentGrid"></div>
+                    </div>
                   </div>
-                  <div class="message-recording" id="messageRecording" aria-live="polite">
-                    <span class="message-recording-dot" aria-hidden="true"></span>
-                    <span id="messageRecordingTime">0:00</span>
-                    <svg class="message-recording-waveform" id="messageRecordingWaveform" viewBox="0 0 190 24" preserveAspectRatio="none" aria-hidden="true"></svg>
-                    <button id="messageRecordingCancel" type="button" aria-label="Discard recording" title="Discard recording"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg></button>
-                    <button id="messageRecordingSend" type="button" aria-label="Send voice message" title="Send voice message"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
+                  <div class="chat-compose-row">
+                    <button class="icon-btn" id="messageStickerButton" type="button" aria-label="Choose sticker" aria-expanded="false" disabled>
+                      <svg class="i" aria-hidden="true"><use href="#smile" /></svg>
+                    </button>
+                    <div class="chat-compose-field" id="messageComposeField">
+                      <textarea id="messageInput" rows="1" maxlength="2000" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Message..." aria-label="Write a message" disabled></textarea>
+                    </div>
+                    <div class="message-recording" id="messageRecording" aria-live="polite">
+                      <span class="message-recording-dot" aria-hidden="true"></span>
+                      <span id="messageRecordingTime">0:00</span>
+                      <svg class="message-recording-waveform" id="messageRecordingWaveform" viewBox="0 0 190 24" preserveAspectRatio="none" aria-hidden="true"></svg>
+                      <button id="messageRecordingCancel" type="button" aria-label="Discard recording" title="Discard recording"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg></button>
+                      <button id="messageRecordingSend" type="button" aria-label="Send voice message" title="Send voice message"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
+                    </div>
+                    <div class="message-empty-actions" id="messageEmptyActions">
+                      <button class="message-action chat-compose-icon" id="messageAudioButton" type="button" aria-label="Record voice message" disabled>
+                        <svg class="i" aria-hidden="true"><use href="#mic" /></svg>
+                      </button>
+                      <button class="chat-compose-icon" id="messageImageButton" type="button" aria-label="Attach image" disabled>
+                        <svg class="i" aria-hidden="true"><use href="#image" /></svg>
+                      </button>
+                      <button class="chat-compose-icon" id="messageGifButton" type="button" aria-label="Add a GIF" aria-haspopup="dialog" aria-controls="gifPickerDialog" aria-expanded="false" disabled>
+                        <svg class="i" aria-hidden="true"><use href="#gif" /></svg>
+                      </button>
+                    </div>
+                    <button class="message-send-text" id="sendMessage" type="submit" aria-label="Send message" disabled>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="m3 3 3 9-3 9 19-9Z"/>
+                        <path d="M6 12h16"/>
+                      </svg>
+                    </button>
                   </div>
-                  <div class="message-empty-actions" id="messageEmptyActions">
-                    <button class="message-action chat-compose-icon" id="messageAudioButton" type="button" aria-label="Record voice message" disabled>
-                      <svg class="i" aria-hidden="true"><use href="#mic" /></svg>
-                    </button>
-                    <button class="chat-compose-icon" id="messageImageButton" type="button" aria-label="Send image" disabled>
-                      <svg class="i" aria-hidden="true"><use href="#image" /></svg>
-                    </button>
-                    <button class="chat-compose-icon" id="messageGifButton" type="button" aria-label="Send a GIF" aria-haspopup="dialog" aria-controls="gifPickerDialog" aria-expanded="false" disabled>
-                      <svg class="i" aria-hidden="true"><use href="#gif" /></svg>
-                    </button>
-                  </div>
-                  <button class="message-send-text is-hidden" id="sendMessage" type="submit" aria-label="Send message" disabled>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="m3 3 3 9-3 9 19-9Z"/>
-                      <path d="M6 12h16"/>
-                    </svg>
-                  </button>
                 </div>
               </form>
               <div id="messageStickerPicker" hidden aria-hidden="true"></div>
@@ -10639,6 +10839,8 @@
       let activeConversation = null;
       let draftConversationRecipientId = "";
       let messageSubmissionPending = false;
+      const messageAttachments = [];
+      let messageAttachmentSequence = 0;
       let selectedConversationId = "";
       const conversationDrafts = new Map();
       const messagesById = new Map();
@@ -12197,21 +12399,12 @@
           }
           setThreadReplyMedia(form, gifUrl);
         } else if (gifPickerTarget === "message") {
-          if (!messageConversationId) {
-            $("#gifPickerStatus").textContent = "Choose a conversation before sending a GIF.";
+          if (!messageConversationId || activeConversation?.id !== messageConversationId) {
+            $("#gifPickerStatus").textContent = "Choose a conversation before attaching a GIF.";
             return;
           }
-          const sendButton = $("#messageGifButton");
-          sendButton.disabled = true;
-          $("#gifPickerStatus").textContent = "Sending GIF…";
-          try {
-            await sendMessageAttachment({ mediaUrl: gifUrl }, messageConversationId);
-            sendButton.disabled = false;
-          } catch (error) {
-            sendButton.disabled = false;
-            $("#gifPickerStatus").textContent = error.message || "Could not send this GIF.";
-            return;
-          }
+          const title = typeof gif.title === "string" && gif.title.trim() ? gif.title.trim() : "GIF";
+          if (!addMessageGifAttachment(gifUrl, title)) return;
         }
         $("#gifPickerDialog").close();
       }
@@ -17840,6 +18033,211 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         };
         update();
       }
+      function setMessageAttachmentError(message = "") {
+        const error = $("#messageAttachmentError");
+        error.textContent = message;
+        error.hidden = !message;
+      }
+      function loadMessageImageDimensions(url) {
+        return new Promise((resolve, reject) => {
+          const image = new Image();
+          image.onload = () => {
+            if (image.naturalWidth && image.naturalHeight) {
+              resolve({ width: image.naturalWidth, height: image.naturalHeight });
+            } else {
+              reject(new Error("Could not read this image's dimensions."));
+            }
+          };
+          image.onerror = () => reject(new Error("Could not read this image's dimensions."));
+          image.src = url;
+        });
+      }
+      function renderMessageAttachmentPreview() {
+        const preview = $("#messageAttachmentPreview");
+        const grid = $("#messageAttachmentGrid");
+        const pill = $("#messageComposePill");
+        const hasAttachments = messageAttachments.length > 0;
+        preview.classList.toggle("is-open", hasAttachments);
+        preview.classList.toggle("is-multiple", messageAttachments.length > 1);
+        preview.setAttribute("aria-hidden", String(!hasAttachments));
+        preview.setAttribute("aria-busy", String(messageAttachments.some(({ status }) => status === "uploading")));
+        if (hasAttachments) {
+          grid.innerHTML = messageAttachments.map((attachment) => `
+            <div class="message-attachment-tile${attachment.removing ? " is-removing" : ""}" data-message-attachment-tile="${esc(attachment.id)}">
+              <img src="${esc(attachment.previewUrl || attachment.url)}" alt="${esc(attachment.name)}" />
+              ${attachment.isGif ? '<span class="message-attachment-gif">GIF</span>' : ""}
+              ${attachment.status === "uploading" ? '<span class="message-attachment-progress" role="status" aria-label="Uploading attachment"></span>' : ""}
+              <button class="message-attachment-remove" type="button" data-message-attachment-remove="${esc(attachment.id)}" aria-label="Remove attachment"${messageSubmissionPending ? " disabled" : ""}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+              </button>
+            </div>`).join("");
+        }
+        pill.classList.toggle("has-attachments", hasAttachments);
+        const multiple = messageAttachments.length > 1;
+        grid.classList.toggle("is-multiple", multiple);
+        syncMessageComposer();
+      }
+      function clearMessageAttachments({ immediate = false } = {}) {
+        const removed = messageAttachments.splice(0, messageAttachments.length);
+        if (!messageAttachments.some(({ status }) => status === "error")) setMessageAttachmentError();
+        renderMessageAttachmentPreview();
+        const finish = () => {
+          if (!messageAttachments.length) $("#messageAttachmentGrid").replaceChildren();
+          removed.forEach(({ previewUrl }) => {
+            if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
+          });
+        };
+        if (immediate) finish();
+        else setTimeout(finish, 220);
+      }
+      async function uploadMessageAttachment(attachment, conversationId) {
+        const form = new FormData();
+        form.append("file", attachment.file);
+        try {
+          const dimensions = await loadMessageImageDimensions(attachment.previewUrl);
+          const uploaded = await api("/uploads/message", { method: "POST", body: form });
+          if (!messageAttachments.includes(attachment)) return;
+          if (activeConversation?.id !== conversationId
+            || $("#messageForm").dataset.conversationId !== conversationId) {
+            return;
+          }
+          attachment.width = dimensions.width;
+          attachment.height = dimensions.height;
+          attachment.url = uploaded.url;
+          attachment.messageUrl = uploaded.messageAttachmentUrl || uploaded.url;
+          attachment.status = "ready";
+          if (!messageAttachments.some(({ status }) => status === "error")) setMessageAttachmentError();
+        } catch (error) {
+          if (!messageAttachments.includes(attachment)) return;
+          attachment.status = "error";
+          setMessageAttachmentError(error.message || "Could not upload this attachment. Remove it and try again.");
+        }
+        renderMessageAttachmentPreview();
+      }
+      function addMessageImageFile(file) {
+        const conversationId = activeConversation?.id;
+        if (!conversationId || $("#messageForm").dataset.conversationId !== conversationId) {
+          setMessageAttachmentError("Choose a conversation before attaching media.");
+          return false;
+        }
+        if (messageSubmissionPending) {
+          setMessageAttachmentError("Wait for the current message to finish sending.");
+          return false;
+        }
+        if (editingMessageState?.conversationId === conversationId) {
+          setMessageAttachmentError("Attachments are unavailable while editing a message.");
+          return false;
+        }
+        if (!validImageFile(file)) {
+          setMessageAttachmentError("Choose a JPEG, PNG, WebP, or GIF image under 5 MB.");
+          return false;
+        }
+        if (messageAttachments.length >= 4) {
+          setMessageAttachmentError("You can attach up to 4 images or GIFs.");
+          return false;
+        }
+        if (!messageAttachments.some(({ status }) => status === "error")) setMessageAttachmentError();
+        const previewUrl = URL.createObjectURL(file);
+        const attachment = {
+          id: `message-attachment-${Date.now()}-${++messageAttachmentSequence}`,
+          name: file.name || (file.type === "image/gif" ? "GIF" : "Image"),
+          file,
+          previewUrl,
+          url: "",
+          isGif: file.type === "image/gif",
+          status: "uploading",
+        };
+        messageAttachments.push(attachment);
+        renderMessageAttachmentPreview();
+        void uploadMessageAttachment(attachment, conversationId);
+        return true;
+      }
+      function addMessageGifAttachment(rawUrl, name = "GIF") {
+        const conversationId = activeConversation?.id;
+        if (!conversationId || $("#messageForm").dataset.conversationId !== conversationId) {
+          setMessageAttachmentError("Choose a conversation before attaching media.");
+          return false;
+        }
+        if (messageSubmissionPending) {
+          setMessageAttachmentError("Wait for the current message to finish sending.");
+          return false;
+        }
+        if (editingMessageState?.conversationId === conversationId) {
+          setMessageAttachmentError("Attachments are unavailable while editing a message.");
+          return false;
+        }
+        if (messageAttachments.length >= 4) {
+          setMessageAttachmentError("You can attach up to 4 images or GIFs.");
+          return false;
+        }
+        const url = normalizeGiphyGifUrl(rawUrl) || rawUrl;
+        if (!isGifMediaUrl(url) || !/^https?:\/\//i.test(url)) {
+          setMessageAttachmentError("This GIF is unavailable as a direct image. Choose another result.");
+          return false;
+        }
+        if (!messageAttachments.some(({ status }) => status === "error")) setMessageAttachmentError();
+        const attachment = {
+          id: `message-attachment-${Date.now()}-${++messageAttachmentSequence}`,
+          name: name.trim() || "GIF",
+          file: null,
+          previewUrl: "",
+          url,
+          messageUrl: url,
+          isGif: true,
+          status: "uploading",
+        };
+        messageAttachments.push(attachment);
+        renderMessageAttachmentPreview();
+        void loadMessageImageDimensions(url).then(({ width, height }) => {
+          if (!messageAttachments.includes(attachment)) return;
+          attachment.width = width;
+          attachment.height = height;
+          attachment.status = "ready";
+          if (!messageAttachments.some(({ status }) => status === "error")) setMessageAttachmentError();
+          renderMessageAttachmentPreview();
+        }).catch((error) => {
+          if (!messageAttachments.includes(attachment)) return;
+          attachment.status = "error";
+          setMessageAttachmentError(error.message || "Could not load this GIF. Remove it and try again.");
+          renderMessageAttachmentPreview();
+        });
+        return true;
+      }
+      function queueMessageImageFiles(files) {
+        let selectionError = "";
+        for (const file of files) {
+          if (!addMessageImageFile(file) && !selectionError) {
+            selectionError = $("#messageAttachmentError").textContent;
+          }
+        }
+        if (selectionError) setMessageAttachmentError(selectionError);
+      }
+      function removeMessageAttachment(id, button) {
+        const index = messageAttachments.findIndex((attachment) => attachment.id === id);
+        if (index < 0 || messageSubmissionPending) return;
+        const attachment = messageAttachments[index];
+        attachment.removing = true;
+        button.disabled = true;
+        button.closest(".message-attachment-tile")?.classList.add("is-removing");
+        const delay = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 140;
+        setTimeout(() => {
+          const currentIndex = messageAttachments.indexOf(attachment);
+          if (currentIndex < 0) return;
+          messageAttachments.splice(currentIndex, 1);
+          if (attachment.previewUrl?.startsWith("blob:")) URL.revokeObjectURL(attachment.previewUrl);
+          if (attachment.status === "error" && !messageAttachments.some(({ status }) => status === "error")) {
+            setMessageAttachmentError();
+          }
+          renderMessageAttachmentPreview();
+          if (!messageAttachments.length) {
+            setTimeout(() => {
+              if (!messageAttachments.length) $("#messageAttachmentGrid").replaceChildren();
+            }, 220);
+          }
+          const next = $$(".message-attachment-remove", $("#messageAttachmentGrid"))[Math.min(currentIndex, messageAttachments.length - 1)];
+          (next || $("#messageImageButton")).focus({ preventScroll: true });
+        }, delay);
+      }
       function syncMessageComposer() {
         const input = $("#messageInput");
         const sendButton = $("#sendMessage");
@@ -17848,12 +18246,21 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         input.style.height = `${Math.min(120, Math.max(24, input.scrollHeight))}px`;
         $("#messageComposePill").classList.toggle("is-growing", input.scrollHeight > 24);
         const hasText = Boolean(input.value.trim());
+        const hasAttachments = messageAttachments.length > 0;
+        const attachmentsReady = messageAttachments.every(({ status }) => status === "ready");
+        const canSend = hasText || hasAttachments;
+        const canAttach = Boolean(activeConversation
+          && $("#messageForm").dataset.conversationId === activeConversation.id);
         $("#messageEditLabel").hidden = !editing;
         $("#messageReplyPreview").hidden = editing || !selectedMessageReply;
-        sendButton.classList.toggle("is-hidden", !hasText);
+        $("#messageComposePill").classList.toggle("has-text", hasText);
         sendButton.classList.toggle("is-editing", editing);
-        $("#messageEmptyActions").classList.toggle("is-hidden", hasText);
-        sendButton.disabled = !hasText;
+        $("#messageEmptyActions").classList.toggle("is-hidden", editing);
+        $("#messageImageButton").disabled = !canAttach || editing || messageSubmissionPending || messageAttachments.length >= 4;
+        $("#messageGifButton").disabled = !canAttach || editing || messageSubmissionPending || messageAttachments.length >= 4;
+        $$(".message-attachment-remove", $("#messageAttachmentGrid"))
+          .forEach((button) => { button.disabled = messageSubmissionPending; });
+        sendButton.disabled = !canSend || !attachmentsReady || messageSubmissionPending;
         sendButton.setAttribute("aria-label", editing ? "Save edited message" : "Send message");
         input.setAttribute("aria-label", editing ? "Edit message" : "Write a message");
         input.placeholder = editing ? "Edit message..." : "Message...";
@@ -17867,7 +18274,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (body && !isGifMediaUrl(body)) return body;
         if (message?.audioUrl) return "Voice message";
         if (message?.stickerId) return "Sticker";
-        if (message?.mediaUrl || message?.mediaUrls?.length || isGifMediaUrl(body)) return "Photo or GIF";
+        if (message?.mediaUrl || message?.attachments?.length || message?.mediaUrls?.length || isGifMediaUrl(body)) return "Photo or GIF";
         return "Message";
       }
       function replyHeaderMarkup(senderName, messageId = "") {
@@ -17882,6 +18289,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           return `<span class="reply-preview reply-preview--deleted">Message deleted</span>`;
         }
         const rawMediaUrl = message.mediaUrl
+          || (Array.isArray(message.attachments) ? message.attachments.find((url) => typeof url === "string" && url) : "")
           || (Array.isArray(message.mediaUrls) ? message.mediaUrls.find((url) => typeof url === "string" && url) : "")
           || (isGifMediaUrl(String(message.body || "").trim()) ? String(message.body).trim() : "");
         const mediaUrl = rawMediaUrl ? mediaHref(rawMediaUrl) : "";
@@ -18281,11 +18689,17 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         messagesById.set(message.id, message);
         const mine = message.senderId === currentUser?.id;
         const body = String(message.body || "");
+        const storedAttachments = Array.isArray(message.attachments)
+          ? message.attachments.filter((url) => typeof url === "string" && url)
+          : [];
         const hasMediaUrls = Array.isArray(message.mediaUrls);
-        const bodyGifUrl = !message.mediaUrl && !hasMediaUrls && isGifMediaUrl(body.trim()) ? body.trim() : "";
-        const rawMediaUrls = hasMediaUrls
-          ? message.mediaUrls.filter((url) => typeof url === "string" && url)
-          : message.mediaUrl ? [message.mediaUrl] : bodyGifUrl ? [bodyGifUrl] : [];
+        const bodyGifUrl = !message.mediaUrl && !storedAttachments.length && !hasMediaUrls && isGifMediaUrl(body.trim()) ? body.trim() : "";
+        const rawMediaUrls = storedAttachments.length
+          ? storedAttachments
+          : hasMediaUrls
+            ? message.mediaUrls.filter((url) => typeof url === "string" && url)
+            : message.mediaUrl ? [message.mediaUrl] : bodyGifUrl ? [bodyGifUrl] : [];
+        const hasTextContent = Boolean(body && !bodyGifUrl);
         const storedDimensions = Array.isArray(message.mediaDimensions) ? message.mediaDimensions : [];
         const mediaItems = rawMediaUrls.map((rawUrl, index) => {
           const sourceUrl = mediaHref(rawUrl);
@@ -18313,7 +18727,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                   ? `<img class="message-media message-media-static" src="${esc(imageUrl)}" width="${width || 1}" height="${height || 1}" alt="Shared GIF" loading="${mediaLoading}" decoding="async" />`
                   : `<button class="message-media-button" type="button" data-lightbox-image="${esc(imageUrl)}" aria-label="Open shared image"><img class="message-media" src="${esc(imageUrl)}" width="${width || 1}" height="${height || 1}" alt="Shared image" loading="${mediaLoading}" decoding="async" /></button>`}
               </div>
-              ${messageToolsMarkup({
+              ${hasTextContent ? "" : messageToolsMarkup({
                 messageId: message.id,
                 downloadUrl: imageUrl,
                 downloadLabel: isGif ? "GIF" : "image",
@@ -18329,7 +18743,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const audio = audioUrl ? `<div class="relay-voice" role="group" aria-label="Voice message" data-message-id="${esc(message.id)}" data-voice-url="${esc(audioUrl)}" data-waveform="${esc(JSON.stringify(waveform))}" data-waveform-ready="${waveformReady}"><button class="relay-voice-play" type="button" aria-label="Play voice message">${relayVoicePlayIcon()}</button><div class="relay-waveform" role="slider" tabindex="0" aria-label="Seek voice message" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" aria-valuetext="0:00 of 0:00"><svg viewBox="0 0 190 24" preserveAspectRatio="none" aria-hidden="true">${voiceWaveformSvg(waveform)}</svg></div><span class="relay-voice-duration">0:00</span><audio preload="metadata" src="${esc(audioUrl)}" hidden></audio></div>` : "";
         const stickers = { heart: "❤️", wave: "👋", laugh: "😂", party: "🎉", fire: "🔥", thumbsup: "👍", sparkles: "✨", relax: "😊" };
         const sticker = message.stickerId && stickers[message.stickerId] ? `<span class="message-sticker" aria-label="Sticker">${stickers[message.stickerId]}</span>` : "";
-        const text = body && !bodyIsGifUrl ? `<span>${esc(body)}</span>` : "";
+        const text = hasTextContent && !bodyIsGifUrl ? `<span>${esc(body)}</span>` : "";
         const mediaOnly = Boolean((image || audio) && !text && !sticker);
         const stickerOnly = Boolean(sticker && !image && !audio && !text);
         const imageOnly = Boolean(image && !audio && !text && !sticker);
@@ -18340,18 +18754,21 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           downloadUrl: audioUrl,
           downloadLabel: "voice message",
           directDownload: Boolean(audioUrl),
-          showMore: mine || (!image && !audio),
+          showMore: mine || Boolean(text && image) || (!image && !audio),
           canEdit: mine && Boolean(text) && !image && !audio && !sticker,
           canDelete: mine,
         });
-        const bubbleActions = image ? "" : actions;
+        const bubbleActions = text ? actions : image ? "" : actions;
         const replyTo = message.replyTo || null;
         const hasReply = Boolean(message.replyToId || replyTo);
         const replyStack = hasReply
           ? `<div class="reply-stack">${replyHeaderMarkup(replySenderName(replyTo), replyTo?.id || "")}${replyPreviewMarkup(replyTo, { jump: Boolean(replyTo?.id) })}</div>`
           : "";
         const reactions = messageReactionsMarkup(message);
-        return `<div class="message-row${mine ? " mine" : ""}${reactions ? " has-reactions" : ""}" data-message-row data-conversation-id="${esc(message.conversationId)}" data-sender-id="${esc(message.senderId || "")}" data-reply-to-id="${esc(message.replyToId || replyTo?.id || "")}">${replyStack}<div class="message-bubble${mine ? " mine" : ""}${image ? " has-message-image" : ""}${mediaOnly ? " media-message" : ""}${imageOnly ? " image-message" : ""}${audioOnly ? " audio-message" : ""}${stickerOnly ? " sticker-message" : ""}" data-message-id="${esc(message.id)}">${image}${audio}${sticker}${text}${bubbleActions}${reactions}</div></div>`;
+        const messageContent = image && text && !audio && !sticker
+          ? `<div class="message-attachment-group">${image}<div class="message-bubble${mine ? " mine" : ""}" data-message-id="${esc(message.id)}">${text}${actions}${reactions}</div></div>`
+          : `<div class="message-bubble${mine ? " mine" : ""}${image ? " has-message-image" : ""}${mediaOnly ? " media-message" : ""}${imageOnly ? " image-message" : ""}${audioOnly ? " audio-message" : ""}${stickerOnly ? " sticker-message" : ""}" data-message-id="${esc(message.id)}">${image}${audio}${sticker}${text}${bubbleActions}${reactions}</div>`;
+        return `<div class="message-row${mine ? " mine" : ""}${reactions ? " has-reactions" : ""}" data-message-row data-conversation-id="${esc(message.conversationId)}" data-sender-id="${esc(message.senderId || "")}" data-reply-to-id="${esc(message.replyToId || replyTo?.id || "")}">${replyStack}${messageContent}</div>`;
       }
       function updateMessageRowSpacing(container = $("#chatLog")) {
         const rows = [...container.children].filter((element) => element.matches(".message-row"));
@@ -18363,7 +18780,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             && previous.dataset.senderId === row.dataset.senderId;
           row.classList.toggle("same-sender", grouped);
           row.style.marginBlockStart = grouped ? "2px" : index > 0 ? "8px" : "";
-          const bubble = row.querySelector(":scope > .message-bubble");
+          const bubble = row.querySelector(":scope > .message-bubble, :scope > .message-attachment-group > .message-bubble");
           bubble?.classList.remove(
             "message-group-first",
             "message-group-middle",
@@ -19784,6 +20201,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function clearConversationTransientUi() {
         closeMessageActionMenus();
         cancelMessageEditing({ restoreDraft: false });
+        clearMessageAttachments({ immediate: true });
         closeNewMessageDialog();
         clearTimeout(typingStopTimer);
         typingStopTimer = null;
@@ -22556,9 +22974,23 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             || $("#chatLog").dataset.conversationId !== activeConversation.id) return;
           const input = $("#messageInput");
           const body = input.value.trim();
-          if (!body) return;
+          if (!body && !messageAttachments.length) return;
           if (editingMessageState?.conversationId === activeConversation.id) {
+            if (!body || messageAttachments.length) {
+              setMessageAttachmentError("Attachments cannot be sent while editing a message.");
+              return;
+            }
             await saveMessageEdit(body);
+            return;
+          }
+          const attachmentUrls = messageAttachments.map(({ messageUrl, url, status }) =>
+            status === "ready" ? messageUrl || url : "",
+          );
+          const attachmentPreviewUrls = messageAttachments.map(({ url }) => url);
+          const attachmentDimensions = messageAttachments.map(({ width, height }) => ({ width, height }));
+          if (attachmentUrls.some((url) => !url)
+            || attachmentDimensions.some(({ width, height }) => !width || !height)) {
+            setMessageAttachmentError("Wait for all attachments to finish preparing before sending.");
             return;
           }
           const conversationId = activeConversation.id;
@@ -22578,6 +23010,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             conversationId: sendConversationId,
             senderId: currentUser.id,
             body,
+            ...(attachmentUrls.length ? {
+              attachments: attachmentPreviewUrls,
+              mediaUrl: attachmentPreviewUrls[0],
+              mediaDimensions: attachmentDimensions,
+            } : {}),
             ...(replyTo ? { replyToId: replyTo.id, replyTo } : {}),
           });
           const pendingMessage = insertPreparedMessageRow(pendingMarkup, {
@@ -22586,17 +23023,19 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           });
           if (pendingMessage) animateChatMessages([pendingMessage.querySelector(".message-bubble") || pendingMessage]);
           scrollMessageListToBottom(false);
-          input.value = "";
-          conversationDrafts.set(sendConversationId, "");
-          syncMessageComposer();
           sendTyping(false);
           messageSubmissionPending = true;
-          $("#sendMessage").disabled = true;
+          syncMessageComposer();
           try {
             const message = await api(`/conversations/${sendConversationId}/messages`, {
               method: "POST",
               body: JSON.stringify({
                 body,
+                ...(attachmentUrls.length ? {
+                  attachments: attachmentUrls,
+                  mediaUrl: attachmentUrls[0],
+                  mediaDimensions: attachmentDimensions,
+                } : {}),
                 ...(replyTo ? { replyToId: replyTo.id } : {}),
                 ...(draftRecipientId ? { recipientId: draftRecipientId } : {}),
               }),
@@ -22608,34 +23047,47 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             );
             updateMessageRowSpacing($("#chatLog"));
             if (sendConversationId === "draft") {
+              const shouldOpenCreatedConversation = activeConversation?.id === conversationId
+                && $("#messageForm").dataset.conversationId === conversationId;
               sendConversationId = message.conversationId;
               await renderConversations();
-              const conversation = conversations.find((item) => item.id === sendConversationId);
-              if (!conversation) throw new Error("The new conversation could not be loaded.");
-              activeConversation = conversation;
-              draftConversationRecipientId = "";
-              $("#chatLog").dataset.conversationId = sendConversationId;
-              $("#messageForm").dataset.conversationId = sendConversationId;
-              $$(".message-row", $("#chatLog")).forEach((row) => {
-                row.dataset.conversationId = sendConversationId;
-              });
-              await renderConversations();
-              const route = `#/messages?conversation=${encodeURIComponent(sendConversationId)}`;
-              if (location.hash !== route) location.hash = route;
+              conversationDrafts.set(conversationId, "");
+              if (shouldOpenCreatedConversation) {
+                const conversation = conversations.find((item) => item.id === sendConversationId);
+                if (!conversation) throw new Error("The new conversation could not be loaded.");
+                activeConversation = conversation;
+                draftConversationRecipientId = "";
+                $("#chatLog").dataset.conversationId = sendConversationId;
+                $("#messageForm").dataset.conversationId = sendConversationId;
+                $$(".message-row", $("#chatLog")).forEach((row) => {
+                  row.dataset.conversationId = sendConversationId;
+                });
+                await renderConversations();
+                const route = `#/messages?conversation=${encodeURIComponent(sendConversationId)}`;
+                if (location.hash !== route) location.hash = route;
+              }
             }
             if (message.conversationId !== sendConversationId) {
               throw new Error("The message was returned for a different conversation.");
             }
             if (replyTo) clearMessageReplyTarget(conversationId);
             receiveMessage(message);
+            conversationDrafts.set(conversationId, "");
+            if ($("#messageForm").dataset.conversationId === sendConversationId) {
+              if (input.value.trim() === body) input.value = "";
+              conversationDrafts.set(sendConversationId, input.value);
+              clearMessageAttachments();
+              input.focus({ preventScroll: true });
+            }
           } catch (error) {
             removePendingMessageRow(pendingId);
             updateMessageRowSpacing($("#chatLog"));
-            conversationDrafts.set(sendConversationId, body);
+            conversationDrafts.set(sendConversationId, input.value || body);
             if (activeConversation?.id === sendConversationId
               && $("#messageForm").dataset.conversationId === sendConversationId) {
               restoreEmptyMessagesState();
-              input.value = body;
+              if (!input.value.trim()) input.value = body;
+              conversationDrafts.set(sendConversationId, input.value);
               syncMessageComposer();
             }
             toast(error.message);
@@ -22861,17 +23313,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           return;
         }
         if (e.target.id === "messageImageInput") {
-          const file = e.target.files?.[0];
+          const files = Array.from(e.target.files || []);
           e.target.value = "";
-          const conversationId = activeConversation?.id;
-          if (!file || !conversationId
-            || $("#messageForm").dataset.conversationId !== conversationId) return;
-          const form = new FormData();
-          form.append("file", file);
-          try {
-            const uploaded = await api("/uploads/message", { method: "POST", body: form });
-            await sendMessageAttachment({ mediaUrl: uploaded.url }, conversationId);
-          } catch (error) { toast(error.message); }
+          queueMessageImageFiles(files);
           return;
         }
         if (e.target.id === "postFileInput") {
@@ -22879,6 +23323,36 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (file) selectComposerImage(file);
         }
         if (e.target.matches("[data-profile-upload]")) selectProfileImage(e.target);
+      });
+      $("#messageForm").addEventListener("paste", (event) => {
+        const items = Array.from(event.clipboardData?.items || [])
+          .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+          .map((item) => item.getAsFile())
+          .filter(Boolean);
+        if (!items.length) return;
+        event.preventDefault();
+        queueMessageImageFiles(items);
+      });
+      $("#messageForm").addEventListener("dragover", (event) => {
+        if (!Array.from(event.dataTransfer?.types || []).includes("Files")) return;
+        event.preventDefault();
+        $("#messageForm").classList.add("is-drag-over");
+      });
+      $("#messageForm").addEventListener("dragleave", (event) => {
+        if (!event.relatedTarget || !$("#messageForm").contains(event.relatedTarget)) {
+          $("#messageForm").classList.remove("is-drag-over");
+        }
+      });
+      $("#messageForm").addEventListener("drop", (event) => {
+        $("#messageForm").classList.remove("is-drag-over");
+        const files = Array.from(event.dataTransfer?.files || []);
+        if (!files.length) return;
+        event.preventDefault();
+        queueMessageImageFiles(files);
+      });
+      $("#messageAttachmentGrid").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-message-attachment-remove]");
+        if (button) removeMessageAttachment(button.dataset.messageAttachmentRemove, button);
       });
       $("#gifPickerSearch").addEventListener("input", (event) => {
         const input = event.currentTarget;
@@ -23547,6 +24021,22 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }, { passive: true });
       window.addEventListener("resize", preserveChatBottomAfterViewportResize, { passive: true });
       window.addEventListener("orientationchange", preserveChatBottomAfterViewportResize, { passive: true });
+      if (typeof ResizeObserver === "function") {
+        let composerResizeFrame = 0;
+        const composerResizeObserver = new ResizeObserver(() => {
+          if (!chatLogWasNearBottom) return;
+          cancelAnimationFrame(composerResizeFrame);
+          composerResizeFrame = requestAnimationFrame(() => {
+            composerResizeFrame = requestAnimationFrame(() => {
+              if (!chatLogWasNearBottom || !activeConversation) return;
+              const log = $("#chatLog");
+              log.scrollTop = log.scrollHeight;
+              syncChatScrollButtonVisibility();
+            });
+          });
+        });
+        composerResizeObserver.observe($("#messageForm"));
+      }
       $("#chatScrollToBottom").addEventListener("click", () => {
         const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
         scrollMessageListToBottom(!reduceMotion);

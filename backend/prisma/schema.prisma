@@ -384,6 +384,8 @@ model Message {
   senderId       String
   body           String       @default("") @db.VarChar(2000)
   mediaUrl       String?
+  attachments    Json?
+  mediaDimensions Json?
   audioUrl       String?
   waveform       Int[]        @default([])
   stickerId      String?      @db.VarChar(64)

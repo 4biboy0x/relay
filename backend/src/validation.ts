@@ -7,6 +7,11 @@ const mediaUrlSchema = z.string().max(2048).refine(
   { message: "Media must be an http(s) URL or a Relay upload path" },
 );
 
+const messageAttachmentUrlSchema = mediaUrlSchema.refine((value) => {
+  const url = new URL(value, "https://relay.invalid");
+  return /\.(?:jpe?g|png|webp|gif)$/i.test(url.pathname);
+}, { message: "Message attachments must be images or GIFs" });
+
 const strippedControlCharacters = (value: string): string =>
   value.replace(/[\u0000-\u001f\u007f]/g, "");
 
@@ -118,12 +123,20 @@ export const pageSchema = z.object({
 export const messageSchema = z.object({
   body: z.string().trim().max(2000).optional().default(""),
   mediaUrl: mediaUrlSchema.nullable().optional(),
+  attachments: z.array(messageAttachmentUrlSchema).min(1).max(4).optional(),
+  mediaDimensions: z.array(z.object({
+    width: z.number().int().min(1).max(10000),
+    height: z.number().int().min(1).max(10000),
+  })).max(4).optional(),
   audioUrl: z.string().startsWith("/uploads/").max(2048).nullable().optional(),
   waveform: z.array(z.number().int().min(0).max(100)).min(40).max(64).optional(),
   stickerId: z.string().trim().regex(/^[a-z0-9_-]{1,64}$/).nullable().optional(),
   replyToId: z.string().cuid().nullable().optional(),
 }).refine((value) => !value.waveform || Boolean(value.audioUrl), {
   message: "A waveform requires an audio message",
-}).refine((value) => value.body || value.mediaUrl || value.audioUrl || value.stickerId, {
+}).refine((value) => !value.mediaDimensions
+  || value.mediaDimensions.length === (value.attachments?.length || (value.mediaUrl ? 1 : 0)), {
+  message: "Media dimensions must match the message attachments",
+}).refine((value) => value.body || value.mediaUrl || value.attachments?.length || value.audioUrl || value.stickerId, {
   message: "A message must contain text, an image, audio, or a sticker",
 });

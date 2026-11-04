@@ -133,7 +133,11 @@ export const createUploadReadUrl = async (
   if (!filename) throw new Error("Invalid generated upload storage path");
   const privateMessage = await prisma.message.findFirst({
     where: {
-      OR: [{ mediaUrl: storedPath }, { audioUrl: storedPath }],
+      OR: [
+        { mediaUrl: storedPath },
+        { audioUrl: storedPath },
+        { attachments: { array_contains: [storedPath] } },
+      ],
     },
     select: { conversationId: true },
   });
