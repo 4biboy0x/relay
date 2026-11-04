@@ -121,6 +121,7 @@
         scrollbar-gutter: stable;
         scrollbar-width: thin;
         scrollbar-color: var(--border) transparent;
+        overflow-anchor: auto;
       }
       html.theme-transition,
       html.theme-transition body,
@@ -739,103 +740,76 @@
         border-right: 1px solid var(--border);
         min-height: 100vh;
         min-width: 0;
+        overflow-anchor: auto;
       }
       .email-verification-notice {
-        position: fixed;
-        z-index: 20;
-        top: max(10px, env(safe-area-inset-top, 0px));
-        left: 50%;
-        display: flex;
-        width: min(520px, calc(100vw - 24px));
-        align-items: center;
-        gap: 11px;
-        min-height: 62px;
-        padding: 9px 10px;
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        background: var(--surface-2);
-        color: var(--text);
-        opacity: 0;
-        pointer-events: none;
-        transform: translate(-50%, -5px);
-        transition: opacity 160ms ease, transform 160ms ease;
+        display: grid;
+        grid-template-rows: 0fr;
+        overflow: hidden;
+        transition: grid-template-rows 340ms cubic-bezier(.22, .61, .36, 1);
       }
-      .email-verification-notice[hidden] { display: none; }
+      .email-verification-notice-inner {
+        display: flex;
+        min-height: 0;
+        align-items: center;
+        gap: 10px;
+        overflow: hidden;
+        padding: 6px 16px;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface);
+        opacity: 0;
+        transform: translateY(-4px);
+        transition:
+          opacity 180ms ease,
+          transform 340ms cubic-bezier(.22, .61, .36, 1);
+      }
       .email-verification-notice[data-state="visible"] {
+        grid-template-rows: 1fr;
+      }
+      .email-verification-notice[data-state="fade-out"] {
+        grid-template-rows: 1fr;
+      }
+      .email-verification-notice[data-state="visible"] .email-verification-notice-inner {
         opacity: 1;
-        pointer-events: auto;
-        transform: translate(-50%, 0);
+        transform: translateY(0);
       }
       @media (prefers-reduced-motion: reduce) {
-        .email-verification-notice { transition-duration: 1ms; }
-      }
-      .email-verification-icon {
-        position: relative;
-        display: grid;
-        width: 36px;
-        height: 36px;
-        flex: none;
-        place-items: center;
-        border: 1px solid var(--border);
-        border-radius: 50%;
-        background: var(--surface);
-        color: var(--text-2);
-      }
-      .email-verification-icon::after {
-        position: absolute;
-        top: 1px;
-        right: 0;
-        width: 8px;
-        height: 8px;
-        border: 2px solid var(--surface-2);
-        border-radius: 50%;
-        background: var(--accent);
-        content: "";
+        .email-verification-notice { transition-duration: 0s; }
+        .email-verification-notice-inner { transition-duration: 150ms, 0s; }
       }
       .email-verification-copy {
         display: grid;
         flex: 1;
         min-width: 0;
-        gap: 1px;
-      }
-      .email-verification-copy strong {
-        font-size: 13px;
-        font-weight: 650;
-        line-height: 1.35;
-      }
-      .email-verification-copy span {
         color: var(--text-2);
-        font-size: 12px;
-        line-height: 1.35;
+        font-size: 13px;
+        line-height: 1.4;
       }
       .email-verification-notice .email-verification-action {
         display: inline-flex;
-        min-height: 34px;
+        height: 30px;
+        min-height: 30px;
         flex: none;
         align-items: center;
         justify-content: center;
-        padding: 0 12px;
+        padding: 0 11px;
         border-radius: 8px;
-        background: var(--text);
-        color: var(--bg);
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 600;
         transition: opacity 140ms ease, transform 140ms ease;
       }
-      .email-verification-notice .email-verification-action:hover { opacity: .84; }
       .email-verification-notice .email-verification-action:active { transform: scale(.97); }
       .email-verification-notice .email-verification-dismiss {
         display: grid;
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
         flex: none;
         place-items: center;
         border-radius: 50%;
         color: var(--text-3);
-        transition: background-color 140ms ease, color 140ms ease;
+        transition: color 140ms ease;
       }
       .email-verification-notice .email-verification-dismiss:hover {
-        background: color-mix(in srgb, var(--text) 7%, transparent);
         color: var(--text);
       }
       .email-verification-notice .email-verification-dismiss svg {
@@ -846,13 +820,54 @@
         stroke-width: 1.7;
         stroke-linecap: round;
       }
+      .email-verification-notice .email-verification-success-icon {
+        display: none;
+        width: 18px;
+        height: 18px;
+        flex: none;
+        color: var(--ok);
+      }
+      .email-verification-notice[data-kind="success"] .email-verification-success-icon { display: block; }
+      .email-verification-notice[data-kind="success"] .email-verification-action,
+      .email-verification-notice[data-kind="success"] .email-verification-dismiss { display: none; }
       @media (max-width: 520px) {
-        .email-verification-notice { gap: 8px; padding: 8px; }
-        .email-verification-icon { width: 32px; height: 32px; }
-        .email-verification-copy strong { font-size: 12px; }
-        .email-verification-copy span { font-size: 11px; }
-        .email-verification-notice .email-verification-action { min-height: 32px; padding-inline: 10px; }
-        .email-verification-notice .email-verification-dismiss { width: 28px; height: 28px; }
+        .email-verification-notice-inner { gap: 8px; padding-inline: 10px; }
+        .email-verification-copy { font-size: 12px; }
+        .email-verification-notice .email-verification-action { min-height: 30px; padding-inline: 9px; }
+        .email-verification-notice .email-verification-dismiss { width: 26px; height: 26px; }
+      }
+      .settings-email-verification {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        color: var(--text-2);
+        font-size: 13px;
+      }
+      .settings-email-verification[hidden] { display: none; }
+      .settings-email-verification-icon {
+        display: grid;
+        width: 18px;
+        height: 18px;
+        flex: none;
+        place-items: center;
+        color: var(--accent);
+      }
+      .settings-email-verification[data-verified="true"] .settings-email-verification-icon {
+        color: var(--ok);
+      }
+      .settings-email-verification-icon svg { width: 16px; height: 16px; }
+      .settings-email-verification .settings-email-verify {
+        height: 30px;
+        min-height: 30px;
+        margin-inline-start: auto;
+        padding-inline: 11px;
+        font-size: 13px;
+      }
+      @media (max-width: 520px) {
+        .settings-email-verification { column-gap: 7px; }
+        .settings-email-verification .settings-email-verify { margin-inline-start: 0; }
       }
       .top {
         position: sticky;
@@ -9255,23 +9270,23 @@
         </div>
       </nav>
 
-      <main id="main">
-        <div class="email-verification-notice" id="emailVerificationNotice" role="status" hidden>
-          <span class="email-verification-icon" aria-hidden="true">
-            <svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m4 7 8 6 8-6"></path></svg>
-          </span>
-          <span class="email-verification-copy">
-            <strong>Email not verified</strong>
-            <span>Verify to unlock all features.</span>
-          </span>
-          <button type="button" class="email-verification-action" id="emailVerificationStart">Verify</button>
-          <button type="button" class="email-verification-dismiss" id="emailVerificationDismiss" aria-label="Dismiss reminder" title="Dismiss reminder">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
-          </button>
-        </div>
+      <main id="main" tabindex="-1">
+        <template id="emailVerificationNoticeTemplate">
+          <div class="email-verification-notice" role="status" aria-live="polite" data-state="entering" data-kind="reminder">
+            <div class="email-verification-notice-inner">
+              <svg class="email-verification-success-icon" aria-hidden="true"><use href="#check" /></svg>
+              <span class="email-verification-copy" data-notice-copy>Verify your email to post, follow and message.</span>
+              <button type="button" class="btn btn-primary email-verification-action" data-email-verification-start>Verify</button>
+              <button type="button" class="email-verification-dismiss" data-email-verification-dismiss aria-label="Dismiss reminder" title="Dismiss reminder">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+              </button>
+            </div>
+          </div>
+        </template>
         <section id="v-home" data-v>
           <header class="top">
             <h1>Home</h1>
+            <div id="homeEmailVerificationNoticeSlot"></div>
             <div class="tabs" role="tablist" aria-label="Feed">
               <button
                 class="tab"
@@ -9372,6 +9387,7 @@
 
         <section id="v-explore" data-v hidden>
           <header class="top"><h1>Explore</h1></header>
+          <div id="exploreEmailVerificationNoticeSlot"></div>
           <div class="explore-search-wrap">
             <label class="search">
               <svg class="i" aria-hidden="true"><use href="#search" /></svg>
@@ -9608,6 +9624,11 @@
               </div>
               <form id="settingsEmailForm" class="settings-form" novalidate>
                 <label>Email<input id="settingsEmail" name="email" type="email" autocomplete="email" maxlength="254" required /></label>
+                <div class="settings-email-verification" id="settingsEmailVerification" role="status" aria-live="polite" hidden>
+                  <span class="settings-email-verification-icon" id="settingsEmailVerificationIcon"></span>
+                  <span id="settingsEmailVerificationText"></span>
+                  <button class="btn btn-primary settings-email-verify" type="button" id="settingsEmailVerify" hidden>Verify</button>
+                </div>
                 <label class="settings-email-password" id="settingsEmailPassword">
                   Current password
                   <span class="settings-password-wrap"><input name="currentPassword" type="password" autocomplete="current-password" required /><button class="settings-password-toggle" type="button" aria-label="Show password"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.06 12.35a1 1 0 0 1 0-.7C3.5 8.15 7.25 5 12 5s8.5 3.15 9.94 6.65a1 1 0 0 1 0 .7C20.5 15.85 16.75 19 12 19s-8.5-3.15-9.94-6.65Z"/><circle cx="12" cy="12" r="3"/></svg></button></span>
@@ -11010,8 +11031,12 @@
       }
       function clearSession() {
         accessToken = "";
+        if (currentUser?.id) setEmailVerificationNoticeShown(currentUser.id, false);
         currentUser = null;
-        verificationNoticeDismissed = false;
+        clearTimeout(emailVerificationNoticeShowTimer);
+        emailVerificationNoticeShowTimer = null;
+        removeEmailVerificationNoticeImmediately();
+        emailVerificationNoticeOwnerId = "";
         viewedProfileId = null;
         clearInterval(presenceHeartbeatTimer);
         presenceHeartbeatTimer = null;
@@ -12878,6 +12903,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         html.replace(/(<span[^>]*data-count="(?:replies|reposts|likes)"[^>]*)>0<\/span>/g, '$1 hidden></span>');
       async function renderFeed(append = false) {
         if (feedLoading || (append && !feedCursor)) return;
+        if (!append) {
+          clearTimeout(emailVerificationNoticeShowTimer);
+          emailVerificationNoticeShowTimer = null;
+        }
         feedLoading = true;
         let finishSkeleton;
         let removeAppendSkeleton;
@@ -12933,6 +12962,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         } finally {
           await removeAppendSkeleton?.();
           feedLoading = false;
+          if (!append && !$("#v-home").hidden) scheduleEmailVerificationNotice();
         }
       }
       async function renderProfile(t = profileTab, append = false) {
@@ -16706,6 +16736,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         return true;
       }
       async function renderExplore(search = "", append = false) {
+        if (!append) {
+          clearTimeout(emailVerificationNoticeShowTimer);
+          emailVerificationNoticeShowTimer = null;
+        }
         const searchText = String(search ?? "").trim();
         const searchTerm = searchText.replace(/^[@#]+/, "").trim();
         const requestTab = exploreTab;
@@ -16870,6 +16904,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
         } finally {
           await removeAppendSkeleton?.();
+          if (!append && isCurrentRequest() && !$("#v-explore").hidden) scheduleEmailVerificationNotice();
         }
       }
       exploreObserver = new IntersectionObserver((entries) => {
@@ -19893,39 +19928,247 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         timerMs: 60000,
         timerId: null,
       };
-      let verificationNoticeDismissed = false;
-      let verificationNoticeTransitionTimer = null;
+      let emailVerificationNoticeShowTimer = null;
+      let emailVerificationNoticeExitTimer = null;
+      let emailVerificationNoticeSuccessTimer = null;
+      let emailVerificationNoticeOwnerId = "";
+      let emailVerificationNoticePendingDismissal = false;
+      const emailVerificationNoticeReducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 
-      function updateEmailVerificationNotice() {
-        const notice = $("#emailVerificationNotice");
-        const shouldShow = Boolean(currentUser && !currentUser.emailVerifiedAt && !verificationNoticeDismissed);
-        window.clearTimeout(verificationNoticeTransitionTimer);
+      function emailVerificationNoticeKey(userId) {
+        return `relay_email_verification_notice:${userId}`;
+      }
 
-        if (shouldShow) {
-          if (!notice.hidden && notice.dataset.state === "visible") return;
-          notice.hidden = false;
-          notice.dataset.state = "entering";
-          requestAnimationFrame(() => {
-            if (!notice.hidden && currentUser && !currentUser.emailVerifiedAt && !verificationNoticeDismissed) {
-              notice.dataset.state = "visible";
-            }
-          });
+      function emailVerificationNoticeSessionKey(userId) {
+        return `relay_email_verification_notice_shown:${userId}`;
+      }
+
+      function readEmailVerificationNoticeState(userId) {
+        try {
+          const value = JSON.parse(localStorage.getItem(emailVerificationNoticeKey(userId)) || "{}");
+          return {
+            dismissCount: Number.isSafeInteger(value.dismissCount) && value.dismissCount > 0 ? value.dismissCount : 0,
+            dismissedAt: Number.isFinite(value.dismissedAt) ? value.dismissedAt : 0,
+          };
+        } catch (error) {
+          console.warn("Unable to read email verification reminder state.", error);
+          return { dismissCount: 0, dismissedAt: 0 };
+        }
+      }
+
+      function hasShownEmailVerificationNotice(userId) {
+        try {
+          return sessionStorage.getItem(emailVerificationNoticeSessionKey(userId)) === "true";
+        } catch (error) {
+          console.warn("Unable to read the email verification session state.", error);
+          return false;
+        }
+      }
+
+      function setEmailVerificationNoticeShown(userId, shown) {
+        try {
+          const key = emailVerificationNoticeSessionKey(userId);
+          if (shown) sessionStorage.setItem(key, "true");
+          else sessionStorage.removeItem(key);
+        } catch (error) {
+          console.warn("Unable to save the email verification session state.", error);
+        }
+      }
+
+      function clearEmailVerificationNoticeState(userId) {
+        try {
+          localStorage.removeItem(emailVerificationNoticeKey(userId));
+        } catch (error) {
+          console.warn("Unable to reset email verification reminder state.", error);
+        }
+      }
+
+      function activeEmailVerificationNoticeSlot() {
+        if (!$("#v-home").hidden) return $("#homeEmailVerificationNoticeSlot");
+        if (!$("#v-explore").hidden) return $("#exploreEmailVerificationNoticeSlot");
+        return null;
+      }
+
+      function isAtTopForEmailVerificationNotice() {
+        return window.scrollY <= 2
+          && document.scrollingElement.scrollTop <= 2
+          && $("#main").scrollTop <= 2;
+      }
+
+      function getEmailVerificationNotice() {
+        return $(".email-verification-notice", $("#main"));
+      }
+
+      function removeEmailVerificationNoticeImmediately() {
+        clearTimeout(emailVerificationNoticeExitTimer);
+        clearTimeout(emailVerificationNoticeSuccessTimer);
+        emailVerificationNoticeExitTimer = null;
+        emailVerificationNoticeSuccessTimer = null;
+        emailVerificationNoticePendingDismissal = false;
+        getEmailVerificationNotice()?.remove();
+      }
+
+      function finishEmailVerificationNoticeExit(notice, generation) {
+        if (generation !== notice._exitGeneration || !notice.isConnected) return;
+        clearTimeout(emailVerificationNoticeExitTimer);
+        emailVerificationNoticeExitTimer = null;
+        if (emailVerificationNoticePendingDismissal && emailVerificationNoticeOwnerId) {
+          const state = readEmailVerificationNoticeState(emailVerificationNoticeOwnerId);
+          try {
+            localStorage.setItem(emailVerificationNoticeKey(emailVerificationNoticeOwnerId), JSON.stringify({
+              dismissCount: state.dismissCount + 1,
+              dismissedAt: Date.now(),
+            }));
+          } catch (error) {
+            console.warn("Unable to save email verification reminder dismissal.", error);
+          }
+        }
+        emailVerificationNoticePendingDismissal = false;
+        notice.remove();
+      }
+
+      function collapseEmailVerificationNotice(dismissed = false) {
+        const notice = getEmailVerificationNotice();
+        if (!notice || notice.dataset.state === "leaving" || notice.dataset.state === "fade-out") return;
+        clearTimeout(emailVerificationNoticeSuccessTimer);
+        emailVerificationNoticeSuccessTimer = null;
+        emailVerificationNoticePendingDismissal = dismissed;
+        if (notice.contains(document.activeElement)) $("#main").focus({ preventScroll: true });
+
+        const generation = (notice._exitGeneration || 0) + 1;
+        notice._exitGeneration = generation;
+        if (emailVerificationNoticeReducedMotion.matches) {
+          notice.dataset.state = "fade-out";
+          emailVerificationNoticeExitTimer = setTimeout(() => {
+            if (!notice.isConnected || generation !== notice._exitGeneration) return;
+            notice.dataset.state = "leaving";
+            emailVerificationNoticeExitTimer = setTimeout(
+              () => finishEmailVerificationNoticeExit(notice, generation),
+              20,
+            );
+          }, 160);
           return;
         }
 
-        if (notice.hidden) return;
         notice.dataset.state = "leaving";
-        verificationNoticeTransitionTimer = window.setTimeout(() => {
-          if (notice.dataset.state === "leaving") notice.hidden = true;
-        }, 180);
+        emailVerificationNoticeExitTimer = setTimeout(
+          () => finishEmailVerificationNoticeExit(notice, generation),
+          400,
+        );
       }
 
-      $("#emailVerificationNotice").addEventListener("transitionend", (event) => {
-        const notice = event.currentTarget;
-        if (event.propertyName !== "opacity" || notice.dataset.state !== "leaving") return;
-        window.clearTimeout(verificationNoticeTransitionTimer);
-        notice.hidden = true;
-      });
+      function createEmailVerificationNotice(slot) {
+        const notice = $("#emailVerificationNoticeTemplate").content.firstElementChild.cloneNode(true);
+        emailVerificationNoticeOwnerId = currentUser?.id || "";
+        notice.addEventListener("transitionend", (event) => {
+          if (event.target !== notice || event.propertyName !== "grid-template-rows"
+            || notice.dataset.state !== "leaving") return;
+          finishEmailVerificationNoticeExit(notice, notice._exitGeneration);
+        });
+        slot.append(notice);
+        requestAnimationFrame(() => {
+          if (notice.isConnected && notice.dataset.state === "entering") {
+            notice.dataset.state = "visible";
+          }
+        });
+        return notice;
+      }
+
+      function scheduleEmailVerificationNotice() {
+        const userId = currentUser?.id;
+        if (!userId || currentUser.emailVerifiedAt || !activeEmailVerificationNoticeSlot()
+          || hasShownEmailVerificationNotice(userId) || emailVerificationNoticeShowTimer
+          || getEmailVerificationNotice()) return;
+
+        const state = readEmailVerificationNoticeState(userId);
+        const cooldown = state.dismissCount >= 2 ? 7 * 24 * 60 * 60 * 1000 : 3 * 24 * 60 * 60 * 1000;
+        if (state.dismissedAt && Date.now() - state.dismissedAt < cooldown) {
+          setEmailVerificationNoticeShown(userId, true);
+          return;
+        }
+
+        emailVerificationNoticeShowTimer = setTimeout(() => {
+          emailVerificationNoticeShowTimer = null;
+          if (currentUser?.id !== userId || currentUser.emailVerifiedAt
+            || !activeEmailVerificationNoticeSlot() || hasShownEmailVerificationNotice(userId)) return;
+          setEmailVerificationNoticeShown(userId, true);
+          if (!isAtTopForEmailVerificationNotice()) return;
+          createEmailVerificationNotice(activeEmailVerificationNoticeSlot());
+        }, 1000);
+      }
+
+      function resetEmailVerificationNoticeForEmailChange() {
+        const userId = currentUser?.id;
+        if (!userId) return;
+        emailVerificationNoticePendingDismissal = false;
+        clearEmailVerificationNoticeState(userId);
+        setEmailVerificationNoticeShown(userId, true);
+      }
+
+      function recordEmailVerificationSuccess() {
+        const userId = currentUser?.id;
+        if (!userId) return;
+        emailVerificationNoticePendingDismissal = false;
+        clearEmailVerificationNoticeState(userId);
+        setEmailVerificationNoticeShown(userId, true);
+      }
+
+      function showEmailVerificationSuccess() {
+        const slot = activeEmailVerificationNoticeSlot();
+        if (!slot || !isAtTopForEmailVerificationNotice()) return;
+        clearTimeout(emailVerificationNoticeShowTimer);
+        clearTimeout(emailVerificationNoticeExitTimer);
+        clearTimeout(emailVerificationNoticeSuccessTimer);
+        emailVerificationNoticeShowTimer = null;
+        emailVerificationNoticeExitTimer = null;
+        emailVerificationNoticePendingDismissal = false;
+        let notice = getEmailVerificationNotice();
+        if (!notice || notice.parentElement !== slot) {
+          notice?.remove();
+          notice = createEmailVerificationNotice(slot);
+        }
+        emailVerificationNoticeOwnerId = currentUser?.id || "";
+        if (notice.contains(document.activeElement)) $("#main").focus({ preventScroll: true });
+        notice.dataset.kind = "success";
+        notice.dataset.state = "visible";
+        $("[data-notice-copy]", notice).textContent = "Email verified";
+        emailVerificationNoticeSuccessTimer = setTimeout(() => {
+          emailVerificationNoticeSuccessTimer = null;
+          collapseEmailVerificationNotice();
+        }, 600);
+      }
+
+      function renderSettingsEmailVerificationStatus() {
+        const status = $("#settingsEmailVerification");
+        if (!status) return;
+        const verified = Boolean(currentUser?.emailVerifiedAt);
+        const verifyButton = $("#settingsEmailVerify");
+        const statusText = $("#settingsEmailVerificationText");
+        const shouldMoveFocus = verified && document.activeElement === verifyButton;
+        status.hidden = !currentUser;
+        status.dataset.verified = String(verified);
+        $("#settingsEmailVerificationIcon").innerHTML = verified
+          ? '<svg class="i" viewBox="0 0 24 24" aria-label="Verified" role="img"><use href="#check" /></svg>'
+          : '<svg viewBox="0 0 24 24" aria-label="Your email isn’t verified. Verify to post, follow and message." role="img" title="Your email isn’t verified. Verify to post, follow and message."><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7" /><path d="M12 8v5m0 3h.01" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>';
+        statusText.textContent = verified ? "Verified" : "Not verified";
+        verifyButton.hidden = verified || !currentUser;
+        if (shouldMoveFocus) {
+          statusText.tabIndex = -1;
+          statusText.focus({ preventScroll: true });
+        }
+      }
+
+      function updateEmailVerificationNotice() {
+        renderSettingsEmailVerificationStatus();
+        if (currentUser?.emailVerifiedAt) recordEmailVerificationSuccess();
+        if (!currentUser || ($("#v-home").hidden && $("#v-explore").hidden)) {
+          clearTimeout(emailVerificationNoticeShowTimer);
+          emailVerificationNoticeShowTimer = null;
+          removeEmailVerificationNoticeImmediately();
+          return;
+        }
+        if (currentUser.emailVerifiedAt) collapseEmailVerificationNotice();
+      }
 
       function authFriendlyError(error, context) {
         if (error?.status === 429) return "Too many tries. Please wait and try again.";
@@ -20018,6 +20261,31 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#authNewEmail").focus();
       }
 
+      async function startEmailVerification() {
+        if (!currentUser?.email || currentUser.emailVerifiedAt) return;
+        const email = currentUser.email;
+        const resendTimerActive = authOtpState.email === email
+          && authOtpState.purpose === "signup"
+          && authOtpState.timerId
+          && authOtpState.timerMs > 0;
+        setAuthMode(false);
+        showAuth();
+        showOtpScreen(email, "signup", `Code sent to ${maskedEmail(email)}.`, undefined, false);
+        if (resendTimerActive) return;
+
+        $("#authOtpMessage").textContent = `Sending a code to ${maskedEmail(email)}.`;
+        try {
+          await api("/auth/resend-otp", {
+            method: "POST",
+            body: JSON.stringify({ email, purpose: "signup" }),
+          }, false);
+          resetOtpTimer();
+          $("#authOtpMessage").textContent = `Code sent to ${maskedEmail(email)}.`;
+        } catch (error) {
+          $("#authOtpError").textContent = authFriendlyError(error, "resend");
+        }
+      }
+
       function collectOtpCode() {
         return [...document.querySelectorAll("#authOtpCode input")].map((input) => input.value).join("");
       }
@@ -20088,9 +20356,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
           setAccessToken(result.accessToken);
           currentUser = result.user;
+          recordEmailVerificationSuccess();
           authDialog.close();
           hideOtpScreen();
           updateAccountUI();
+          showEmailVerificationSuccess();
           await Promise.all([renderFeed(), renderSide()]);
           connectRealtime();
           renderConversations();
@@ -20127,24 +20397,15 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       $("#authOtpChangeEmail").addEventListener("click", () => {
         showChangeEmailScreen();
       });
-      $("#emailVerificationStart").addEventListener("click", async () => {
-        if (!currentUser?.email || currentUser.emailVerifiedAt) return;
-        const email = currentUser.email;
-        setAuthMode(false);
-        showAuth();
-        showOtpScreen(email, "signup", `Code sent to ${maskedEmail(email)}.`);
-        try {
-          await api("/auth/resend-otp", {
-            method: "POST",
-            body: JSON.stringify({ email, purpose: "signup" }),
-          }, false);
-        } catch (error) {
-          $("#authOtpError").textContent = authFriendlyError(error, "resend");
+      $("#main").addEventListener("click", async (event) => {
+        const verify = event.target.closest("[data-email-verification-start], #settingsEmailVerify");
+        if (verify) {
+          await startEmailVerification();
+          return;
         }
-      });
-      $("#emailVerificationDismiss").addEventListener("click", () => {
-        verificationNoticeDismissed = true;
-        updateEmailVerificationNotice();
+        if (event.target.closest("[data-email-verification-dismiss]")) {
+          collapseEmailVerificationNotice(true);
+        }
       });
       $("#authChangeEmailCancel").addEventListener("click", () => {
         showOtpScreen(
@@ -20908,6 +21169,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (!requireAuth()) return;
         const explicitReelId = deepLinkedReelId;
         const currentView = $("[data-v]:not([hidden])")?.id?.replace(/^v-/, "");
+        clearTimeout(emailVerificationNoticeShowTimer);
+        emailVerificationNoticeShowTimer = null;
+        if (currentView !== v) removeEmailVerificationNoticeImmediately();
         const enteringGlobalReels = v === "reels" && !explicitReelId && currentView !== "reels";
         if (enteringGlobalReels) {
           const lastGlobalReelId = readLastGlobalReel();
@@ -20961,6 +21225,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $(".app").classList.toggle("thread-active", v === "thread");
         $(".app").classList.toggle("reels-active", v === "reels");
         $$("[data-v]").forEach((s) => (s.hidden = s.id !== "v-" + v));
+        updateEmailVerificationNotice();
         syncActiveReelRoom();
         const activeView = $(`#v-${v}`);
         const isOwnProfile = v === "profile"
@@ -20979,7 +21244,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             clearTimeout(exploreTimer);
             const search = pendingExploreSearch ?? $("#exploreSearch").value.trim();
             pendingExploreSearch = null;
-            renderExplore(search);
+            void renderExplore(search);
           } else {
             transitionContent(transitionTargetsForView(v), async () => {
               if (v === "profile") await renderProfile();
@@ -22030,6 +22295,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               e.target.elements.currentPassword.value = "";
               $("#settingsEmail").value = email;
               currentUser = { ...currentUser, email, emailVerifiedAt: null };
+              resetEmailVerificationNoticeForEmailChange();
               updateAccountUI();
               setAuthMode(false);
               $("#authEmail").value = email;
@@ -22048,7 +22314,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             $("#settingsEmailPassword").classList.remove("is-visible");
             syncSettingsEmail();
           } catch (requestError) { error.textContent = requestError.message || "Could not update email."; }
-          finally { setPendingButton(submit, false); submit.disabled = false; }
+          finally { setPendingButton(submit, false); syncSettingsEmail(); }
           return;
         }
         if (e.target.id === "settingsPasswordForm") {
