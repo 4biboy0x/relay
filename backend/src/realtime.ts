@@ -10,9 +10,14 @@ let io: Server | undefined;
 
 const presenceHeartbeatIntervalMs = 30_000;
 const presenceExpiryMs = 90_000;
+const presenceHeartbeatWrites = new Map<string, number>();
 
 const emitPresence = (userId: string, isOnline: boolean, lastSeen: Date): void => {
-  io?.emit("presence:update", { userId, isOnline, lastSeen: lastSeen.toISOString() });
+  io?.to(`presence:${userId}`).emit("presence:update", {
+    userId,
+    isOnline,
+    lastSeen: lastSeen.toISOString(),
+  });
 };
 
 const markStaleUsersOffline = async (): Promise<void> => {
@@ -24,7 +29,10 @@ const markStaleUsersOffline = async (): Promise<void> => {
       AND ("lastSeen" IS NULL OR "lastSeen" < ${staleBefore})
     RETURNING "id", "lastSeen"
   `);
-  staleUsers.forEach(({ id, lastSeen }) => emitPresence(id, false, lastSeen || new Date()));
+  staleUsers.forEach(({ id, lastSeen }) => {
+    presenceHeartbeatWrites.delete(id);
+    emitPresence(id, false, lastSeen || new Date());
+  });
 };
 
 export const initializeRealtime = (server: HttpServer): Server => {
@@ -76,6 +84,7 @@ export const initializeRealtime = (server: HttpServer): Server => {
     socket.join(`user:${userId}`);
     const connectedAt = new Date();
     socket.data.lastPresenceHeartbeatAt = Date.now();
+    presenceHeartbeatWrites.set(userId, connectedAt.getTime());
     void prisma.$executeRaw(Prisma.sql`
       UPDATE "User"
       SET "isOnline" = true, "lastSeen" = ${connectedAt}
@@ -86,16 +95,76 @@ export const initializeRealtime = (server: HttpServer): Server => {
       console.error("Could not mark user online", error);
     });
 
+    socket.data.watchedPresenceUserIds = [] as string[];
+    socket.on("presence:watch", async (requestedUserIds: unknown) => {
+      const now = Date.now();
+      const lastWatchAt = socket.data.lastPresenceWatchAt as number | undefined;
+      if (lastWatchAt && now - lastWatchAt < 1_000) return;
+      socket.data.lastPresenceWatchAt = now;
+
+      const parsed = z.array(z.string().cuid()).max(200).safeParse(requestedUserIds);
+      if (!parsed.success) return;
+      const requestedIds = [...new Set(parsed.data)].filter((id) => id !== userId);
+
+      try {
+        const allowedMembers = requestedIds.length
+          ? await prisma.conversationMember.findMany({
+            where: {
+              userId: { in: requestedIds },
+              conversation: { members: { some: { userId } } },
+            },
+            distinct: ["userId"],
+            select: { userId: true },
+          })
+          : [];
+        const allowedIds = allowedMembers.map(({ userId: memberId }) => memberId);
+        const allowedSet = new Set(allowedIds);
+        const watchedIds = socket.data.watchedPresenceUserIds as string[];
+
+        await Promise.all([
+          ...allowedIds.filter((id) => !watchedIds.includes(id))
+            .map((id) => socket.join(`presence:${id}`)),
+          ...watchedIds.filter((id) => !allowedSet.has(id))
+            .map((id) => socket.leave(`presence:${id}`)),
+        ]);
+        socket.data.watchedPresenceUserIds = allowedIds;
+
+        if (allowedIds.length === 0) return;
+        const users = await prisma.user.findMany({
+          where: { id: { in: allowedIds } },
+          select: { id: true, isOnline: true, lastSeen: true },
+        });
+        const snapshotAt = Date.now();
+        socket.emit("presence:snapshot", users.map((presence) => ({
+          userId: presence.id,
+          isOnline: Boolean(
+            presence.isOnline
+            && presence.lastSeen
+            && snapshotAt - presence.lastSeen.getTime() >= 0
+            && snapshotAt - presence.lastSeen.getTime() <= presenceExpiryMs,
+          ),
+          lastSeen: presence.lastSeen?.toISOString() || null,
+        })));
+      } catch (error) {
+        console.error("Could not subscribe to conversation presence", error);
+      }
+    });
+
     socket.on("presence:heartbeat", () => {
       const now = Date.now();
       const lastHeartbeatAt = socket.data.lastPresenceHeartbeatAt as number;
       if (now - lastHeartbeatAt < presenceHeartbeatIntervalMs - 5_000) return;
       socket.data.lastPresenceHeartbeatAt = now;
+      const lastUserWriteAt = presenceHeartbeatWrites.get(userId) || 0;
+      if (now - lastUserWriteAt < presenceHeartbeatIntervalMs - 5_000) return;
+      presenceHeartbeatWrites.set(userId, now);
       void prisma.$executeRaw(Prisma.sql`
         UPDATE "User"
         SET "lastSeen" = ${new Date(now)}
         WHERE "id" = ${userId} AND "isOnline" = true
-      `).catch((error: unknown) => {
+      `).then((updated) => {
+        if (updated) emitPresence(userId, true, new Date(now));
+      }).catch((error: unknown) => {
         console.error("Could not refresh user presence", error);
       });
     });
@@ -108,9 +177,14 @@ export const initializeRealtime = (server: HttpServer): Server => {
         const updated = await prisma.$executeRaw(Prisma.sql`
           UPDATE "User"
           SET "isOnline" = false, "lastSeen" = ${lastSeen}
-          WHERE "id" = ${userId} AND "isOnline" = true
+          WHERE "id" = ${userId}
+            AND "isOnline" = true
+            AND "lastSeen" <= ${new Date(socket.data.lastPresenceHeartbeatAt as number)}
         `);
-        if (updated) emitPresence(userId, false, lastSeen);
+        if (updated) {
+          presenceHeartbeatWrites.delete(userId);
+          emitPresence(userId, false, lastSeen);
+        }
       })().catch((error: unknown) => {
         console.error("Could not mark user offline", error);
       });

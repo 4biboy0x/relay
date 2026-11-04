@@ -10526,6 +10526,7 @@
       let socketClientPromise = null;
       let presenceHeartbeatTimer = null;
       const presenceByUser = new Map();
+      const presenceExpiryMs = 90_000;
       const joinedPostRoomIds = new Set();
       let typingSent = false;
       let typingStopTimer = null;
@@ -10889,9 +10890,15 @@
       };
       const isUserOnline = (user) => {
         const livePresence = presenceByUser.get(user?.id);
-        if (livePresence) return livePresence.isOnline;
+        if (livePresence) {
+          const lastSeenAt = livePresence.lastSeen ? new Date(livePresence.lastSeen).getTime() : NaN;
+          const age = Date.now() - lastSeenAt;
+          return livePresence.isOnline && Number.isFinite(lastSeenAt) && age >= 0 && age <= presenceExpiryMs;
+        }
         if (!user?.isOnline) return false;
-        return !user.lastSeen || Date.now() - new Date(user.lastSeen).getTime() <= 90_000;
+        const lastSeenAt = user.lastSeen ? new Date(user.lastSeen).getTime() : NaN;
+        const age = Date.now() - lastSeenAt;
+        return Number.isFinite(lastSeenAt) && age >= 0 && age <= presenceExpiryMs;
       };
       const presenceAvatarMarkup = (user, size = "") => {
         const hasUser = Boolean(user?.id);
@@ -11068,6 +11075,7 @@
             presenceHeartbeatTimer = window.setInterval(() => {
               if (socket?.connected) socket.emit("presence:heartbeat");
             }, 30_000);
+            syncPresenceSubscriptions();
             if (streamController) streamController.abort();
             streamController = null;
             if (activeConversation) socket.emit("conversation:join", activeConversation.id);
@@ -11114,6 +11122,7 @@
           });
           socket.on("profile:updated", receiveProfileUpdate);
           socket.on("presence:update", receivePresenceUpdate);
+          socket.on("presence:snapshot", receivePresenceSnapshot);
           socket.on("message:new", receiveMessage);
           socket.on("message:updated", receiveMessageUpdated);
           socket.on("message:deleted", receiveMessageDeleted);
@@ -17387,17 +17396,29 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function receivePresenceUpdate(presence) {
         if (!presence || typeof presence.userId !== "string") return;
+        const lastSeen = typeof presence.lastSeen === "string" ? presence.lastSeen : null;
+        const previous = presenceByUser.get(presence.userId);
+        const previousLastSeenAt = previous?.lastSeen ? new Date(previous.lastSeen).getTime() : NaN;
+        const incomingLastSeenAt = lastSeen ? new Date(lastSeen).getTime() : NaN;
+        if (Number.isFinite(previousLastSeenAt)
+          && (!Number.isFinite(incomingLastSeenAt) || incomingLastSeenAt < previousLastSeenAt)) return;
         const state = {
-          isOnline: Boolean(presence.isOnline),
-          lastSeen: presence.lastSeen || null,
+          isOnline: presence.isOnline === true,
+          lastSeen,
         };
         presenceByUser.set(presence.userId, state);
         if (presenceByUser.size > 2000) {
           presenceByUser.delete(presenceByUser.keys().next().value);
         }
-        const online = state.isOnline;
+        updatePresenceElements(presence.userId, isUserOnline({ id: presence.userId }));
+      }
+      function receivePresenceSnapshot(snapshot) {
+        if (!Array.isArray(snapshot)) return;
+        snapshot.forEach(receivePresenceUpdate);
+      }
+      function updatePresenceElements(userId, online) {
         $$("[data-presence-user]").forEach((element) => {
-          if (element.dataset.presenceUser !== presence.userId) return;
+          if (element.dataset.presenceUser !== userId) return;
           element.dataset.online = String(online);
           const dot = element.querySelector("[data-presence-dot]");
           if (dot) {
@@ -17405,6 +17426,24 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
         });
       }
+      function syncPresenceSubscriptions() {
+        if (!socket?.connected) return;
+        const userIds = [...new Set(
+          $$("#v-messages [data-presence-user]")
+            .map((element) => element.dataset.presenceUser)
+            .filter(Boolean),
+        )].slice(0, 200);
+        socket.emit("presence:watch", userIds);
+      }
+      window.setInterval(() => {
+        presenceByUser.forEach((state, userId) => {
+          const lastSeenAt = state.lastSeen ? new Date(state.lastSeen).getTime() : NaN;
+          const age = Date.now() - lastSeenAt;
+          if (!state.isOnline || (Number.isFinite(lastSeenAt) && age >= 0 && age <= presenceExpiryMs)) return;
+          state.isOnline = false;
+          updatePresenceElements(userId, false);
+        });
+      }, 15_000);
       let voiceRecorder = null;
       let voiceRecordingFinalizing = false;
       let voiceChunks = [];
@@ -19408,6 +19447,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             writeViewCache("messages", $("#conversationList").innerHTML);
             if ($("#conversationSearch").value.trim()) searchConversations();
             else filterConversations();
+            syncPresenceSubscriptions();
             const unread = conversations.reduce((total, item) => total + item.unreadCount, 0);
             setUnreadBadge($("#mbadge"), unread, "messages");
           } catch (error) {
