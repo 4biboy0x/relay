@@ -602,7 +602,6 @@
         background: var(--surface-2);
       }
       .account-menu,
-      .recipient-menu,
       .choice-menu,
       .composer-popover {
         border-color: var(--border);
@@ -1329,7 +1328,6 @@
         height: 14px;
         flex: none;
       }
-      .recipient-menu,
       .choice-menu {
         position: fixed;
         z-index: 20;
@@ -1571,7 +1569,6 @@
         font-size: 14px;
         font-weight: 700;
       }
-      .recipient-menu,
       .choice-menu {
         width: min(280px, calc(100vw - 16px));
         padding: 8px;
@@ -1868,7 +1865,8 @@
         backdrop-filter: blur(3px);
       }
       .legal-dialog,
-      .cookie-settings-dialog {
+      .cookie-settings-dialog,
+      .new-message-dialog {
         box-sizing: border-box;
         width: calc(100% - 32px);
         max-height: calc(100dvh - 32px);
@@ -1884,26 +1882,30 @@
         transition: opacity 150ms ease, transform 150ms ease;
       }
       .legal-dialog[open],
-      .cookie-settings-dialog[open] {
+      .cookie-settings-dialog[open],
+      .new-message-dialog[open] {
         display: flex;
         flex-direction: column;
         opacity: 1;
         transform: translateY(0);
       }
       .legal-dialog.is-closing,
-      .cookie-settings-dialog.is-closing {
+      .cookie-settings-dialog.is-closing,
+      .new-message-dialog.is-closing {
         opacity: 0;
         transform: translateY(8px);
       }
       .legal-dialog::backdrop,
-      .cookie-settings-dialog::backdrop {
+      .cookie-settings-dialog::backdrop,
+      .new-message-dialog::backdrop {
         background: rgba(9, 9, 11, .5);
         backdrop-filter: blur(4px);
         transition: background-color 150ms ease, backdrop-filter 150ms ease;
       }
       @starting-style {
         .legal-dialog[open],
-        .cookie-settings-dialog[open] {
+        .cookie-settings-dialog[open],
+        .new-message-dialog[open] {
           opacity: 0;
           transform: translateY(8px);
         }
@@ -1911,6 +1913,81 @@
       body.has-open-policy-dialog { overflow: hidden; }
       .legal-dialog { max-width: 720px; max-height: min(86dvh, 820px); }
       .cookie-settings-dialog { max-width: 480px; }
+      .new-message-dialog {
+        width: min(640px, calc(100vw - 32px));
+        max-width: none;
+        height: min(720px, calc(100dvh - 48px));
+        max-height: calc(100dvh - 48px);
+      }
+      .new-message-dialog .cookie-settings-heading { padding: 14px 20px; }
+      .new-message-dialog .cookie-settings-heading h2 { font-size: 18px; }
+      .new-message-search {
+        display: flex;
+        min-height: 52px;
+        flex: none;
+        align-items: center;
+        gap: 8px;
+        padding: 0 20px;
+        border-bottom: 1px solid var(--border);
+        color: var(--text-2);
+        font-size: 14px;
+      }
+      .new-message-search input {
+        width: 100%;
+        min-width: 0;
+        border: 0;
+        outline: 0;
+        color: var(--text);
+        background: transparent;
+        font: inherit;
+        font-size: 14px;
+      }
+      .new-message-search input::placeholder { color: var(--text-3); }
+      .new-message-search:has(input:focus-visible) {
+        outline: 2px solid var(--accent);
+        outline-offset: -2px;
+      }
+      .new-message-recipient-list {
+        min-height: 0;
+        flex: 1;
+        overflow-x: hidden;
+        overflow-y: auto;
+        padding: 8px 12px;
+        overscroll-behavior: contain;
+      }
+      .new-message-recipient-list[aria-busy="true"] { pointer-events: none; }
+      .new-message-recipient-list .recipient-option {
+        min-height: 56px;
+        padding: 8px 12px;
+        text-align: start;
+      }
+      .new-message-recipient-list .recipient-option[aria-selected="true"],
+      .new-message-recipient-list .recipient-option:focus-visible {
+        outline: none;
+        background: var(--surface-2);
+      }
+      .new-message-recipient-list .user-search-copy b { font-size: 14px; }
+      .new-message-empty {
+        margin: 0;
+        padding: 14px 12px;
+        color: var(--text-2);
+        font-size: 14px;
+      }
+      .new-message-empty[hidden] { display: none; }
+      @media (max-width: 640px) {
+        .new-message-dialog {
+          inset: 0;
+          width: 100%;
+          height: 100dvh;
+          max-height: 100dvh;
+          margin: 0;
+          border: 0;
+          border-radius: 0;
+        }
+        .new-message-dialog .cookie-settings-heading { padding-inline: 16px; }
+        .new-message-search { padding-inline: 16px; }
+        .new-message-recipient-list { padding-inline: 8px; }
+      }
       .legal-heading,
       .cookie-settings-heading {
         display: flex;
@@ -2286,12 +2363,14 @@
       @media (prefers-reduced-motion: reduce) {
         .legal-dialog,
         .cookie-settings-dialog,
+        .new-message-dialog,
         .legal-scroll-shell::before,
         .legal-scroll-shell::after,
         .cookie-switch,
         .cookie-switch::after { transition: none; }
         .legal-dialog[open],
-        .cookie-settings-dialog[open] { transform: none; }
+        .cookie-settings-dialog[open],
+        .new-message-dialog[open] { transform: none; }
       }
       @media print {
         body.has-open-policy-dialog { overflow: visible; }
@@ -5404,8 +5483,7 @@
         background: transparent;
         transition: background-color 140ms ease, border-color 140ms ease;
       }
-      #startConversation:hover,
-      #startConversation[aria-expanded="true"] {
+      #startConversation:hover {
         border-color: var(--border);
         background: var(--surface-2);
       }
@@ -5511,14 +5589,6 @@
       }
       .recipient-picker {
         position: relative;
-      }
-      .recipient-menu {
-        display: flex;
-        max-height: min(320px, calc(100dvh - 16px));
-        flex-direction: column;
-      }
-      .recipient-menu[hidden] {
-        display: none;
       }
       .recipient-search {
         position: sticky;
@@ -9455,22 +9525,12 @@
               <header class="conversation-list-header">
                 <h2>Inbox</h2>
                 <div class="recipient-picker">
-                  <button id="startConversation" type="button" aria-label="New chat" title="New chat" aria-expanded="false" aria-haspopup="listbox" aria-controls="recipientMenu">
+                  <button id="startConversation" type="button" aria-label="New message" title="New message" aria-haspopup="dialog" aria-controls="newMessageDialog">
                     <span class="conversation-new-icon" aria-hidden="true">
                       <svg class="i"><use href="#msg"></use></svg>
                       <span class="conversation-new-plus"><svg class="i"><use href="#plus"></use></svg></span>
                     </span>
                   </button>
-                  <div class="recipient-menu" id="recipientMenu" role="listbox" aria-label="Choose a recipient" hidden>
-                    <div class="recipient-search">
-                      <input id="recipientSearch" type="search" placeholder="Search people" autocomplete="off" />
-                      <button class="dismiss-btn search-input-clear" type="button" data-search-clear="recipientSearch" aria-label="Clear people search" hidden>
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>
-                      </button>
-                    </div>
-                    <div id="recipientOptions"></div>
-                    <div class="conversation-search-empty" id="recipientEmpty" hidden></div>
-                  </div>
                 </div>
               </header>
               <label class="conversation-search">
@@ -9886,6 +9946,20 @@
         <small>Last updated 31 Oct 2026</small>
         <button class="btn btn-primary" type="button" data-close-legal>Close</button>
       </footer>
+    </dialog>
+    <dialog class="cookie-settings-dialog new-message-dialog" id="newMessageDialog" role="dialog" aria-modal="true" aria-labelledby="newMessageTitle" tabindex="-1">
+      <header class="cookie-settings-heading">
+        <h2 id="newMessageTitle">New message</h2>
+        <button class="cookie-settings-close" type="button" data-close-new-message aria-label="Close New message">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>
+        </button>
+      </header>
+      <label class="new-message-search" for="recipientSearch">
+        <span>To:</span>
+        <input id="recipientSearch" type="search" placeholder="Name or @handle" autocomplete="off" autofocus role="combobox" aria-autocomplete="list" aria-controls="recipientOptions" aria-expanded="false" />
+      </label>
+      <div class="new-message-recipient-list" id="recipientOptions" role="listbox" aria-label="People" aria-busy="false"></div>
+      <p class="new-message-empty" id="recipientEmpty" role="status" hidden></p>
     </dialog>
     <dialog class="cookie-settings-dialog" id="cookieSettingsDialog" role="dialog" aria-modal="true" aria-labelledby="cookieSettingsTitle" tabindex="-1">
       <header class="cookie-settings-heading">
@@ -10708,6 +10782,7 @@
       let directorySearchGeneration = 0;
       let recipientSearchTimer = null;
       let recipientSearchGeneration = 0;
+      let recipientSearchController = null;
       const apiOrigin = new URL(API_BASE).origin;
       const mediaHref = (url) => url ? new URL(url, API_BASE).href : "";
       const isGiphyEmbedUrl = (value) => {
@@ -11679,8 +11754,6 @@
         }
         const stickerPicker = $("#messageStickerPicker");
         if (!stickerPicker.hidden) positionComposerPopover(stickerPicker, $("#messageStickerButton"));
-        const menu = $("#recipientMenu");
-        if (!menu.hidden) positionFloatingMenu($("#startConversation"), menu);
         const accountMenu = $("#accountMenu");
         if (!accountMenu.hidden) positionFloatingMenu($("#accountTrigger"), accountMenu);
         $$(".choice-menu:not([hidden])").forEach((choiceMenu) => {
@@ -15813,63 +15886,93 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       const fbtn = (person) =>
         `<button type="button" class="follow-button ${person.viewerFollows ? "btn-line" : "btn-dark"}" data-fol="${esc(person.id)}" aria-label="${person.viewerFollows ? "Following" : person.followsYou ? "Follow back" : "Follow"}" aria-pressed="${!!person.viewerFollows}"><span class="follow-label">${person.viewerFollows ? "Following" : person.followsYou ? "Follow back" : "Follow"}</span>${person.viewerFollows ? '<span class="follow-unfollow" aria-hidden="true">Unfollow</span>' : ""}</button>`;
       function renderRecipientOptions() {
-        $("#recipientOptions").innerHTML = "";
-        $("#recipientEmpty").hidden = true;
-        if (!$("#recipientSearch").value.trim()) {
-          $("#recipientOptions").innerHTML = '<div class="recipient-hint">Search by name or username.</div>';
-        }
+        const results = $("#recipientOptions");
+        const empty = $("#recipientEmpty");
+        const recentPeople = conversations
+          .map((conversation) => conversation.members?.find((member) => member.id !== currentUser?.id))
+          .filter((person) => person?.id);
+        const followedPeople = people.filter((person) => person.viewerFollows && person.id !== currentUser?.id);
+        const recentIds = new Set(recentPeople.map((person) => person.id));
+        const groups = [
+          { label: "Recent conversations", people: [...new Map(recentPeople.map((person) => [person.id, person])).values()] },
+          { label: "People you follow", people: followedPeople.filter((person) => !recentIds.has(person.id)) },
+        ].filter((group) => group.people.length);
+        results.innerHTML = groups.map(({ label, people: entries }) =>
+          `<div role="group" aria-label="${label}"><div class="recipient-hint">${label}</div>${entries.map((person) =>
+            `<button class="recipient-option" type="button" role="option" aria-selected="false" data-recipient-id="${esc(person.id)}">${avatarMarkup(person, "sm")}<span class="user-search-copy"><b>${esc(person.displayName)}</b><small>@${esc(person.handle)}</small></span></button>`,
+          ).join("")}</div>`,
+        ).join("");
+        empty.hidden = groups.length > 0;
+        empty.textContent = groups.length ? "" : "No people found";
+        $("#recipientSearch").setAttribute("aria-expanded", String(groups.length > 0));
       }
       async function searchRecipients(rawQuery) {
         const query = rawQuery.trim().replace(/^@/, "");
         const generation = ++recipientSearchGeneration;
         const results = $("#recipientOptions");
+        recipientSearchController?.abort();
+        recipientSearchController = new AbortController();
+        const controller = recipientSearchController;
         cancelDelayedPlaceholder(results);
         if (!query) {
           renderRecipientOptions();
-          positionFloatingMenu($("#startConversation"), $("#recipientMenu"));
           return;
         }
-        const hadResults = Boolean(results.querySelector(".recipient-option"));
-        if (!hadResults) results.replaceChildren();
-        const finishSkeleton = hadResults ? () => Promise.resolve() : showDelayedSkeleton(results, "person", { count: 2, label: "people" });
+        results.replaceChildren();
+        results.setAttribute("aria-busy", "true");
+        $("#recipientSearch").setAttribute("aria-expanded", "false");
         $("#recipientEmpty").hidden = true;
+        const finishSkeleton = showDelayedSkeleton(results, "person", { count: 2, label: "people" });
         try {
-          const result = await api(`/users/directory?q=${encodeURIComponent(query)}`);
-          if (generation !== recipientSearchGeneration || $("#recipientSearch").value.trim().replace(/^@/, "") !== query) return;
+          const result = await api(`/users/directory?q=${encodeURIComponent(query)}`, { signal: controller.signal });
+          if (generation !== recipientSearchGeneration || !newMessageDialog.open
+            || $("#recipientSearch").value.trim().replace(/^@/, "") !== query) return;
           await finishSkeleton();
           if (generation !== recipientSearchGeneration) return;
           people = [...new Map([...result.items, ...people].map((person) => [person.id, person])).values()];
-          results.innerHTML = result.items.map((person) =>
-            `<button class="recipient-option" type="button" role="option" data-recipient-id="${esc(person.id)}">${avatarMarkup(person, "sm")}<span class="user-search-copy"><b>${esc(person.displayName)}</b><small>@${esc(person.handle)}</small></span></button>`,
+          const matches = result.items.filter((person) => person.id !== currentUser?.id);
+          results.innerHTML = matches.map((person) =>
+            `<button class="recipient-option" type="button" role="option" aria-selected="false" data-recipient-id="${esc(person.id)}">${avatarMarkup(person, "sm")}<span class="user-search-copy"><b>${esc(person.displayName)}</b><small>@${esc(person.handle)}</small></span></button>`,
           ).join("");
-          $("#recipientEmpty").hidden = result.items.length > 0;
-          if (!result.items.length) $("#recipientEmpty").innerHTML = emptyState("No matching people.", "Try a different search.", true);
-          positionFloatingMenu($("#startConversation"), $("#recipientMenu"));
+          $("#recipientEmpty").hidden = matches.length > 0;
+          $("#recipientEmpty").textContent = matches.length ? "" : "No people found";
+          $("#recipientSearch").setAttribute("aria-expanded", String(matches.length > 0));
         } catch (error) {
+          await finishSkeleton();
+          if (generation !== recipientSearchGeneration || controller.signal.aborted) return;
+          results.replaceChildren();
+          $("#recipientSearch").setAttribute("aria-expanded", "false");
+          $("#recipientEmpty").textContent = error.message || "Could not load people.";
+          $("#recipientEmpty").hidden = false;
+        } finally {
           if (generation === recipientSearchGeneration) {
-            await finishSkeleton();
-            if (generation !== recipientSearchGeneration) return;
-            $("#recipientOptions").innerHTML = `<div class="recipient-hint">${esc(error.message)}</div>`;
-            $("#recipientEmpty").hidden = true;
+            results.setAttribute("aria-busy", "false");
           }
         }
       }
-      function toggleRecipientMenu(open) {
-        const trigger = $("#startConversation");
-        const menu = $("#recipientMenu");
-        const shouldOpen = open ?? menu.hidden;
-        menu.hidden = !shouldOpen;
-        trigger.setAttribute("aria-expanded", String(shouldOpen));
-        if (shouldOpen) {
-          $("#recipientSearch").value = "";
-          renderRecipientOptions();
-          positionFloatingMenu(trigger, menu);
-          $("#recipientSearch").focus();
-        }
+      function invalidateRecipientSearch() {
+        clearTimeout(recipientSearchTimer);
+        recipientSearchGeneration += 1;
+        recipientSearchController?.abort();
+        recipientSearchController = null;
+        cancelDelayedPlaceholder($("#recipientOptions"));
+        $("#recipientOptions").setAttribute("aria-busy", "false");
+      }
+      function openNewMessageDialog(trigger) {
+        if (!requireAuth() || newMessageDialog.open) return;
+        invalidateRecipientSearch();
+        $("#recipientSearch").value = "";
+        renderRecipientOptions();
+        openPolicyDialog(newMessageDialog, trigger);
+        requestAnimationFrame(() => $("#recipientSearch").focus());
+      }
+      function closeNewMessageDialog() {
+        invalidateRecipientSearch();
+        closePolicyDialog(newMessageDialog);
       }
       async function chooseRecipient(userId) {
         if (!userId || !requireAuth()) return;
-        toggleRecipientMenu(false);
+        closeNewMessageDialog();
         try {
           const existing = conversations.find((conversation) =>
             conversation.members?.some((member) => member.id === userId)
@@ -19609,7 +19712,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function clearConversationTransientUi() {
         closeMessageActionMenus();
         cancelMessageEditing({ restoreDraft: false });
-        toggleRecipientMenu(false);
+        closeNewMessageDialog();
         clearTimeout(typingStopTimer);
         typingStopTimer = null;
         const chatLog = $("#chatLog");
@@ -21741,7 +21844,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         if (!e.target.closest("#autocompleteMenu") && !isAutocompleteInput(e.target)) closeAutocomplete();
         if (!e.target.closest("#accountMenu, #accountTrigger")) closeAccountMenu();
-        if (!e.target.closest("#recipientMenu, #startConversation")) toggleRecipientMenu(false);
         if (!e.target.closest("[data-choice-control]")) {
           $$(".choice-menu:not([hidden])").forEach((menu) => toggleChoiceMenu(menu.closest("[data-choice-control]").querySelector(".choice-trigger"), false));
         }
@@ -22052,7 +22154,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           return;
         }
         if (e.target.closest("#startConversation, #emptyNewChat")) {
-          toggleRecipientMenu();
+          openNewMessageDialog(e.target.closest("#startConversation, #emptyNewChat"));
           return;
         }
         const recipient = e.target.closest("[data-recipient-id]");
@@ -22988,7 +23090,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (e.key === "Escape") {
           closeAccountMenu();
           closePostMenus();
-          toggleRecipientMenu(false);
+          if (newMessageDialog.open) closeNewMessageDialog();
           $$(".choice-menu:not([hidden])").forEach((menu) => toggleChoiceMenu(menu.closest("[data-choice-control]").querySelector(".choice-trigger"), false));
           closeComposerPopover($("#emojiPicker"), activeComposerPopover?.popover === $("#emojiPicker")
             ? activeComposerPopover.trigger
@@ -23305,17 +23407,38 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       });
       $("#recipientSearch").addEventListener("input", () => {
         clearTimeout(recipientSearchTimer);
+        recipientSearchGeneration += 1;
+        recipientSearchController?.abort();
+        recipientSearchController = null;
         cancelDelayedPlaceholder($("#recipientOptions"));
         const query = $("#recipientSearch").value;
-        if (!query.trim()) searchRecipients("");
-        else recipientSearchTimer = setTimeout(() => searchRecipients(query), 220);
+        $("#recipientOptions").replaceChildren();
+        $("#recipientOptions").setAttribute("aria-busy", "false");
+        $("#recipientEmpty").hidden = true;
+        $("#recipientSearch").setAttribute("aria-expanded", "false");
+        if (!query.trim()) renderRecipientOptions();
+        else recipientSearchTimer = setTimeout(() => searchRecipients(query), 300);
       });
       $("#recipientSearch").addEventListener("keydown", (event) => {
         if (event.key === "Enter") {
           event.preventDefault();
           const first = $("[data-recipient-id]", $("#recipientOptions"));
           if (first) chooseRecipient(first.dataset.recipientId);
+        } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+          const options = $$("[data-recipient-id]", $("#recipientOptions"));
+          if (!options.length) return;
+          event.preventDefault();
+          options[event.key === "ArrowDown" ? 0 : options.length - 1].focus();
         }
+      });
+      $("#recipientOptions").addEventListener("keydown", (event) => {
+        if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+        const options = $$("[data-recipient-id]", $("#recipientOptions"));
+        const currentIndex = options.indexOf(event.target.closest("[data-recipient-id]"));
+        if (currentIndex < 0 || !options.length) return;
+        event.preventDefault();
+        const nextIndex = (currentIndex + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length;
+        options[nextIndex].focus();
       });
       $("#conversationSearch").addEventListener("input", searchConversations);
       $("#conversationSearch").addEventListener("keydown", (event) => {
@@ -23520,6 +23643,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       const cookieConsentStorageKey = "relay_cookie_consent";
       const legalDialog = $("#legalDialog");
       const cookieSettingsDialog = $("#cookieSettingsDialog");
+      const newMessageDialog = $("#newMessageDialog");
       const dialogFocusTriggers = new WeakMap();
       const legalScrollPositions = new Map();
       const legalTocStates = new Map();
@@ -23532,7 +23656,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function syncPolicyDialogScrollLock() {
         document.body.classList.toggle(
           "has-open-policy-dialog",
-          legalDialog.open || cookieSettingsDialog.open,
+          legalDialog.open || cookieSettingsDialog.open || newMessageDialog.open,
         );
       }
       function openPolicyDialog(dialog, trigger = document.activeElement) {
@@ -23544,6 +23668,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function closePolicyDialog(dialog) {
         if (!dialog.open || dialog.classList.contains("is-closing")) return;
+        if (dialog === newMessageDialog) invalidateRecipientSearch();
         if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
           dialog.close();
           return;
@@ -23553,7 +23678,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (dialog.open) dialog.close();
         }, 150);
       }
-      [legalDialog, cookieSettingsDialog].forEach((dialog) => {
+      [legalDialog, cookieSettingsDialog, newMessageDialog].forEach((dialog) => {
         dialog.addEventListener("cancel", (event) => {
           event.preventDefault();
           closePolicyDialog(dialog);
@@ -23569,7 +23694,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
           if (event.key !== "Tab") return;
           const focusable = [...dialog.querySelectorAll(
-            'a[href], button:not(:disabled), [tabindex]:not([tabindex="-1"])',
+            'a[href], button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex="-1"])',
           )].filter((element) => element.getClientRects().length > 0);
           if (!focusable.length) {
             event.preventDefault();
@@ -23854,6 +23979,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       });
       $$("[data-close-cookie-settings]").forEach((button) => {
         button.addEventListener("click", () => closePolicyDialog(cookieSettingsDialog));
+      });
+      $$("[data-close-new-message]").forEach((button) => {
+        button.addEventListener("click", closeNewMessageDialog);
       });
       $$("[data-cookie-choice]").forEach((button) => {
         button.addEventListener("click", () => {
