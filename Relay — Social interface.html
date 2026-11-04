@@ -19053,6 +19053,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         pendingRow.dataset.senderId = confirmedRow.dataset.senderId || pendingRow.dataset.senderId;
         pendingRow.dataset.replyToId = confirmedRow.dataset.replyToId || "";
         updateMessageRowSpacing($("#chatLog"));
+        bindMessageMediaScroll(pendingRow);
         scrollMessageListToBottom(false);
       }
       function reconcileMatchingPendingMessage(message) {
