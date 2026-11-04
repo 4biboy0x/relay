@@ -5701,41 +5701,33 @@
       .conversation-search-tabs {
         display: flex;
         flex: none;
-        gap: 18px;
+        gap: 0;
         margin: -2px 12px 8px;
         border-bottom: 1px solid var(--border);
       }
       .conversation-search-tabs[hidden] {
         display: none;
       }
-      .conversation-search-tab {
-        position: relative;
+      .conversation-search-tabs > .tab {
         min-height: 38px;
-        padding: 0 2px;
-        color: var(--text-3);
-        font-size: 12px;
-        font-weight: 600;
-        transition: color 140ms ease;
+        padding: 10px 0;
       }
-      .conversation-search-tab:hover {
-        color: var(--text);
-        background: transparent;
-      }
-      .conversation-search-tab[aria-selected="true"] {
-        color: var(--text);
-      }
-      .conversation-search-tab[aria-selected="true"]::after {
-        position: absolute;
-        right: 0;
-        bottom: -1px;
-        left: 0;
-        height: 2px;
-        border-radius: 2px;
-        background: var(--accent);
-        content: "";
+      .conversation-search-tabs > .tab[aria-selected="true"]::after {
+        inset-inline: 0;
+        width: auto;
+        margin: 0;
       }
       .conversation-search-results[hidden] {
         display: none;
+      }
+      .conversation-search-new {
+        margin-top: 24px;
+      }
+      #conversationList > .empty-state > .conversation-search-new {
+        margin-top: 8px;
+      }
+      #conversationSearchEmpty > .conversation-search-new {
+        align-self: center;
       }
       .recipient-picker {
         position: relative;
@@ -10109,9 +10101,9 @@
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>
                 </button>
               </label>
-              <div class="conversation-search-tabs" id="conversationSearchTabs" role="tablist" aria-label="Message search results" hidden>
-                <button class="conversation-search-tab" id="conversationSearchTab" type="button" role="tab" aria-selected="true" aria-controls="conversationList" data-conversation-search-mode="conversations">Conversations</button>
-                <button class="conversation-search-tab" id="messageSearchTab" type="button" role="tab" aria-selected="false" aria-controls="messageSearchResults" data-conversation-search-mode="messages">Messages (0)</button>
+              <div class="tabs conversation-search-tabs" id="conversationSearchTabs" role="tablist" aria-label="Message search results" hidden>
+                <button class="tab" id="conversationSearchTab" type="button" role="tab" aria-selected="true" aria-controls="conversationList" data-conversation-search-mode="conversations">Conversations</button>
+                <button class="tab" id="messageSearchTab" type="button" role="tab" aria-selected="false" aria-controls="messageSearchResults" data-conversation-search-mode="messages">Messages</button>
               </div>
               <div class="conversation-list" id="conversationList" data-transition-content role="tabpanel" aria-labelledby="conversationSearchTab" aria-label="Conversations"></div>
               <div class="conversation-list conversation-search-results" id="messageSearchResults" data-transition-content aria-label="Matching messages" role="tabpanel" aria-labelledby="messageSearchTab" hidden></div>
@@ -11003,6 +10995,8 @@
         );
       const emptyState = (title, subtitle = "", compact = false, icon = "search") =>
         `<div class="empty-state${compact ? " empty-state-compact" : ""}" role="status">${ic(icon)}<strong>${esc(String(title))}</strong>${subtitle ? `<span>${esc(String(subtitle))}</span>` : ""}</div>`;
+      const conversationSearchNewMarkup = () =>
+        `<button class="btn btn-line conversation-search-new post-live-in" type="button" data-new-conversation-search aria-haspopup="dialog" aria-controls="newMessageDialog"><span class="conversation-new-icon" aria-hidden="true"><svg class="i"><use href="#msg"></use></svg><span class="conversation-new-plus"><svg class="i"><use href="#plus"></use></svg></span></span>New conversation</button>`;
       const conversationStartMarkup = () =>
         `<div class="conversation-start-empty"><span class="conversation-start-icon" aria-hidden="true">${ic("msg")}</span><h2>Start Conversation</h2><p>Choose from your existing conversations, or start a new one.</p><button class="conversation-start-action" id="emptyNewChat" type="button">New chat</button></div>`;
       const fmt = (n) =>
@@ -11176,6 +11170,7 @@
       let posts = [];
       let people = [];
       let conversations = [];
+      let conversationsLoaded = false;
       let activeConversation = null;
       let draftConversationRecipientId = "";
       let messageSubmissionPending = false;
@@ -11715,6 +11710,7 @@
         socket = null;
         clearTypingUsers();
         conversations = [];
+        conversationsLoaded = false;
         activeConversation = null;
         draftConversationRecipientId = "";
         selectedMessageReply = null;
@@ -16631,12 +16627,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         cancelDelayedPlaceholder($("#recipientOptions"));
         $("#recipientOptions").setAttribute("aria-busy", "false");
       }
-      function openNewMessageDialog(trigger) {
+      function openNewMessageDialog(trigger, initialQuery = "") {
         if (!requireAuth() || newMessageDialog.open) return;
         invalidateRecipientSearch();
-        $("#recipientSearch").value = "";
+        $("#recipientSearch").value = initialQuery;
         renderRecipientOptions();
         openPolicyDialog(newMessageDialog, trigger);
+        if (initialQuery) $("#recipientSearch").dispatchEvent(new Event("input", { bubbles: true }));
         requestAnimationFrame(() => $("#recipientSearch").focus());
       }
       function closeNewMessageDialog() {
@@ -20523,19 +20520,40 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function filterConversations() {
         const terms = normalizedConversationQuery($("#conversationSearch").value);
+        const conversationList = $("#conversationList");
+        const empty = $("#conversationSearchEmpty");
+        if (!conversationsLoaded) {
+          empty.hidden = true;
+          return;
+        }
+        if (!conversations.length) {
+          if (terms.length) {
+            conversationList.hidden = true;
+            empty.innerHTML = conversationSearchNewMarkup();
+            empty.hidden = false;
+          } else {
+            conversationList.hidden = false;
+            empty.hidden = true;
+            const state = conversationList.querySelector(":scope > .empty-state");
+            if (state && !state.querySelector("[data-new-conversation-search]")) {
+              state.insertAdjacentHTML("beforeend", conversationSearchNewMarkup());
+            }
+          }
+          return;
+        }
         const items = $$(".conversation-item", $("#conversationList"));
         if (!items.length) {
           renderConversationItems([], terms.join(" "));
-          $("#conversationSearchEmpty").hidden = true;
+          empty.hidden = true;
           return;
         }
         items.forEach((item) => {
           item.hidden = !terms.every((term) => item.dataset.search.includes(term));
         });
-        $("#conversationSearchEmpty").innerHTML = emptyState("No matching conversations.", "Try a different search or filter.", true);
+        empty.innerHTML = emptyState("No matching conversations.", "Try a different search or filter.", true);
         const hasMatches = items.some((item) => !item.hidden);
-        $("#conversationList").hidden = !!terms.length && !hasMatches;
-        $("#conversationSearchEmpty").hidden = !terms.length || hasMatches;
+        conversationList.hidden = !!terms.length && !hasMatches;
+        empty.hidden = !terms.length || hasMatches;
       }
       function setConversationSearchMode(mode) {
         conversationSearchState.tab = mode === "messages" ? "messages" : "conversations";
@@ -20545,6 +20563,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#conversationList").hidden = messagesSelected;
         $("#messageSearchResults").hidden = !messagesSelected;
         $("#conversationSearchEmpty").hidden = true;
+        if (!messagesSelected && conversationsLoaded && !conversations.length) filterConversations();
       }
       function searchConversations() {
         clearTimeout(conversationSearchTimer);
@@ -20568,14 +20587,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           $("#conversationSearchTabs").hidden = true;
           $("#messageSearchResults").hidden = true;
           $("#messageSearchResults").replaceChildren();
-          $("#messageSearchTab").textContent = "Messages";
           setConversationSearchMode("conversations");
           renderConversationItems(conversations);
           filterConversations();
           return;
         }
         $("#conversationSearchTabs").hidden = false;
-        $("#messageSearchTab").textContent = "Messages (…)";
+        $("#messageSearchTab").textContent = "Messages";
         $("#conversationSearchEmpty").hidden = true;
         $("#messageSearchResults").scrollTop = 0;
         setConversationSearchMode(conversationSearchState.tab);
@@ -20608,15 +20626,20 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               conversations: conversationItems,
               messages: messageItems,
             };
-            renderConversationItems(conversationSearchState.results.conversations, query, "conversations");
+            if (conversationSearchState.results.conversations.length || conversationsLoaded) {
+              renderConversationItems(conversationSearchState.results.conversations, query, "conversations");
+            } else {
+              conversationList.replaceChildren();
+            }
             renderMessageSearchItems(messageItems);
             conversationSearchState.messageCursor = messageResult.nextCursor || "";
             conversationSearchState.messageHasNextPage = Boolean(messageResult.nextCursor);
             conversationSearchState.messageCount = messageResult.count;
             conversationSearchState.messageCountCapped = Boolean(messageResult.countCapped);
-            $("#messageSearchTab").textContent = messageResult.count === undefined
-              ? "Messages"
-              : `Messages (${conversationSearchState.messageCountCapped ? "99+" : fmt(messageResult.count)})`;
+            const messageCount = Number(messageResult.count) || 0;
+            $("#messageSearchTab").textContent = messageCount > 0
+              ? `Messages (${conversationSearchState.messageCountCapped ? "99+" : fmt(messageCount)})`
+              : "Messages";
             updateMessageSearchSentinel();
             setConversationSearchMode(conversationSearchState.tab);
           } catch (error) {
@@ -20656,6 +20679,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             const result = await api("/conversations");
             await finishSkeleton();
             conversations = result.items;
+            conversationsLoaded = true;
             renderConversationItems(conversations);
             writeViewCache("messages", $("#conversationList").innerHTML);
             if ($("#conversationSearch").value.trim()) searchConversations();
@@ -23248,6 +23272,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             resetActiveConversation();
             await renderConversations();
           });
+          return;
+        }
+        const newConversationSearch = e.target.closest("[data-new-conversation-search]");
+        if (newConversationSearch) {
+          openNewMessageDialog(newConversationSearch, $("#conversationSearch").value.trim());
           return;
         }
         if (e.target.closest("#startConversation, #emptyNewChat")) {
