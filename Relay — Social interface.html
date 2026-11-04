@@ -5212,6 +5212,129 @@
         font-variant-numeric: tabular-nums;
         backdrop-filter: blur(10px);
       }
+      .post-lightbox.is-message-media[open] { display: grid; }
+      .post-lightbox.is-message-media #postLightboxImage {
+        max-width: calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 32px);
+        max-height: calc(100dvh - 168px);
+      }
+      .post-lightbox.is-message-media .post-lightbox-close {
+        left: auto;
+        right: auto;
+        inset-inline-start: max(16px, env(safe-area-inset-left));
+        inset-inline-end: auto;
+        top: max(16px, env(safe-area-inset-top));
+      }
+      .post-lightbox.is-message-media .post-lightbox-close,
+      .post-lightbox.is-message-media .post-lightbox-nav {
+        width: 44px;
+        height: 44px;
+      }
+      .post-lightbox.is-message-media .post-lightbox-nav.prev {
+        left: auto;
+        right: auto;
+        inset-inline-start: max(12px, env(safe-area-inset-left));
+        inset-inline-end: auto;
+      }
+      .post-lightbox.is-message-media .post-lightbox-nav.next {
+        left: auto;
+        right: auto;
+        inset-inline-end: max(12px, env(safe-area-inset-right));
+        inset-inline-start: auto;
+      }
+      .post-lightbox.is-message-media:dir(rtl) .post-lightbox-nav {
+        transform: translateY(-50%) rotate(180deg);
+      }
+      .post-lightbox.is-message-media:dir(rtl) .post-lightbox-nav:hover {
+        transform: translateY(-50%) rotate(180deg) scale(1.04);
+      }
+      .message-lightbox-actions {
+        position: fixed;
+        inset-inline-start: 50%;
+        inset-block-end: max(8px, env(safe-area-inset-bottom));
+        z-index: 2;
+        display: flex;
+        min-width: 0;
+        max-width: calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 24px);
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        transform: translateX(-50%);
+      }
+      .message-lightbox-actions:dir(rtl) { transform: translateX(50%); }
+      .message-lightbox-action-row {
+        display: flex;
+        max-width: 100%;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 3px 6px;
+        border: 1px solid rgb(255 255 255 / 12%);
+        border-radius: 999px;
+        background: rgb(20 20 20 / 78%);
+        box-shadow: 0 6px 24px rgb(0 0 0 / 22%);
+        backdrop-filter: blur(10px);
+      }
+      .message-lightbox-action {
+        display: grid;
+        width: 44px;
+        height: 44px;
+        flex: none;
+        place-items: center;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        color: #fff;
+        background: transparent;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition: background-color 120ms ease;
+      }
+      .message-lightbox-action:hover,
+      .message-lightbox-action:focus-visible { background: rgb(255 255 255 / 10%); }
+      .message-lightbox-action:focus-visible,
+      .post-lightbox.is-message-media .post-lightbox-close:focus-visible,
+      .post-lightbox.is-message-media .post-lightbox-nav:focus-visible {
+        outline: 2px solid #fff;
+        outline-offset: 2px;
+      }
+      .message-lightbox-action .i {
+        width: 24px;
+        height: 24px;
+      }
+      .message-lightbox-action[aria-busy="true"] { cursor: progress; }
+      .message-lightbox-action .message-lightbox-spinner {
+        display: none;
+        width: 18px;
+        height: 18px;
+        border: 2px solid rgb(255 255 255 / 38%);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: message-attachment-spin 700ms linear infinite;
+      }
+      .message-lightbox-action[aria-busy="true"] .message-lightbox-spinner { display: block; }
+      .message-lightbox-counter {
+        min-height: 18px;
+        color: rgb(255 255 255 / 86%);
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+        line-height: 18px;
+        text-shadow: 0 1px 5px rgb(0 0 0 / 60%);
+      }
+      .post-lightbox.is-message-media .post-lightbox-counter { display: none; }
+      .message-lightbox-counter[hidden] { display: none; }
+      .message-lightbox-actions[hidden] { display: none; }
+      .post-lightbox .message-reaction-picker {
+        position: absolute;
+        z-index: 3;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .post-lightbox.is-message-media #postLightboxImage { animation: none; }
+        .message-lightbox-action,
+        .post-lightbox.is-message-media .post-lightbox-close,
+        .post-lightbox.is-message-media .post-lightbox-nav { transition: none; }
+        .message-lightbox-action .message-lightbox-spinner { animation: none; }
+        .message-download-all .message-download-spinner { animation: none; }
+      }
       @media (max-width: 640px) {
         .post-lightbox { padding: 56px 8px 64px; }
         .post-lightbox img { max-height: calc(100vh - 120px); }
@@ -6231,6 +6354,7 @@
       .message-row:not(.mine) > .message-bubble.has-message-image { justify-self: start; }
       .message-row.mine > .message-bubble.has-message-image { justify-self: end; }
       .message-attachment-group {
+        position: relative;
         display: flex;
         width: fit-content;
         max-width: 100%;
@@ -6248,6 +6372,54 @@
         width: fit-content;
         max-width: min(90cqw, 720px);
       }
+      .message-attachment-group > .message-tools {
+        top: 50%;
+        margin-top: 0;
+        transform: translateY(-50%);
+      }
+      .message-row:not(.mine) > .message-attachment-group > .message-tools {
+        inset-inline-start: calc(100% + 6px);
+      }
+      .message-row.mine > .message-attachment-group > .message-tools {
+        inset-inline-end: calc(100% + 6px);
+        flex-direction: row-reverse;
+      }
+      [dir="rtl"] .message-row.mine > .message-attachment-group > .message-tools {
+        flex-direction: row;
+      }
+      .message-attachment-group > .message-tools .message-tool-button {
+        width: 40px;
+        height: 40px;
+      }
+      .message-download-all .message-download-spinner {
+        display: none;
+        width: 16px;
+        height: 16px;
+        border: 2px solid color-mix(in srgb, currentColor 32%, transparent);
+        border-top-color: currentColor;
+        border-radius: 50%;
+        animation: message-attachment-spin 700ms linear infinite;
+      }
+      .message-download-all[aria-busy="true"] .message-download-spinner { display: block; }
+      .message-download-all[aria-busy="true"] .message-download-icon { display: none; }
+      .message-reaction-host {
+        position: relative;
+        width: 0;
+        height: 0;
+        min-height: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+      }
+      .message-row > .message-attachment-group > .message-bubble.message-reaction-host {
+        width: 0;
+        height: 0;
+        min-height: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+      }
+      .message-reaction-host > .message-reaction-list { bottom: -10px; }
       .reply-stack {
         display: flex;
         width: min(70%, 720px);
@@ -6545,7 +6717,7 @@
         outline: none;
       }
       .message-reaction-list {
-        position: absolute;
+        position: fixed;
         z-index: 3;
         bottom: -10px;
         display: inline-flex;
@@ -6637,6 +6809,34 @@
         }
         .message-row:is(:hover, :focus-within, .tools-visible, .has-message-popover) > .message-attachment-group > .message-bubble {
           max-width: min(calc(100cqw - 176px), 720px);
+        }
+        .message-row:is(:hover, :focus-within, .tools-visible, .has-message-popover) > .message-attachment-group {
+          max-width: calc(100cqw - 176px);
+        }
+        .message-row:is(:hover, :focus-within, .tools-visible, .has-message-popover) > .message-multi-image-group > .message-bubble {
+          max-width: min(calc(100cqw - 56px), 720px);
+        }
+        .message-row:is(:hover, :focus-within, .tools-visible, .has-message-popover) > .message-multi-image-group {
+          max-width: calc(100cqw - 56px);
+        }
+        .message-multi-image-group > .message-tools,
+        .message-row.mine > .message-multi-image-group > .message-tools,
+        [dir="rtl"] .message-row.mine > .message-multi-image-group > .message-tools {
+          flex-direction: column;
+          gap: 0;
+        }
+      }
+      @container (max-width: 390px) {
+        .message-row > .message-multi-image-group {
+          max-width: calc(100cqw - 56px);
+        }
+        .message-multi-image-group .message-image-list {
+          width: min(var(--msg-media-w), max(120px, calc(100cqw - 56px)));
+        }
+        .message-multi-image-group > .message-tools,
+        .message-row.mine > .message-multi-image-group > .message-tools {
+          flex-direction: column;
+          gap: 0;
         }
       }
       @media (max-width: 640px) and (hover: none) {
@@ -10372,6 +10572,21 @@
       <img id="postLightboxImage" alt="">
       <button class="post-lightbox-nav next" type="button" data-lightbox-next aria-label="Next image">›</button>
       <span class="post-lightbox-counter" id="postLightboxCounter" aria-live="polite"></span>
+      <div class="message-lightbox-actions" id="messageLightboxActions" hidden>
+        <div class="message-lightbox-action-row" role="toolbar" aria-label="Image actions">
+          <button class="message-lightbox-action" type="button" data-lightbox-message-action="react" aria-label="React" title="React">
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.8a5.4 5.4 0 0 0-7.6 0L12 6l-1.2-1.2a5.4 5.4 0 0 0-7.6 7.6l1.2 1.2L12 21l7.6-7.4 1.2-1.2a5.4 5.4 0 0 0 0-7.6Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="message-lightbox-action" type="button" data-lightbox-message-action="reply" aria-label="Reply" title="Reply">
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m10 8-5 4 5 4v-3c5 0 8 1.5 10 5-.5-6-3-10-10-10V8Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="message-lightbox-action" type="button" data-lightbox-message-action="download" aria-label="Download image" title="Download image">
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 20h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="message-lightbox-spinner" aria-hidden="true"></span>
+          </button>
+        </div>
+        <span class="message-lightbox-counter" id="messageLightboxCounter" aria-live="polite" hidden></span>
+      </div>
     </dialog>
     <dialog class="reel-create-dialog" id="reelCreateDialog" aria-labelledby="reelCreateTitle">
       <header class="reel-dialog-header">
@@ -13103,6 +13318,8 @@
       let lightboxImages = [];
       let lightboxIndex = 0;
       let lightboxTrigger = null;
+      let messageLightboxContext = null;
+      let messageLightboxReplyRequested = false;
       let touchStartX = 0;
       const showLightboxImage = (index) => {
         if (!lightboxImages.length) return;
@@ -13113,8 +13330,48 @@
         $$("[data-lightbox-prev]", $("#postLightbox")).forEach((button) => { button.hidden = !multipleImages; });
         $$("[data-lightbox-next]", $("#postLightbox")).forEach((button) => { button.hidden = !multipleImages; });
         $("#postLightboxCounter").hidden = !multipleImages;
+        const messageControls = $("#messageLightboxActions");
+        messageControls.hidden = !messageLightboxContext;
+        $("#postLightbox").classList.toggle("is-message-media", Boolean(messageLightboxContext));
+        if (messageLightboxContext) {
+          const item = messageLightboxContext.items[lightboxIndex];
+          $("#postLightboxImage").alt = item.isGif ? "Shared GIF" : "Shared image";
+          $("#messageLightboxCounter").hidden = !multipleImages;
+          $("#messageLightboxCounter").textContent = `${lightboxIndex + 1} / ${lightboxImages.length}`;
+          $$("[data-lightbox-message-action]", messageControls).forEach((button) => {
+            button.dataset.messageId = messageLightboxContext.messageId;
+            if (button.dataset.lightboxMessageAction === "download") button.dataset.mediaUrl = item.url;
+          });
+        }
       };
-      document.addEventListener("click", (event) => {
+      document.addEventListener("click", async (event) => {
+        const messageLightboxAction = event.target.closest("[data-lightbox-message-action]");
+        if (messageLightboxAction && messageLightboxContext) {
+          const messageId = messageLightboxContext.messageId;
+          if (messageLightboxAction.dataset.lightboxMessageAction === "download") {
+            messageLightboxAction.disabled = true;
+            messageLightboxAction.setAttribute("aria-busy", "true");
+            try {
+              await downloadMessageMedia(messageLightboxAction.dataset.mediaUrl);
+            } catch (error) {
+              toast(error.message || "Image download failed.");
+            } finally {
+              messageLightboxAction.disabled = false;
+              messageLightboxAction.removeAttribute("aria-busy");
+            }
+          } else if (messageLightboxAction.dataset.lightboxMessageAction === "reply") {
+            messageLightboxReplyRequested = true;
+            setMessageReplyTarget(messageId);
+            $("#postLightbox").close();
+          } else if (messageLightboxAction.dataset.lightboxMessageAction === "react") {
+            const owner = messageLightboxContext.owner;
+            if (owner) {
+              closeMessageActionMenus();
+              openMessageReactionPicker(messageId, messageLightboxAction, owner, $("#postLightbox"));
+            }
+          }
+          return;
+        }
         const altTrigger = event.target.closest("[data-alt-text]");
         if (altTrigger) {
           $("#postAltText").textContent = altTrigger.dataset.altText;
@@ -13151,17 +13408,36 @@
           const container = trigger.closest(".media, .media-grid, .image-message");
           if (messageImageList?.dataset.lightboxImages) {
             try {
-              const images = JSON.parse(messageImageList.dataset.lightboxImages);
-              lightboxImages = Array.isArray(images) ? images.filter((url) => typeof url === "string") : [];
+              const items = JSON.parse(messageImageList.dataset.lightboxImages);
+              const imageItems = Array.isArray(items) ? items.map((item) => typeof item === "string"
+                ? { url: item, isGif: isGifMediaUrl(item) }
+                : { url: String(item?.url || ""), isGif: Boolean(item?.isGif) }).filter(({ url }) => url) : [];
+              lightboxImages = imageItems.map(({ url }) => url);
+              messageLightboxContext = messageImageList.dataset.messageId
+                ? {
+                  messageId: messageImageList.dataset.messageId,
+                  items: imageItems,
+                  owner: messageImageList.closest(".message-row"),
+                }
+                : null;
             } catch {
               lightboxImages = [...messageImageList.querySelectorAll("[data-lightbox-image]")]
                 .map((element) => element.dataset.lightboxImage);
+              messageLightboxContext = messageImageList.dataset.messageId
+                ? {
+                  messageId: messageImageList.dataset.messageId,
+                  items: lightboxImages.map((url) => ({ url, isGif: isGifMediaUrl(url) })),
+                  owner: messageImageList.closest(".message-row"),
+                }
+                : null;
             }
           } else {
             lightboxImages = container
               ? [...container.querySelectorAll("[data-lightbox-image]")].map((element) => element.dataset.lightboxImage)
               : [trigger.dataset.lightboxImage];
+            messageLightboxContext = null;
           }
+          $("#postLightbox").dir = getComputedStyle(trigger).direction;
           const requestedIndex = Number(trigger.dataset.lightboxIndex);
           const imageIndex = messageImageList && Number.isInteger(requestedIndex) && requestedIndex >= 0
             ? requestedIndex
@@ -13182,16 +13458,29 @@
       document.addEventListener("keydown", (event) => {
         if (!$("#postLightbox")?.open) return;
         if (event.key === "Escape") $("#postLightbox").close();
-        if (event.key === "ArrowLeft") showLightboxImage(lightboxIndex - 1);
-        if (event.key === "ArrowRight") showLightboxImage(lightboxIndex + 1);
+        const rtl = messageLightboxContext && getComputedStyle($("#postLightbox")).direction === "rtl";
+        if (event.key === "ArrowLeft") showLightboxImage(lightboxIndex + (rtl ? 1 : -1));
+        if (event.key === "ArrowRight") showLightboxImage(lightboxIndex + (rtl ? -1 : 1));
       });
-      $("#postLightbox").addEventListener("close", () => lightboxTrigger?.focus());
+      $("#postLightbox").addEventListener("close", () => {
+        if (activeMessageReactionPicker?.picker.closest("#postLightbox")) closeMessageReactionPicker();
+        $("#postLightbox").classList.remove("is-message-media");
+        $("#messageLightboxActions").hidden = true;
+        messageLightboxContext = null;
+        if (messageLightboxReplyRequested) {
+          messageLightboxReplyRequested = false;
+          $("#messageInput").focus({ preventScroll: true });
+        } else {
+          lightboxTrigger?.focus();
+        }
+      });
       $("#postLightbox").addEventListener("touchstart", (event) => {
         touchStartX = event.changedTouches[0].clientX;
       }, { passive: true });
       $("#postLightbox").addEventListener("touchend", (event) => {
         const delta = event.changedTouches[0].clientX - touchStartX;
-        if (Math.abs(delta) > 40) showLightboxImage(lightboxIndex + (delta < 0 ? 1 : -1));
+        const rtl = messageLightboxContext && getComputedStyle($("#postLightbox")).direction === "rtl";
+        if (Math.abs(delta) > 40) showLightboxImage(lightboxIndex + (delta < 0 ? 1 : -1) * (rtl ? -1 : 1));
       }, { passive: true });
       const post = (p, searchTerm = "") => {
         const mine = currentUser && p.author.id === currentUser.id;
@@ -18723,6 +19012,23 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           : "";
         return `<div class="message-tools"><button class="message-tool-button message-reaction-add" type="button" data-message-react-open="${esc(messageId)}" aria-label="Add reaction" title="Add reaction">${ic("heart-plus")}</button><button class="message-tool-button" type="button" data-message-reply="${esc(messageId)}" aria-label="Reply to message" title="Reply">${ic("reply")}</button>${moreButton}${downloadButton}</div>`;
       }
+      function messageGroupToolsMarkup({ messageId, copyText = "", canDelete = false }) {
+        const copyAction = copyText
+          ? `<button type="button" role="menuitem" data-message-menu-action="copy" data-message-copy="${esc(copyText)}">${ic("copy")}<span>Copy message text</span></button>`
+          : "";
+        const deleteAction = canDelete
+          ? `<button type="button" role="menuitem" data-message-menu-action="delete" data-message-id="${esc(messageId)}"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 14h12l1-14M9 7V4h6v3"/></svg><span>Delete message</span></button>`
+          : "";
+        return `<div class="message-tools">
+          <button class="message-tool-button" type="button" data-message-more aria-expanded="false" aria-haspopup="menu" aria-label="More" title="More">${ic("dots")}</button>
+          <button class="message-tool-button message-download-all" type="button" data-message-download-all="${esc(messageId)}" aria-label="Download all images" title="Download all images">
+            <svg class="i message-download-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 20h14"/></svg>
+            <span class="message-download-spinner" aria-hidden="true"></span>
+          </button>
+          <button class="message-tool-button" type="button" data-message-reply="${esc(messageId)}" aria-label="Reply" title="Reply">${ic("reply")}</button>
+          <div class="message-action-menu" role="menu" hidden>${copyAction}${deleteAction}</div>
+        </div>`;
+      }
       function revealMessageTools(owner) {
         document.querySelectorAll(".message-row.tools-visible").forEach((row) => {
           if (row !== owner && !row.classList.contains("has-message-popover")) row.classList.remove("tools-visible");
@@ -18736,7 +19042,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         owner?.classList.remove("has-message-popover");
         activeMessageReactionPicker = null;
       }
-      function openMessageReactionPicker(messageId, trigger, owner) {
+      function openMessageReactionPicker(messageId, trigger, owner, container = document.body) {
         closeMessageReactionPicker();
         const picker = document.createElement("div");
         picker.className = "message-reaction-picker";
@@ -18745,7 +19051,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         picker.innerHTML = messageReactionEmojis.map((emoji) =>
           `<button type="button" data-message-react-emoji="${esc(emoji)}" data-message-react-id="${esc(messageId)}" aria-label="React with ${esc(emoji)}">${esc(emoji)}</button>`
         ).join("");
-        document.body.append(picker);
+        container.append(picker);
         const triggerRect = trigger.getBoundingClientRect();
         const pickerRect = picker.getBoundingClientRect();
         const left = Math.max(8, Math.min(window.innerWidth - pickerRect.width - 8,
@@ -18815,15 +19121,32 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         textarea.remove();
         if (!copied) throw new Error("Copy is not available in this browser.");
       }
-      async function downloadMessageMedia(url) {
-        const mediaUrl = new URL(url, location.href);
+      async function fetchMessageMedia(url, retry = true) {
+        const mediaUrl = new URL(url, API_BASE);
         if (!["http:", "https:"].includes(mediaUrl.protocol)) throw new Error("This media cannot be downloaded.");
-        const response = await fetch(mediaUrl.href, {
-          credentials: mediaUrl.origin === location.origin ? "same-origin" : "omit",
-        });
+        const sameApiOrigin = mediaUrl.origin === apiOrigin;
+        const headers = new Headers();
+        if (sameApiOrigin && accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
+        let response;
+        try {
+          response = await fetch(mediaUrl.href, {
+            headers,
+            credentials: sameApiOrigin ? "include" : "omit",
+          });
+        } catch {
+          throw new Error("This image could not be fetched. Check its connection and try again.");
+        }
+        if (response.status === 401 && sameApiOrigin && retry) {
+          if (await refreshSession()) return fetchMessageMedia(mediaUrl.href, false);
+          clearSession();
+          showAuth();
+          throw new Error("Your session expired. Sign in again.");
+        }
         if (!response.ok) throw new Error(`Download failed (${response.status}).`);
-        const blobUrl = URL.createObjectURL(await response.blob());
-        const filename = decodeURIComponent(mediaUrl.pathname.split("/").pop() || "relay-media");
+        return { response, mediaUrl };
+      }
+      function downloadBlob(blob, filename) {
+        const blobUrl = URL.createObjectURL(blob);
         const anchor = document.createElement("a");
         anchor.href = blobUrl;
         anchor.download = filename;
@@ -18831,6 +19154,115 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         anchor.click();
         anchor.remove();
         setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      }
+      async function downloadMessageMedia(url) {
+        const { response, mediaUrl } = await fetchMessageMedia(url);
+        const filename = decodeURIComponent(mediaUrl.pathname.split("/").pop() || "relay-media");
+        downloadBlob(await response.blob(), filename);
+      }
+      const messageZipCrcTable = Uint32Array.from({ length: 256 }, (_, value) => {
+        let crc = value;
+        for (let bit = 0; bit < 8; bit += 1) crc = crc & 1 ? 0xedb88320 ^ (crc >>> 1) : crc >>> 1;
+        return crc >>> 0;
+      });
+      function messageZipCrc32(bytes) {
+        let crc = 0xffffffff;
+        for (const byte of bytes) crc = messageZipCrcTable[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+        return (crc ^ 0xffffffff) >>> 0;
+      }
+      function createMessageMediaZip(files) {
+        if (!files.length || files.length > 4) throw new Error("A media ZIP must contain 1 to 4 images.");
+        const encoder = new TextEncoder();
+        const now = new Date();
+        const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | Math.floor(now.getSeconds() / 2);
+        const dosDate = ((Math.max(1980, now.getFullYear()) - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+        const localParts = [];
+        const centralParts = [];
+        const records = [];
+        let localOffset = 0;
+        const write16 = (view, offset, value) => view.setUint16(offset, value, true);
+        const write32 = (view, offset, value) => view.setUint32(offset, value >>> 0, true);
+        for (const file of files) {
+          const nameBytes = encoder.encode(file.name);
+          const bytes = file.bytes instanceof Uint8Array ? file.bytes : new Uint8Array(file.bytes);
+          if (bytes.byteLength > 0xffffffff || nameBytes.byteLength > 0xffff) throw new Error("An image is too large to add to this ZIP.");
+          const crc = messageZipCrc32(bytes);
+          const localHeader = new Uint8Array(30 + nameBytes.byteLength);
+          const localView = new DataView(localHeader.buffer);
+          write32(localView, 0, 0x04034b50);
+          write16(localView, 4, 20);
+          write16(localView, 6, 0x0800);
+          write16(localView, 8, 0);
+          write16(localView, 10, dosTime);
+          write16(localView, 12, dosDate);
+          write32(localView, 14, crc);
+          write32(localView, 18, bytes.byteLength);
+          write32(localView, 22, bytes.byteLength);
+          write16(localView, 26, nameBytes.byteLength);
+          localHeader.set(nameBytes, 30);
+          localParts.push(localHeader, bytes);
+          records.push({ nameBytes, crc, size: bytes.byteLength, offset: localOffset });
+          localOffset += localHeader.byteLength + bytes.byteLength;
+          if (localOffset > 0xffffffff) throw new Error("These images are too large for a ZIP archive.");
+        }
+        const centralOffset = localOffset;
+        let centralSize = 0;
+        for (const record of records) {
+          const centralHeader = new Uint8Array(46 + record.nameBytes.byteLength);
+          const centralView = new DataView(centralHeader.buffer);
+          write32(centralView, 0, 0x02014b50);
+          write16(centralView, 4, 20);
+          write16(centralView, 6, 20);
+          write16(centralView, 8, 0x0800);
+          write16(centralView, 10, 0);
+          write16(centralView, 12, dosTime);
+          write16(centralView, 14, dosDate);
+          write32(centralView, 16, record.crc);
+          write32(centralView, 20, record.size);
+          write32(centralView, 24, record.size);
+          write16(centralView, 28, record.nameBytes.byteLength);
+          write32(centralView, 42, record.offset);
+          centralHeader.set(record.nameBytes, 46);
+          centralParts.push(centralHeader);
+          centralSize += centralHeader.byteLength;
+        }
+        if (centralOffset + centralSize > 0xffffffff) throw new Error("These images are too large for a ZIP archive.");
+        const endRecord = new Uint8Array(22);
+        const endView = new DataView(endRecord.buffer);
+        write32(endView, 0, 0x06054b50);
+        write16(endView, 8, records.length);
+        write16(endView, 10, records.length);
+        write32(endView, 12, centralSize);
+        write32(endView, 16, centralOffset);
+        return new Blob([...localParts, ...centralParts, endRecord], { type: "application/zip" });
+      }
+      function messageMediaExtension(url, contentType, isGif) {
+        if (isGif) return "gif";
+        const pathExtension = new URL(url, API_BASE).pathname.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase();
+        const mimeExtension = {
+          "image/jpeg": "jpg",
+          "image/png": "png",
+          "image/webp": "webp",
+          "image/gif": "gif",
+        }[String(contentType || "").split(";", 1)[0].trim().toLowerCase()];
+        const extension = pathExtension || mimeExtension || "jpg";
+        return ["jpg", "jpeg", "png", "webp", "gif"].includes(extension) ? extension : "jpg";
+      }
+      async function downloadMessageMediaZip(items, messageId) {
+        if (!Array.isArray(items) || items.length < 2 || items.length > 4) {
+          throw new Error("Only messages with 2 to 4 images can be downloaded as a ZIP.");
+        }
+        const files = await Promise.all(items.map(async (item, index) => {
+          const { response, mediaUrl } = await fetchMessageMedia(item.imageUrl);
+          const extension = messageMediaExtension(mediaUrl.href, response.headers.get("content-type"), item.isGif);
+          const prefix = item.isGif || extension === "gif" ? "gif" : "image";
+          return {
+            name: `${prefix}-${index + 1}.${extension}`,
+            bytes: new Uint8Array(await response.arrayBuffer()),
+          };
+        }));
+        const safeMessageId = String(messageId).replace(/[^a-zA-Z0-9_-]/g, "") || "message";
+        downloadBlob(createMessageMediaZip(files), `relay-media-${safeMessageId}.zip`);
       }
       function messageMarkup(message, { eager = true } = {}) {
         if (!message?.conversationId
@@ -18871,14 +19303,15 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const bodyIsGifUrl = Boolean(bodyGifUrl && mediaItems.some(({ isGif }) => isGif));
         const mediaLoading = eager ? "eager" : "lazy";
         const visibleMediaItems = mediaItems.slice(0, 4);
+        const hasMultipleImages = mediaItems.length > 1;
         const image = mediaItems.length
-          ? `<div class="message-image-list" data-count="${visibleMediaItems.length}" data-lightbox-images="${esc(JSON.stringify(mediaItems.map(({ imageUrl }) => imageUrl)))}">${visibleMediaItems.map(({ imageUrl, isGif, width, height, hasDimensions }, index) => `
+          ? `<div class="message-image-list" data-message-id="${esc(message.id)}" data-count="${visibleMediaItems.length}" data-lightbox-images="${esc(JSON.stringify(mediaItems.map(({ imageUrl, isGif }) => ({ url: imageUrl, isGif }))))}">${visibleMediaItems.map(({ imageUrl, isGif, width, height, hasDimensions }, index) => `
             <div class="message-image-item${mine ? " mine" : ""}">
               <div class="message-image-frame" style="aspect-ratio:${width || 1} / ${height || 1}" data-media-width="${width}" data-media-height="${height}" data-media-dimensions="${hasDimensions ? "stored" : "fallback"}">
                 <button class="message-media-button" type="button" data-lightbox-image="${esc(imageUrl)}" data-lightbox-index="${index}" aria-label="Open shared ${isGif ? "GIF" : "image"}"><img class="message-media" src="${esc(imageUrl)}" width="${width || 1}" height="${height || 1}" alt="${isGif ? "Shared GIF" : "Shared image"}" loading="${mediaLoading}" decoding="async" /></button>
                 ${index === 3 && mediaItems.length > 4 ? `<span class="message-image-overflow">+${mediaItems.length - 4}</span>` : ""}
               </div>
-              ${hasTextContent || index !== visibleMediaItems.length - 1 ? "" : messageToolsMarkup({
+              ${hasMultipleImages || hasTextContent || index !== visibleMediaItems.length - 1 ? "" : messageToolsMarkup({
                 messageId: message.id,
                 downloadUrl: imageUrl,
                 downloadLabel: isGif ? "GIF" : "image",
@@ -18916,7 +19349,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           ? `<div class="reply-stack">${replyHeaderMarkup(replySenderName(replyTo), replyTo?.id || "")}${replyPreviewMarkup(replyTo, { jump: Boolean(replyTo?.id) })}</div>`
           : "";
         const reactions = messageReactionsMarkup(message);
-        const messageContent = image && text && !audio && !sticker
+        const messageContent = hasMultipleImages && !audio && !sticker
+          ? `<div class="message-attachment-group message-multi-image-group" data-message-id="${esc(message.id)}">${image}${text ? `<div class="message-bubble${mine ? " mine" : ""}" data-message-id="${esc(message.id)}">${text}${reactions}</div>` : `<div class="message-bubble message-reaction-host${mine ? " mine" : ""}" data-message-id="${esc(message.id)}">${reactions}</div>`}${messageGroupToolsMarkup({ messageId: message.id, copyText: text ? body : "", canDelete: mine })}</div>`
+          : image && text && !audio && !sticker
           ? `<div class="message-attachment-group">${image}<div class="message-bubble${mine ? " mine" : ""}" data-message-id="${esc(message.id)}">${text}${actions}${reactions}</div></div>`
           : `<div class="message-bubble${mine ? " mine" : ""}${image ? " has-message-image" : ""}${mediaOnly ? " media-message" : ""}${imageOnly ? " image-message" : ""}${audioOnly ? " audio-message" : ""}${stickerOnly ? " sticker-message" : ""}" data-message-id="${esc(message.id)}">${image}${audio}${sticker}${text}${bubbleActions}${reactions}</div>`;
         return `<div class="message-row${mine ? " mine" : ""}${reactions ? " has-reactions" : ""}" data-message-row data-conversation-id="${esc(message.conversationId)}" data-sender-id="${esc(message.senderId || "")}" data-reply-to-id="${esc(message.replyToId || replyTo?.id || "")}">${replyStack}${messageContent}</div>`;
@@ -22224,7 +22659,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           return;
         }
         const imageItem = target?.closest(".message-image-item");
-        const firstImageTap = imageItem && !owner.classList.contains("tools-visible");
+        const singleImageList = target?.closest(".message-image-list[data-count='1']");
+        const firstImageTap = imageItem && singleImageList && !owner.classList.contains("tools-visible");
         revealMessageTools(owner);
         if (firstImageTap && target.closest("[data-lightbox-image]")) event.preventDefault();
       }, true);
@@ -22257,6 +22693,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         items[nextIndex].focus();
       });
       document.addEventListener("click", async (e) => {
+        if (e.target.closest("[data-lightbox-message-action]")) return;
         if (emojiCategoryInteraction) {
           emojiCategoryInteraction = false;
           return;
@@ -22350,6 +22787,25 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             await downloadMessageMedia(directDownload.dataset.messageDownload);
           } catch (error) {
             toast(error.message || "Download failed.");
+          }
+          return;
+        }
+        const downloadAll = e.target.closest("[data-message-download-all]");
+        if (downloadAll) {
+          downloadAll.disabled = true;
+          downloadAll.setAttribute("aria-busy", "true");
+          try {
+            const list = downloadAll.closest(".message-multi-image-group")?.querySelector(".message-image-list");
+            const entries = JSON.parse(list?.dataset.lightboxImages || "[]");
+            const items = entries.map((entry) => typeof entry === "string"
+              ? { imageUrl: entry, isGif: isGifMediaUrl(entry) }
+              : { imageUrl: String(entry?.url || ""), isGif: Boolean(entry?.isGif) }).filter(({ imageUrl }) => imageUrl);
+            await downloadMessageMediaZip(items, downloadAll.dataset.messageDownloadAll);
+          } catch (error) {
+            toast(error.message || "Could not create the ZIP file.");
+          } finally {
+            downloadAll.disabled = false;
+            downloadAll.removeAttribute("aria-busy");
           }
           return;
         }
