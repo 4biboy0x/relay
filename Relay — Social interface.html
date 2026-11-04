@@ -19568,40 +19568,19 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const pendingRow = bubble?.closest(".message-row");
         if (!pendingRow) return;
         const template = document.createElement("template");
-        template.innerHTML = messageMarkup({ ...message, id: pendingId, conversationId: displayConversationId });
+        template.innerHTML = messageMarkup({ ...message, conversationId: displayConversationId });
         const confirmedRow = template.content.firstElementChild;
         if (!confirmedRow) return;
         const confirmedBubble = confirmedRow.querySelector(".message-bubble");
         if (!confirmedBubble) return;
-        confirmedBubble.setAttribute("data-message-id", message.id);
-        pendingRow.dataset.confirmingMessageId = message.id;
         confirmedBubble.classList.add("message-bubble-confirmed");
-        if (bubble.innerHTML !== confirmedBubble.innerHTML) bubble.innerHTML = confirmedBubble.innerHTML;
-        bubble.className = confirmedBubble.className.replace(/\bchat-message-entering\b/g, "").trim();
-        bubble.className = `${bubble.className} ${pendingRow.dataset.senderId === currentUser?.id ? "mine" : ""}`.trim();
-        bubble.dataset.messageId = message.id;
-        for (const attribute of [...bubble.attributes]) {
-          if (!["class", "data-message-id"].includes(attribute.name)) bubble.removeAttribute(attribute.name);
-        }
-        for (const attribute of [...confirmedBubble.attributes]) {
-          if (!["class", "data-message-id"].includes(attribute.name)) {
-            bubble.setAttribute(attribute.name, attribute.value);
-          }
-        }
-        const existingReplyStack = pendingRow.querySelector(":scope > .reply-stack");
-        const confirmedReplyStack = confirmedRow.querySelector(":scope > .reply-stack");
-        if (!existingReplyStack && confirmedReplyStack) pendingRow.prepend(confirmedReplyStack.cloneNode(true));
-        else if (existingReplyStack && !confirmedReplyStack) existingReplyStack.remove();
-        else if (existingReplyStack && confirmedReplyStack
-          && existingReplyStack.innerHTML !== confirmedReplyStack.innerHTML) {
-          existingReplyStack.innerHTML = confirmedReplyStack.innerHTML;
-        }
-        pendingRow.dataset.confirmingMessageId = message.id;
+        pendingRow.innerHTML = confirmedRow.innerHTML;
         pendingRow.classList.toggle("mine", confirmedRow.classList.contains("mine"));
         pendingRow.classList.toggle("has-reactions", confirmedRow.classList.contains("has-reactions"));
         pendingRow.dataset.conversationId = displayConversationId;
         pendingRow.dataset.senderId = confirmedRow.dataset.senderId || pendingRow.dataset.senderId;
         pendingRow.dataset.replyToId = confirmedRow.dataset.replyToId || "";
+        messagesById.delete(pendingId);
         updateMessageRowSpacing($("#chatLog"));
         bindMessageMediaScroll(pendingRow);
         scrollMessageListToBottom(false);
