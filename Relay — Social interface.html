@@ -5834,11 +5834,16 @@
         display: flex;
         min-width: 0;
         align-items: center;
+        gap: 8px;
         overflow: hidden;
         margin-top: 4px;
         color: var(--text-2);
         white-space: nowrap;
         font-size: 12px;
+      }
+      .conversation-item.has-unread small {
+        color: var(--text);
+        font-weight: 600;
       }
       .conversation-preview-text {
         min-width: 0;
@@ -5873,25 +5878,13 @@
         color: var(--text-3);
         font-size: 11px;
       }
-      .conversation-item.has-unread .conversation-preview-time {
-        margin-right: 22px;
-      }
       .unread-count {
-        position: absolute;
-        top: 10px;
-        right: 12px;
-        display: grid;
-        min-width: 19px;
-        height: 19px;
+        width: 6px;
+        height: 6px;
         flex: none;
-        place-items: center;
-        padding: 0 4px;
+        margin-inline-start: 2px;
         border-radius: 50%;
-        border: 2px solid var(--surface);
-        color: #fff;
         background: var(--accent);
-        font-size: 11px;
-        box-shadow: 0 0 0 1px var(--border);
       }
       .chat-panel {
         --chat-inline-padding: 16px;
@@ -19744,12 +19737,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             preview = `<span class="conversation-preview-text">${esc(preview)}</span>`;
           }
           const unreadCount = Number(item.unreadCount) || 0;
-          const unreadLabel = unreadCount > 99 ? "+99" : unreadCount > 9 ? "+9" : fmt(unreadCount);
           const searchMessageId = searchQuery
             ? (searchMode === "messages" ? item.matchedMessage?.id : matchingLastMessage ? lastMessage?.id : "")
             : "";
           const searchMessageCandidate = Boolean(searchQuery && searchMode === "conversations" && !searchMessageId);
-          return `<button class="conversation-item${searchQuery ? " is-search-result" : ""}${searchMode === "messages" ? " message-search-result" : ""}${unreadCount ? " has-unread" : ""}" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-mode="${esc(searchMode)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}"${searchQuery ? ` aria-selected="${current}"` : ""}>${presenceAvatarMarkup(other, "sm")}<span class="grow"><span class="conversation-item-heading"><b>${esc(other?.displayName || "Relay user")}</b>${messageTime}</span><small>${preview}</small></span>${unreadCount ? `<span class="unread-count" aria-label="${unreadCount} unread messages">${unreadLabel}</span>` : ""}</button>`;
+          return `<button class="conversation-item${searchQuery ? " is-search-result" : ""}${searchMode === "messages" ? " message-search-result" : ""}${unreadCount ? " has-unread" : ""}" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-mode="${esc(searchMode)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}"${searchQuery ? ` aria-selected="${current}"` : ""}>${presenceAvatarMarkup(other, "sm")}<span class="grow"><span class="conversation-item-heading"><b>${esc(other?.displayName || "Relay user")}</b>${messageTime}</span><small>${preview}${unreadCount ? `<span class="unread-count" aria-label="${unreadCount} unread messages"></span>` : ""}</small></span></button>`;
         }).join("");
         if (append) resultList.insertAdjacentHTML("beforeend", markup);
         else if (resultList.id !== "conversationList") resultList.innerHTML = markup;
