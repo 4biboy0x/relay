@@ -370,31 +370,51 @@
       }
       .nav-icon {
         position: relative;
-        display: grid;
+        display: inline-flex;
         flex: none;
-        place-items: center;
+        align-items: center;
+        justify-content: center;
+        overflow: visible;
       }
-      .badge {
+      .nav-item[data-view="messages"],
+      .nav-item[data-view="notifs"] {
+        overflow: visible;
+      }
+      .nav-badge {
         position: absolute;
         z-index: 2;
-        top: -6px;
-        right: -8px;
-        display: grid;
-        width: 20px;
+        top: -8px;
+        inset-inline-end: -10px;
+        display: inline-flex;
+        min-width: 20px;
         height: 20px;
-        place-items: center;
-        margin: 0;
-        padding: 0;
-        border: 2px solid var(--bg);
-        background: var(--accent);
+        align-items: center;
+        justify-content: center;
+        padding: 0 6px;
+        border-radius: 999px;
+        background: #1d9bf0;
         color: #fff;
-        font-size: 8px;
-        font-weight: 600;
-        border-radius: 50%;
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 20px;
         box-sizing: border-box;
         text-align: center;
-        line-height: 1;
-        box-shadow: 0 0 0 1px color-mix(in srgb, var(--border) 72%, transparent);
+        box-shadow: 0 0 0 2px var(--bg);
+        transform: scale(1);
+        transform-origin: center;
+      }
+      .nav-badge[hidden] {
+        display: none;
+      }
+      .nav-badge.is-pop {
+        animation: nav-badge-pop 150ms cubic-bezier(.2,.8,.2,1);
+      }
+      @keyframes nav-badge-pop {
+        from { transform: scale(.8); }
+        to { transform: scale(1); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .nav-badge.is-pop { animation: none; }
       }
       .btn {
         display: inline-flex;
@@ -9536,17 +9556,17 @@
           <svg class="i reels-symbol" aria-hidden="true"><use href="#reels" /></svg
           ><span class="l">Reels</span>
         </button>
-        <button class="nav-item" data-view="messages">
+        <button class="nav-item" data-view="messages" aria-label="Messages, 0 unread">
           <span class="nav-icon">
             <svg class="i" aria-hidden="true"><use href="#msg" /></svg>
-            <span class="badge" id="mbadge" aria-label="0 unread messages" hidden>0</span>
+            <span class="nav-badge" id="mbadge" aria-hidden="true" hidden>0</span>
           </span>
           <span class="l">Messages</span>
         </button>
-        <button class="nav-item" data-view="notifs">
+        <button class="nav-item" data-view="notifs" aria-label="Notifications, 0 unread">
           <span class="nav-icon">
             <svg class="i" aria-hidden="true"><use href="#bell" /></svg>
-            <span class="badge" id="nbadge" aria-label="0 unread" hidden>0</span>
+            <span class="nav-badge" id="nbadge" aria-hidden="true" hidden>0</span>
           </span>
           <span class="l">Notifications</span>
         </button>
@@ -17506,10 +17526,19 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function setUnreadBadge(element, count, label) {
         const unread = Math.max(0, Number(count) || 0);
+        const previous = Number(element.dataset.unreadCount) || 0;
         element.dataset.unreadCount = String(unread);
-        element.textContent = unread > 99 ? "+99" : unread > 9 ? "+9" : String(unread);
+        element.textContent = unread > 99 ? "99+" : String(unread);
         element.hidden = unread === 0;
-        element.setAttribute("aria-label", `${unread} unread ${label}`);
+        const title = label === "notifications" ? "Notifications" : "Messages";
+        element.closest(".nav-item")?.setAttribute("aria-label", `${title}, ${unread} unread`);
+        if (unread !== previous) {
+          element.classList.remove("is-pop");
+        }
+        if (unread && unread !== previous) {
+          void element.offsetWidth;
+          element.classList.add("is-pop");
+        }
       }
       function getUnreadBadgeCount(element) {
         return Math.max(0, Number(element.dataset.unreadCount) || 0);
