@@ -18756,9 +18756,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           ? `<div class="message-image-list" data-count="${mediaItems.length}">${mediaItems.map(({ imageUrl, isGif, width, height, hasDimensions }) => `
             <div class="message-image-item${mine ? " mine" : ""}">
               <div class="message-image-frame" style="aspect-ratio:${width || 1} / ${height || 1}" data-media-width="${width}" data-media-height="${height}" data-media-dimensions="${hasDimensions ? "stored" : "fallback"}">
-                ${isGif
-                  ? `<img class="message-media message-media-static" src="${esc(imageUrl)}" width="${width || 1}" height="${height || 1}" alt="Shared GIF" loading="${mediaLoading}" decoding="async" />`
-                  : `<button class="message-media-button" type="button" data-lightbox-image="${esc(imageUrl)}" aria-label="Open shared image"><img class="message-media" src="${esc(imageUrl)}" width="${width || 1}" height="${height || 1}" alt="Shared image" loading="${mediaLoading}" decoding="async" /></button>`}
+                <button class="message-media-button" type="button" data-lightbox-image="${esc(imageUrl)}" aria-label="Open shared ${isGif ? "GIF" : "image"}"><img class="message-media" src="${esc(imageUrl)}" width="${width || 1}" height="${height || 1}" alt="${isGif ? "Shared GIF" : "Shared image"}" loading="${mediaLoading}" decoding="async" /></button>
               </div>
               ${hasTextContent ? "" : messageToolsMarkup({
                 messageId: message.id,
