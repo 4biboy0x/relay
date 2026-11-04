@@ -6617,17 +6617,17 @@
         .message-bubble:not(.mine) > .message-tools,
         .message-image-item:not(.mine) > .message-tools {
           top: 50%;
-          right: auto;
+          inset-inline-start: calc(100% + 4px);
+          inset-inline-end: auto;
           bottom: auto;
-          left: calc(100% + 4px);
           margin-top: -16px;
         }
         .message-bubble.mine > .message-tools,
         .message-image-item.mine > .message-tools {
           top: 50%;
-          right: calc(100% + 4px);
+          inset-inline-end: calc(100% + 4px);
+          inset-inline-start: auto;
           bottom: auto;
-          left: auto;
           margin-top: -16px;
           flex-direction: row-reverse;
         }
@@ -6758,27 +6758,31 @@
       }
       .message-attachment-grid {
         display: flex;
-        width: fit-content;
-        max-width: 100%;
-        gap: 4px;
-      }
-      .message-attachment-preview.is-multiple .message-attachment-grid {
-        display: grid;
         width: 100%;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        max-width: 100%;
+        height: calc(var(--message-preview-height, 220px) + 6px);
+        align-items: flex-start;
+        gap: 8px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scroll-snap-type: x proximity;
+        scrollbar-color: color-mix(in srgb, var(--text-3) 45%, transparent) transparent;
+        scrollbar-width: thin;
       }
       .message-attachment-tile {
         position: relative;
-        display: grid;
+        display: block;
+        flex: 0 0 auto;
+        height: var(--message-preview-height, 220px);
         min-width: 0;
         max-width: 100%;
-        place-items: center;
         overflow: hidden;
         border-radius: 12px;
         background: var(--surface-2);
         opacity: 1;
         transform: scale(1);
         transition: opacity 140ms ease, transform 140ms ease;
+        scroll-snap-align: start;
       }
       .message-attachment-tile.is-removing {
         opacity: 0;
@@ -6786,19 +6790,42 @@
       }
       .message-attachment-tile > img {
         display: block;
-        width: auto;
-        height: auto;
-        max-width: 100%;
-        max-height: min(220px, 26dvh);
-        object-fit: cover;
-      }
-      .message-attachment-preview.is-multiple .message-attachment-tile {
-        aspect-ratio: 1;
-        max-height: min(220px, 26dvh);
-      }
-      .message-attachment-preview.is-multiple .message-attachment-tile > img {
         width: 100%;
         height: 100%;
+        max-width: 100%;
+        object-fit: cover;
+      }
+      .message-attachment-grid::-webkit-scrollbar { height: 6px; }
+      .message-attachment-grid::-webkit-scrollbar-track { background: transparent; }
+      .message-attachment-grid::-webkit-scrollbar-thumb {
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--text-3) 45%, transparent);
+      }
+      .message-attachment-grid::-webkit-scrollbar-button { display: none; }
+      @media (hover: hover) and (pointer: fine) {
+        .message-attachment-grid { scrollbar-color: transparent transparent; }
+        .message-attachment-grid::-webkit-scrollbar-thumb { background: transparent; }
+        .message-attachment-grid:hover {
+          scrollbar-color: color-mix(in srgb, var(--text-3) 45%, transparent) transparent;
+        }
+        .message-attachment-grid:hover::-webkit-scrollbar-thumb {
+          background: color-mix(in srgb, var(--text-3) 45%, transparent);
+        }
+      }
+      @media (max-width: 480px) {
+        .message-attachment-grid,
+        .message-attachment-tile { --message-preview-height: 160px; }
+      }
+      @media (orientation: landscape) and (max-height: 500px) {
+        .message-attachment-grid,
+        .message-attachment-tile { --message-preview-height: min(220px, 30dvh); }
+      }
+      @media (hover: none), (pointer: coarse) {
+        .message-attachment-grid {
+          height: var(--message-preview-height, 220px);
+          scrollbar-width: none;
+        }
+        .message-attachment-grid::-webkit-scrollbar { display: none; }
       }
       .message-attachment-remove {
         position: absolute;
@@ -7125,6 +7152,8 @@
         max-width: 100%;
         flex-direction: column;
         gap: 2px;
+        border-radius: 16px;
+        background: var(--bg);
         white-space: normal;
         transition: width 140ms ease;
       }
@@ -7137,6 +7166,78 @@
         overflow: hidden;
         border-radius: 16px;
         background: var(--surface-2);
+      }
+      .message-image-list[data-count="2"],
+      .message-image-list[data-count="3"] {
+        display: grid;
+        aspect-ratio: 4 / 3;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: repeat(2, minmax(0, 1fr));
+      }
+      .message-image-list[data-count="2"] { grid-template-rows: minmax(0, 1fr); }
+      .message-image-list[data-count="3"] > .message-image-item:first-child { grid-row: span 2; }
+      .message-image-list[data-count="4"] {
+        display: grid;
+        aspect-ratio: 1;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: repeat(2, minmax(0, 1fr));
+      }
+      .message-image-list[data-count="2"] > .message-image-item,
+      .message-image-list[data-count="3"] > .message-image-item,
+      .message-image-list[data-count="4"] > .message-image-item {
+        min-height: 0;
+        overflow: hidden;
+      }
+      .message-image-list[data-count="2"] .message-image-frame,
+      .message-image-list[data-count="3"] .message-image-frame,
+      .message-image-list[data-count="4"] .message-image-frame {
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+        max-height: none;
+        aspect-ratio: auto;
+        border-radius: 0;
+      }
+      .message-image-list[data-count="2"] .message-media,
+      .message-image-list[data-count="3"] .message-media,
+      .message-image-list[data-count="4"] .message-media { max-height: none; }
+      .message-image-list[data-count="2"] > .message-image-item:first-child .message-image-frame,
+      .message-image-list[data-count="3"] > .message-image-item:first-child .message-image-frame {
+        border-start-start-radius: 16px;
+        border-end-start-radius: 16px;
+      }
+      .message-image-list[data-count="2"] > .message-image-item:last-child .message-image-frame {
+        border-start-end-radius: 16px;
+        border-end-end-radius: 16px;
+      }
+      .message-image-list[data-count="3"] > .message-image-item:nth-child(2) .message-image-frame {
+        border-start-end-radius: 16px;
+      }
+      .message-image-list[data-count="3"] > .message-image-item:nth-child(3) .message-image-frame {
+        border-end-end-radius: 16px;
+      }
+      .message-image-list[data-count="4"] > .message-image-item:nth-child(1) .message-image-frame {
+        border-start-start-radius: 16px;
+      }
+      .message-image-list[data-count="4"] > .message-image-item:nth-child(2) .message-image-frame {
+        border-start-end-radius: 16px;
+      }
+      .message-image-list[data-count="4"] > .message-image-item:nth-child(3) .message-image-frame {
+        border-end-start-radius: 16px;
+      }
+      .message-image-list[data-count="4"] > .message-image-item:nth-child(4) .message-image-frame {
+        border-end-end-radius: 16px;
+      }
+      .message-image-overflow {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        color: #fff;
+        background: rgba(0, 0, 0, .45);
+        font-size: 20px;
+        font-weight: 700;
+        pointer-events: none;
       }
       .message-media {
         display: block;
@@ -7255,23 +7356,23 @@
       }
       @media (min-width: 769px) and (max-width: 1024px) {
         .chat-log {
-          --msg-media-w: min(230px, 60cqw);
-          --msg-media-max-h: min(368px, 96cqw, 65dvh);
-          --msg-media-min-h: min(92px, 24cqw, 65dvh);
+          --msg-media-w: min(280px, 65cqw);
+          --msg-media-max-h: min(448px, 104cqw, 65dvh);
+          --msg-media-min-h: min(112px, 26cqw, 65dvh);
         }
       }
       @media (min-width: 1025px) and (max-width: 1439px) {
         .chat-log {
-          --msg-media-w: min(250px, 55cqw);
-          --msg-media-max-h: min(400px, 88cqw, 65dvh);
-          --msg-media-min-h: min(100px, 22cqw, 65dvh);
+          --msg-media-w: min(300px, 60cqw);
+          --msg-media-max-h: min(480px, 96cqw, 65dvh);
+          --msg-media-min-h: min(120px, 24cqw, 65dvh);
         }
       }
       @media (min-width: 1440px) {
         .chat-log {
-          --msg-media-w: min(250px, 55cqw);
-          --msg-media-max-h: min(400px, 88cqw, 65dvh);
-          --msg-media-min-h: min(100px, 22cqw, 65dvh);
+          --msg-media-w: min(340px, 55cqw);
+          --msg-media-max-h: min(544px, 88cqw, 65dvh);
+          --msg-media-min-h: min(136px, 22cqw, 65dvh);
         }
       }
       @media (max-width: 640px) {
@@ -13046,11 +13147,26 @@
         const trigger = event.target.closest("[data-lightbox-image]");
         if (trigger) {
           lightboxTrigger = trigger;
+          const messageImageList = trigger.closest(".message-image-list");
           const container = trigger.closest(".media, .media-grid, .image-message");
-          lightboxImages = container
-            ? [...container.querySelectorAll("[data-lightbox-image]")].map((element) => element.dataset.lightboxImage)
-            : [trigger.dataset.lightboxImage];
-          showLightboxImage(Math.max(0, lightboxImages.indexOf(trigger.dataset.lightboxImage)));
+          if (messageImageList?.dataset.lightboxImages) {
+            try {
+              const images = JSON.parse(messageImageList.dataset.lightboxImages);
+              lightboxImages = Array.isArray(images) ? images.filter((url) => typeof url === "string") : [];
+            } catch {
+              lightboxImages = [...messageImageList.querySelectorAll("[data-lightbox-image]")]
+                .map((element) => element.dataset.lightboxImage);
+            }
+          } else {
+            lightboxImages = container
+              ? [...container.querySelectorAll("[data-lightbox-image]")].map((element) => element.dataset.lightboxImage)
+              : [trigger.dataset.lightboxImage];
+          }
+          const requestedIndex = Number(trigger.dataset.lightboxIndex);
+          const imageIndex = messageImageList && Number.isInteger(requestedIndex) && requestedIndex >= 0
+            ? requestedIndex
+            : lightboxImages.indexOf(trigger.dataset.lightboxImage);
+          showLightboxImage(Math.max(0, imageIndex));
           $("#postLightbox").showModal();
           $("#postLightboxClose")?.focus();
         } else if (event.target.closest("[data-lightbox-close]")) {
@@ -18091,23 +18207,25 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const pill = $("#messageComposePill");
         const hasAttachments = messageAttachments.length > 0;
         preview.classList.toggle("is-open", hasAttachments);
-        preview.classList.toggle("is-multiple", messageAttachments.length > 1);
         preview.setAttribute("aria-hidden", String(!hasAttachments));
         preview.setAttribute("aria-busy", String(messageAttachments.some(({ status }) => status === "uploading")));
+        grid.dataset.count = String(messageAttachments.length);
         if (hasAttachments) {
-          grid.innerHTML = messageAttachments.map((attachment) => `
-            <div class="message-attachment-tile${attachment.removing ? " is-removing" : ""}" data-message-attachment-tile="${esc(attachment.id)}">
+          grid.innerHTML = messageAttachments.map((attachment) => {
+            const width = Number(attachment.width) > 0 ? Number(attachment.width) : 1;
+            const height = Number(attachment.height) > 0 ? Number(attachment.height) : 1;
+            return `
+            <div class="message-attachment-tile${attachment.removing ? " is-removing" : ""}" data-message-attachment-tile="${esc(attachment.id)}" style="aspect-ratio:${width} / ${height}">
               <img src="${esc(attachment.previewUrl || attachment.url)}" alt="${esc(attachment.name)}" />
               ${attachment.isGif ? '<span class="message-attachment-gif">GIF</span>' : ""}
               ${attachment.status === "uploading" ? '<span class="message-attachment-progress" role="status" aria-label="Uploading attachment"></span>' : ""}
               <button class="message-attachment-remove" type="button" data-message-attachment-remove="${esc(attachment.id)}" aria-label="Remove attachment"${messageSubmissionPending ? " disabled" : ""}>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
               </button>
-            </div>`).join("");
+            </div>`;
+          }).join("");
         }
         pill.classList.toggle("has-attachments", hasAttachments);
-        const multiple = messageAttachments.length > 1;
-        grid.classList.toggle("is-multiple", multiple);
         syncMessageComposer();
       }
       function clearMessageAttachments({ immediate = false } = {}) {
@@ -18752,13 +18870,15 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         });
         const bodyIsGifUrl = Boolean(bodyGifUrl && mediaItems.some(({ isGif }) => isGif));
         const mediaLoading = eager ? "eager" : "lazy";
+        const visibleMediaItems = mediaItems.slice(0, 4);
         const image = mediaItems.length
-          ? `<div class="message-image-list" data-count="${mediaItems.length}">${mediaItems.map(({ imageUrl, isGif, width, height, hasDimensions }) => `
+          ? `<div class="message-image-list" data-count="${visibleMediaItems.length}" data-lightbox-images="${esc(JSON.stringify(mediaItems.map(({ imageUrl }) => imageUrl)))}">${visibleMediaItems.map(({ imageUrl, isGif, width, height, hasDimensions }, index) => `
             <div class="message-image-item${mine ? " mine" : ""}">
               <div class="message-image-frame" style="aspect-ratio:${width || 1} / ${height || 1}" data-media-width="${width}" data-media-height="${height}" data-media-dimensions="${hasDimensions ? "stored" : "fallback"}">
-                <button class="message-media-button" type="button" data-lightbox-image="${esc(imageUrl)}" aria-label="Open shared ${isGif ? "GIF" : "image"}"><img class="message-media" src="${esc(imageUrl)}" width="${width || 1}" height="${height || 1}" alt="${isGif ? "Shared GIF" : "Shared image"}" loading="${mediaLoading}" decoding="async" /></button>
+                <button class="message-media-button" type="button" data-lightbox-image="${esc(imageUrl)}" data-lightbox-index="${index}" aria-label="Open shared ${isGif ? "GIF" : "image"}"><img class="message-media" src="${esc(imageUrl)}" width="${width || 1}" height="${height || 1}" alt="${isGif ? "Shared GIF" : "Shared image"}" loading="${mediaLoading}" decoding="async" /></button>
+                ${index === 3 && mediaItems.length > 4 ? `<span class="message-image-overflow">+${mediaItems.length - 4}</span>` : ""}
               </div>
-              ${hasTextContent ? "" : messageToolsMarkup({
+              ${hasTextContent || index !== visibleMediaItems.length - 1 ? "" : messageToolsMarkup({
                 messageId: message.id,
                 downloadUrl: imageUrl,
                 downloadLabel: isGif ? "GIF" : "image",
@@ -23385,6 +23505,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const button = event.target.closest("[data-message-attachment-remove]");
         if (button) removeMessageAttachment(button.dataset.messageAttachmentRemove, button);
       });
+      $("#messageAttachmentGrid").addEventListener("load", (event) => {
+        const image = event.target;
+        if (!(image instanceof HTMLImageElement) || !image.naturalWidth || !image.naturalHeight) return;
+        const tile = image.closest(".message-attachment-tile");
+        if (tile) tile.style.aspectRatio = `${image.naturalWidth} / ${image.naturalHeight}`;
+      }, true);
       $("#gifPickerSearch").addEventListener("input", (event) => {
         const input = event.currentTarget;
         const query = input.value.trim();
