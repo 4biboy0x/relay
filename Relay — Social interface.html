@@ -5898,13 +5898,24 @@
         color: var(--text-3);
         font-size: 11px;
       }
+      .conversation-preview-time-wrap {
+        position: relative;
+        display: inline-flex;
+        flex: none;
+        margin-left: auto;
+      }
       .unread-count {
+        position: absolute;
+        top: calc(100% + 13px);
+        inset-inline-start: 50%;
         width: 6px;
         height: 6px;
-        flex: none;
-        margin-inline-start: 2px;
+        transform: translateX(-50%);
         border-radius: 50%;
-        background: var(--accent);
+        background: #1d9bf0;
+      }
+      :dir(rtl) .unread-count {
+        transform: translateX(50%);
       }
       .chat-panel {
         --chat-inline-padding: 16px;
@@ -19736,6 +19747,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             || (!selectedConversationId && item.id === activeConversation?.id));
           const search = `${conversationSearchText(item)} ${normalizedQuery}`;
           const lastMessage = item.lastMessage;
+          const unreadCount = Number(item.unreadCount) || 0;
           const matchingLastMessage = queryTerms.length > 0
             && queryTerms.every((term) => (lastMessage?.body || "").normalize("NFKC").toLowerCase().includes(term));
           const message = searchMode === "messages" ? item.matchedMessage : lastMessage;
@@ -19759,18 +19771,17 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               : body ? `${esc(shortSender)}: ${esc(body)}` : esc(shortSender);
             if (message.createdAt && Number.isFinite(new Date(message.createdAt).getTime())) {
               const createdAt = new Date(message.createdAt).toISOString();
-              messageTime = `<time class="conversation-preview-time" datetime="${esc(createdAt)}" title="${esc(new Date(createdAt).toLocaleString())}">${esc(timeAgo(createdAt))}</time>`;
+              messageTime = `<span class="conversation-preview-time-wrap"><time class="conversation-preview-time" datetime="${esc(createdAt)}" title="${esc(new Date(createdAt).toLocaleString())}">${esc(timeAgo(createdAt))}</time>${unreadCount ? `<span class="unread-count" aria-label="${unreadCount} unread messages"></span>` : ""}</span>`;
             }
             preview = message.kind === "reaction" ? previewText : `<span class="conversation-preview-text">${previewText}</span>`;
           } else {
             preview = `<span class="conversation-preview-text">${esc(preview)}</span>`;
           }
-          const unreadCount = Number(item.unreadCount) || 0;
           const searchMessageId = searchQuery
             ? (searchMode === "messages" ? item.matchedMessage?.id : matchingLastMessage ? lastMessage?.id : "")
             : "";
           const searchMessageCandidate = Boolean(searchQuery && searchMode === "conversations" && !searchMessageId);
-          return `<button class="conversation-item${searchQuery ? " is-search-result" : ""}${searchMode === "messages" ? " message-search-result" : ""}${unreadCount ? " has-unread" : ""}" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-mode="${esc(searchMode)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}"${searchQuery ? ` aria-selected="${current}"` : ""}>${presenceAvatarMarkup(other, "sm")}<span class="grow"><span class="conversation-item-heading"><b>${esc(other?.displayName || "Relay user")}</b>${messageTime}</span><small>${preview}${unreadCount ? `<span class="unread-count" aria-label="${unreadCount} unread messages"></span>` : ""}</small></span></button>`;
+          return `<button class="conversation-item${searchQuery ? " is-search-result" : ""}${searchMode === "messages" ? " message-search-result" : ""}${unreadCount ? " has-unread" : ""}" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-mode="${esc(searchMode)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}"${searchQuery ? ` aria-selected="${current}"` : ""}>${presenceAvatarMarkup(other, "sm")}<span class="grow"><span class="conversation-item-heading"><b>${esc(other?.displayName || "Relay user")}</b>${messageTime}</span><small>${preview}</small></span></button>`;
         }).join("");
         if (append) resultList.insertAdjacentHTML("beforeend", markup);
         else if (resultList.id !== "conversationList") resultList.innerHTML = markup;
