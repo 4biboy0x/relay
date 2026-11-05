@@ -19827,20 +19827,22 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const burst = $("#messageLightboxReactionBurst");
         if (!lightbox.open || !lightbox.classList.contains("is-message-media")
           || !image.complete || !image.naturalWidth || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+        const actionBar = $(".message-lightbox-action-row", $("#messageLightboxActions"));
+        if (!actionBar) return;
         clearTimeout(messageLightboxReactionBurstTimer);
         burst.replaceChildren();
         const lightboxBounds = lightbox.getBoundingClientRect();
-        const imageBounds = image.getBoundingClientRect();
-        const centerX = imageBounds.left - lightboxBounds.left + imageBounds.width / 2;
-        const centerY = imageBounds.top - lightboxBounds.top + imageBounds.height / 2;
+        const actionBarBounds = actionBar.getBoundingClientRect();
+        const centerX = actionBarBounds.left - lightboxBounds.left + actionBarBounds.width / 2;
+        const centerY = actionBarBounds.top - lightboxBounds.top - 20;
         const flightPaths = [
-          [-86, -110, -18],
-          [-58, -164, 14],
-          [-29, -126, -12],
-          [0, -190, 10],
-          [31, -138, -16],
-          [60, -170, 12],
-          [88, -112, -10],
+          [-54, -42, -18],
+          [-39, -70, 14],
+          [-24, -50, -12],
+          [0, -82, 10],
+          [24, -52, -16],
+          [40, -70, 12],
+          [55, -42, -10],
         ];
         flightPaths.forEach(([x, y, rotation], index) => {
           const particle = document.createElement("span");
