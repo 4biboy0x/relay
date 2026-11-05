@@ -7379,9 +7379,6 @@
         white-space: normal;
         transition: width 140ms ease;
       }
-      .message-image-list[data-has-gif="true"] {
-        width: min(calc(var(--msg-media-w) * .82), 100%);
-      }
       .message-image-frame {
         width: 100%;
         height: auto;
@@ -19340,7 +19337,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const visibleMediaItems = mediaItems.slice(0, 4);
         const hasMultipleImages = mediaItems.length > 1;
         const image = mediaItems.length
-          ? `<div class="message-image-list" data-message-id="${esc(message.id)}" data-count="${visibleMediaItems.length}" data-has-gif="${mediaItems.some(({ isGif }) => isGif)}" data-lightbox-images="${esc(JSON.stringify(mediaItems.map(({ imageUrl, isGif }) => ({ url: imageUrl, isGif }))))}">${visibleMediaItems.map(({ imageUrl, isGif, width, height, hasDimensions }, index) => `
+          ? `<div class="message-image-list" data-message-id="${esc(message.id)}" data-count="${visibleMediaItems.length}" data-lightbox-images="${esc(JSON.stringify(mediaItems.map(({ imageUrl, isGif }) => ({ url: imageUrl, isGif }))))}">${visibleMediaItems.map(({ imageUrl, isGif, width, height, hasDimensions }, index) => `
             <div class="message-image-item${mine ? " mine" : ""}">
               <div class="message-image-frame" style="aspect-ratio:${width || 1} / ${height || 1}" data-media-width="${width}" data-media-height="${height}" data-media-dimensions="${hasDimensions ? "stored" : "fallback"}">
                 <button class="message-media-button" type="button" data-lightbox-image="${esc(imageUrl)}" data-lightbox-index="${index}" aria-label="Open shared ${isGif ? "GIF" : "image"}"><img class="message-media" src="${esc(imageUrl)}" width="${width || 1}" height="${height || 1}" alt="${isGif ? "Shared GIF" : "Shared image"}" loading="${mediaLoading}" decoding="async" /></button>
