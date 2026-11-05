@@ -5217,6 +5217,35 @@
         max-width: calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 32px);
         max-height: calc(100dvh - 168px);
       }
+      .post-lightbox.is-message-media .message-lightbox-reaction-burst {
+        position: absolute;
+        z-index: 1;
+        inset: 0;
+        overflow: hidden;
+        pointer-events: none;
+      }
+      .post-lightbox.is-message-media .post-lightbox-close,
+      .post-lightbox.is-message-media .post-lightbox-nav { z-index: 3; }
+      .message-lightbox-reaction-burst[hidden] { display: none; }
+      .message-lightbox-reaction-particle {
+        position: absolute;
+        display: block;
+        font-size: 30px;
+        line-height: 1;
+        filter: drop-shadow(0 3px 8px rgb(0 0 0 / 35%));
+        pointer-events: none;
+        animation: message-reaction-fly 900ms cubic-bezier(.16,.76,.32,1) both;
+        animation-delay: var(--reaction-delay, 0ms);
+      }
+      @keyframes message-reaction-fly {
+        0% { opacity: 0; transform: translate(-50%, -50%) scale(.45) rotate(0deg); }
+        16% { opacity: 1; transform: translate(-50%, -50%) scale(1.12) rotate(-8deg); }
+        32% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(5deg); }
+        100% {
+          opacity: 0;
+          transform: translate(calc(-50% + var(--reaction-x)), calc(-50% + var(--reaction-y))) scale(.82) rotate(var(--reaction-rotate));
+        }
+      }
       .post-lightbox.is-message-media .post-lightbox-close {
         left: auto;
         right: auto;
@@ -5329,6 +5358,7 @@
       }
       @media (prefers-reduced-motion: reduce) {
         .post-lightbox.is-message-media #postLightboxImage { animation: none; }
+        .message-lightbox-reaction-particle { animation: none; }
         .message-lightbox-action,
         .post-lightbox.is-message-media .post-lightbox-close,
         .post-lightbox.is-message-media .post-lightbox-nav { transition: none; }
@@ -6411,7 +6441,7 @@
         border: 0;
         background: transparent;
       }
-      .message-reaction-host > .message-reaction-list { bottom: -10px; }
+      .message-reaction-host > .message-reaction-list { inset-block-end: -10px; }
       .reply-stack {
         display: flex;
         width: min(70%, 720px);
@@ -6709,9 +6739,9 @@
         outline: none;
       }
       .message-reaction-list {
-        position: fixed;
+        position: absolute;
         z-index: 3;
-        bottom: -10px;
+        inset-block-end: -10px;
         display: inline-flex;
         min-height: 21px;
         align-items: center;
@@ -6729,8 +6759,8 @@
       }
       .message-reaction-list:empty { display: none; }
       .message-reaction-list:hover { opacity: .85; }
-      .message-bubble.mine > .message-reaction-list { right: 8px; left: auto; }
-      .message-bubble:not(.mine) > .message-reaction-list { right: auto; left: 8px; }
+      .message-bubble.mine > .message-reaction-list { inset-inline-end: 8px; inset-inline-start: auto; }
+      .message-bubble:not(.mine) > .message-reaction-list { inset-inline-end: auto; inset-inline-start: 8px; }
       .message-row.has-reactions { margin-block-end: 12px; }
       .message-reaction-chip {
         display: inline-flex;
@@ -10562,6 +10592,7 @@
       </button>
       <button class="post-lightbox-nav prev" type="button" data-lightbox-prev aria-label="Previous image">‹</button>
       <img id="postLightboxImage" alt="">
+      <div class="message-lightbox-reaction-burst" id="messageLightboxReactionBurst" aria-hidden="true" hidden></div>
       <button class="post-lightbox-nav next" type="button" data-lightbox-next aria-label="Next image">›</button>
       <span class="post-lightbox-counter" id="postLightboxCounter" aria-live="polite"></span>
       <div class="message-lightbox-actions" id="messageLightboxActions" hidden>
@@ -13316,6 +13347,7 @@
       let lightboxTrigger = null;
       let messageLightboxContext = null;
       let messageLightboxReplyRequested = false;
+      let messageLightboxReactionBurstTimer = 0;
       let touchStartX = 0;
       const showLightboxImage = (index) => {
         if (!lightboxImages.length) return;
@@ -13460,6 +13492,9 @@
       });
       $("#postLightbox").addEventListener("close", () => {
         if (activeMessageReactionPicker?.picker.closest("#postLightbox")) closeMessageReactionPicker();
+        clearTimeout(messageLightboxReactionBurstTimer);
+        $("#messageLightboxReactionBurst").replaceChildren();
+        $("#messageLightboxReactionBurst").hidden = true;
         $("#postLightbox").classList.remove("is-message-media");
         $("#messageLightboxActions").hidden = true;
         messageLightboxContext = null;
@@ -19786,11 +19821,53 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (list) list.outerHTML = reactionMarkup;
         else if (reactionMarkup) bubble.insertAdjacentHTML("beforeend", reactionMarkup);
       }
-      async function toggleMessageReaction(messageId, emoji) {
+      function showMessageLightboxReactionBurst(emoji) {
+        const lightbox = $("#postLightbox");
+        const image = $("#postLightboxImage");
+        const burst = $("#messageLightboxReactionBurst");
+        if (!lightbox.open || !lightbox.classList.contains("is-message-media")
+          || !image.complete || !image.naturalWidth || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+        clearTimeout(messageLightboxReactionBurstTimer);
+        burst.replaceChildren();
+        const lightboxBounds = lightbox.getBoundingClientRect();
+        const imageBounds = image.getBoundingClientRect();
+        const centerX = imageBounds.left - lightboxBounds.left + imageBounds.width / 2;
+        const centerY = imageBounds.top - lightboxBounds.top + imageBounds.height / 2;
+        const flightPaths = [
+          [-86, -110, -18],
+          [-58, -164, 14],
+          [-29, -126, -12],
+          [0, -190, 10],
+          [31, -138, -16],
+          [60, -170, 12],
+          [88, -112, -10],
+        ];
+        flightPaths.forEach(([x, y, rotation], index) => {
+          const particle = document.createElement("span");
+          particle.className = "message-lightbox-reaction-particle";
+          particle.textContent = emoji;
+          particle.style.left = `${centerX}px`;
+          particle.style.top = `${centerY}px`;
+          particle.style.setProperty("--reaction-x", `${x}px`);
+          particle.style.setProperty("--reaction-y", `${y}px`);
+          particle.style.setProperty("--reaction-rotate", `${rotation}deg`);
+          particle.style.setProperty("--reaction-delay", `${index * 28}ms`);
+          burst.append(particle);
+        });
+        burst.hidden = false;
+        messageLightboxReactionBurstTimer = window.setTimeout(() => {
+          burst.replaceChildren();
+          burst.hidden = true;
+        }, 1200);
+      }
+      async function toggleMessageReaction(messageId, emoji, { animateInLightbox = false } = {}) {
         const message = messagesById.get(messageId);
         if (!message || message.conversationId !== activeConversation?.id
           || messageReactionRequests.has(messageId) || !requireAuth()) return;
         const existing = message.reactions.find((reaction) => reaction.emoji === emoji && reaction.reactedByMe);
+        const reactionLightboxImage = animateInLightbox
+          ? messageLightboxContext?.items[lightboxIndex]?.url
+          : "";
         messageReactionRequests.add(messageId);
         try {
           const query = new URLSearchParams({ emoji });
@@ -19802,6 +19879,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             throw new Error("Reaction was returned for a different message.");
           }
           updateMessageReactions(messageId, result.conversationId, result.reactions);
+          if (!existing && animateInLightbox && messageLightboxContext?.messageId === messageId
+            && messageLightboxContext.items[lightboxIndex]?.url === reactionLightboxImage) {
+            showMessageLightboxReactionBurst(emoji);
+          }
         } catch (error) {
           toast(error.message || "Could not update the reaction.");
         } finally {
@@ -22704,8 +22785,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const pickerReaction = e.target.closest("[data-message-react-emoji]");
         if (pickerReaction) {
           const { dataset } = pickerReaction;
+          const animateInLightbox = Boolean(pickerReaction.closest("#postLightbox.is-message-media"));
           closeMessageReactionPicker();
-          await toggleMessageReaction(dataset.messageReactId, dataset.messageReactEmoji);
+          await toggleMessageReaction(dataset.messageReactId, dataset.messageReactEmoji, { animateInLightbox });
           return;
         }
         const reactionChip = e.target.closest("[data-message-reaction-toggle]");
