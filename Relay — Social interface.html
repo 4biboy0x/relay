@@ -6879,7 +6879,49 @@
         .message-tool-button { width: 40px; height: 40px; }
         .message-bubble:not(.mine) > .message-tools,
         .message-bubble.mine > .message-tools { margin-top: -20px; }
-        .message-image-item > .message-tools { margin-top: 0; }
+      }
+      @media (max-width: 640px), (hover: none) {
+        .message-image-item > .message-tools {
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          margin-top: 0;
+          flex-direction: row;
+          gap: 2px;
+          width: max-content;
+          max-width: none;
+          flex-shrink: 0;
+          z-index: 5;
+        }
+        .message-image-item:not(.mine) > .message-tools {
+          inset-inline-start: calc(100% + 6px);
+          inset-inline-end: auto;
+          flex-direction: row;
+        }
+        .message-image-item.mine > .message-tools {
+          inset-inline-end: calc(100% + 6px);
+          inset-inline-start: auto;
+          flex-direction: row;
+        }
+        .message-image-item > .message-tools .message-tool-button {
+          width: 24px;
+          height: 24px;
+          min-width: 24px;
+          min-height: 24px;
+          padding: 0;
+        }
+        .message-image-item > .message-tools .message-tool-button .i,
+        .message-image-item > .message-tools .message-tool-button svg {
+          width: 16px;
+          height: 16px;
+        }
+        .message-bubble.image-message,
+        .message-bubble.has-message-image {
+          max-width: min(calc(100% - 116px), 65%);
+        }
+        .message-attachment-group {
+          max-width: min(calc(100% - 116px), 65%);
+        }
       }
       .message-bubble.search-message-highlight {
         animation: message-search-shake 420ms ease-in-out;
@@ -7616,6 +7658,12 @@
       }
       @media (hover: none) and (pointer: coarse) {
         .message-tool-button { width: 40px; height: 40px; }
+        .message-image-item > .message-tools .message-tool-button {
+          width: 24px;
+          height: 24px;
+          min-width: 24px;
+          min-height: 24px;
+        }
       }
       .typing-status {
         display: flex;
