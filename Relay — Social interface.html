@@ -6617,10 +6617,15 @@
       }
       [dir="rtl"] .message-bubble.mine > .message-tools { flex-direction: row; }
       .message-image-item > .message-tools {
+        position: absolute;
         top: 50%;
         margin-top: 0;
         transform: translateY(-50%);
         flex-direction: column;
+        width: max-content;
+        max-width: none;
+        flex-shrink: 0;
+        z-index: 5;
       }
       .message-image-item:not(.mine) > .message-tools {
         inset-inline-start: calc(100% + 8px);
