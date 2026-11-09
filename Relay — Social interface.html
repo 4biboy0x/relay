@@ -703,12 +703,15 @@
       .settings-error:empty { display: none; }
       .settings-error { min-height: 0; color: var(--like); font-size: 12px; }
       .settings-error:not(:empty) { margin-top: 0; }
-      .settings-danger-button { height: 36px; padding: 0 16px; border: 1px solid var(--like); border-radius: 8px; background: transparent; color: var(--like); font-size: 14px; font-weight: 600; }
+      .settings-danger-button { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 16px; border: 1px solid var(--like); border-radius: 8px; background: transparent; color: var(--like); font-size: 14px; font-weight: 600; }
       .settings-danger-button:hover { background: color-mix(in srgb, var(--like) 8%, transparent); }
       .more-l { text-decoration: none; color: var(--accent); font-size: 14px; font-weight: 500; }
       @media (max-width: 540px) {
         .settings-page { max-width: none; }
         .settings-card { padding-inline: 16px; }
+      }
+      @media (max-width: 640px) {
+        .settings-danger-button { min-height: 44px; }
       }
       .icon-btn {
         width: 32px;
@@ -10357,6 +10360,13 @@
                 <div class="settings-error" id="settingsPasswordError" role="alert"></div>
                 <button class="btn btn-primary" type="submit" id="settingsPasswordSubmit" disabled>Update password</button>
               </form>
+            </section>
+            <section class="settings-card" aria-labelledby="accountSessionTitle">
+              <div class="settings-card-heading">
+                <h2 id="accountSessionTitle">Account session</h2>
+                <p id="settingsSignOutDesc">Sign out of your account on this device.</p>
+              </div>
+              <button class="settings-danger-button" type="button" data-account-action="signout" aria-describedby="settingsSignOutDesc">Sign out</button>
             </section>
             <section class="settings-card" aria-labelledby="deleteTitle">
               <div class="settings-card-heading">
