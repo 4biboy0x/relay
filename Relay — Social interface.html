@@ -3269,17 +3269,53 @@
       }
       .p-head {
         display: flex;
-        align-items: baseline;
+        align-items: center;
         gap: 6px;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+        min-width: 0;
+      }
+      .p-head-text {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+        flex: 1;
+        overflow: hidden;
       }
       .p-head b {
         font-weight: 600;
         letter-spacing: -0.005em;
+        min-width: 0;
+        flex-shrink: 1;
+        overflow: hidden;
+      }
+      .p-head b .profile-link,
+      .p-head .p-dn {
+        display: block;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .p-head .m {
+        display: flex;
+        align-items: center;
+        min-width: 0;
+        flex-shrink: 1;
         color: var(--text-3);
         font-size: 14px;
+        white-space: nowrap;
+      }
+      .p-head .post-handle {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+        flex-shrink: 1;
+      }
+      .p-head .post-time {
+        white-space: nowrap;
+        flex-shrink: 0;
       }
       .p-head .more {
         width: 30px;
@@ -3288,7 +3324,7 @@
       .post-menu-wrap {
         position: relative;
         flex: none;
-        margin-left: auto;
+        margin-inline-start: auto;
         align-self: center;
       }
       .post-menu-wrap.is-open {
@@ -6440,8 +6476,8 @@
         flex-direction: row;
       }
       .message-attachment-group > .message-tools .message-tool-button {
-        width: 40px;
-        height: 40px;
+        width: 32px;
+        height: 32px;
       }
       .message-download-all .message-download-spinner {
         display: none;
@@ -6646,20 +6682,34 @@
         top: 50%;
         margin-top: 0;
         transform: translateY(-50%);
-        flex-direction: column;
+        flex-direction: row;
       }
       .message-image-item:not(.mine) > .message-tools {
-        inset-inline-start: calc(100% + 8px);
+        inset-inline-start: calc(100% + 6px);
         inset-inline-end: auto;
       }
       .message-image-item.mine > .message-tools {
-        inset-inline-end: calc(100% + 8px);
+        inset-inline-end: calc(100% + 6px);
         inset-inline-start: auto;
+        flex-direction: row-reverse;
       }
-      .message-row:hover .message-tools,
-      .message-row:focus-within .message-tools,
-      .message-row.tools-visible .message-tools,
-      .message-row.has-message-popover .message-tools,
+      [dir="rtl"] .message-image-item.mine > .message-tools { flex-direction: row; }
+      .message-bubble:hover > .message-tools,
+      .message-bubble:focus-within > .message-tools,
+      .message-bubble.tools-visible > .message-tools,
+      .message-bubble.has-message-popover > .message-tools,
+      .message-image-item:hover > .message-tools,
+      .message-image-item:focus-within > .message-tools,
+      .message-image-item.tools-visible > .message-tools,
+      .message-image-item.has-message-popover > .message-tools,
+      .message-attachment-group:hover > .message-tools,
+      .message-attachment-group:focus-within > .message-tools,
+      .message-row.tools-visible:not(:has(.message-bubble.tools-visible, .message-image-item.tools-visible)) > .message-tools,
+      .message-row.tools-visible:not(:has(.message-bubble.tools-visible, .message-image-item.tools-visible)) > .message-attachment-group > .message-tools,
+      .message-row.tools-visible:not(:has(.message-bubble.tools-visible, .message-image-item.tools-visible)) > .message-bubble > .message-tools,
+      .message-row:hover:not(:has(.message-bubble:hover, .message-image-item:hover)) > .message-tools,
+      .message-row:hover:not(:has(.message-bubble:hover, .message-image-item:hover)) > .message-bubble > .message-tools,
+      .message-row:hover:not(:has(.message-bubble:hover, .message-image-item:hover)) > .message-attachment-group > .message-tools,
       .message-tools:focus-within {
         opacity: 1;
         pointer-events: auto;
@@ -6864,40 +6914,13 @@
           margin-top: -16px;
           flex-direction: row-reverse;
         }
-        .message-row:is(:hover, :focus-within, .tools-visible, .has-message-popover) > .message-bubble:not(.image-message):not(.has-message-image),
         .message-row:is(:hover, :focus-within, .tools-visible, .has-message-popover) > .reply-stack {
           max-width: calc(100% - 176px);
         }
-        .message-row:is(:hover, :focus-within, .tools-visible, .has-message-popover) > .message-attachment-group:not(.message-multi-image-group) > .message-bubble {
-          max-width: min(calc(100cqw - 176px), 720px);
-        }
-        .message-row:is(:hover, :focus-within, .tools-visible, .has-message-popover) > .message-attachment-group:not(.message-multi-image-group) {
-          max-width: calc(100cqw - 176px);
-        }
-        .message-row:is(:hover, :focus-within, .tools-visible, .has-message-popover) > .message-multi-image-group > .message-bubble {
-          max-width: min(calc(100cqw - 56px), 720px);
-        }
-        .message-row:is(:hover, :focus-within, .tools-visible, .has-message-popover) > .message-multi-image-group {
-          max-width: calc(100cqw - 56px);
-        }
-        .message-multi-image-group > .message-tools,
-        .message-row.mine > .message-multi-image-group > .message-tools,
-        [dir="rtl"] .message-row.mine > .message-multi-image-group > .message-tools {
-          flex-direction: column;
-          gap: 0;
-        }
       }
       @container (max-width: 390px) {
-        .message-row > .message-multi-image-group {
-          max-width: calc(100cqw - 56px);
-        }
         .message-multi-image-group .message-image-list {
           width: min(var(--msg-media-w), max(120px, calc(100cqw - 56px)));
-        }
-        .message-multi-image-group > .message-tools,
-        .message-row.mine > .message-multi-image-group > .message-tools {
-          flex-direction: column;
-          gap: 0;
         }
       }
       @media (max-width: 640px) and (hover: none) {
@@ -6940,13 +6963,6 @@
         .message-image-item > .message-tools .message-tool-button svg {
           width: 16px;
           height: 16px;
-        }
-        .message-bubble.image-message,
-        .message-bubble.has-message-image {
-          max-width: min(calc(100% - 116px), 65%);
-        }
-        .message-attachment-group {
-          max-width: min(calc(100% - 116px), 65%);
         }
       }
       .message-bubble.search-message-highlight {
@@ -7470,24 +7486,23 @@
         background: var(--surface-2);
       }
       .message-image-list[data-count="2"],
-      .message-image-list[data-count="3"] {
-        display: grid;
-        aspect-ratio: 4 / 3;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        grid-template-rows: repeat(2, minmax(0, 1fr));
-      }
-      .message-image-list[data-count="2"] { grid-template-rows: minmax(0, 1fr); }
-      .message-image-list[data-count="3"] > .message-image-item:first-child { grid-row: span 2; }
+      .message-image-list[data-count="3"],
       .message-image-list[data-count="4"] {
         display: grid;
         aspect-ratio: 1;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         grid-template-rows: repeat(2, minmax(0, 1fr));
       }
+      .message-image-list[data-count="2"] {
+        grid-template-rows: minmax(0, 1fr);
+        aspect-ratio: 2 / 1;
+      }
+      .message-image-list[data-count="3"] > .message-image-item:first-child { grid-row: span 2; }
       .message-image-list[data-count="2"] > .message-image-item,
       .message-image-list[data-count="3"] > .message-image-item,
       .message-image-list[data-count="4"] > .message-image-item {
         min-height: 0;
+        height: 100%;
         overflow: hidden;
       }
       .message-image-list[data-count="2"] .message-image-frame,
@@ -7502,7 +7517,12 @@
       }
       .message-image-list[data-count="2"] .message-media,
       .message-image-list[data-count="3"] .message-media,
-      .message-image-list[data-count="4"] .message-media { max-height: none; }
+      .message-image-list[data-count="4"] .message-media {
+        width: 100%;
+        height: 100%;
+        max-height: none;
+        object-fit: cover;
+      }
       .message-image-list[data-count="2"] > .message-image-item:first-child .message-image-frame,
       .message-image-list[data-count="3"] > .message-image-item:first-child .message-image-frame {
         border-start-start-radius: 16px;
@@ -7544,7 +7564,7 @@
       .message-media {
         display: block;
         width: 100%;
-        height: auto;
+        height: 100%;
         flex-shrink: 0;
         max-width: 100%;
         max-height: none;
@@ -13678,13 +13698,14 @@
         const postMenu = mine
           ? `<div class="post-menu-wrap"><button class="icon-btn more" type="button" data-post-menu-toggle aria-label="Post options" aria-haspopup="menu" aria-expanded="false">${ic("dots")}</button><div class="post-menu" role="menu" hidden><button type="button" role="menuitem" data-post-edit data-post-id="${esc(p.id)}" data-post-body="${esc(p.x)}" data-post-media="${esc(p.m || "")}" data-post-crop="${esc(JSON.stringify(postMediaCropFor(p) || null))}" data-post-alt="${esc(postMediaAltFor(p))}" data-post-location="${esc(p.location || "")}">Edit</button><button type="button" role="menuitem" data-post-delete>Delete</button></div></div>`
           : "";
+        const postHeadMarkup = `<div class="p-head"><div class="p-head-text"><b>${profileLink(p.author, p.n)}</b><span class="m"><span class="post-handle">@${esc(p.u)}</span><span class="post-time"> · ${p.t}</span></span></div>${postMenu}</div>`;
         if (p.replyToId) {
           const parent = p.replyTo;
           return `<article class="post reply-card" data-id="${esc(p.id)}" data-author-id="${esc(p.author.id)}" data-reply-to="${esc(p.replyToId)}" tabindex="0">
 ${avatarMarkup(p.author, "sm")}
 <div class="p-body">
 <div class="reply-context">Replying to ${parent ? profileLink(parent.author, `@${parent.author.handle}`) : "a post that is no longer available"}</div>
-<div class="p-head"><b>${profileLink(p.author, p.n)}</b><span class="m">@${esc(p.u)} · ${p.t}</span>${postMenu}</div>
+${postHeadMarkup}
 ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class="i" aria-hidden="true"><use href="#pin" /></svg><span>${esc(getCompactLocationLabel(p.location))}</span></div>` : ""}<p class="reply-copy">${renderPostText(p.x, searchTerm)}</p>${homePostMedia(p)}
 <div class="acts post-actions" role="group" aria-label="Reply actions">
 <div class="post-actions-primary">
@@ -13697,7 +13718,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
 </div></article>`;
         }
         return `<article class="post" data-id="${esc(p.id)}" data-author-id="${esc(p.author.id)}" tabindex="0"><button class="profile-avatar-link" type="button" data-profile-id="${esc(p.author.id)}" aria-label="View @${esc(p.u)} profile">${avatarMarkup(p.author)}</button><div class="p-body">
-<div class="p-head"><b>${profileLink(p.author, p.n)}</b><span class="m">@${esc(p.u)} · ${p.t}</span>${postMenu}</div>
+${postHeadMarkup}
 ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class="i" aria-hidden="true"><use href="#pin" /></svg><span>${esc(getCompactLocationLabel(p.location))}</span></div>` : ""}<p class="p-text">${renderPostText(p.x, searchTerm)}</p>${homePostMedia(p)}
 <div class="acts post-actions" role="group" aria-label="Post actions">
 <div class="post-actions-primary">
@@ -19212,15 +19233,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const deleteAction = canDelete
           ? `<button type="button" role="menuitem" data-message-menu-action="delete" data-message-id="${esc(messageId)}"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 14h12l1-14M9 7V4h6v3"/></svg><span>Delete message</span></button>`
           : "";
-        return `<div class="message-tools">
-          <button class="message-tool-button" type="button" data-message-more aria-expanded="false" aria-haspopup="menu" aria-label="More" title="More">${ic("dots")}</button>
-          <button class="message-tool-button message-download-all" type="button" data-message-download-all="${esc(messageId)}" aria-label="Download all images" title="Download all images">
-            <svg class="i message-download-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 20h14"/></svg>
-            <span class="message-download-spinner" aria-hidden="true"></span>
-          </button>
-          <button class="message-tool-button" type="button" data-message-reply="${esc(messageId)}" aria-label="Reply" title="Reply">${ic("reply")}</button>
-          <div class="message-action-menu" role="menu" hidden>${copyAction}${deleteAction}</div>
-        </div>`;
+        return `<div class="message-tools"><button class="message-tool-button message-reaction-add" type="button" data-message-react-open="${esc(messageId)}" aria-label="Add reaction" title="Add reaction">${ic("heart-plus")}</button><button class="message-tool-button" type="button" data-message-reply="${esc(messageId)}" aria-label="Reply to message" title="Reply">${ic("reply")}</button><button class="message-tool-button" type="button" data-message-more aria-expanded="false" aria-haspopup="menu" aria-label="More message actions" title="More">${ic("dots")}</button><div class="message-action-menu" role="menu" hidden>${copyAction}${deleteAction}</div><button class="message-tool-button message-download-all" type="button" data-message-download-all="${esc(messageId)}" aria-label="Download all images" title="Download all images"><svg class="i message-download-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 20h14"/></svg><span class="message-download-spinner" aria-hidden="true"></span></button></div>`;
       }
       function revealMessageTools(owner) {
         document.querySelectorAll(".message-row.tools-visible").forEach((row) => {
@@ -19504,7 +19517,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 <button class="message-media-button" type="button" data-lightbox-image="${esc(imageUrl)}" data-lightbox-index="${index}" aria-label="Open shared ${isGif ? "GIF" : "image"}"><img class="message-media" src="${esc(imageUrl)}" width="${width || 1}" height="${height || 1}" alt="${isGif ? "Shared GIF" : "Shared image"}" loading="${mediaLoading}" decoding="async" /></button>
                 ${index === 3 && mediaItems.length > 4 ? `<span class="message-image-overflow">+${mediaItems.length - 4}</span>` : ""}
               </div>
-              ${hasMultipleImages || hasTextContent || index !== visibleMediaItems.length - 1 ? "" : messageToolsMarkup({
+              ${hasMultipleImages || index !== visibleMediaItems.length - 1 ? "" : messageToolsMarkup({
                 messageId: message.id,
                 downloadUrl: imageUrl,
                 downloadLabel: isGif ? "GIF" : "image",
@@ -19651,6 +19664,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           });
         });
       }
+      function clampNaturalAspectRatio(width, height) {
+        if (!width || !height) return "1";
+        const ratio = width / height;
+        const clamped = Math.max(3 / 4, Math.min(16 / 9, ratio));
+        return `${clamped.toFixed(4)} / 1`;
+      }
       function bindMessageMediaScroll(container) {
         container.querySelectorAll(".message-media").forEach((image) => {
           const markImageLoaded = () => {
@@ -19660,7 +19679,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 frame.dataset.mediaWidth = String(image.naturalWidth);
                 frame.dataset.mediaHeight = String(image.naturalHeight);
               }
-              frame.style.aspectRatio = `${image.naturalWidth} / ${image.naturalHeight}`;
+              const list = frame.closest(".message-image-list");
+              if (!list || list.dataset.count === "1") {
+                frame.style.aspectRatio = clampNaturalAspectRatio(image.naturalWidth, image.naturalHeight);
+              }
               image.classList.add("is-loaded");
             }
           };
@@ -22964,8 +22986,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           return;
         }
         const imageItem = target?.closest(".message-image-item");
+        const bubble = target?.closest(".message-bubble");
+        document.querySelectorAll(".message-bubble.tools-visible, .message-image-item.tools-visible")
+          .forEach((item) => { if (item !== imageItem && item !== bubble) item.classList.remove("tools-visible"); });
+        if (imageItem) imageItem.classList.add("tools-visible");
+        else if (bubble) bubble.classList.add("tools-visible");
         const singleImageList = target?.closest(".message-image-list[data-count='1']");
-        const firstImageTap = imageItem && singleImageList && !owner.classList.contains("tools-visible");
+        const firstImageTap = imageItem && singleImageList && !imageItem.classList.contains("tools-visible");
         revealMessageTools(owner);
         if (firstImageTap && target.closest("[data-lightbox-image]")) event.preventDefault();
       }, true);
