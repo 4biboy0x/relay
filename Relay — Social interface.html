@@ -4478,6 +4478,11 @@
       .auth-otp-panel.is-visible {
         display: grid;
       }
+      .auth-otp-label {
+        color: var(--text-2);
+        font-size: 13px;
+        font-weight: 500;
+      }
       .auth-otp-code {
         display: grid;
         grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -10958,8 +10963,9 @@
         <button class="btn btn-primary" id="authSubmit" type="submit">Sign in</button>
       </form>
       <div class="auth-otp-panel" id="authOtpPanel" aria-live="polite">
+        <label class="auth-otp-label" id="authOtpLabel" for="authOtpInput1">Code</label>
         <div class="auth-otp-code" id="authOtpCode">
-          <input inputmode="numeric" maxlength="1" autocomplete="one-time-code" aria-label="Digit 1" />
+          <input id="authOtpInput1" inputmode="numeric" maxlength="1" autocomplete="one-time-code" aria-label="Digit 1" />
           <input inputmode="numeric" maxlength="1" aria-label="Digit 2" />
           <input inputmode="numeric" maxlength="1" aria-label="Digit 3" />
           <input inputmode="numeric" maxlength="1" aria-label="Digit 4" />
@@ -10971,28 +10977,26 @@
         </div>
         <button class="btn btn-primary" id="authOtpVerify" type="button" disabled>Verify</button>
         <div class="auth-otp-actions">
-          <button class="auth-otp-link" id="authOtpResend" type="button" disabled>Resend · <span class="auth-otp-timer" id="authOtpTimer">01:00</span></button>
+          <button class="auth-otp-link" id="authOtpResend" type="button" disabled>Resend code · <span class="auth-otp-timer" id="authOtpTimer">01:00</span></button>
           <button class="auth-otp-link" id="authOtpChangeEmail" type="button">Change email</button>
           <button class="auth-otp-link" id="authOtpBackToLogin" type="button" hidden>Back to login</button>
         </div>
         <p class="auth-otp-error" id="authOtpError" aria-live="polite"></p>
       </div>
       <form class="auth-forgot-panel" id="authForgotPanel" novalidate>
-        <p class="auth-forgot-copy">Enter your email or username to reset your password.</p>
         <label for="authForgotIdentifier">Email or username
-          <input id="authForgotIdentifier" name="identifier" type="text" maxlength="254" placeholder="you@example.com or username" autocomplete="username" autocapitalize="none" spellcheck="false" required />
+          <input id="authForgotIdentifier" name="identifier" type="text" maxlength="254" autocomplete="username" autocapitalize="none" spellcheck="false" required />
         </label>
         <p class="auth-forgot-error" id="authForgotError" role="alert"></p>
         <button class="btn btn-primary" id="authForgotSubmit" type="submit">Continue</button>
         <button class="auth-otp-link" id="authForgotCancel" type="button">Back to login</button>
       </form>
       <form class="auth-reset-password-panel" id="authResetPasswordPanel" novalidate>
-        <p class="auth-forgot-copy">Enter a new password for your account.</p>
         <label for="authResetPassword">New password
-          <span class="settings-password-wrap"><input id="authResetPassword" name="password" type="password" minlength="12" maxlength="72" placeholder="At least 12 characters" autocomplete="new-password" required /><button class="settings-password-toggle" type="button" aria-label="Show password"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.06 12.35a1 1 0 0 1 0-.7C3.5 8.15 7.25 5 12 5s8.5 3.15 9.94 6.65a1 1 0 0 1 0 .7C20.5 15.85 16.75 19 12 19s-8.5-3.15-9.94-6.65Z"/><circle cx="12" cy="12" r="3"/></svg></button></span>
+          <span class="settings-password-wrap"><input id="authResetPassword" name="password" type="password" minlength="12" maxlength="72" autocomplete="new-password" required /><button class="settings-password-toggle" type="button" aria-label="Show password"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.06 12.35a1 1 0 0 1 0-.7C3.5 8.15 7.25 5 12 5s8.5 3.15 9.94 6.65a1 1 0 0 1 0 .7C20.5 15.85 16.75 19 12 19s-8.5-3.15-9.94-6.65Z"/><circle cx="12" cy="12" r="3"/></svg></button></span>
         </label>
-        <label for="authResetConfirmPassword">Confirm new password
-          <span class="settings-password-wrap"><input id="authResetConfirmPassword" name="confirmPassword" type="password" minlength="12" maxlength="72" placeholder="Confirm new password" autocomplete="new-password" required /><button class="settings-password-toggle" type="button" aria-label="Show password"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.06 12.35a1 1 0 0 1 0-.7C3.5 8.15 7.25 5 12 5s8.5 3.15 9.94 6.65a1 1 0 0 1 0 .7C20.5 15.85 16.75 19 12 19s-8.5-3.15-9.94-6.65Z"/><circle cx="12" cy="12" r="3"/></svg></button></span>
+        <label for="authResetConfirmPassword">Confirm password
+          <span class="settings-password-wrap"><input id="authResetConfirmPassword" name="confirmPassword" type="password" minlength="12" maxlength="72" autocomplete="new-password" required /><button class="settings-password-toggle" type="button" aria-label="Show password"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.06 12.35a1 1 0 0 1 0-.7C3.5 8.15 7.25 5 12 5s8.5 3.15 9.94 6.65a1 1 0 0 1 0 .7C20.5 15.85 16.75 19 12 19s-8.5-3.15-9.94-6.65Z"/><circle cx="12" cy="12" r="3"/></svg></button></span>
         </label>
         <p class="auth-reset-password-error" id="authResetPasswordError" role="alert"></p>
         <button class="btn btn-primary" id="authResetPasswordSubmit" type="submit" disabled>Change password</button>
@@ -21587,8 +21591,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const error = $("#authOtpError");
         panel.classList.add("is-visible");
         error.textContent = "";
-        message.textContent = messageText || `Code sent to ${maskedEmail(email)}.`;
-        $("#signin-title").textContent = purpose === "reset" ? "Reset password" : "Confirm your email";
+        message.textContent = purpose === "reset" ? "We sent a code to your email." : (messageText || `Code sent to ${maskedEmail(email)}.`);
+        $("#signin-title").textContent = purpose === "reset" ? "Enter code" : "Confirm your email";
         $("#authOtpChangeEmail").hidden = purpose === "reset" || !authOtpState.password;
         $("#authOtpBackToLogin").hidden = purpose !== "reset";
         fillOtpInputs("");
@@ -21627,7 +21631,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#authChangeEmailPanel").style.display = "none";
         $("#authForgotPanel").style.display = "none";
         $(".auth-switch-row").style.display = "none";
-        $("#signin-title").textContent = "Create new password";
+        $("#signin-title").textContent = "New password";
         $("#authResetPassword").value = "";
         $("#authResetConfirmPassword").value = "";
         $("#authResetPasswordError").textContent = "";
@@ -21689,7 +21693,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             body: JSON.stringify({ email, purpose: "signup" }),
           }, false);
           resetOtpTimer();
-          $("#authOtpMessage").textContent = `Code sent to ${maskedEmail(email)}.`;
+          $("#authOtpMessage").textContent = authOtpState.purpose === "reset" ? "We sent a code to your email." : `Code sent to ${maskedEmail(email)}.`;
         } catch (error) {
           $("#authOtpError").textContent = authFriendlyError(error, "resend");
         }
@@ -21804,7 +21808,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             body: JSON.stringify({ email, purpose: authOtpState.purpose }),
           }, false);
           resetOtpTimer();
-          $("#authOtpMessage").textContent = `Code sent to ${maskedEmail(email)}.`;
+          $("#authOtpMessage").textContent = authOtpState.purpose === "reset" ? "We sent a code to your email." : `Code sent to ${maskedEmail(email)}.`;
         } catch (error) {
           $("#authOtpError").textContent = authFriendlyError(error, "resend");
         }
@@ -24028,7 +24032,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             showOtpScreen(
               targetEmail,
               "reset",
-              "If an account exists, we sent a code to the email on file.",
+              "We sent a code to your email.",
               undefined,
               true,
             );
@@ -24073,7 +24077,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 confirmPassword,
               }),
             }, false);
-            toast("Password updated. Sign in with your new password.");
+            toast("Password updated.");
             const emailToPrefill = authOtpState.email;
             hideOtpScreen();
             if (emailToPrefill && emailToPrefill.includes("@")) {
