@@ -8,7 +8,18 @@ import { createHash, randomBytes, randomInt, randomUUID, timingSafeEqual } from 
 import path from "node:path";
 import { NotificationType, Prisma, type InteractionType, type NotificationType as NotificationTypeValue } from "@prisma/client";
 import { z } from "zod";
-import { authOptional, authRequired, createAccessToken, hashPassword, hashRefreshToken, issueRefreshToken, verifiedEmailRequired, verifyPassword } from "./auth";
+import {
+  authOptional,
+  authRequired,
+  createAccessToken,
+  createPasswordResetToken,
+  hashPassword,
+  hashRefreshToken,
+  issueRefreshToken,
+  verifiedEmailRequired,
+  verifyPassword,
+  verifyPasswordResetToken,
+} from "./auth";
 import { clientOrigins, config } from "./config";
 import { EmailDeliveryError, sendOtpEmail } from "./email";
 import { prisma } from "./db";
@@ -23,6 +34,7 @@ import {
   loginSchema,
   messageSchema,
   changeVerificationEmailSchema,
+  forgotPasswordSchema,
   otpRequestSchema,
   otpVerifySchema,
   pageSchema,
@@ -776,11 +788,13 @@ api.post("/auth/verify-otp", asyncRoute(async (req, res) => {
     return;
   }
 
+  const resetToken = createPasswordResetToken(user.id, email, record.id);
   res.status(200).json({
     valid: true,
     message: "Code is valid. Set a new password.",
     email,
     purpose: "reset",
+    resetToken,
   });
 }));
 
@@ -844,38 +858,78 @@ api.post("/auth/resend-otp", asyncRoute(async (req, res) => {
 }));
 
 api.post("/auth/forgot-password", asyncRoute(async (req, res) => {
-  const input = otpRequestSchema.parse({ ...req.body, purpose: "reset" });
-  const email = normalizeEmail(input.email);
-  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-  if (user) {
+  const input = forgotPasswordSchema.parse(req.body);
+  const rawIdentifier = (input.identifier || input.email || "").trim();
+  const cleanHandle = rawIdentifier.replace(/^@/, "").toLowerCase();
+  const normalizedEmail = normalizeEmail(rawIdentifier);
+
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: normalizedEmail },
+        { handle: cleanHandle },
+      ],
+    },
+    select: { id: true, email: true },
+  });
+
+  if (user && user.email) {
     try {
-      await createAuthCode(req, user.id, email, "reset");
+      await createAuthCode(req, user.id, user.email, "reset");
     } catch (error) {
       if (!(error instanceof EmailDeliveryError)) throw error;
     }
+  } else {
+    // If account not found, still enforce IP rate limit to prevent brute force enumeration
+    try {
+      enforceOtpRequestLimit(req, normalizedEmail, "reset");
+    } catch {}
   }
+
   res.status(200).json({
-    message: "If the account exists, we sent a verification code.",
+    message: "If an account exists, we sent a code to the email on file.",
+    email: user?.email ? user.email : (rawIdentifier.includes("@") ? normalizedEmail : undefined),
   });
 }));
 
 api.post("/auth/reset-password", asyncRoute(async (req, res) => {
   const input = resetPasswordSchema.parse(req.body);
-  const email = normalizeEmail(input.email);
-  const codeRecord = await verifyOneTimePasscode(email, "reset", input.code);
-  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  const payload = verifyPasswordResetToken(input.resetToken);
+  const userId = payload.sub;
+  const authCodeId = payload.codeId;
+
+  // Verify the auth code session has not already been used to finalize a password reset
+  const authCode = await prisma.authCode.findUnique({
+    where: { id: authCodeId },
+  });
+  if (!authCode || authCode.purpose !== "reset") {
+    throw new HttpError(401, "Password reset token is invalid or has expired");
+  }
+  if (authCode.userId && authCode.userId !== userId) {
+    throw new HttpError(401, "Password reset token is invalid");
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
   if (!user) throw new HttpError(404, "User not found");
+
   await prisma.$transaction(async (tx) => {
     await tx.user.update({
       where: { id: user.id },
       data: { passwordHash: await hashPassword(input.password) },
     });
+    // Invalidate existing sessions/tokens for that account
     await tx.refreshToken.deleteMany({ where: { userId: user.id } });
-    await tx.authCode.update({
-      where: { id: codeRecord.id },
-      data: { consumedAt: new Date() },
+    // Invalidate the auth code so reset token cannot be reused
+    await tx.authCode.deleteMany({
+      where: {
+        OR: [
+          { id: authCode.id },
+          { email: authCode.email, purpose: "reset" },
+        ],
+      },
     });
   });
+
   res.clearCookie(refreshCookie, { ...refreshCookieOptions, maxAge: undefined });
   res.status(200).json({ message: "Password updated successfully." });
 }));
