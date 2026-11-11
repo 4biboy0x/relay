@@ -4636,8 +4636,8 @@
         box-sizing: border-box;
         padding: 16px;
         border-radius: 12px;
-        max-height: min(80vh, 640px);
-        overflow: auto;
+        max-height: min(80vh, 640px, calc(100dvh - 24px));
+        overflow-y: auto;
       }
       .post-editor-dialog {
         display: flex;
@@ -5597,6 +5597,7 @@
         .action-dialog.confirmation .dialog-actions { flex-direction: column-reverse; }
         .confirm-dialog button,
         .action-dialog.confirmation .dialog-actions button { width: 100%; }
+        .action-dialog { max-height: calc(100dvh - 32px); overflow-y: auto; }
       }
       @media (prefers-reduced-motion: reduce) {
         .confirm-dialog,
@@ -5619,7 +5620,7 @@
         min-width: min(280px, calc(100vw - 56px));
         max-width: 100%;
       }
-      #actionFields { min-width: 0; }
+      #actionFields { display: grid; gap: 16px; min-width: 0; }
       .dialog-field {
         display: grid;
         gap: 6px;
@@ -9667,12 +9668,12 @@
       .reel-upload-control[hidden] { display: none; }
       .reel-menu-actions button:hover { background: var(--surface-2); }
       .reel-menu-actions .is-danger { color: var(--danger, #c43b52); }
-      .reel-report-dialog { width: min(100% - 32px, 480px); }
+      .reel-report-dialog { width: min(100% - 32px, 480px); max-height: min(92dvh, calc(100dvh - 32px)); overflow-y: auto; }
       .reel-report-dialog form { display: grid; gap: 16px; padding: 20px; }
       .reel-report-field textarea { min-height: 84px; }
       .reel-report-error { min-height: 18px; margin: -8px 0 0; font-size: 12px; }
       .reel-edit-dialog,
-      .reel-stats-dialog { width: min(100% - 32px, 480px); }
+      .reel-stats-dialog { width: min(100% - 32px, 480px); max-height: min(92dvh, calc(100dvh - 32px)); overflow-y: auto; }
       .reel-edit-dialog form { display: grid; gap: 14px; padding: 20px; }
       .reel-edit-dialog .reel-report-field textarea { width: 100%; }
       .reel-reply-target { margin: 0; padding: 8px 16px 0; color: var(--text-2); font-size: 12px; }
@@ -10050,6 +10051,7 @@
               <label class="sr" for="ct">Post text</label>
               <textarea
                 id="ct"
+                dir="auto"
                 placeholder="What’s happening?"
                 rows="2"
               ></textarea>
@@ -10064,7 +10066,7 @@
                 <label class="sr" for="emojiSearch">Search emojis</label>
                 <div class="emoji-search">
                   <svg class="i" aria-hidden="true"><use href="#search" /></svg>
-                  <input id="emojiSearch" type="search" autocomplete="off" placeholder="Search emojis">
+                  <input id="emojiSearch" type="search" autocomplete="off" dir="auto" placeholder="Search emojis">
                 </div>
                 <div class="emoji-categories" id="emojiCategories" role="tablist" aria-label="Emoji categories"></div>
                 <div class="emoji-results" id="emojiResults">
@@ -10128,7 +10130,7 @@
             <label class="search">
               <svg class="i" aria-hidden="true"><use href="#search" /></svg>
               <span class="sr">Search</span>
-              <input id="exploreSearch" type="search" aria-label="Search people, posts, and topics" placeholder="Search people and topics" autocomplete="off" />
+              <input id="exploreSearch" type="search" aria-label="Search people, posts, and topics" placeholder="Search people and topics" autocomplete="off" dir="auto" />
               <button class="dismiss-btn search-input-clear" id="exploreSearchClear" type="button" data-search-clear="exploreSearch" aria-label="Clear search" hidden>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>
               </button>
@@ -10176,7 +10178,7 @@
             <label class="search">
               <svg class="i" aria-hidden="true"><use href="#search" /></svg>
               <span class="sr">Search by exact username</span>
-              <input id="directorySearch" type="search" placeholder="Search people" autocomplete="off" spellcheck="false" />
+              <input id="directorySearch" type="search" placeholder="Search people" autocomplete="off" spellcheck="false" dir="auto" />
               <button class="dismiss-btn search-input-clear" type="button" data-search-clear="directorySearch" aria-label="Clear people search" hidden>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>
               </button>
@@ -10202,7 +10204,7 @@
               <label class="conversation-search">
                 <svg class="i" aria-hidden="true"><use href="#search" /></svg>
                 <span class="sr">Search conversations and messages</span>
-                <input id="conversationSearch" type="search" placeholder="Search conversations and messages" autocomplete="off" maxlength="100" />
+                <input id="conversationSearch" type="search" placeholder="Search conversations and messages" autocomplete="off" maxlength="100" dir="auto" />
                 <button class="dismiss-btn search-input-clear" type="button" data-search-clear="conversationSearch" aria-label="Clear conversation search" hidden>
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>
                 </button>
@@ -10257,7 +10259,7 @@
                       <svg class="i" aria-hidden="true"><use href="#smile" /></svg>
                     </button>
                     <div class="chat-compose-field" id="messageComposeField">
-                      <textarea id="messageInput" rows="1" maxlength="2000" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Message..." aria-label="Write a message" disabled></textarea>
+                      <textarea id="messageInput" rows="1" maxlength="2000" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Message..." aria-label="Write a message" dir="auto" disabled></textarea>
                     </div>
                     <div class="message-recording" id="messageRecording" aria-live="polite">
                       <span class="message-recording-dot" aria-hidden="true"></span>
@@ -10498,6 +10500,7 @@
           ><span class="sr">Search</span
           ><input id="sideSearch" type="search" placeholder="Search" role="combobox"
             aria-autocomplete="list" aria-expanded="false" aria-controls="globalSearchDropdown"
+            dir="auto"
         /><button class="dismiss-btn search-input-clear" type="button" data-search-clear="sideSearch" aria-label="Clear search" hidden>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>
         </button></label>
@@ -10640,7 +10643,7 @@
       </header>
       <label class="new-message-search" for="recipientSearch">
         <span>To:</span>
-        <input id="recipientSearch" type="search" placeholder="Name or @handle" autocomplete="off" autofocus role="combobox" aria-autocomplete="list" aria-controls="recipientOptions" aria-expanded="false" />
+        <input id="recipientSearch" type="search" placeholder="Name or @handle" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="recipientOptions" aria-expanded="false" dir="auto" />
       </label>
       <div class="new-message-recipient-list" id="recipientOptions" role="listbox" aria-label="People" aria-busy="false"></div>
       <p class="new-message-empty" id="recipientEmpty" role="status" hidden></p>
@@ -10667,7 +10670,7 @@
         </div>
         <div class="cookie-settings-actions">
           <button class="btn btn-line" type="button" data-cookie-choice="essential">Essential only</button>
-          <button class="btn btn-primary" type="button" id="saveCookiePreferences" autofocus>Save preferences</button>
+          <button class="btn btn-primary" type="button" id="saveCookiePreferences">Save preferences</button>
         </div>
       </div>
     </dialog>
@@ -10743,7 +10746,7 @@
           <div class="reel-upload-fields">
             <input id="reelFileInput" type="file" accept="video/mp4,video/quicktime,video/webm" hidden>
             <input id="reelCoverFileInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
-            <textarea id="reelCaption" rows="2" placeholder="Write a caption..." aria-label="Caption"></textarea>
+            <textarea id="reelCaption" rows="2" placeholder="Write a caption..." aria-label="Caption" dir="auto"></textarea>
             <div class="reel-upload-status" id="reelUploadStatus" role="status" aria-live="polite"></div>
             <div class="reel-upload-progress" id="reelUploadProgressWrap" role="progressbar" aria-label="Video upload progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden>
               <span id="reelUploadProgress"></span>
@@ -10769,7 +10772,7 @@
       <p class="reel-reply-target" id="reelReplyTarget" hidden></p>
       <form class="reel-comment-form" id="reelCommentForm">
         <label class="sr" for="reelCommentInput">Write a comment</label>
-        <input id="reelCommentInput" maxlength="280" placeholder="Add a comment…" required>
+        <input id="reelCommentInput" maxlength="280" placeholder="Add a comment…" dir="auto" required>
         <button class="btn btn-primary" type="submit">Reply</button>
       </form>
     </dialog>
@@ -10808,7 +10811,7 @@
           </select>
         </label>
         <label class="reel-report-field">Details (optional)
-          <textarea name="details" maxlength="1000" rows="3" placeholder="Add details to help us review"></textarea>
+          <textarea name="details" maxlength="1000" rows="3" placeholder="Add details to help us review" dir="auto"></textarea>
         </label>
         <p class="reel-report-error" id="reelReportError" role="alert"></p>
         <div class="reel-dialog-actions">
@@ -10826,7 +10829,7 @@
       </header>
       <form id="reelEditForm">
         <label class="reel-report-field" for="reelEditCaption">Caption
-          <textarea id="reelEditCaption" maxlength="280" rows="4"></textarea>
+          <textarea id="reelEditCaption" maxlength="280" rows="4" dir="auto"></textarea>
         </label>
         <p class="reel-report-error" id="reelEditError" role="alert"></p>
         <div class="reel-dialog-actions">
@@ -10854,7 +10857,7 @@
       <form class="gif-picker-search" id="gifPickerSearchForm" role="search">
         <div class="gif-picker-search-field">
           <svg class="i gif-picker-search-icon" aria-hidden="true"><use href="#search" /></svg>
-          <input id="gifPickerSearch" type="search" maxlength="80" placeholder="Search GIPHY" aria-label="Search GIFs" autocomplete="off">
+          <input id="gifPickerSearch" type="search" maxlength="80" placeholder="Search GIPHY" aria-label="Search GIFs" autocomplete="off" dir="auto">
           <button class="gif-picker-search-clear" id="gifPickerSearchClear" type="button" aria-label="Clear search" hidden>
             <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#close" /></svg>
           </button>
@@ -10928,7 +10931,7 @@
       </div>
       <div class="post-media-alt-panel" id="postMediaAltPanel" role="tabpanel" aria-labelledby="postMediaAltTab" hidden>
         <label class="sr" for="postMediaAltInput">Image description</label>
-        <textarea id="postMediaAltInput" maxlength="1000" placeholder="Describe this image for people who are blind or have low vision"></textarea>
+        <textarea id="postMediaAltInput" maxlength="1000" placeholder="Describe this image for people who are blind or have low vision" dir="auto"></textarea>
         <div class="composer-alt-meta"><span id="postMediaAltCount">0 / 1000</span></div>
       </div>
     </dialog>
@@ -10944,7 +10947,7 @@
       <form id="authForm" novalidate>
         <div class="auth-field" id="authNameLabel" hidden>
           <label for="authName">Display name</label>
-          <input id="authName" name="displayName" maxlength="60" autocomplete="name" />
+          <input id="authName" name="displayName" maxlength="60" autocomplete="name" dir="auto" />
         </div>
         <div class="auth-field" id="authHandleLabel" hidden>
           <label for="authHandle">Username</label>
@@ -10952,7 +10955,7 @@
         </div>
         <div class="auth-field">
           <label for="authEmail">Email</label>
-          <input id="authEmail" name="email" type="email" maxlength="254" placeholder="you@example.com" required autocomplete="username" autofocus />
+          <input id="authEmail" name="email" type="email" maxlength="254" placeholder="you@example.com" required autocomplete="username" />
         </div>
         <div class="auth-field">
           <label for="authPassword">Password</label>
@@ -11077,7 +11080,7 @@
             </div>
             <div class="reply-composer-avatar" id="replyComposerAvatar" aria-hidden="true"></div>
             <label class="sr" for="replyComposerText">Your reply</label>
-            <textarea id="replyComposerText" maxlength="280" required placeholder="Post your reply"></textarea>
+            <textarea id="replyComposerText" maxlength="280" required placeholder="Post your reply" dir="auto"></textarea>
           </div>
           <div class="composer-location reply-composer-location" id="replyComposerLocationChip" hidden>
             <svg class="i" aria-hidden="true"><use href="#pin" /></svg>
@@ -11120,6 +11123,58 @@
     </div>
 
     <script>
+      const isTouchDevice = () => window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+      const origShowModal = HTMLDialogElement.prototype.showModal;
+      HTMLDialogElement.prototype.showModal = function(...args) {
+        origShowModal.apply(this, args);
+        if (isTouchDevice()) {
+          const isSingleTypingPurpose = this.id === "newMessageDialog" || this.id === "gifPickerDialog" || this.id === "postEditorDialog";
+          if (!isSingleTypingPurpose) {
+            try { this.focus({ preventScroll: true }); } catch { this.focus(); }
+          }
+        }
+      };
+      let userDirectTapTarget = null;
+      document.addEventListener("pointerdown", (e) => {
+        userDirectTapTarget = e.target;
+        setTimeout(() => {
+          if (userDirectTapTarget === e.target) userDirectTapTarget = null;
+        }, 300);
+      }, true);
+
+      function applyTextDirection(element) {
+        if (!element || !(element instanceof HTMLElement)) return;
+        const tag = element.tagName.toLowerCase();
+        if (tag !== "input" && tag !== "textarea") return;
+        const type = (element.getAttribute("type") || (tag === "textarea" ? "textarea" : "text")).toLowerCase();
+        if (["email", "password", "file", "range", "checkbox", "radio", "hidden"].includes(type)) return;
+        const name = (element.getAttribute("name") || "").toLowerCase();
+        if (["email", "password", "currentpassword", "confirmpassword", "username", "identifier", "newemail", "theme"].includes(name)) return;
+        const id = (element.id || "").toLowerCase();
+        if (["authemail", "authpassword", "authhandle", "authforgotidentifier", "authresetpassword", "authresetconfirmpassword", "authnewemail", "settingsemail"].includes(id)) return;
+        if (id.startsWith("authotpinput") || element.getAttribute("autocomplete") === "one-time-code") return;
+        if (!element.hasAttribute("dir")) element.setAttribute("dir", "auto");
+      }
+
+      function focusInput(element, { isTypingMainScreen = false, preventScroll = true } = {}) {
+        if (!element || !(element instanceof HTMLElement)) return;
+        applyTextDirection(element);
+        if (!isTypingMainScreen && isTouchDevice()) return;
+        try {
+          element.focus({ preventScroll });
+        } catch {
+          element.focus();
+        }
+        if (userDirectTapTarget === element) return;
+        const isTextInput = (element instanceof HTMLInputElement && !/^(?:file|range|checkbox|radio|hidden|color|button|submit|reset|image)$/i.test(element.type)) || element instanceof HTMLTextAreaElement;
+        if (isTextInput && typeof element.value === "string" && element.value.length > 0 && typeof element.setSelectionRange === "function") {
+          try {
+            const len = element.value.length;
+            element.setSelectionRange(len, len);
+          } catch {}
+        }
+      }
+
       const $ = (s, r = document) => r.querySelector(s),
         $$ = (s, r = document) => [...r.querySelectorAll(s)];
       const ic = (n, c = "i") =>
@@ -12739,7 +12794,7 @@
         giphyResultsById.clear();
         $("#gifPickerStatus").textContent = "";
         $("#gifPickerDialog").showModal();
-        $("#gifPickerSearch").focus({ preventScroll: true });
+        focusInput($("#gifPickerSearch"), { isTypingMainScreen: true, preventScroll: true });
         loadGiphyResults("");
       }
       function cancelGiphySearch() {
@@ -13605,7 +13660,7 @@
         messageLightboxContext = null;
         if (messageLightboxReplyRequested) {
           messageLightboxReplyRequested = false;
-          $("#messageInput").focus({ preventScroll: true });
+          focusInput($("#messageInput"), { isTypingMainScreen: true, preventScroll: true });
         } else {
           lightboxTrigger?.focus();
         }
@@ -15281,7 +15336,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#reelReplyTarget").hidden = false;
         $("#reelReplyTarget").innerHTML = `Replying to @${esc(handle || "user")} <button type="button" data-reel-reply-cancel>Cancel</button>`;
         $("#reelCommentInput").placeholder = `Reply to @${handle || "user"}…`;
-        $("#reelCommentInput").focus();
+        focusInput($("#reelCommentInput"), { isTypingMainScreen: true, preventScroll: true });
       }
       function cancelReelReply() {
         reelCommentReplyToId = "";
@@ -15380,7 +15435,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#reelEditError").textContent = "";
         $("#reelActionsDialog").close();
         $("#reelEditDialog").showModal();
-        $("#reelEditCaption").focus();
+        focusInput($("#reelEditCaption"), { isTypingMainScreen: false, preventScroll: true });
       }
       async function saveReelCaption(event) {
         event.preventDefault();
@@ -16775,7 +16830,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         renderRecipientOptions();
         openPolicyDialog(newMessageDialog, trigger);
         if (initialQuery) $("#recipientSearch").dispatchEvent(new Event("input", { bubbles: true }));
-        requestAnimationFrame(() => $("#recipientSearch").focus());
+        requestAnimationFrame(() => focusInput($("#recipientSearch"), { isTypingMainScreen: true, preventScroll: true }));
       }
       function closeNewMessageDialog() {
         invalidateRecipientSearch();
@@ -16846,7 +16901,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         syncMessageComposer();
         $("#sendMessage").disabled = true;
         syncConversationSelection("");
-        requestAnimationFrame(() => $("#messageInput").focus());
+        requestAnimationFrame(() => focusInput($("#messageInput"), { isTypingMainScreen: true, preventScroll: true }));
       }
       async function searchDirectory(rawHandle) {
         const input = $("#directorySearch");
@@ -16998,7 +17053,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           $("#threadContent").innerHTML = `<div class="thread-chain"><div class="thread-ancestors" data-thread-ancestors></div>${threadPost(result, true)}</div>
             <form class="thread-reply-form" data-thread-reply data-reply-to="${esc(result.id)}">
               ${avatarMarkup(currentUser, "sm")}
-              <input aria-label="Write your reply" placeholder="Post your reply" maxlength="280" required>
+              <input aria-label="Write your reply" placeholder="Post your reply" maxlength="280" dir="auto" required>
               <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-thread-reply-image-input hidden>
               <div class="composer-location thread-reply-location" data-thread-reply-location-chip hidden>
                 <svg class="i" aria-hidden="true"><use href="#pin" /></svg>
@@ -18953,7 +19008,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         closeMessageReactionPicker();
         selectedMessageReply = { conversationId: message.conversationId, message };
         renderMessageReplyPreview();
-        $("#messageInput").focus({ preventScroll: true });
+        focusInput($("#messageInput"), { isTypingMainScreen: true, preventScroll: true });
       }
       function clearMessageReplyTarget(conversationId = activeConversation?.id) {
         if (selectedMessageReply?.conversationId !== conversationId) return;
@@ -19856,8 +19911,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         };
         input.value = editingMessageState.originalBody;
         syncMessageComposer();
-        input.focus();
-        input.setSelectionRange(input.value.length, input.value.length);
+        focusInput(input, { isTypingMainScreen: true, preventScroll: true });
       }
       function cancelMessageEditing({ restoreDraft = true, focus = false } = {}) {
         const state = editingMessageState;
@@ -19868,7 +19922,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           $("#messageInput").value = state.previousDraft;
           conversationDrafts.set(state.conversationId, state.previousDraft);
           syncMessageComposer();
-          if (focus) $("#messageInput").focus();
+          if (focus) focusInput($("#messageInput"), { isTypingMainScreen: true, preventScroll: true });
         }
       }
       async function saveMessageEdit(body) {
@@ -20228,7 +20282,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (option.type === "topic") {
           const query = option.value;
           $("#sideSearch").value = query;
-          $("#sideSearch").focus({ preventScroll: true });
+          focusInput($("#sideSearch"), { isTypingMainScreen: true, preventScroll: true });
           refreshGlobalSearchDropdown();
           return;
         }
@@ -21604,7 +21658,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $(".auth-switch-row").style.display = "none";
         panel.style.display = "grid";
         $("#authPassword").value = "";
-        $("#authOtpCode input").focus();
+        focusInput($("#authOtpCode input"), { isTypingMainScreen: true, preventScroll: true });
       }
 
       function showForgotScreen(prefill = "") {
@@ -21619,7 +21673,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const identifierInput = $("#authForgotIdentifier");
         identifierInput.value = prefill || "";
         $("#authForgotPanel").style.display = "grid";
-        identifierInput.focus();
+        focusInput(identifierInput, { isTypingMainScreen: true, preventScroll: true });
       }
 
       function showResetPasswordScreen(resetToken) {
@@ -21636,7 +21690,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#authResetPasswordError").textContent = "";
         $("#authResetPasswordSubmit").disabled = true;
         $("#authResetPasswordPanel").style.display = "grid";
-        $("#authResetPassword").focus();
+        focusInput($("#authResetPassword"), { isTypingMainScreen: false, preventScroll: true });
       }
 
       function hideOtpScreen() {
@@ -21670,7 +21724,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#signin-title").textContent = "Change email";
         $("#authNewEmail").value = "";
         $("#authChangeEmailError").textContent = "";
-        $("#authNewEmail").focus();
+        focusInput($("#authNewEmail"), { isTypingMainScreen: false, preventScroll: true });
       }
 
       async function startEmailVerification() {
@@ -21854,7 +21908,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           showAuthCookieNoticeForCurrentDialog = !hasSeenCookieNotice();
           if (showAuthCookieNoticeForCurrentDialog) markCookieNoticeSeen();
           authDialog.showModal();
-          $("#authEmail").focus({ preventScroll: true });
+          const initialAuthField = registering ? $("#authName") : $("#authEmail");
+          focusInput(initialAuthField, { isTypingMainScreen: false, preventScroll: true });
         }
         updateCookieConsentVisibility(showAuthCookieNoticeForCurrentDialog);
       }
@@ -22112,7 +22167,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           replyComposerIsOpen = true;
           replyComposerOverlay.hidden = false;
         }
-        $("#replyComposerText").focus({ preventScroll: true });
+        focusInput($("#replyComposerText"), { isTypingMainScreen: true, preventScroll: true });
       }
       function closeReplyComposer() {
         if (!replyComposerIsOpen) return;
@@ -22171,7 +22226,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#pb").textContent = "Save";
         updatePostButton();
         postEditorDialog.showModal();
-        $("#ct").focus({ preventScroll: true });
+        focusInput($("#ct"), { isTypingMainScreen: true, preventScroll: true });
       }
       function restoreComposerAfterEdit() {
         $("#composer .c-bar").append($("#pb"));
@@ -22345,7 +22400,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         let body = "";
         if (mode === "profile") {
           title = "Edit profile";
-          body = `${field("Display name", "displayName", currentUser.displayName, 'maxlength="60" data-required')}<label class="dialog-field">Bio<textarea name="bio" maxlength="280">${esc(currentUser.bio || "")}</textarea></label>`;
+          body = `${field("Display name", "displayName", currentUser.displayName, 'maxlength="60" data-required dir="auto"')}<label class="dialog-field">Bio<textarea name="bio" maxlength="280" dir="auto">${esc(currentUser.bio || "")}</textarea></label>`;
         } else if (mode === "settings") {
           title = "Settings";
           const theme = document.documentElement.dataset.theme || "system";
@@ -22376,7 +22431,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         actionDialog.classList.toggle("confirmation", mode === "delete-account");
         actionDialog.classList.toggle("danger", mode === "delete-account");
         actionDialog.showModal();
-        fields.querySelector(".choice-trigger, input:not([type=hidden]), textarea")?.focus();
+        const firstField = fields.querySelector(".choice-trigger, input:not([type=hidden]), textarea");
+        if (firstField) {
+          if (firstField.matches(".choice-trigger")) firstField.focus();
+          else focusInput(firstField, { isTypingMainScreen: false, preventScroll: true });
+        }
       }
       function closeActionDialog() {
         if (actionDialog.open) actionDialog.close();
@@ -22720,7 +22779,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             }, true);
           }
         }
-        if (v === "directory") $("#directorySearch").focus({ preventScroll: true });
+        if (v === "directory") focusInput($("#directorySearch"), { isTypingMainScreen: true, preventScroll: true });
         if (updateRoute) {
           const route = v === "home" ? "#/home" : v === "thread" && threadPostId
             ? `#/posts/${encodeURIComponent(threadPostId)}`
@@ -23412,6 +23471,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         if (e.target.closest("#authSwitch")) {
           setAuthMode(!registering);
+          focusInput(registering ? $("#authName") : $("#authEmail"), { isTypingMainScreen: false, preventScroll: true });
           return;
         }
         if (e.target.closest("[data-auth-forgot]")) {
@@ -23436,7 +23496,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (e.target.closest("#saveLocation")) {
           const value = $("#locationInput").value.trim();
           if (!value) {
-            $("#locationInput").focus();
+            focusInput($("#locationInput"), { isTypingMainScreen: true, preventScroll: true });
             toast("Enter a place name to attach.");
             return;
           }
@@ -23708,7 +23768,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const body = $("#replyComposerText").value.trim();
           if (!body) {
             $("#replyComposerError").textContent = "Write a reply before sending.";
-            $("#replyComposerText").focus();
+            focusInput($("#replyComposerText"), { isTypingMainScreen: true, preventScroll: true });
             return;
           }
           const submit = $("#submitReplyComposer");
@@ -23781,7 +23841,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           error.textContent = "";
           if (e.target.elements.password.value !== e.target.elements.confirmPassword.value) {
             error.textContent = "Passwords do not match.";
-            e.target.elements.confirmPassword.focus();
+            focusInput(e.target.elements.confirmPassword, { isTypingMainScreen: false, preventScroll: true });
             return;
           }
           setPendingButton(submit, true);
@@ -23942,7 +24002,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               if (input.value.trim() === body) input.value = "";
               conversationDrafts.set(sendConversationId, input.value);
               clearMessageAttachments();
-              input.focus({ preventScroll: true });
+              focusInput(input, { isTypingMainScreen: true, preventScroll: true });
             }
           } catch (error) {
             removePendingMessageRow(pendingId);
@@ -23970,12 +24030,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           errorElement.textContent = "";
           if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
             errorElement.textContent = "Enter a valid email address.";
-            $("#authNewEmail").focus();
+            focusInput($("#authNewEmail"), { isTypingMainScreen: false, preventScroll: true });
             return;
           }
           if (newEmail === authOtpState.email) {
             errorElement.textContent = "Enter a different email address.";
-            $("#authNewEmail").focus();
+            focusInput($("#authNewEmail"), { isTypingMainScreen: false, preventScroll: true });
             return;
           }
           if (!authOtpState.password) {
@@ -24017,7 +24077,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           errorElement.textContent = "";
           if (!identifier) {
             errorElement.textContent = "Please enter your email or username.";
-            identifierInput.focus();
+            focusInput(identifierInput, { isTypingMainScreen: true, preventScroll: true });
             return;
           }
           setPendingButton(submit, true);
@@ -24052,17 +24112,17 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           errorElement.textContent = "";
           if (password.length < 12) {
             errorElement.textContent = "Password must be at least 12 characters.";
-            $("#authResetPassword").focus();
+            focusInput($("#authResetPassword"), { isTypingMainScreen: false, preventScroll: true });
             return;
           }
           if (new TextEncoder().encode(password).length > 72) {
             errorElement.textContent = "Password must not exceed 72 UTF-8 bytes.";
-            $("#authResetPassword").focus();
+            focusInput($("#authResetPassword"), { isTypingMainScreen: false, preventScroll: true });
             return;
           }
           if (password !== confirmPassword) {
             errorElement.textContent = "Passwords do not match.";
-            $("#authResetConfirmPassword").focus();
+            focusInput($("#authResetConfirmPassword"), { isTypingMainScreen: false, preventScroll: true });
             return;
           }
           setPendingButton(submit, true);
@@ -24082,7 +24142,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             if (emailToPrefill && emailToPrefill.includes("@")) {
               $("#authEmail").value = emailToPrefill;
             }
-            $("#authPassword").focus();
+            focusInput($("#authPassword"), { isTypingMainScreen: false, preventScroll: true });
           } catch (error) {
             errorElement.textContent = error.message || "Failed to update password. Please try again.";
           } finally {
@@ -24118,7 +24178,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
           if (validationError) {
             $("#authError").textContent = validationError;
-            invalidField.focus();
+            focusInput(invalidField, { isTypingMainScreen: false, preventScroll: true });
             return;
           }
           $("#authError").textContent = "";
@@ -24185,7 +24245,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const requiredField = $("#actionFields [data-required]");
           if (requiredField && !requiredField.value.trim()) {
             $("#actionError").textContent = "Please complete the required field.";
-            requiredField.focus();
+            focusInput(requiredField, { isTypingMainScreen: false, preventScroll: true });
             return;
           }
           const submit = $("#actionSubmit");
@@ -24340,7 +24400,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         cancelGiphySearch();
         $("#gifPickerStatus").textContent = "";
         loadGiphyResults("");
-        $("#gifPickerSearch").focus({ preventScroll: true });
+        focusInput($("#gifPickerSearch"), { isTypingMainScreen: true, preventScroll: true });
       });
       $("#gifPickerDialog").addEventListener("close", () => {
         cancelGiphySearch();
@@ -24670,7 +24730,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         input.value = "";
         clearButton.hidden = true;
         input.dispatchEvent(new Event("input", { bubbles: true }));
-        input.focus({ preventScroll: true });
+        focusInput(input, { isTypingMainScreen: true, preventScroll: true });
       });
       document.addEventListener("input", (event) => {
         if (!(event.target instanceof HTMLInputElement)) return;
@@ -25113,7 +25173,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       });
       $("#navPost").addEventListener("click", () => {
         go("home");
-        ct.focus();
+        focusInput(ct, { isTypingMainScreen: true, preventScroll: true });
       });
       $("#theme").addEventListener("click", () => {
         closeAccountMenu();
@@ -25266,7 +25326,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (trigger?.isConnected && trigger.getClientRects().length > 0) {
             trigger.focus({ preventScroll: true });
           } else if (dialog === cookieSettingsDialog && authDialog.open) {
-            $("#authEmail").focus({ preventScroll: true });
+            focusInput(registering ? $("#authName") : $("#authEmail"), { isTypingMainScreen: false, preventScroll: true });
           }
           dialogFocusTriggers.delete(dialog);
           if (dialog === legalDialog && legalHashToRestore !== null) {
