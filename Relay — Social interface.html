@@ -4498,23 +4498,32 @@
         color: var(--text-2);
         font-size: 12px;
       }
-      .auth-change-email-panel {
+      .auth-change-email-panel,
+      .auth-forgot-panel,
+      .auth-reset-password-panel {
         gap: 14px;
         margin-top: 4px;
       }
-      #authDialog #authChangeEmailPanel { display: none; }
-      .auth-change-email-copy {
+      #authDialog #authChangeEmailPanel,
+      #authDialog #authForgotPanel,
+      #authDialog #authResetPasswordPanel { display: none; }
+      .auth-change-email-copy,
+      .auth-forgot-copy {
         margin: -8px 0 0;
         color: var(--text-2);
         font-size: 13px;
       }
-      .auth-change-email-panel label {
+      .auth-change-email-panel label,
+      .auth-forgot-panel label,
+      .auth-reset-password-panel label {
         display: grid;
         gap: 6px;
         color: var(--text-2);
         font-size: 13px;
       }
-      #authDialog #authChangeEmailSubmit {
+      #authDialog #authChangeEmailSubmit,
+      #authDialog #authForgotSubmit,
+      #authDialog #authResetPasswordSubmit {
         width: 100%;
         height: 44px;
         padding: 0 16px;
@@ -4524,8 +4533,12 @@
         font-size: 15px;
         font-weight: 600;
       }
-      #authDialog #authChangeEmailSubmit:hover:not(:disabled) { background: var(--auth-submit-hover); }
-      #authDialog #authChangeEmailSubmit:disabled { opacity: .55; cursor: not-allowed; }
+      #authDialog #authChangeEmailSubmit:hover:not(:disabled),
+      #authDialog #authForgotSubmit:hover:not(:disabled),
+      #authDialog #authResetPasswordSubmit:hover:not(:disabled) { background: var(--auth-submit-hover); }
+      #authDialog #authChangeEmailSubmit:disabled,
+      #authDialog #authForgotSubmit:disabled,
+      #authDialog #authResetPasswordSubmit:disabled { opacity: .55; cursor: not-allowed; }
       .auth-otp-actions {
         display: flex;
         align-items: center;
@@ -4563,12 +4576,16 @@
         font-size: 13px;
       }
       .auth-otp-error:empty { display: none; }
-      .auth-change-email-error {
+      .auth-change-email-error,
+      .auth-forgot-error,
+      .auth-reset-password-error {
         margin: -6px 0 0;
         color: var(--like);
         font-size: 13px;
       }
-      .auth-change-email-error:empty { display: none; }
+      .auth-change-email-error:empty,
+      .auth-forgot-error:empty,
+      .auth-reset-password-error:empty { display: none; }
       #authError { min-height: 0; margin: 0; color: var(--like); font-size: 13px; }
       #authError:empty { display: none; }
       #authDialog #authSubmit {
@@ -10956,9 +10973,30 @@
         <div class="auth-otp-actions">
           <button class="auth-otp-link" id="authOtpResend" type="button" disabled>Resend · <span class="auth-otp-timer" id="authOtpTimer">01:00</span></button>
           <button class="auth-otp-link" id="authOtpChangeEmail" type="button">Change email</button>
+          <button class="auth-otp-link" id="authOtpBackToLogin" type="button" hidden>Back to login</button>
         </div>
         <p class="auth-otp-error" id="authOtpError" aria-live="polite"></p>
       </div>
+      <form class="auth-forgot-panel" id="authForgotPanel" novalidate>
+        <p class="auth-forgot-copy">Enter your email or username to reset your password.</p>
+        <label for="authForgotIdentifier">Email or username
+          <input id="authForgotIdentifier" name="identifier" type="text" maxlength="254" placeholder="you@example.com or username" autocomplete="username" autocapitalize="none" spellcheck="false" required />
+        </label>
+        <p class="auth-forgot-error" id="authForgotError" role="alert"></p>
+        <button class="btn btn-primary" id="authForgotSubmit" type="submit">Continue</button>
+        <button class="auth-otp-link" id="authForgotCancel" type="button">Back to login</button>
+      </form>
+      <form class="auth-reset-password-panel" id="authResetPasswordPanel" novalidate>
+        <p class="auth-forgot-copy">Enter a new password for your account.</p>
+        <label for="authResetPassword">New password
+          <span class="settings-password-wrap"><input id="authResetPassword" name="password" type="password" minlength="12" maxlength="72" placeholder="At least 12 characters" autocomplete="new-password" required /><button class="settings-password-toggle" type="button" aria-label="Show password"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.06 12.35a1 1 0 0 1 0-.7C3.5 8.15 7.25 5 12 5s8.5 3.15 9.94 6.65a1 1 0 0 1 0 .7C20.5 15.85 16.75 19 12 19s-8.5-3.15-9.94-6.65Z"/><circle cx="12" cy="12" r="3"/></svg></button></span>
+        </label>
+        <label for="authResetConfirmPassword">Confirm new password
+          <span class="settings-password-wrap"><input id="authResetConfirmPassword" name="confirmPassword" type="password" minlength="12" maxlength="72" placeholder="Confirm new password" autocomplete="new-password" required /><button class="settings-password-toggle" type="button" aria-label="Show password"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.06 12.35a1 1 0 0 1 0-.7C3.5 8.15 7.25 5 12 5s8.5 3.15 9.94 6.65a1 1 0 0 1 0 .7C20.5 15.85 16.75 19 12 19s-8.5-3.15-9.94-6.65Z"/><circle cx="12" cy="12" r="3"/></svg></button></span>
+        </label>
+        <p class="auth-reset-password-error" id="authResetPasswordError" role="alert"></p>
+        <button class="btn btn-primary" id="authResetPasswordSubmit" type="submit" disabled>Change password</button>
+      </form>
       <form class="auth-change-email-panel" id="authChangeEmailPanel" novalidate>
         <p class="auth-change-email-copy">We'll send a new verification code.</p>
         <label for="authNewEmail">New email
@@ -21255,6 +21293,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         email: "",
         purpose: "signup",
         password: "",
+        resetToken: "",
         timerMs: 60000,
         timerId: null,
       };
@@ -21549,17 +21588,52 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         panel.classList.add("is-visible");
         error.textContent = "";
         message.textContent = messageText || `Code sent to ${maskedEmail(email)}.`;
-        $("#signin-title").textContent = "Confirm your email";
-        $("#authOtpChangeEmail").hidden = !authOtpState.password;
+        $("#signin-title").textContent = purpose === "reset" ? "Reset password" : "Confirm your email";
+        $("#authOtpChangeEmail").hidden = purpose === "reset" || !authOtpState.password;
+        $("#authOtpBackToLogin").hidden = purpose !== "reset";
         fillOtpInputs("");
         $("#authOtpVerify").disabled = true;
         if (resetTimer) resetOtpTimer();
         $("#authForm").style.display = "none";
         $("#authChangeEmailPanel").style.display = "none";
+        $("#authForgotPanel").style.display = "none";
+        $("#authResetPasswordPanel").style.display = "none";
         $(".auth-switch-row").style.display = "none";
         panel.style.display = "grid";
         $("#authPassword").value = "";
         $("#authOtpCode input").focus();
+      }
+
+      function showForgotScreen(prefill = "") {
+        $("#authForm").style.display = "none";
+        $("#authOtpPanel").classList.remove("is-visible");
+        $("#authOtpPanel").style.display = "none";
+        $("#authChangeEmailPanel").style.display = "none";
+        $("#authResetPasswordPanel").style.display = "none";
+        $(".auth-switch-row").style.display = "none";
+        $("#signin-title").textContent = "Forgot password";
+        $("#authForgotError").textContent = "";
+        const identifierInput = $("#authForgotIdentifier");
+        identifierInput.value = prefill || "";
+        $("#authForgotPanel").style.display = "grid";
+        identifierInput.focus();
+      }
+
+      function showResetPasswordScreen(resetToken) {
+        authOtpState.resetToken = resetToken;
+        $("#authForm").style.display = "none";
+        $("#authOtpPanel").classList.remove("is-visible");
+        $("#authOtpPanel").style.display = "none";
+        $("#authChangeEmailPanel").style.display = "none";
+        $("#authForgotPanel").style.display = "none";
+        $(".auth-switch-row").style.display = "none";
+        $("#signin-title").textContent = "Create new password";
+        $("#authResetPassword").value = "";
+        $("#authResetConfirmPassword").value = "";
+        $("#authResetPasswordError").textContent = "";
+        $("#authResetPasswordSubmit").disabled = true;
+        $("#authResetPasswordPanel").style.display = "grid";
+        $("#authResetPassword").focus();
       }
 
       function hideOtpScreen() {
@@ -21567,6 +21641,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         panel.classList.remove("is-visible");
         panel.style.display = "none";
         $("#authChangeEmailPanel").style.display = "none";
+        $("#authForgotPanel").style.display = "none";
+        $("#authResetPasswordPanel").style.display = "none";
         $("#authForm").style.display = "grid";
         $(".auth-switch-row").style.display = "";
         $("#signin-title").innerHTML = registering
@@ -21574,7 +21650,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           : 'Welcome to <span class="wordmark">Relay</span>';
         $("#authOtpError").textContent = "";
         $("#authChangeEmailError").textContent = "";
+        $("#authForgotError").textContent = "";
+        $("#authResetPasswordError").textContent = "";
         authOtpState.password = "";
+        authOtpState.resetToken = "";
         clearInterval(authOtpState.timerId);
         authOtpState.timerId = null;
       }
@@ -21681,6 +21760,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             method: "POST",
             body: JSON.stringify({ email: authOtpState.email, purpose: authOtpState.purpose, code }),
           }, false);
+          if (authOtpState.purpose === "reset") {
+            if (!result.resetToken) {
+              throw new Error("Verification failed. Please try requesting a new code.");
+            }
+            showResetPasswordScreen(result.resetToken);
+            return;
+          }
           if (!result.user || !result.accessToken) {
             throw new Error("This verification flow is not available yet. Please try again.");
           }
@@ -21745,6 +21831,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           undefined,
           false,
         );
+      });
+      $("#authOtpBackToLogin")?.addEventListener("click", () => {
+        hideOtpScreen();
+      });
+      $("#authForgotCancel")?.addEventListener("click", () => {
+        hideOtpScreen();
       });
 
       const actionDialog = $("#actionDialog");
@@ -23320,7 +23412,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           return;
         }
         if (e.target.closest("[data-auth-forgot]")) {
-          toast("Password reset isn’t available yet.");
+          const prefill = $("#authEmail")?.value.trim() || "";
+          showForgotScreen(prefill);
           return;
         }
         if (e.target.closest("#emojiToggle")) {
@@ -23909,6 +24002,89 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             errorElement.textContent = authFriendlyError(error, "change-email");
           } finally {
             setPendingButton(submit, false);
+          }
+          return;
+        }
+        if (e.target.id === "authForgotPanel") {
+          e.preventDefault();
+          const submit = $("#authForgotSubmit");
+          const identifierInput = $("#authForgotIdentifier");
+          const identifier = identifierInput.value.trim();
+          const errorElement = $("#authForgotError");
+          errorElement.textContent = "";
+          if (!identifier) {
+            errorElement.textContent = "Please enter your email or username.";
+            identifierInput.focus();
+            return;
+          }
+          setPendingButton(submit, true);
+          submit.disabled = true;
+          try {
+            const result = await api("/auth/forgot-password", {
+              method: "POST",
+              body: JSON.stringify({ identifier }),
+            }, false);
+            const targetEmail = result?.email || identifier;
+            showOtpScreen(
+              targetEmail,
+              "reset",
+              "If an account exists, we sent a code to the email on file.",
+              undefined,
+              true,
+            );
+          } catch (error) {
+            errorElement.textContent = authFriendlyError(error, "resend");
+          } finally {
+            setPendingButton(submit, false);
+            submit.disabled = false;
+          }
+          return;
+        }
+        if (e.target.id === "authResetPasswordPanel") {
+          e.preventDefault();
+          const submit = $("#authResetPasswordSubmit");
+          const password = $("#authResetPassword").value;
+          const confirmPassword = $("#authResetConfirmPassword").value;
+          const errorElement = $("#authResetPasswordError");
+          errorElement.textContent = "";
+          if (password.length < 12) {
+            errorElement.textContent = "Password must be at least 12 characters.";
+            $("#authResetPassword").focus();
+            return;
+          }
+          if (new TextEncoder().encode(password).length > 72) {
+            errorElement.textContent = "Password must not exceed 72 UTF-8 bytes.";
+            $("#authResetPassword").focus();
+            return;
+          }
+          if (password !== confirmPassword) {
+            errorElement.textContent = "Passwords do not match.";
+            $("#authResetConfirmPassword").focus();
+            return;
+          }
+          setPendingButton(submit, true);
+          submit.disabled = true;
+          try {
+            await api("/auth/reset-password", {
+              method: "POST",
+              body: JSON.stringify({
+                resetToken: authOtpState.resetToken,
+                password,
+                confirmPassword,
+              }),
+            }, false);
+            toast("Password updated. Sign in with your new password.");
+            const emailToPrefill = authOtpState.email;
+            hideOtpScreen();
+            if (emailToPrefill && emailToPrefill.includes("@")) {
+              $("#authEmail").value = emailToPrefill;
+            }
+            $("#authPassword").focus();
+          } catch (error) {
+            errorElement.textContent = error.message || "Failed to update password. Please try again.";
+          } finally {
+            setPendingButton(submit, false);
+            submit.disabled = false;
           }
           return;
         }
@@ -24980,6 +25156,35 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       $("#settingsEmailPassword")?.querySelector("input")?.addEventListener("input", syncSettingsEmail);
       $("#settingsPasswordForm")?.addEventListener("input", syncSettingsPassword);
       $("#settingsPasswordForm")?.elements.confirmPassword?.addEventListener("blur", syncSettingsPassword);
+
+      function syncResetPassword() {
+        const form = $("#authResetPasswordPanel");
+        if (!form) return;
+        const password = form.elements.password?.value || "";
+        const confirm = form.elements.confirmPassword?.value || "";
+        const error = $("#authResetPasswordError");
+        const submit = $("#authResetPasswordSubmit");
+        const utf8Bytes = new TextEncoder().encode(password).length;
+        let valid = true;
+        let errorMessage = "";
+
+        if (password.length > 0 && password.length < 12) {
+          valid = false;
+          errorMessage = "Password must be at least 12 characters.";
+        } else if (utf8Bytes > 72) {
+          valid = false;
+          errorMessage = "Password must not exceed 72 UTF-8 bytes.";
+        } else if (confirm.length > 0 && confirm !== password) {
+          valid = false;
+          errorMessage = "Passwords do not match.";
+        } else if (password.length === 0 || confirm.length === 0) {
+          valid = false;
+        }
+
+        error.textContent = errorMessage;
+        submit.disabled = !valid;
+      }
+      $("#authResetPasswordPanel")?.addEventListener("input", syncResetPassword);
       const cookieConsentStorageKey = "relay_cookie_consent";
       const legalDialog = $("#legalDialog");
       const cookieSettingsDialog = $("#cookieSettingsDialog");

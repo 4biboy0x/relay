@@ -24,6 +24,36 @@ export const createAccessToken = (userId: string): string =>
     audience: "relay-client",
   });
 
+export const createPasswordResetToken = (userId: string, email: string, authCodeId: string): string =>
+  jwt.sign({ email, codeId: authCodeId, purpose: "password-reset" }, config.JWT_ACCESS_SECRET, {
+    subject: userId,
+    expiresIn: "10m",
+    issuer: "relay-api",
+    audience: "relay-client",
+  });
+
+export interface PasswordResetTokenPayload {
+  sub: string;
+  email: string;
+  codeId: string;
+  purpose: "password-reset";
+}
+
+export const verifyPasswordResetToken = (token: string): PasswordResetTokenPayload => {
+  try {
+    const payload = jwt.verify(token, config.JWT_ACCESS_SECRET, {
+      issuer: "relay-api",
+      audience: "relay-client",
+    });
+    if (typeof payload === "string" || !payload.sub || (payload as any).purpose !== "password-reset") {
+      throw new Error("Invalid reset token");
+    }
+    return payload as unknown as PasswordResetTokenPayload;
+  } catch {
+    throw new HttpError(401, "Invalid or expired password reset token");
+  }
+};
+
 export const hashRefreshToken = (token: string): string =>
   createHash("sha256").update(token).digest("hex");
 
