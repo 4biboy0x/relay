@@ -4378,6 +4378,15 @@
         opacity: 1;
         transform: translate(-50%, 0);
       }
+      @media (max-width: 640px) {
+        .toast {
+          bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+          z-index: 1000;
+          max-width: calc(100vw - 32px);
+          box-sizing: border-box;
+          text-align: center;
+        }
+      }
       .auth-dialog {
         width: max-content;
         max-width: min(420px, calc(100vw - 24px));
