@@ -453,7 +453,7 @@ router.get("/:id/media/:kind", asyncRoute(async (req, res) => {
   const kind = mediaKindSchema.parse(req.params.kind);
   const reel = await prisma.reel.findFirst({
     where: { id: reelId, status: ReelStatus.READY, publishedAt: { not: null }, deletedAt: null },
-    select: { videoKey: true, posterKey: true },
+    select: { videoKey: true, posterKey: true, mime: true },
   });
   if (!reel) throw new HttpError(404, "Reel not found");
   const key = kind === "video" ? reel.videoKey : reel.posterKey;
@@ -495,7 +495,7 @@ router.get("/:id/media/:kind", asyncRoute(async (req, res) => {
   }
   res.setHeader("Accept-Ranges", "bytes");
   res.setHeader("Cache-Control", "private, max-age=3600");
-  res.setHeader("Content-Type", file.contentType || (kind === "video" ? "video/mp4" : "image/jpeg"));
+  res.setHeader("Content-Type", kind === "video" ? (reel.mime || file.contentType || "video/mp4") : (file.contentType || "image/jpeg"));
   if (file.contentLength !== undefined) res.setHeader("Content-Length", file.contentLength);
   if (file.contentRange) {
     res.status(206);

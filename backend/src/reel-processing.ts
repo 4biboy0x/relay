@@ -277,7 +277,7 @@ export const processReelJob = async (jobId: string, reelId: string): Promise<Ree
   try {
     const reel = await prisma.reel.findUnique({
       where: { id: reelId },
-      select: { id: true, authorId: true, originalKey: true, deletedAt: true },
+      select: { id: true, authorId: true, originalKey: true, mime: true, deletedAt: true },
     });
     if (!reel || reel.deletedAt) {
       await prisma.processingJob.update({
@@ -316,7 +316,7 @@ export const processReelJob = async (jobId: string, reelId: string): Promise<Ree
       await pipeline(source.body, createWriteStream(inputPath, { flags: "wx" }));
 
       const inputProbe = await measureStage(timings, "probeMs", () => probeVideo(inputPath));
-      const fastPath = canUseReelFastPath(inputProbe, sourceHead.contentLength);
+      const fastPath = reel.mime === "video/mp4" && canUseReelFastPath(inputProbe, sourceHead.contentLength);
       let outputProbe: VideoProbe;
       if (fastPath) {
         outputProbe = inputProbe;
