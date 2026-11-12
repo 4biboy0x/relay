@@ -14587,7 +14587,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           positionReelFeedSentinel();
           return false;
         }
-        const existingSlides = new Map($(".reel-item", container).map((slide) => [slide.dataset.reelId, slide]));
+        const reusableSlides = new Map(Array.from(container.querySelectorAll(".reel-item")).map((slide) => [slide.dataset.reelId, slide]));
         const sentinel = $("#reelFeedSentinel", container);
         const fragment = document.createDocumentFragment();
         reelItems.slice(0, start).forEach((reel) => {
@@ -14598,7 +14598,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           fragment.append(placeholder);
         });
         reelItems.slice(start, end).forEach((reel, offset) => {
-          let slide = existingSlides.get(reel.id);
+          let slide = reusableSlides.get(reel.id);
           if (!slide) {
             const template = document.createElement("template");
             template.innerHTML = reelMarkup(reel, start + offset);
@@ -14909,7 +14909,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         reelActiveObserver?.disconnect();
         const feed = $("#reelFeed");
         if (!feed || $("#v-reels").hidden) return;
-        const slides = [...$( ".reel-item", feed), ...$( ".reel-virtual-placeholder", feed)];
+        const slides = [...Array.from(feed.querySelectorAll(".reel-item")), ...Array.from(feed.querySelectorAll(".reel-virtual-placeholder"))];
         if ("IntersectionObserver" in window) {
           reelActiveObserver = new IntersectionObserver((entries) => {
             const active = entries
