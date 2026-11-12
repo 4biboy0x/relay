@@ -1909,6 +1909,13 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
     take: 50,
   });
   const conversationIds = rows.map((row) => row.conversationId);
+  const preferences = conversationIds.length
+    ? await prisma.conversationPreference.findMany({
+        where: { userId: req.userId!, conversationId: { in: conversationIds } },
+        orderBy: [{ pinnedAt: "asc" }, { createdAt: "asc" }],
+      })
+    : [];
+  const preferenceByConversation = new Map(preferences.map((preference) => [preference.conversationId, preference]));
   const unreadRows = conversationIds.length
     ? await prisma.$queryRaw<Array<{ conversationId: string; unreadCount: number }>>(Prisma.sql`
         SELECT member."conversationId",
@@ -1931,6 +1938,12 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
       members: row.conversation.members.map(({ user }) => user),
       lastMessage: row.conversation.lastMessage ?? row.conversation.messages[0] ?? null,
       unreadCount: unread.get(row.conversationId) ?? 0,
+      pinned: Boolean(preferenceByConversation.get(row.conversationId)?.pinned),
+      pinnedAt: preferenceByConversation.get(row.conversationId)?.pinnedAt ?? null,
+      muted: Boolean(preferenceByConversation.get(row.conversationId)?.muted
+        && (!preferenceByConversation.get(row.conversationId)?.mutedUntil
+          || preferenceByConversation.get(row.conversationId)!.mutedUntil! > new Date())),
+      mutedUntil: preferenceByConversation.get(row.conversationId)?.mutedUntil ?? null,
     })),
   });
 }));
@@ -2170,6 +2183,57 @@ api.post("/conversations", authRequired, verifiedEmailRequired, asyncRoute(async
   res.status(200).json({
     id: conversation.id,
     members: conversation.members.map(({ user }) => user),
+  });
+}));
+
+const conversationPreferenceSchema = z.object({
+  pinned: z.boolean().optional(),
+  muteDuration: z.enum(["1h", "8h", "1w", "always", "off"]).optional(),
+}).strict().refine((value) => value.pinned !== undefined || value.muteDuration !== undefined, {
+  message: "At least one conversation preference is required",
+});
+
+api.patch("/conversations/:conversationId/preferences", authRequired, asyncRoute(async (req, res) => {
+  const conversationId = z.string().cuid().parse(req.params.conversationId);
+  const input = conversationPreferenceSchema.parse(req.body);
+  const memberKey = { conversationId_userId: { conversationId, userId: req.userId! } };
+  const preference = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${req.userId!}))`);
+    const member = await tx.conversationMember.findUnique({
+      where: memberKey,
+      select: { conversationId: true },
+    });
+    if (!member) throw new HttpError(404, "Conversation not found");
+    const existing = await tx.conversationPreference.findUnique({ where: memberKey });
+    const data: { pinned?: boolean; pinnedAt?: Date | null; muted?: boolean; mutedUntil?: Date | null } = {};
+    if (input.pinned !== undefined) {
+      if (input.pinned && !existing?.pinned) {
+        const pinnedCount = await tx.conversationPreference.count({
+          where: { userId: req.userId!, pinned: true, conversationId: { not: conversationId } },
+        });
+        if (pinnedCount >= 3) throw new HttpError(409, "You can pin up to 3 conversations.");
+      }
+      data.pinned = input.pinned;
+      data.pinnedAt = input.pinned ? new Date() : null;
+    }
+    if (input.muteDuration !== undefined) {
+      data.muted = input.muteDuration !== "off";
+      data.mutedUntil = input.muteDuration === "always" || input.muteDuration === "off"
+        ? null
+        : new Date(Date.now() + ({ "1h": 60 * 60 * 1000, "8h": 8 * 60 * 60 * 1000, "1w": 7 * 24 * 60 * 60 * 1000 }[input.muteDuration]));
+    }
+    return tx.conversationPreference.upsert({
+      where: memberKey,
+      create: { conversationId, userId: req.userId!, ...data },
+      update: data,
+    });
+  });
+  res.json({
+    conversationId,
+    pinned: preference.pinned,
+    pinnedAt: preference.pinnedAt,
+    muted: preference.muted && (!preference.mutedUntil || preference.mutedUntil > new Date()),
+    mutedUntil: preference.mutedUntil,
   });
 }));
 

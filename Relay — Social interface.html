@@ -20658,40 +20658,17 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const target = targetLabels[targetType] || "a message";
         return `<span class="conversation-preview-text">${esc(prefix)} ${emoji} to ${target}</span>`;
       }
-      const inboxPreferencesKey = (userId) => `relay_inbox_preferences:${userId || "anonymous"}`;
       function readInboxPreferences() {
-        try {
-          const saved = JSON.parse(localStorage.getItem(inboxPreferencesKey(currentUser?.id)) || "{}");
-          const muted = saved.muted && typeof saved.muted === "object" ? saved.muted : {};
-          const now = Date.now();
-          Object.entries(muted).forEach(([conversationId, until]) => {
-            if (until !== null && (!Number.isFinite(until) || until <= now)) delete muted[conversationId];
-          });
-          return {
-            pinned: Array.isArray(saved.pinned) ? [...new Set(saved.pinned.filter((id) => typeof id === "string"))].slice(0, 3) : [],
-            muted,
-          };
-        } catch (error) {
-          console.warn("Could not read inbox preferences.", error);
-          return { pinned: [], muted: {} };
-        }
+        return { pinned: [], muted: {} };
       }
       let inboxPreferences = readInboxPreferences();
-      function saveInboxPreferences() {
-        try {
-          localStorage.setItem(inboxPreferencesKey(currentUser?.id), JSON.stringify(inboxPreferences));
-        } catch (error) {
-          console.warn("Could not save inbox preferences.", error);
-          toast("Could not save conversation preferences on this device.");
-        }
-      }
+      function saveInboxPreferences() {}
       function isConversationMuted(conversationId) {
         if (!conversationId) return false;
         const until = inboxPreferences.muted[conversationId];
         if (until === undefined) return false;
         if (until !== null && (!Number.isFinite(until) || until <= Date.now())) {
           delete inboxPreferences.muted[conversationId];
-          saveInboxPreferences();
           return false;
         }
         return true;
@@ -20711,7 +20688,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         filterConversations();
         writeViewCache("messages", $("#conversationList").innerHTML);
       }
-      function handleInboxConversationAction(button) {
+      async function handleInboxConversationAction(button) {
         const conversationId = button.dataset.conversationId;
         if (!conversationId) return;
         const container = button.closest(".conversation-actions");
@@ -20729,37 +20706,28 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (options) options.hidden = !options.hidden;
           return;
         }
-        if (action === "pin" || action === "unpin") {
-          const pinned = inboxPreferences.pinned.includes(conversationId);
-          if (!pinned && inboxPreferences.pinned.length >= 3) {
-            toast("You can pin up to 3 conversations.");
-            return;
-          }
-          inboxPreferences.pinned = pinned
-            ? inboxPreferences.pinned.filter((id) => id !== conversationId)
-            : [...inboxPreferences.pinned, conversationId];
-          saveInboxPreferences();
+        const preference = action === "pin" || action === "unpin"
+          ? { pinned: action === "pin" }
+          : action === "mute"
+            ? { muteDuration: button.dataset.muteDuration }
+            : action === "unmute"
+              ? { muteDuration: "off" }
+              : null;
+        if (!preference) return;
+        button.disabled = true;
+        try {
+          await api(`/conversations/${encodeURIComponent(conversationId)}/preferences`, {
+            method: "PATCH",
+            body: JSON.stringify(preference),
+          });
           closeInboxConversationMenus();
-          refreshInboxConversationRows();
-          return;
-        }
-        if (action === "mute") {
-          const duration = button.dataset.muteDuration;
-          inboxPreferences.muted[conversationId] = duration === "always"
-            ? null
-            : Date.now() + Number(duration);
-          saveInboxPreferences();
-          closeInboxConversationMenus();
-          refreshInboxConversationRows();
-          toast("Conversation muted");
-          return;
-        }
-        if (action === "unmute") {
-          delete inboxPreferences.muted[conversationId];
-          saveInboxPreferences();
-          closeInboxConversationMenus();
-          refreshInboxConversationRows();
-          toast("Conversation unmuted");
+          await renderConversations();
+          if (action === "mute") toast("Conversation muted");
+          else if (action === "unmute") toast("Conversation unmuted");
+        } catch (error) {
+          toast(error.message || "Could not update conversation preferences.");
+        } finally {
+          button.disabled = false;
         }
       }
       document.addEventListener("click", (event) => {
@@ -21166,7 +21134,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (!accessToken) return Promise.resolve();
         if (conversationRefreshPromise) {
           conversationRefreshQueued = true;
-          return conversationRefreshPromise;
+          const currentRefresh = conversationRefreshPromise;
+          return currentRefresh.then(() => {
+            if (!conversationRefreshQueued) return;
+            conversationRefreshQueued = false;
+            return renderConversations();
+          });
         }
         const request = (async () => {
           let finishSkeleton;
@@ -21186,7 +21159,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             const result = await api("/conversations");
             await finishSkeleton();
             conversations = result.items;
-            const availableConversationIds = new Set(conversations.map((item) => item.id));
+            inboxPreferences.pinned = conversations.filter((item) => item.pinned).sort((a, b) =>
+        new Date(a.pinnedAt || 0).getTime() - new Date(b.pinnedAt || 0).getTime()
+      ).map((item) => item.id).slice(0, 3);
+      inboxPreferences.muted = Object.fromEntries(conversations
+        .filter((item) => item.muted)
+        .map((item) => [item.id, item.mutedUntil ? new Date(item.mutedUntil).getTime() : null]));
+      const availableConversationIds = new Set(conversations.map((item) => item.id));
             inboxPreferences.pinned = inboxPreferences.pinned.filter((id) => availableConversationIds.has(id)).slice(0, 3);
             Object.keys(inboxPreferences.muted).forEach((id) => { if (!availableConversationIds.has(id)) delete inboxPreferences.muted[id]; });
             saveInboxPreferences();
@@ -21209,10 +21188,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         })();
         conversationRefreshPromise = request.finally(() => {
           conversationRefreshPromise = null;
-          if (conversationRefreshQueued) {
-            conversationRefreshQueued = false;
-            void renderConversations();
-          }
         });
         return conversationRefreshPromise;
       }

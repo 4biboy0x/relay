@@ -120,6 +120,18 @@ CREATE TABLE "ConversationMember" (
   PRIMARY KEY ("conversationId", "userId")
 );
 
+CREATE TABLE "ConversationPreference" (
+  "conversationId" text NOT NULL REFERENCES "Conversation"("id") ON DELETE CASCADE,
+  "userId" text NOT NULL REFERENCES "User"("id") ON DELETE CASCADE,
+  "pinned" boolean NOT NULL DEFAULT false,
+  "pinnedAt" timestamptz(3),
+  "muted" boolean NOT NULL DEFAULT false,
+  "mutedUntil" timestamptz(3),
+  "createdAt" timestamptz(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" timestamptz(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY ("conversationId", "userId")
+);
+
 CREATE TABLE "Message" (
   "id" text PRIMARY KEY,
   "conversationId" text NOT NULL REFERENCES "Conversation"("id") ON DELETE CASCADE,
@@ -236,6 +248,10 @@ CREATE INDEX "Notification_recipientId_readAt_idx" ON "Notification" ("recipient
 CREATE INDEX "RefreshToken_userId_expiresAt_idx" ON "RefreshToken" ("userId", "expiresAt");
 CREATE INDEX "PostHashtag_hashtagId_createdAt_idx" ON "PostHashtag" ("hashtagId", "createdAt" DESC);
 CREATE INDEX "Conversation_updatedAt_idx" ON "Conversation" ("updatedAt" DESC);
+CREATE INDEX "ConversationPreference_userId_pinned_pinnedAt_idx"
+  ON "ConversationPreference" ("userId", "pinned", "pinnedAt");
+CREATE INDEX "ConversationPreference_userId_muted_mutedUntil_idx"
+  ON "ConversationPreference" ("userId", "muted", "mutedUntil");
 CREATE INDEX "ConversationMember_userId_lastReadAt_idx" ON "ConversationMember" ("userId", "lastReadAt");
 CREATE INDEX "Message_conversationId_createdAt_id_idx" ON "Message" ("conversationId", "createdAt" DESC, "id" DESC);
 CREATE INDEX "Message_senderId_createdAt_idx" ON "Message" ("senderId", "createdAt" DESC);
@@ -267,6 +283,7 @@ ALTER TABLE "RefreshToken" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Hashtag" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "PostHashtag" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Conversation" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "ConversationPreference" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "ConversationMember" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Message" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Reel" ENABLE ROW LEVEL SECURITY;
@@ -288,6 +305,7 @@ ALTER TABLE "RefreshToken" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "Hashtag" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "PostHashtag" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "Conversation" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "ConversationPreference" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "ConversationMember" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "Message" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "Reel" FORCE ROW LEVEL SECURITY;
@@ -383,6 +401,15 @@ CREATE POLICY "conversations_member_delete" ON "Conversation" FOR DELETE
     SELECT 1 FROM "ConversationMember" cm
     WHERE cm."conversationId" = "Conversation"."id" AND cm."userId" = auth.uid()
   ));
+
+CREATE POLICY "conversation_preferences_self_select" ON "ConversationPreference" FOR SELECT
+  USING (auth.uid() = "userId");
+CREATE POLICY "conversation_preferences_self_insert" ON "ConversationPreference" FOR INSERT
+  WITH CHECK (auth.uid() = "userId");
+CREATE POLICY "conversation_preferences_self_update" ON "ConversationPreference" FOR UPDATE
+  USING (auth.uid() = "userId") WITH CHECK (auth.uid() = "userId");
+CREATE POLICY "conversation_preferences_self_delete" ON "ConversationPreference" FOR DELETE
+  USING (auth.uid() = "userId");
 
 CREATE POLICY "conversation_members_self_select" ON "ConversationMember" FOR SELECT
   USING (auth.uid() = "userId");
