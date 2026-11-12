@@ -10386,7 +10386,247 @@
           min-width: 0;
         }
       }
-</style>
+
+      /* Relay responsive shell hardening — keep desktop surfaces fluid without changing view behavior. */
+      html,
+      body {
+        width: 100%;
+        min-width: 320px;
+        overflow-x: clip;
+      }
+      .app {
+        width: 100%;
+        max-width: none;
+        min-width: 0;
+        box-sizing: border-box;
+      }
+      .app > main,
+      .app > aside[aria-label="Suggestions"],
+      .app > .nav {
+        min-width: 0;
+        box-sizing: border-box;
+      }
+      @media (min-width: 1101px) {
+        .app {
+          grid-template-columns:
+            clamp(232px, 16vw, 260px)
+            minmax(0, 1fr)
+            minmax(280px, clamp(280px, 20vw, 340px));
+          gap: 0 clamp(18px, 1.8vw, 28px);
+          width: 100%;
+          max-width: none;
+          margin-inline: 0;
+          padding-inline: clamp(16px, 2vw, 36px);
+        }
+        .app > main {
+          width: min(600px, 100%);
+          max-width: 100%;
+          min-width: 0;
+          justify-self: center;
+        }
+        .app > aside[aria-label="Suggestions"] {
+          width: 100%;
+          min-width: 0;
+          max-width: none;
+        }
+        .app.messages-active {
+          grid-template-columns:
+            clamp(232px, 16vw, 260px)
+            minmax(0, 1fr)
+            minmax(0, 0px);
+        }
+        .app.messages-active > main {
+          width: 100%;
+          max-width: none;
+          min-width: 0;
+          justify-self: stretch;
+        }
+      }
+      @media (min-width: 641px) {
+        .app.messages-active > main {
+          width: 100%;
+          max-width: none;
+          min-width: 0;
+          justify-self: stretch;
+        }
+        .app.messages-active #v-messages,
+        .app.messages-active .messages-layout,
+        .app.messages-active .conversation-sidebar,
+        .app.messages-active .chat-panel,
+        .app.messages-active .chat-scroll-area,
+        .app.messages-active .chat-log {
+          min-width: 0;
+        }
+        .app.messages-active .messages-layout {
+          grid-template-columns: minmax(260px, clamp(280px, 29%, 360px)) minmax(0, 1fr);
+        }
+        .app.messages-active .chat-panel {
+          display: flex;
+          min-width: 0;
+          min-height: 0;
+          flex-direction: column;
+        }
+      }
+      .chat-compose {
+        display: flex;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        flex: 0 0 auto;
+        box-sizing: border-box;
+      }
+      .chat-compose-pill,
+      .chat-compose-row,
+      .chat-compose-field {
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+      .chat-compose-row {
+        display: flex;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        align-items: center;
+        gap: clamp(3px, .8vw, 8px);
+        flex-wrap: nowrap;
+      }
+      .chat-compose-row > button,
+      .chat-compose-row .message-empty-actions,
+      .chat-compose-row .message-empty-actions > button {
+        flex: 0 0 auto;
+      }
+      .chat-compose-field {
+        flex: 1 1 0%;
+        overflow: hidden;
+      }
+      .chat-compose-field textarea,
+      #messageInput {
+        display: block;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow-wrap: anywhere;
+      }
+      .message-empty-actions {
+        display: flex;
+        min-width: 0;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 2px;
+      }
+      .message-recording {
+        min-width: 0;
+        max-width: 100%;
+      }
+      .message-recording-waveform {
+        min-width: 0;
+        max-width: 100%;
+      }
+      .reel-stage,
+      .reel-feed,
+      .reel-item {
+        min-width: 0;
+      }
+      .reel-copy {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+      .reel-author-line,
+      .reel-author-link {
+        min-width: 0;
+      }
+      .reel-author-link > :not(.av) {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+      dialog[open] {
+        box-sizing: border-box;
+        max-width: calc(100vw - 24px);
+        max-height: calc(100dvh - 24px);
+      }
+      @media (max-width: 640px) {
+        html,
+        body {
+          width: 100%;
+          min-width: 320px;
+          overflow-x: clip;
+        }
+        .app,
+        .app > main,
+        .app.reels-active > main,
+        .app > .nav {
+          min-width: 0;
+          max-width: 100%;
+        }
+        .app.messages-active > main,
+        .app.thread-active > main {
+          width: 100%;
+          max-width: none;
+        }
+        .app.messages-active .messages-layout {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .chat-compose {
+          padding-inline: max(8px, env(safe-area-inset-left, 0px));
+          padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+        }
+        .chat-compose-row {
+          gap: 2px;
+        }
+        .chat-compose-row > #messageStickerButton,
+        .chat-compose-row > .message-send-text {
+          width: 36px;
+          min-width: 36px;
+          height: 36px;
+        }
+        .message-empty-actions {
+          gap: 0;
+        }
+        .message-empty-actions > button,
+        .chat-compose-row > .chat-compose-icon {
+          width: 32px;
+          min-width: 32px;
+          height: 36px;
+        }
+        .chat-compose-field {
+          flex-basis: 0;
+        }
+        .reel-copy {
+          right: 72px;
+          left: max(12px, env(safe-area-inset-left, 0px));
+          overflow-wrap: anywhere;
+        }
+        .reel-caption {
+          overflow-wrap: anywhere;
+        }
+      }
+      @media (max-width: 360px) {
+        .chat-compose-row > #messageStickerButton,
+        .chat-compose-row > .message-send-text {
+          width: 32px;
+          min-width: 32px;
+        }
+        .message-empty-actions > button,
+        .chat-compose-row > .chat-compose-icon {
+          width: 28px;
+          min-width: 28px;
+        }
+        .reel-copy {
+          right: 68px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .app,
+        .app > main,
+        .app > aside[aria-label="Suggestions"] {
+          scroll-behavior: auto;
+          transition-duration: 0.01ms;
+        }
+      }
+
+    </style>
   </head>
   <body>
     <div class="app-splash" id="appSplash" role="status" aria-label="Loading Relay">
