@@ -18474,7 +18474,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         progress.style.width = posted ? "100%" : "0%";
         if (!posted) {
           requestAnimationFrame(() => {
-            if (!bar.hidden) progress.style.width = "82%";
+            if (!bar.hidden && $("#reelPublishCheck").hidden) progress.style.width = "82%";
           });
           return;
         }
