@@ -6107,6 +6107,30 @@
         height: 13px;
         stroke-width: 1.8;
       }
+      .conversation-pin-indicator {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        margin-inline-end: 5px;
+        color: var(--text-3);
+        opacity: .82;
+        transform-origin: center;
+        animation: conversation-pin-in 220ms cubic-bezier(.2, .75, .25, 1) both;
+      }
+      .conversation-pin-indicator .i {
+        width: 13px;
+        height: 13px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      @keyframes conversation-pin-in {
+        from { opacity: 0; transform: translateY(-3px) scale(.82) rotate(-12deg); }
+        to { opacity: .82; transform: translateY(0) scale(1) rotate(0); }
+      }
       @media (hover: none), (pointer: coarse) {
         .conversation-actions {
           position: absolute;
@@ -20882,6 +20906,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const search = `${conversationSearchText(item)} ${normalizedQuery}`;
           const lastMessage = item.lastMessage;
           const unreadCount = Number(item.unreadCount) || 0;
+          const pinned = resultList.id === "conversationList"
+            && !searchQuery
+            && inboxPreferences.pinned.includes(item.id);
           const matchingLastMessage = queryTerms.length > 0
             && queryTerms.every((term) => (lastMessage?.body || "").normalize("NFKC").toLowerCase().includes(term));
           const message = searchMode === "messages" ? item.matchedMessage : lastMessage;
@@ -20911,12 +20938,16 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           } else {
             preview = `<span class="conversation-preview-text">${esc(preview)}</span>`;
           }
+          if (pinned) {
+            const pinMarkup = '<span class="conversation-pin-indicator" title="Pinned" aria-label="Pinned"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 3 21 8 17 9 13 13V18L11 20 9 13 3 7 5 5 11 11H16L20 7Z"/></svg></span>';
+            if (messageTime) messageTime = messageTime.replace("<time", pinMarkup + "<time");
+            else messageTime = `<span class="conversation-preview-time-wrap">${pinMarkup}</span>`;
+          }
           const searchMessageId = searchQuery
             ? (searchMode === "messages" ? item.matchedMessage?.id : matchingLastMessage ? lastMessage?.id : "")
             : "";
           const searchMessageCandidate = Boolean(searchQuery && searchMode === "conversations" && !searchMessageId);
           const isInboxList = resultList.id === "conversationList";
-          const pinned = isInboxList && !searchQuery && inboxPreferences.pinned.includes(item.id);
           const muted = isInboxList && isConversationMuted(item.id);
           const previousPinned = index > 0 && inboxPreferences.pinned.includes(renderItems[index - 1].id);
           const sectionLabel = isInboxList && !searchQuery
@@ -20927,7 +20958,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             <button class="conversation-item${searchQuery ? " is-search-result" : ""}${searchMode === "messages" ? " message-search-result" : ""}${unreadCount ? " has-unread" : ""}" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-mode="${esc(searchMode)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}"${searchQuery ? ` aria-selected="${current}"` : ""}>
               ${presenceAvatarMarkup(other, "sm")}
               <span class="grow">
-                <span class="conversation-item-heading"><b>${esc(other?.displayName || "Relay user")}</b>${pinned ? '<span class="conversation-state-icon" title="Pinned" aria-label="Pinned"><svg class="i" viewBox="0 0 24 24"><path d="m16 3 5 5-4 1-4 4v5l-2 2-2-7-6-6 2-2 6 6h5l4-4z"/></svg></span>' : ""}${muted ? '<span class="conversation-state-icon" title="Muted" aria-label="Muted"><svg class="i" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4M4 4l16 16"/></svg></span>' : ""}${messageTime}</span>
+                <span class="conversation-item-heading"><b>${esc(other?.displayName || "Relay user")}</b>${muted ? '<span class="conversation-state-icon" title="Muted" aria-label="Muted"><svg class="i" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4M4 4l16 16"/></svg></span>' : ""}${messageTime}</span>
                 <small>${preview}</small>
               </span>
             </button>
