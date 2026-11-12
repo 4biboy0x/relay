@@ -9817,12 +9817,14 @@
       .reel-upload-status:empty { display: none; }
       .reel-upload-status[data-state="error"],
       .reel-report-error { color: var(--like); }
-      .reel-upload-status[data-state="error"] { display: flex; align-items: center; width: auto; gap: 8px; color: var(--like); }
+      .reel-upload-status[data-state="error"] { display: flex; flex-flow: row nowrap; align-items: center; width: auto; min-width: 0; gap: 8px; color: #DC2626; font-size: 13px; line-height: 1.35; }
       .reel-upload-status .reel-upload-status-icon { display: inline-grid; width: 16px; height: 16px; flex: 0 0 16px; place-items: center; }
       .reel-upload-status .reel-upload-status-icon svg { width: 16px; height: 16px; }
       .reel-upload-status[data-state="ready"] .reel-upload-status-icon { color: #6B7280; }
       .reel-upload-status[data-state="processing"] .reel-upload-status-icon { display: none; }
-      .reel-upload-status-text { min-width: 0; overflow-wrap: normal; }
+      .reel-upload-status-text { min-width: 0; overflow-wrap: normal; } 
+      .reel-upload-status[data-state="error"] .reel-upload-status-text { color: #DC2626; font-size: 13px; white-space: nowrap; }
+      .reel-upload-status[data-state="error"] .reel-upload-status-retry { align-self: center; flex: 0 0 auto; color: #DC2626; font-size: 13px; font-weight: 600; line-height: 1.35; text-decoration: underline; white-space: nowrap; }
       .reel-upload-status-retry { align-self: start; flex-shrink: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-weight: 600; line-height: 1.4; text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; cursor: pointer; }
       .reel-upload-progress { width: 100%; height: 4px; margin-top: 8px; overflow: hidden; border-radius: 99px; background: var(--border); opacity: 1; transition: opacity 150ms ease; }
       .reel-upload-status[data-state="ready"] .reel-upload-status-text { color: #6B7280; font-size: 12px; font-weight: 500; }
@@ -18055,11 +18057,21 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             } catch (error) {
               if (xhr.status >= 500) message = "The upload server encountered an error.";
             }
-            reject(new Error(message));
+            const error = new Error(message);
+            error.retryable = xhr.status >= 500;
+            reject(error);
           });
           xhr.addEventListener("error", () => {
             reelUploadRequest = null;
-            reject(new Error("The video upload was interrupted. Check your connection and try again."));
+            const error = new Error("Upload failed. Check your connection");
+            error.retryable = true;
+            reject(error);
+          });
+          xhr.addEventListener("timeout", () => {
+            reelUploadRequest = null;
+            const error = new Error("Upload failed. Check your connection");
+            error.retryable = true;
+            reject(error);
           });
           xhr.addEventListener("abort", () => {
             reelUploadRequest = null;
@@ -18322,13 +18334,32 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (generation !== reelUploadGeneration || reelUploadCancellation) {
           throw new DOMException("Upload canceled", "AbortError");
         }
-        if (session.upload.method === "PUT") {
-          await uploadRequest(session.upload.url, "PUT", file, session.upload.headers || {}, false, generation);
-        } else {
+        const sendUpload = () => {
+          if (session.upload.method === "PUT") {
+            return uploadRequest(session.upload.url, "PUT", file, session.upload.headers || {}, false, generation);
+          }
           const form = new FormData();
           form.append("reelId", session.id);
           form.append("file", file, file.name);
-          await uploadRequest(new URL(session.upload.url, API_BASE).href, "POST", form, {}, true, generation);
+          return uploadRequest(new URL(session.upload.url, API_BASE).href, "POST", form, {}, true, generation);
+        };
+        // Retry only transport failures and server-side 5xx responses. Reuse the same
+        // signed URL/draft; do not create duplicate Reel sessions or retry validation errors.
+        for (let attempt = 0; ; attempt += 1) {
+          try {
+            await sendUpload();
+            break;
+          } catch (error) {
+            if (generation !== reelUploadGeneration || reelUploadCancellation || error.name === "AbortError") throw error;
+            if (!error.retryable || attempt >= 2) {
+              throw new Error("Upload failed. Check your connection");
+            }
+            await new Promise((resolve) => setTimeout(resolve, 450 * (attempt + 1)));
+            if (generation !== reelUploadGeneration || reelUploadCancellation) {
+              throw new DOMException("Upload canceled", "AbortError");
+            }
+            setReelUploadProgress(0);
+          }
         }
         if (generation !== reelUploadGeneration || reelUploadCancellation) {
           throw new DOMException("Upload canceled", "AbortError");
@@ -18367,7 +18398,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (generation !== reelUploadGeneration || error.name === "AbortError") return;
           reelUploadPromise = null;
           hideReelUploadProgress();
-          setReelUploadStatus(error.message || "The video upload was interrupted.", "error");
+          setReelUploadStatus(error.retryable || /failed to fetch|network|unreachable|interrupted/i.test(error.message || "")
+            ? "Upload failed. Check your connection"
+            : (error.message || "Upload failed. Check your connection"), "error");
           updateReelUploadButton();
         });
         return promise;
