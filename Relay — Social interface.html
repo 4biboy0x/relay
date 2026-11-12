@@ -17880,10 +17880,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           cancelReelUploadDraft(previousReelId)
             .catch((error) => console.warn("Could not discard the previous Reel draft.", error));
         }
-        if (reelUploadPreviewUrl) URL.revokeObjectURL(reelUploadPreviewUrl);
-        reelUploadPreviewUrl = previewUrl;
+        const previousPreviewUrl = reelUploadPreviewUrl;
         const preview = $("#reelUploadPreview");
         preview.pause();
+        preview.removeAttribute("src");
+        preview.load();
+        if (previousPreviewUrl) URL.revokeObjectURL(previousPreviewUrl);
+        reelUploadPreviewUrl = previewUrl;
         preview.preload = "auto";
         preview.muted = true;
         preview.loop = true;
@@ -17926,7 +17929,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           cancelReelUploadDraft(previousReelId)
             .catch((error) => console.warn("Could not remove the previous Reel draft.", error));
         }
-        if (reelUploadPreviewUrl) URL.revokeObjectURL(reelUploadPreviewUrl);
+        const previousPreviewUrl = reelUploadPreviewUrl;
         reelUploadPreviewUrl = "";
         const preview = $("#reelUploadPreview");
         clearTimeout(reelPreviewFeedbackTimer);
@@ -17934,6 +17937,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         setReelPreviewMuted(true);
         preview.removeAttribute("src");
         preview.load();
+        if (previousPreviewUrl) URL.revokeObjectURL(previousPreviewUrl);
         preview.hidden = true;
         $("#reelUploadPreviewFrame").removeAttribute("data-has-video");
         $("#reelUploadPreviewFrame").classList.remove("is-preview-paused", "is-preview-feedback", "is-preview-playing", "is-preview-pause", "is-preview-fading");
@@ -18733,7 +18737,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (reelUploadCancellation && reelUploadCreatedId) {
             stopReelStatusPoller(reelUploadCreatedId, null);
           }
-          if (reelUploadPreviewUrl) URL.revokeObjectURL(reelUploadPreviewUrl);
+          const previousPreviewUrl = reelUploadPreviewUrl;
           reelUploadPreviewUrl = "";
           const preview = $("#reelUploadPreview");
           clearTimeout(reelPreviewFeedbackTimer);
@@ -18741,6 +18745,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           setReelPreviewMuted(true);
           preview.removeAttribute("src");
           preview.load();
+          if (previousPreviewUrl) URL.revokeObjectURL(previousPreviewUrl);
           preview.hidden = true;
           $("#reelUploadPreviewFrame").removeAttribute("data-has-video");
           $("#reelUploadPreviewFrame").classList.remove("is-preview-paused", "is-preview-feedback", "is-preview-playing", "is-preview-pause", "is-preview-fading");
