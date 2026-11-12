@@ -20107,6 +20107,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         removePendingMessageRow("", message);
         if (receivedMessageIds.has(message.id)) return;
         receivedMessageIds.add(message.id);
+        if (!conversations.some((item) => item.id === message.conversationId)) {
+          renderConversations().catch((error) => console.error("Could not restore a newly active conversation.", error));
+        }
         syncInboxConversationPreview(message.conversationId, message, message.createdAt);
         const chatLog = $("#chatLog");
         if (chatLog.querySelector(`[data-message-id="${CSS.escape(message.id)}"]`)) return;
