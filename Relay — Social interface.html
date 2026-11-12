@@ -10025,7 +10025,9 @@
           transform: translateY(0);
         }
         .reel-comments-dialog[open].is-sheet-dragging { animation: none; transition: none; }
-        .reel-comments-dialog[open].is-sheet-closing { animation: reel-comments-sheet-out 210ms cubic-bezier(.4,0,1,1) both; }
+        .reel-comments-dialog[open].is-sheet-closing { animation: reel-comments-sheet-out 250ms cubic-bezier(.32,.72,0,1) both; }
+        .reel-comments-dialog::backdrop { opacity: 1; transition: opacity 250ms cubic-bezier(.32,.72,0,1); }
+        .reel-comments-dialog.is-sheet-closing::backdrop { opacity: 0; }
         .reel-comments-dialog::backdrop { background: rgba(9,9,11,.52); backdrop-filter: blur(2px); }
         .reel-comments-drag-handle {
           display: block;
@@ -10101,9 +10103,12 @@
           place-items: center;
           border: 0;
           border-radius: 50%;
-          background: #2563EB;
+          background: #D1D5DB;
           color: #fff;
+          cursor: not-allowed;
+          transition: background-color 180ms ease, color 180ms ease, opacity 180ms ease;
         }
+        .reel-comments-dialog .reel-comment-form .btn.is-ready { background: #2563EB; cursor: pointer; }
         .reel-comments-dialog .reel-comment-form .btn span { display: none; }
         .reel-comments-dialog .reel-comment-form .btn .i { display: block; width: 16px; height: 16px; }
         .reel-comments-dialog .reel-comment-form .btn:disabled { opacity: .45; }
@@ -12268,8 +12273,8 @@
             <div class="profile-identity-meta"><div class="h" id="profileHandle"></div></div>
             <p id="profileBio"></p>
             <div class="stats">
-              <span><b id="followingCount">0</b> Following</span
-              ><span><b id="followerCount">0</b> Followers</span>
+              <span><b id="followingCount">0</b> <span id="followingCountLabel">following</span></span
+              ><span><b id="followerCount">0</b> <span id="followerCountLabel">followers</span></span>
             </div>
           </div>
           <div class="tabs profile-tabs" role="tablist" aria-label="Profile">
@@ -15886,8 +15891,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             const banner = $("#profileBanner");
             banner.hidden = !profile.bannerUrl;
             if (profile.bannerUrl) banner.src = mediaHref(profile.bannerUrl);
-            $("#followingCount").textContent = fmt(profile.counts?.following ?? 0);
-            $("#followerCount").textContent = fmt(profile.counts?.followers ?? profile.followerCount ?? 0);
+            const followingTotal = profile.counts?.following ?? 0;
+            const followerTotal = profile.counts?.followers ?? profile.followerCount ?? 0;
+            $("#followingCount").textContent = fmt(followingTotal);
+            $("#followerCount").textContent = fmt(followerTotal);
+            $("#followingCountLabel").textContent = "following";
+            $("#followerCountLabel").textContent = countNoun(followerTotal, "follower");
             renderFollowButton($("#profileFollow"), {
               id: targetId,
               viewerFollows: !!profile.viewerFollows,
@@ -15928,6 +15937,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           renderError($("#pf"), error);
         }
       }
+      const countNoun = (value, singular, plural = singular + "s") => Number(value) === 1 ? singular : plural;
+      const formatCountWithNoun = (value, singular, plural = singular + "s") => `${fmt(Math.max(0, Number(value) || 0))} ${countNoun(value, singular, plural)}`;
       const formatReelCount = (value) => {
         const count = Math.max(0, Number(value) || 0);
         if (count < 1000) return String(count);
@@ -16903,7 +16914,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (!exists && !insertReelComment(comment, true, event.parentReplyCount) && comment.replyToId) {
             void loadReelComments(false, comment.id);
           }
-          $("#reelCommentsCount").textContent = `${formatReelCount(reel?.counts?.comments)} comments`;
+          $("#reelCommentsCount").textContent = formatCountWithNoun(reel?.counts?.comments, "comment");
         }
         writeReelCache();
       }
@@ -17062,6 +17073,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         reelCommentReplyToId = "";
         $("#reelReplyTarget").hidden = true;
         $("#reelCommentInput").value = "";
+        $("#reelCommentForm").querySelector('button[type="submit"]').disabled = true;
+        $("#reelCommentForm").querySelector('button[type="submit"]').classList.remove("is-ready");
         cancelDelayedPlaceholder($("#reelCommentList"));
         $("#reelCommentList").innerHTML = "";
         $("#reelCommentMore").hidden = true;
@@ -18742,6 +18755,17 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         let reelSheetTouchCurrentY = 0;
         let reelSheetDragging = false;
         let reelSheetCloseTimer = 0;
+        const closeReelCommentsSheet = () => {
+          if (!reelCommentsDialog.open || reelCommentsDialog.classList.contains("is-sheet-closing")) return;
+          if (window.matchMedia("(min-width: 641px)").matches) { reelCommentsDialog.close(); return; }
+          reelCommentsDialog.classList.remove("is-sheet-dragging");
+          reelCommentsDialog.classList.add("is-sheet-closing");
+          window.clearTimeout(reelSheetCloseTimer);
+          reelSheetCloseTimer = window.setTimeout(() => {
+            if (reelCommentsDialog.open) reelCommentsDialog.close();
+            resetReelCommentsSheet();
+          }, 250);
+        };
         const resetReelCommentsSheet = () => {
           window.clearTimeout(reelSheetCloseTimer);
           reelCommentsDialog.classList.remove("is-sheet-dragging", "is-sheet-closing");
@@ -18774,11 +18798,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           reelSheetDragging = false;
           reelCommentsDialog.classList.remove("is-sheet-dragging");
           if (distance >= 100) {
-            reelCommentsDialog.classList.add("is-sheet-closing");
-            reelSheetCloseTimer = window.setTimeout(() => {
-              if (reelCommentsDialog.open) reelCommentsDialog.close();
-              resetReelCommentsSheet();
-            }, 210);
+            closeReelCommentsSheet();
           } else {
             reelCommentsDialog.style.transition = "transform 220ms cubic-bezier(.2,.8,.2,1)";
             reelCommentsDialog.style.transform = "translateY(0)";
@@ -18793,7 +18813,24 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         reelCommentsDragArea.addEventListener("touchend", endReelCommentsSheetDrag, { passive: true });
         reelCommentsDragArea.addEventListener("touchcancel", endReelCommentsSheetDrag, { passive: true });
         reelCommentsDialog.querySelector(".reel-comments-drag-handle").addEventListener("touchstart", startReelCommentsSheetDrag, { passive: true });
+        reelCommentsDialog.addEventListener("click", (event) => {
+          if (event.target === reelCommentsDialog) closeReelCommentsSheet();
+        });
+        reelCommentsDialog.addEventListener("cancel", (event) => {
+          event.preventDefault();
+          closeReelCommentsSheet();
+        });
         reelCommentsDialog.addEventListener("close", resetReelCommentsSheet);
+        const reelCommentInput = $("#reelCommentInput");
+        const reelCommentSend = $("#reelCommentForm").querySelector('button[type="submit"]');
+        const syncReelCommentSendState = () => {
+          const ready = Boolean(reelCommentInput.value.trim());
+          reelCommentSend.disabled = !ready;
+          reelCommentSend.classList.toggle("is-ready", ready);
+          reelCommentSend.setAttribute("aria-disabled", String(!ready));
+        };
+        reelCommentInput.addEventListener("input", syncReelCommentSendState);
+        syncReelCommentSendState();
         $("#reelCommentForm").addEventListener("submit", submitReelComment);
         $("#reelCommentMore").addEventListener("click", () => loadReelComments(true));
         $("#reelCommentList").addEventListener("submit", (event) => {
@@ -18861,6 +18898,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (close) {
             const dialog = close.closest("dialog");
             if (dialog?.id === "reelCreateDialog") closeReelCreateDialog();
+            else if (dialog?.id === "reelCommentsDialog" && dialog.open) closeReelCommentsSheet();
             else if (dialog?.open) dialog.close();
             return;
           }
@@ -20614,9 +20652,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const followingNode = $("#followingCount");
           const updateCount = (node, value) => {
             if (!node) return;
-            const next = fmt(Math.max(0, Number(value) || 0));
+            const safeValue = Math.max(0, Number(value) || 0);
+            const next = fmt(safeValue);
             if (node.textContent === next) return;
             node.textContent = next;
+            if (node === followerNode) $("#followerCountLabel").textContent = countNoun(safeValue, "follower");
             if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
               node.animate(
                 [{ transform: "scale(1)", opacity: 1 }, { transform: "scale(1.16)", opacity: .72 }, { transform: "scale(1)", opacity: 1 }],
