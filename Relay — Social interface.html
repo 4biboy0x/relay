@@ -10058,7 +10058,11 @@
       }
       .app.reels-active .reel-feed::-webkit-scrollbar { display: none; }
       .app.reels-active #reelItems { display: block !important; }
-      .app.reels-active .reel-window-spacer { display: block; width: 1px; pointer-events: none; }
+      .app.reels-active .reel-window-spacer { display: none !important; }
+      .app.reels-active .reel-virtual-placeholder {
+        display: block; width: 100%; height: 100dvh; min-height: 100dvh;
+        scroll-snap-align: start; scroll-snap-stop: always; background: #000;
+      }
       .app.reels-active .reel-item {
         position: relative; display: block !important; width: 100%;
         height: 100dvh !important; min-height: 100dvh !important; padding: 0 !important;
@@ -14580,17 +14584,16 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           && existingSlides.length === end - start
           && existingSlides.every((slide, offset) => slide.dataset.reelId === reelItems[start + offset]?.id);
         if (sameWindow) {
-          const after = container.querySelector(".reel-window-spacer-after");
-          if (after) after.style.height = `calc(${Math.max(0, reelItems.length - end)} * 100dvh)`;
           positionReelFeedSentinel();
           return false;
         }
         const feed = $("#reelFeed");
         const scrollTop = feed.scrollTop;
-        const before = start ? `<div class="reel-window-spacer reel-window-spacer-before" aria-hidden="true" style="height:calc(${start} * 100dvh)"></div>` : "";
+        const before = reelItems.slice(0, start)
+          .map((reel) => `<div class="reel-virtual-placeholder" data-reel-id="${esc(reel.id)}" aria-hidden="true"></div>`).join("");
         const slides = reelItems.slice(start, end).map((reel, offset) => reelMarkup(reel, start + offset)).join("");
-        const afterCount = Math.max(0, reelItems.length - end);
-        const after = afterCount ? `<div class="reel-window-spacer reel-window-spacer-after" aria-hidden="true" style="height:calc(${afterCount} * 100dvh)"></div>` : "";
+        const after = reelItems.slice(end)
+          .map((reel) => `<div class="reel-virtual-placeholder" data-reel-id="${esc(reel.id)}" aria-hidden="true"></div>`).join("");
         container.innerHTML = before + slides + after;
         reelWindowStart = start;
         reelWindowEnd = end;
@@ -14885,7 +14888,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         reelActiveObserver?.disconnect();
         const feed = $("#reelFeed");
         if (!feed || $("#v-reels").hidden) return;
-        const slides = $$(".reel-item", feed);
+        const slides = [...$(".reel-item", feed), ...$(".reel-virtual-placeholder", feed)];
         if ("IntersectionObserver" in window) {
           reelActiveObserver = new IntersectionObserver((entries) => {
             const active = entries
