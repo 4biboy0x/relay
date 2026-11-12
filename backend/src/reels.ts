@@ -201,7 +201,7 @@ const ensureVisibleReel = async (reelId: string): Promise<{
   status: ReelStatus;
 }> => {
   const reel = await prisma.reel.findFirst({
-    where: { id: reelId, status: ReelStatus.READY, deletedAt: null },
+    where: { id: reelId, status: ReelStatus.READY, publishedAt: { not: null }, deletedAt: null },
     select: { id: true, authorId: true, status: true },
   });
   if (!reel) throw new HttpError(404, "Reel not found");
@@ -402,6 +402,28 @@ router.post("/:id/complete", authRequired, verifiedEmailRequired, writeLimiter, 
   res.status(202).json({ id: reel.id, status: ReelStatus.PROCESSING });
 }));
 
+
+router.post("/:id/publish", authRequired, verifiedEmailRequired, writeLimiter, asyncRoute(async (req, res) => {
+  const reelId = reelIdFrom(req.params.id);
+  const userId = viewerIdFrom(req);
+  const result = await prisma.reel.updateMany({
+    where: { id: reelId, authorId: userId, status: ReelStatus.READY, publishedAt: null, deletedAt: null },
+    data: { publishedAt: new Date() },
+  });
+  if (!result.count) {
+    const reel = await prisma.reel.findFirst({
+      where: { id: reelId, authorId: userId, deletedAt: null },
+      select: { status: true, publishedAt: true },
+    });
+    if (!reel) throw new HttpError(404, "Reel draft not found");
+    if (reel.publishedAt) throw new HttpError(409, "This Reel has already been published");
+    throw new HttpError(409, "This Reel is not ready to publish");
+  }
+  const reel = await prisma.reel.findUnique({ where: { id: reelId }, include: relationInclude(userId) });
+  if (!reel) throw new HttpError(404, "Reel not found");
+  res.status(200).json(await reelResponse(reel, await isFollowing(userId, reel.authorId)));
+}));
+
 router.get("/:id/status", authRequired, statusLimiter, asyncRoute(async (req, res) => {
   const reelId = reelIdFrom(req.params.id);
   const reel = await prisma.reel.findFirst({
@@ -429,7 +451,7 @@ router.get("/:id/media/:kind", asyncRoute(async (req, res) => {
   res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
   const kind = mediaKindSchema.parse(req.params.kind);
   const reel = await prisma.reel.findFirst({
-    where: { id: reelId, status: ReelStatus.READY, deletedAt: null },
+    where: { id: reelId, status: ReelStatus.READY, publishedAt: { not: null }, deletedAt: null },
     select: { videoKey: true, posterKey: true },
   });
   if (!reel) throw new HttpError(404, "Reel not found");
@@ -493,7 +515,8 @@ router.get("/:id", authOptional, asyncRoute(async (req, res) => {
     include: relationInclude(viewerId),
   });
   if (!reel || reel.deletedAt || reel.status === ReelStatus.REMOVED
-    || (reel.status !== ReelStatus.READY && reel.authorId !== viewerId)) {
+    || (reel.status !== ReelStatus.READY && reel.authorId !== viewerId)
+    || (reel.status === ReelStatus.READY && reel.publishedAt === null && reel.authorId !== viewerId)) {
     res.status(410).json({ unavailable: true, error: "This Reel is unavailable" });
     return;
   }
@@ -729,10 +752,10 @@ router.post("/:id/cancel-upload", authRequired, writeLimiter, asyncRoute(async (
   const userId = viewerIdFrom(req);
   const reel = await prisma.reel.findFirst({
     where: { id: reelId, authorId: userId },
-    select: { status: true, deletedAt: true },
+    select: { status: true, publishedAt: true, deletedAt: true },
   });
   if (!reel) throw new HttpError(404, "Reel not found");
-  if (reel.deletedAt || (reel.status !== ReelStatus.UPLOADING && reel.status !== ReelStatus.PROCESSING)) {
+  if (reel.deletedAt || reel.publishedAt !== null || ![ReelStatus.UPLOADING, ReelStatus.PROCESSING, ReelStatus.READY].includes(reel.status)) {
     res.json({ canceled: false, status: reel.deletedAt ? ReelStatus.REMOVED : reel.status });
     return;
   }
@@ -741,7 +764,8 @@ router.post("/:id/cancel-upload", authRequired, writeLimiter, asyncRoute(async (
       id: reelId,
       authorId: userId,
       deletedAt: null,
-      status: { in: [ReelStatus.UPLOADING, ReelStatus.PROCESSING] },
+      status: { in: [ReelStatus.UPLOADING, ReelStatus.PROCESSING, ReelStatus.READY] },
+      publishedAt: null,
     },
     data: { deletedAt: new Date(), status: ReelStatus.REMOVED },
   });
@@ -751,7 +775,7 @@ router.post("/:id/cancel-upload", authRequired, writeLimiter, asyncRoute(async (
   }
   const current = await prisma.reel.findFirst({
     where: { id: reelId, authorId: userId },
-    select: { status: true, deletedAt: true },
+    select: { status: true, publishedAt: true, deletedAt: true },
   });
   if (!current) throw new HttpError(404, "Reel not found");
   res.json({ canceled: false, status: current.deletedAt ? ReelStatus.REMOVED : current.status });
