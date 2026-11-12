@@ -10016,21 +10016,7 @@
         .reel-upload-progress[data-state="processing"] > span { animation: none; }
         .reel-feed { scroll-behavior: auto; }
       }
-          .confirm-dialog.simple { width: min(420px, calc(100vw - 32px)); }
-      .confirm-dialog.simple .confirm-dialog-card {
-        padding: 18px; border: 1px solid #e5e7eb; border-radius: 8px;
-        color: #18181b; background: #fff; box-shadow: 0 8px 24px rgba(0,0,0,.12);
-        transition: none;
-      }
-      .confirm-dialog.simple .confirm-dialog-card.is-entering { opacity: 1; transform: none; }
-      .confirm-dialog.simple h2 { color: #18181b; }
-      .confirm-dialog.simple p { color: #52525b; }
-      .confirm-dialog.simple::backdrop { background: rgba(0,0,0,.28); -webkit-backdrop-filter: none; backdrop-filter: none; }
-      .confirm-dialog.simple .confirm-dialog-actions { justify-content: flex-end; gap: 8px; }
-      .confirm-dialog.simple .confirm-dialog-actions button { width: auto; min-height: 36px; padding: 0 14px; border-radius: 6px; }
-      .confirm-dialog.simple .confirm-cancel { color: #3f3f46; background: #f4f4f5; }
-      .confirm-dialog.simple .confirm-submit.danger { color: #fff; background: #dc2626; }
-      .confirm-dialog.simple .confirm-submit.danger:hover { background: #b91c1c; }
+          
     </style>
   </head>
   <body>
@@ -22791,7 +22777,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         danger = false,
         reelDelete = null,
         confirmDelayMs = 0,
-        simple = false,
       }) {
         const dialog = confirmDialogElement;
         if (dialog.open || confirmDialogState) {
@@ -22817,7 +22802,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         cancel.textContent = cancelLabel;
         submit.textContent = confirmLabel;
         submit.classList.toggle("danger", danger);
-        dialog.classList.toggle("simple", simple);
         submit.disabled = confirmDelayMs > 0;
         preview.hidden = !reelDelete;
         previewImage.hidden = !reelDelete?.posterUrl;
@@ -22836,7 +22820,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             openedAt: performance.now(),
             confirmAfter: performance.now() + confirmDelayMs,
             reelDeleteId: reelDelete?.id || "",
-            simple,
             pointerDownTargets: new Map(),
             pointerClickTarget: null,
             confirmationTimer: null,
@@ -22844,11 +22827,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           confirmDialogState = state;
           try {
             if (dialog.parentElement !== document.body) document.body.append(dialog);
-            if (!simple) card.classList.add("is-entering");
+            card.classList.add("is-entering");
             document.body.classList.add("confirm-dialog-open");
             document.body.style.overflow = "hidden";
             dialog.showModal();
-            if (!simple) requestAnimationFrame(() => card.classList.remove("is-entering"));
+            requestAnimationFrame(() => card.classList.remove("is-entering"));
             (danger || reelDelete ? cancel : submit).focus({ preventScroll: true });
             if (confirmDelayMs > 0) {
               state.confirmationTimer = setTimeout(() => {
@@ -22860,7 +22843,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             if (dialog.open) dialog.close();
             document.body.classList.remove("confirm-dialog-open");
             document.body.style.overflow = previousBodyOverflow;
-            dialog.classList.remove("simple");
             submit.disabled = false;
             preview.hidden = true;
             previewImage.removeAttribute("src");
@@ -22871,7 +22853,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         });
       }
       function ConfirmDialog({ title, description, confirmLabel, onConfirm, onCancel }) {
-        return confirmDialog({ title, message: description, confirmLabel, cancelLabel: "Cancel", danger: true, simple: true })
+        return confirmDialog({ title, message: description, confirmLabel, cancelLabel: "Cancel", danger: true })
           .then(async (confirmed) => {
             if (confirmed) { await onConfirm?.(); return true; }
             onCancel?.();
@@ -22885,7 +22867,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         state.closing = true;
         clearTimeout(state.confirmationTimer);
         confirmDialogElement.querySelector(".confirm-dialog-card").classList.remove("is-entering");
-        confirmDialogElement.classList.remove("simple");
         confirmDialogElement.close();
         document.body.classList.remove("confirm-dialog-open");
         document.body.style.overflow = state.previousBodyOverflow;
@@ -23589,15 +23570,16 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               startMessageEditing(messageId);
               return;
             } else if (action === "delete" && messageId) {
-              if (!await confirmDialog({
+              if (!await ConfirmDialog({
                 title: "Delete message?",
-                message: "This can't be undone.",
+                description: "This can't be undone.",
                 confirmLabel: "Delete",
-                danger: true,
+                onConfirm: async () => {
+                  const result = await api(`/messages/${encodeURIComponent(messageId)}`, { method: "DELETE" });
+                  receiveMessageDeleted(result);
+                  toast("Message deleted.");
+                },
               })) return;
-              const result = await api(`/messages/${encodeURIComponent(messageId)}`, { method: "DELETE" });
-              receiveMessageDeleted(result);
-              toast("Message deleted.");
             }
           } catch (error) {
             toast(error.message || "Message action failed.");
@@ -25029,7 +25011,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       });
       confirmDialogElement.addEventListener("click", (event) => {
         if (event.target !== confirmDialogElement) return;
-        if (!confirmDialogState?.simple && performance.now() - (confirmDialogState?.openedAt || 0) < 200) return;
+        if (performance.now() - (confirmDialogState?.openedAt || 0) < 200) return;
         const bounds = confirmDialogElement.getBoundingClientRect();
         if (event.clientX < bounds.left || event.clientX > bounds.right
           || event.clientY < bounds.top || event.clientY > bounds.bottom) {
