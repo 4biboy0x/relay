@@ -15973,7 +15973,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               : reel.counts?.[action === "share" ? "shares" : reelActionLabels[action]];
         const label = action === "more" ? "More options"
           : action === "bookmark" ? pressed ? "Remove bookmark" : "Save Reel"
-            : action === "comment" ? `${formatReelCount(count)} comments`
+            : action === "comment" ? formatCountWithNoun(count, "comment")
               : `${formatReelCount(count)} ${action === "share" ? "shares" : reelActionLabels[action]}`;
         const text = count === null || count === undefined ? "" : formatReelCount(count);
         const zero = count !== null && count !== undefined && Number(count) === 0;
@@ -17000,7 +17000,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             }
             syncReelReplyButton(parent, event.parentReplyCount);
           }
-          $("#reelCommentsCount").textContent = `${formatReelCount(reel?.counts?.comments)} comments`;
+          $("#reelCommentsCount").textContent = formatCountWithNoun(reel?.counts?.comments, "comment");
           if (!list.querySelector(".reel-comment")) {
             list.innerHTML = '<div class="relay-load-error">No comments yet. Start the conversation.</div>';
           }
@@ -17491,7 +17491,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             if (!existing && !insertReelComment(comment, true, comment.parentReplyCount) && comment.replyToId) {
               await loadReelComments(false, comment.id);
             }
-            $("#reelCommentsCount").textContent = `${formatReelCount(reel?.counts?.comments)} comments`;
+            $("#reelCommentsCount").textContent = formatCountWithNoun(reel?.counts?.comments, "comment");
             input.value = "";
             cancelReelReply();
           }
@@ -17499,6 +17499,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           toast(error.message);
         } finally {
           setPendingButton(submit, false);
+          const ready = Boolean(input.value.trim());
+          submit.disabled = !ready;
+          submit.classList.toggle("is-ready", ready);
+          submit.setAttribute("aria-disabled", String(!ready));
         }
       }
       async function shareReel(reelId, actionButton = null) {
