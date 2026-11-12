@@ -25,6 +25,9 @@ const MAX_DIMENSION = 4096;
 const probeSchema = z.object({
   streams: z.array(z.object({
     codec_type: z.string().optional(),
+    codec_name: z.string().optional(),
+    pix_fmt: z.string().optional(),
+    bit_rate: z.string().optional(),
     width: z.number().int().positive().optional(),
     height: z.number().int().positive().optional(),
     duration: z.string().optional(),
@@ -32,6 +35,8 @@ const probeSchema = z.object({
   })).default([]),
   format: z.object({
     duration: z.string().optional(),
+    format_name: z.string().optional(),
+    bit_rate: z.string().optional(),
     tags: z.record(z.string(), z.unknown()).optional(),
   }).optional(),
 });
@@ -41,6 +46,12 @@ type VideoProbe = {
   width: number;
   height: number;
   hasAudio: boolean;
+  videoCodec: string;
+  audioCodec: string | null;
+  pixelFormat: string;
+  formatName: string;
+  bitRate: number;
+  hasUnsupportedStreams: boolean;
 };
 
 export type ReelProcessingTimings = {
@@ -185,8 +196,29 @@ const probeVideo = async (filePath: string): Promise<VideoProbe> => {
     width: video.width,
     height: video.height,
     hasAudio: probe.streams.some((stream) => stream.codec_type === "audio"),
+    videoCodec: video.codec_name ?? "",
+    audioCodec: probe.streams.find((stream) => stream.codec_type === "audio")?.codec_name ?? null,
+    pixelFormat: video.pix_fmt ?? "",
+    formatName: probe.format?.format_name ?? "",
+    bitRate: Number(probe.format?.bit_rate ?? video.bit_rate ?? 0),
+    hasUnsupportedStreams: probe.streams.some((stream) => !["video", "audio"].includes(stream.codec_type ?? "")),
   };
 };
+
+const FAST_PATH_MAX_BYTES = 20 * 1024 * 1024;
+const FAST_PATH_MAX_DIMENSION = 1920;
+const FAST_PATH_MAX_BITRATE = 12_000_000;
+
+const canUseReelFastPath = (probe: VideoProbe, sizeBytes: number): boolean =>
+  sizeBytes > 0
+  && sizeBytes <= FAST_PATH_MAX_BYTES
+  && probe.formatName.split(",").some((format) => format === "mp4")
+  && probe.videoCodec === "h264"
+  && probe.pixelFormat === "yuv420p"
+  && (!probe.hasAudio || probe.audioCodec === "aac")
+  && !probe.hasUnsupportedStreams
+  && Math.max(probe.width, probe.height) <= FAST_PATH_MAX_DIMENSION
+  && (!probe.bitRate || probe.bitRate <= FAST_PATH_MAX_BITRATE);
 
 const transcodeVideo = async (inputPath: string, videoPath: string, hasAudio: boolean): Promise<void> => {
   const args = [
@@ -245,7 +277,7 @@ export const processReelJob = async (jobId: string, reelId: string): Promise<Ree
   try {
     const reel = await prisma.reel.findUnique({
       where: { id: reelId },
-      select: { id: true, authorId: true, originalKey: true, deletedAt: true },
+      select: { id: true, authorId: true, originalKey: true, mime: true, deletedAt: true },
     });
     if (!reel || reel.deletedAt) {
       await prisma.processingJob.update({
@@ -275,7 +307,7 @@ export const processReelJob = async (jobId: string, reelId: string): Promise<Ree
     const inputPath = path.join(tempDirectory, "original");
     const outputPath = path.join(tempDirectory, "processed.mp4");
     const posterPath = path.join(tempDirectory, "poster.jpg");
-    const videoKey = createReelStorageKey(reel.id, "video.mp4");
+    let videoKey = createReelStorageKey(reel.id, "video.mp4");
     const posterKey = createReelStorageKey(reel.id, "poster.jpg");
     let outputStored = false;
 
@@ -284,12 +316,86 @@ export const processReelJob = async (jobId: string, reelId: string): Promise<Ree
       await pipeline(source.body, createWriteStream(inputPath, { flags: "wx" }));
 
       const inputProbe = await measureStage(timings, "probeMs", () => probeVideo(inputPath));
-      await measureStage(timings, "transcodeMs", () => transcodeVideo(inputPath, outputPath, inputProbe.hasAudio));
-      const outputProbe = await measureStage(timings, "probeMs", () => probeVideo(outputPath));
-      await measureStage(timings, "posterMs", () => createPoster(outputPath, posterPath));
+      const fastPath = reel.mime === "video/mp4" && canUseReelFastPath(inputProbe, sourceHead.contentLength);
+      if (fastPath) {
+        // The uploaded MP4 is already browser-compatible. Make it publishable as soon as
+        // FFprobe has validated it; poster extraction remains worker-side and best-effort.
+        const markedReady = await prisma.$transaction(async (tx) => {
+          const current = await tx.reel.findFirst({
+            where: { id: reel.id, deletedAt: null, status: ReelStatus.PROCESSING },
+            select: { id: true },
+          });
+          if (!current) return false;
+          await tx.reel.update({
+            where: { id: reel.id },
+            data: {
+              status: ReelStatus.READY,
+              videoKey: reel.originalKey,
+              posterKey: null,
+              durationMs: inputProbe.durationMs,
+              width: inputProbe.width,
+              height: inputProbe.height,
+              sizeBytes: BigInt(sourceHead.contentLength),
+              mime: "video/mp4",
+              publishedAt: null,
+              processingError: null,
+            },
+          });
+          return true;
+        });
+        if (!markedReady) {
+          await prisma.processingJob.update({
+            where: { id: jobId },
+            data: { status: ProcessingJobStatus.COMPLETED, lockedAt: null, lastError: null },
+          });
+          return null;
+        }
+
+        // READY is visible to the publish endpoint before this potentially slow FFmpeg work.
+        // A poster failure must never demote an already-valid playable Reel to FAILED.
+        let posterStored = false;
+        try {
+          await measureStage(timings, "posterMs", () => createPoster(inputPath, posterPath));
+          await stat(posterPath);
+          await putReelFile(posterKey, posterPath, "image/jpeg");
+          posterStored = true;
+          const posterAttached = await prisma.reel.updateMany({
+            where: { id: reel.id, status: ReelStatus.READY, deletedAt: null, posterKey: null },
+            data: { posterKey },
+          });
+          if (!posterAttached.count) {
+            await deleteReelObject(posterKey);
+            posterStored = false;
+          }
+        } catch (error) {
+          console.error(`Reel ${reel.id} is READY, but background poster generation failed:`, error);
+          if (posterStored) {
+            try {
+              await deleteReelObject(posterKey);
+            } catch (cleanupError) {
+              console.error(`Could not clean the failed background poster for Reel ${reel.id}:`, cleanupError);
+            }
+          }
+        }
+
+        await prisma.processingJob.update({
+          where: { id: jobId },
+          data: { status: ProcessingJobStatus.COMPLETED, lockedAt: null, lastError: null },
+        });
+        return timings;
+      }
+      let outputProbe: VideoProbe;
+      if (fastPath) {
+        outputProbe = inputProbe;
+        videoKey = reel.originalKey;
+      } else {
+        await measureStage(timings, "transcodeMs", () => transcodeVideo(inputPath, outputPath, inputProbe.hasAudio));
+        outputProbe = await measureStage(timings, "probeMs", () => probeVideo(outputPath));
+      }
+      await measureStage(timings, "posterMs", () => createPoster(fastPath ? inputPath : outputPath, posterPath));
       let outputStats: Awaited<ReturnType<typeof stat>>;
       try {
-        outputStats = await stat(outputPath);
+        outputStats = await stat(fastPath ? inputPath : outputPath);
         await stat(posterPath);
       } catch (error) {
         const code = typeof error === "object" && error !== null && "code" in error ? String(error.code) : "";
@@ -301,8 +407,10 @@ export const processReelJob = async (jobId: string, reelId: string): Promise<Ree
         );
       }
 
-      await putReelFile(videoKey, outputPath, "video/mp4");
-      outputStored = true;
+      if (!fastPath) {
+        await putReelFile(videoKey, outputPath, "video/mp4");
+        outputStored = true;
+      }
       await putReelFile(posterKey, posterPath, "image/jpeg");
 
       const updated = await prisma.$transaction(async (tx) => {
@@ -340,7 +448,7 @@ export const processReelJob = async (jobId: string, reelId: string): Promise<Ree
         return true;
       });
 
-      if (!config.REEL_KEEP_ORIGINAL) {
+      if (!config.REEL_KEEP_ORIGINAL && !fastPath) {
         try {
           await deleteReelObject(reel.originalKey);
         } catch (error) {
