@@ -17230,6 +17230,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         textarea.required = true;
         textarea.dir = "auto";
         textarea.value = paragraph.textContent || "";
+        textarea.defaultValue = textarea.value;
         textarea.setAttribute("aria-label", "Edit comment");
         const actions = document.createElement("div");
         actions.className = "reel-comment-editor-actions";
