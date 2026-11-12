@@ -21388,6 +21388,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       let emailVerificationNoticeExitTimer = null;
       let emailVerificationNoticeSuccessTimer = null;
       let emailVerificationNoticeOwnerId = "";
+      const emailVerificationNoticeShownUsers = new Set();
       let emailVerificationNoticePendingDismissal = false;
       const emailVerificationNoticeReducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -21413,22 +21414,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
 
       function hasShownEmailVerificationNotice(userId) {
-        try {
-          return sessionStorage.getItem(emailVerificationNoticeSessionKey(userId)) === "true";
-        } catch (error) {
-          console.warn("Unable to read the email verification session state.", error);
-          return false;
-        }
+        return emailVerificationNoticeShownUsers.has(userId);
       }
 
       function setEmailVerificationNoticeShown(userId, shown) {
-        try {
-          const key = emailVerificationNoticeSessionKey(userId);
-          if (shown) sessionStorage.setItem(key, "true");
-          else sessionStorage.removeItem(key);
-        } catch (error) {
-          console.warn("Unable to save the email verification session state.", error);
-        }
+        if (shown) emailVerificationNoticeShownUsers.add(userId);
+        else emailVerificationNoticeShownUsers.delete(userId);
       }
 
       function clearEmailVerificationNoticeState(userId) {
@@ -21547,8 +21538,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           emailVerificationNoticeShowTimer = null;
           if (currentUser?.id !== userId || currentUser.emailVerifiedAt
             || !activeEmailVerificationNoticeSlot() || hasShownEmailVerificationNotice(userId)) return;
-          setEmailVerificationNoticeShown(userId, true);
           if (!isAtTopForEmailVerificationNotice()) return;
+          setEmailVerificationNoticeShown(userId, true);
           createEmailVerificationNotice(activeEmailVerificationNoticeSlot());
         }, 1000);
       }
@@ -24801,6 +24792,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       });
       window.addEventListener("resize", positionAutocomplete);
       document.addEventListener("scroll", positionAutocomplete, true);
+      document.addEventListener("scroll", () => {
+        if (isAtTopForEmailVerificationNotice()) scheduleEmailVerificationNotice();
+      }, true);
       const fallbackEmojiChoices = ["😀", "😌", "😂", "🥹", "😍", "🤔", "🙌", "👏", "✨", "💡", "❤️", "🔥", "🌿", "☕", "🎉", "👀", "🤝", "💬", "🚀", "🫶", "🌱", "💭", "✅", "🙏"];
       const emojiCategoryIcons = {
         "smileys and people": "😀",
