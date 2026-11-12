@@ -2340,10 +2340,11 @@ api.post("/conversations/:conversationId/messages", authRequired, verifiedEmailR
     select: { userId: true },
   });
   const realtimeResponse = await normalizeMediaResponse(response, "", req.userId);
-  emitToConversation(conversationId, "message:new", realtimeResponse);
   for (const member of members) {
+    // Every participant receives the inbox event through their private user room.
+    // A sender creating a conversation from "draft" has not joined its conversation room yet.
+    emitToUser(member.userId, "message:new", realtimeResponse);
     if (member.userId !== req.userId) {
-      emitToUser(member.userId, "message:new", realtimeResponse);
       emitToUser(member.userId, "messages:unread-increment", { conversationId });
     }
   }
