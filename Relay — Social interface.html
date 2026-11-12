@@ -10142,10 +10142,10 @@
         top: calc(58px + env(safe-area-inset-top, 0px)) !important; right: 14px !important;
         width: 32px !important; height: 32px !important; border: 0 !important;
         border-radius: 50% !important; background: rgba(0,0,0,.12) !important; color: #fff !important;
-        opacity: .35; pointer-events: auto; -webkit-backdrop-filter: none !important;
+        opacity: 0; pointer-events: none; -webkit-backdrop-filter: none !important;
         backdrop-filter: none !important; transition: opacity 120ms ease;
       }
-      .app.reels-active .reel-stage-control.is-visible { opacity: .95; }
+      .app.reels-active .reel-stage-control.is-visible { opacity: .95; pointer-events: auto; }
       .app.reels-active .reel-stage-control svg { width: 18px; height: 18px; }
       .app.reels-active .reel-progress-track {
         z-index: 8; bottom: var(--reel-nav-height, 0px) !important; height: 2px !important;
@@ -14549,7 +14549,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 <button class="reel-author-link" type="button" data-profile-id="${esc(author.id || "")}" aria-label="View ${esc(author.displayName || author.handle || "creator")}'s profile">${avatarMarkup(author, "sm")}<span>${esc(author.displayName || author.handle || "Relay creator")}</span></button>
                 ${showFollow ? `<button class="reel-follow-button" type="button" data-reel-follow="${esc(author.id)}" aria-pressed="${!!author.isFollowing}">${author.isFollowing ? "Following" : "Follow"}</button>` : ""}
               </div>
-              ${caption ? `<p class="reel-caption${caption.length > 40 ? " is-clamped" : ""}" data-reel-caption="${esc(reel.id)}">${esc(caption)}${caption.length > 40 ? ` <button type="button" class="reel-caption-more" data-reel-caption-more="${esc(reel.id)}">more</button>` : ""}</p>` : ""}
+              ${caption ? `<p class="reel-caption is-clamped" data-reel-caption="${esc(reel.id)}">${esc(caption)}${caption.length > 40 ? ` <button type="button" class="reel-caption-more" data-reel-caption-more="${esc(reel.id)}">more</button>` : ""}</p>` : ""}
               <span class="sr">${formatReelCount(reel.counts?.views)} views</span>
             </div>
             <div class="reel-progress-track" data-reel-progress="${esc(reel.id)}" role="progressbar" aria-label="Reel playback progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0"><span></span></div>
@@ -15910,7 +15910,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const copy = slide?.querySelector(".reel-copy");
           const oldCaption = copy?.querySelector(".reel-caption");
           const nextCaption = reel.caption
-            ? `<p class="reel-caption${reel.caption.length > 118 ? " is-clamped" : ""}" data-reel-caption="${esc(reel.id)}">${esc(reel.caption)}${reel.caption.length > 118 ? ` <button type="button" class="reel-caption-more" data-reel-caption-more="${esc(reel.id)}">more</button>` : ""}</p>`
+            ? `<p class="reel-caption is-clamped" data-reel-caption="${esc(reel.id)}">${esc(reel.caption)}${reel.caption.length > 40 ? ` <button type="button" class="reel-caption-more" data-reel-caption-more="${esc(reel.id)}">more</button>` : ""}</p>`
             : "";
           if (oldCaption) oldCaption.outerHTML = nextCaption;
           else if (nextCaption) copy?.insertAdjacentHTML("beforeend", nextCaption);
