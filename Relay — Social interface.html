@@ -20892,11 +20892,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         const renderItems = resultList.id === "conversationList" && !searchQuery
           ? [...items].sort((first, second) => {
-              const firstPinned = inboxPreferences.pinned.includes(first.id);
-              const secondPinned = inboxPreferences.pinned.includes(second.id);
+              const firstPinned = Boolean(first.pinned);
+              const secondPinned = Boolean(second.pinned);
               if (firstPinned !== secondPinned) return firstPinned ? -1 : 1;
-              if (firstPinned) return inboxPreferences.pinned.indexOf(first.id) - inboxPreferences.pinned.indexOf(second.id);
-              return new Date(second.updatedAt || 0).getTime() - new Date(first.updatedAt || 0).getTime();
+              const firstActivity = new Date(first.lastMessage?.createdAt || first.updatedAt || 0).getTime();
+              const secondActivity = new Date(second.lastMessage?.createdAt || second.updatedAt || 0).getTime();
+              return secondActivity - firstActivity;
             })
           : items;
         const markup = renderItems.map((item, index) => {
@@ -20906,9 +20907,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const search = `${conversationSearchText(item)} ${normalizedQuery}`;
           const lastMessage = item.lastMessage;
           const unreadCount = Number(item.unreadCount) || 0;
-          const pinned = resultList.id === "conversationList"
-            && !searchQuery
-            && inboxPreferences.pinned.includes(item.id);
+          const pinned = resultList.id === "conversationList" && !searchQuery && Boolean(item.pinned);
           const matchingLastMessage = queryTerms.length > 0
             && queryTerms.every((term) => (lastMessage?.body || "").normalize("NFKC").toLowerCase().includes(term));
           const message = searchMode === "messages" ? item.matchedMessage : lastMessage;
@@ -20949,11 +20948,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const searchMessageCandidate = Boolean(searchQuery && searchMode === "conversations" && !searchMessageId);
           const isInboxList = resultList.id === "conversationList";
           const muted = isInboxList && isConversationMuted(item.id);
-          const previousPinned = index > 0 && inboxPreferences.pinned.includes(renderItems[index - 1].id);
-          const sectionLabel = isInboxList && !searchQuery
-            ? index === 0 ? (pinned ? "Pinned" : "All conversations")
-              : pinned !== previousPinned ? "All conversations" : ""
-            : "";
+          
           const row = `<div class="conversation-row" data-conversation-row="${esc(item.id)}">
             <button class="conversation-item${searchQuery ? " is-search-result" : ""}${searchMode === "messages" ? " message-search-result" : ""}${unreadCount ? " has-unread" : ""}" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-mode="${esc(searchMode)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}"${searchQuery ? ` aria-selected="${current}"` : ""}>
               ${presenceAvatarMarkup(other, "sm")}
@@ -20979,7 +20974,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               </div>
             </div>` : ""}
           </div>`;
-          return sectionLabel ? `<div class="conversation-section-label">${sectionLabel}</div>${row}` : row;
+          return row;
         }).join("");
         if (append) resultList.insertAdjacentHTML("beforeend", markup);
         else if (resultList.id !== "conversationList") resultList.innerHTML = markup;
@@ -21308,14 +21303,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             conversations = result.items;
             // Only offer starting a conversation after the inbox has loaded and is confirmed empty.
             $("#startConversation").hidden = conversations.length > 0;
-            inboxPreferences.pinned = conversations.filter((item) => item.pinned).sort((a, b) =>
-        new Date(a.pinnedAt || 0).getTime() - new Date(b.pinnedAt || 0).getTime()
-      ).map((item) => item.id).slice(0, 3);
+            inboxPreferences.pinned = conversations.filter((item) => item.pinned).map((item) => item.id);
       inboxPreferences.muted = Object.fromEntries(conversations
         .filter((item) => item.muted)
         .map((item) => [item.id, item.mutedUntil ? new Date(item.mutedUntil).getTime() : null]));
       const availableConversationIds = new Set(conversations.map((item) => item.id));
-            inboxPreferences.pinned = inboxPreferences.pinned.filter((id) => availableConversationIds.has(id)).slice(0, 3);
+            inboxPreferences.pinned = inboxPreferences.pinned.filter((id) => availableConversationIds.has(id));
             Object.keys(inboxPreferences.muted).forEach((id) => { if (!availableConversationIds.has(id)) delete inboxPreferences.muted[id]; });
             saveInboxPreferences();
             conversationsLoaded = true;
