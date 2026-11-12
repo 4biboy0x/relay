@@ -1022,6 +1022,37 @@ router.delete("/:id/comments/:commentId/like", authRequired, writeLimiter, async
   await setReelCommentLike(req, res, false);
 }));
 
+router.patch("/:id/comments/:commentId", authRequired, writeLimiter, asyncRoute(async (req, res) => {
+  const reelId = reelIdFrom(req.params.id);
+  const commentId = z.string().cuid().parse(req.params.commentId);
+  const userId = viewerIdFrom(req);
+  const { body } = commentSchema.pick({ body: true }).parse(req.body);
+  const updated = await prisma.$transaction(async (tx) => {
+    const comment = await tx.reelComment.findFirst({
+      where: { id: commentId, reelId, deletedAt: null },
+      select: { id: true, authorId: true },
+    });
+    if (!comment) throw new HttpError(404, "Comment not found");
+    if (comment.authorId !== userId) throw new HttpError(403, "You cannot edit this comment");
+    const changed = await tx.reelComment.updateMany({
+      where: { id: commentId, reelId, authorId: userId, deletedAt: null },
+      data: { body },
+    });
+    if (!changed.count) throw new HttpError(404, "Comment not found");
+    return tx.reelComment.findUniqueOrThrow({
+      where: { id: commentId },
+      select: { id: true, body: true },
+    });
+  });
+  emitToReel(reelId, "reel:comment:updated", {
+    reelId,
+    commentId: updated.id,
+    actorId: userId,
+    body: updated.body,
+  });
+  res.json(updated);
+}));
+
 router.delete("/:id/comments/:commentId", authRequired, writeLimiter, asyncRoute(async (req, res) => {
   const reelId = reelIdFrom(req.params.id);
   const commentId = z.string().cuid().parse(req.params.commentId);
@@ -1079,7 +1110,14 @@ router.delete("/:id/comments/:commentId", authRequired, writeLimiter, asyncRoute
     parentReplyCount: result.parentReplyCount,
     counts: result.counts,
   });
-  res.status(204).end();
+  res.json({
+    reelId,
+    actorId: userId,
+    commentIds: result.commentIds,
+    parentId: result.parentId,
+    parentReplyCount: result.parentReplyCount,
+    counts: result.counts,
+  });
 }));
 
 router.post("/:id/report", authRequired, writeLimiter, asyncRoute(async (req, res) => {
