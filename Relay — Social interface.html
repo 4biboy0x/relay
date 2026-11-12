@@ -11036,7 +11036,335 @@
         .mobile-compose-fab { transition: none; }
       }
 
-    </style>
+    
+      /* Reels desktop/tablet contract: keep the player portrait and the
+         action rail attached to it. The mobile full-bleed experience below
+         640px remains unchanged. */
+      @media (min-width: 768px), (max-width: 767px) and (orientation: landscape) and (min-height: 400px) {
+        .app.reels-active > main {
+          display: flex !important;
+          width: 100% !important;
+          max-width: none !important;
+          height: 100dvh !important;
+          min-width: 0 !important;
+          min-height: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          overflow: hidden !important;
+          flex-direction: column !important;
+        }
+        .app.reels-active #v-reels {
+          position: relative !important;
+          display: flex !important;
+          width: 100% !important;
+          height: auto !important;
+          min-width: 0 !important;
+          min-height: 0 !important;
+          flex: 1 1 0% !important;
+          flex-direction: column !important;
+          overflow: hidden !important;
+        }
+        .app.reels-active .reels-top {
+          position: relative !important;
+          inset: auto !important;
+          z-index: 2 !important;
+          display: flex !important;
+          width: 100% !important;
+          height: auto !important;
+          min-height: 56px !important;
+          flex: 0 0 auto !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          padding: 8px 20px !important;
+          border: 0 !important;
+          border-bottom: 1px solid var(--border) !important;
+          background: var(--bg) !important;
+          color: var(--text) !important;
+          pointer-events: auto !important;
+        }
+        .app.reels-active .reels-top h1 {
+          color: var(--text) !important;
+          font-size: 18px !important;
+          font-weight: 650 !important;
+          text-shadow: none !important;
+        }
+        .app.reels-active .reels-top #createReelButton {
+          display: inline-flex !important;
+          width: auto !important;
+          min-width: 0 !important;
+          height: 36px !important;
+          min-height: 36px !important;
+          padding: 0 12px !important;
+          border: 1px solid var(--border) !important;
+          border-radius: 9px !important;
+          background: var(--surface-2) !important;
+          color: var(--text) !important;
+          box-shadow: none !important;
+        }
+        .app.reels-active .reels-top #createReelButton .i {
+          width: 16px !important;
+          height: 16px !important;
+          filter: none !important;
+        }
+        .app.reels-active .reels-top #createReelButton span {
+          display: inline !important;
+          position: static !important;
+          width: auto !important;
+          height: auto !important;
+          margin: 0 !important;
+          overflow: visible !important;
+          clip: auto !important;
+          white-space: normal !important;
+        }
+        .app.reels-active .reel-feed {
+          position: relative !important;
+          inset: auto !important;
+          display: block !important;
+          width: 100% !important;
+          height: auto !important;
+          min-width: 0 !important;
+          min-height: 0 !important;
+          flex: 1 1 0% !important;
+          overflow-x: hidden !important;
+          overflow-y: auto !important;
+          overscroll-behavior: contain !important;
+          scroll-snap-type: y mandatory !important;
+          background: transparent !important;
+        }
+        .app.reels-active #reelItems {
+          display: contents !important;
+        }
+        .app.reels-active .reel-virtual-placeholder {
+          display: block !important;
+          width: 100% !important;
+          height: 100% !important;
+          min-height: 100% !important;
+          scroll-snap-align: center !important;
+          scroll-snap-stop: always !important;
+          background: transparent !important;
+        }
+        .app.reels-active .reel-item {
+          position: relative !important;
+          display: flex !important;
+          width: 100% !important;
+          height: 100% !important;
+          min-height: 100% !important;
+          min-width: 0 !important;
+          margin: 0 !important;
+          padding: 12px 16px !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 12px !important;
+          overflow: visible !important;
+          background: transparent !important;
+          scroll-snap-align: center !important;
+          scroll-snap-stop: always !important;
+        }
+        .app.reels-active .reel-stage {
+          position: relative !important;
+          inset: auto !important;
+          display: block !important;
+          width: 100% !important;
+          max-width: min(380px, calc(85dvh * 9 / 16)) !important;
+          height: auto !important;
+          max-height: 85dvh !important;
+          aspect-ratio: 9 / 16 !important;
+          flex: 0 1 auto !important;
+          margin: 0 !important;
+          overflow: hidden !important;
+          border: 1px solid color-mix(in srgb, var(--text) 10%, transparent) !important;
+          border-radius: 18px !important;
+          background: #08090b !important;
+          box-shadow: 0 12px 40px rgba(9, 9, 11, .16) !important;
+        }
+        .app.reels-active .reel-actions {
+          position: relative !important;
+          inset: auto !important;
+          right: auto !important;
+          bottom: auto !important;
+          display: flex !important;
+          width: 44px !important;
+          min-width: 44px !important;
+          flex: 0 0 44px !important;
+          align-self: center !important;
+          margin: 0 !important;
+          gap: 6px !important;
+          color: var(--text) !important;
+        }
+        .app.reels-active .reel-action {
+          color: var(--text) !important;
+          text-shadow: none !important;
+        }
+        .app.reels-active .reel-action-icon {
+          border-radius: 50% !important;
+          background: var(--surface-2) !important;
+          -webkit-backdrop-filter: none !important;
+          backdrop-filter: none !important;
+        }
+        .app.reels-active .reel-action-icon > svg {
+          width: 20px !important;
+          height: 20px !important;
+          color: inherit !important;
+          filter: none !important;
+        }
+        .app.reels-active .reel-action[data-reel-action="like"][aria-pressed="true"] .reel-action-icon > svg {
+          color: var(--like) !important;
+          fill: var(--like) !important;
+        }
+        .app.reels-active .reel-action [data-reel-count] {
+          color: var(--text) !important;
+          text-shadow: none !important;
+        }
+        .app.reels-active .reel-stage-control {
+          top: 12px !important;
+          right: 12px !important;
+          opacity: 1 !important;
+          pointer-events: auto !important;
+        }
+        .app.reels-active .reel-progress-track {
+          bottom: 0 !important;
+        }
+        .app.reels-active .reel-copy {
+          right: 18px !important;
+          bottom: 24px !important;
+          left: 18px !important;
+        }
+        .app.reels-active .reel-feed-state {
+          position: relative !important;
+          inset: auto !important;
+          flex: 0 0 auto !important;
+          color: var(--text-2) !important;
+          text-shadow: none !important;
+        }
+        .app.reels-active .reel-feed-state[data-state="end"] {
+          height: 72px !important;
+        }
+        .app.reels-active .mobile-compose-fab {
+          display: none !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
+        }
+      }
+      /* Use the wider 400px player cap on large desktop screens. */
+      @media (min-width: 1024px) {
+        .app.reels-active .reel-stage {
+          max-width: min(400px, calc(85dvh * 9 / 16)) !important;
+        }
+      }
+      /* Keep the suggestions rail present on conventional tablet widths too. */
+      @media (min-width: 768px) and (max-width: 1100px) {
+        .app {
+          display: grid !important;
+          grid-template-columns: 72px minmax(0, 1fr) minmax(180px, 22vw) !important;
+          width: 100% !important;
+          max-width: none !important;
+          padding-inline: 12px !important;
+          column-gap: 12px !important;
+        }
+        .app > .nav {
+          position: sticky !important;
+          top: 0 !important;
+          display: flex !important;
+          width: 72px !important;
+          height: 100vh !important;
+          flex-direction: column !important;
+        }
+        .app > aside[aria-label="Suggestions"] {
+          display: flex !important;
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: none !important;
+        }
+        .app > main {
+          width: 100% !important;
+          max-width: none !important;
+          min-width: 0 !important;
+          justify-self: stretch !important;
+        }
+      }
+      /* Compact three-column shell for landscape tablet/TV-like viewports
+         below the normal desktop breakpoint (including 640x480 and 720x576). */
+      @media (max-width: 767px) and (orientation: landscape) and (min-height: 400px) {
+        .app {
+          display: grid !important;
+          grid-template-columns: 56px minmax(0, 1fr) minmax(112px, 20vw) !important;
+          width: 100% !important;
+          max-width: none !important;
+          min-width: 0 !important;
+          height: 100dvh !important;
+          margin: 0 !important;
+          padding: 0 6px !important;
+          column-gap: 8px !important;
+          overflow: hidden !important;
+        }
+        .app > .nav {
+          position: sticky !important;
+          inset: auto !important;
+          top: 0 !important;
+          display: flex !important;
+          width: 56px !important;
+          height: 100dvh !important;
+          min-height: 0 !important;
+          max-height: none !important;
+          flex-direction: column !important;
+          justify-content: flex-start !important;
+          gap: 4px !important;
+          padding: 6px 2px !important;
+          border: 0 !important;
+          background: transparent !important;
+          z-index: 2 !important;
+        }
+        .app > .nav .brand,
+        .app > .nav .nav-foot,
+        .app > .nav .btn-primary,
+        .app > .nav .nav-item .l {
+          display: none !important;
+        }
+        .app > .nav .nav-item {
+          display: flex !important;
+          width: 100% !important;
+          min-width: 0 !important;
+          min-height: 44px !important;
+          flex: 0 0 44px !important;
+          justify-content: center !important;
+          padding: 8px 4px !important;
+        }
+        .app > aside[aria-label="Suggestions"] {
+          display: flex !important;
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: none !important;
+          overflow: hidden !important;
+        }
+        .app > main {
+          display: flex !important;
+          width: 100% !important;
+          max-width: none !important;
+          min-width: 0 !important;
+          height: 100dvh !important;
+          min-height: 0 !important;
+          margin: 0 !important;
+          overflow: hidden !important;
+          flex-direction: column !important;
+        }
+        .app.reels-active > main {
+          display: flex !important;
+          height: 100dvh !important;
+          padding: 0 !important;
+        }
+        .app.reels-active #v-reels {
+          display: flex !important;
+          width: 100% !important;
+          height: auto !important;
+          min-height: 0 !important;
+          flex: 1 1 0% !important;
+        }
+        .app.reels-active .mobile-compose-fab {
+          display: none !important;
+          visibility: hidden !important;
+        }
+      }
+</style>
   </head>
   <body>
     <div class="app-splash" id="appSplash" role="status" aria-label="Loading Relay">
