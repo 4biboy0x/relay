@@ -9190,6 +9190,15 @@
       .reels-top h1 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: -0.02em; }
       .reels-top .btn { min-height: 36px; gap: 7px; padding: 0 12px; }
       .reels-top .i { width: 16px; height: 16px; }
+      .reel-publish-status { position:relative; display:flex; flex:0 0 44px; align-items:center; gap:9px; height:44px; min-height:44px; padding:0 14px; overflow:hidden; box-sizing:border-box; background:#fff; border-bottom:1px solid #F3F4F6; color:#111827; opacity:1; transform:translateY(0); transition:opacity 180ms ease,transform 180ms ease; }
+      .reel-publish-status[hidden] { display:none; }
+      .reel-publish-status.is-hiding { opacity:0; transform:translateY(-5px); }
+      .reel-publish-status > img { display:block; flex:0 0 28px; width:28px; height:28px; border-radius:5px; object-fit:cover; background:#F3F4F6; }
+      .reel-publish-label { min-width:0; color:#111827; font-size:13px; font-weight:550; line-height:1; }
+      .reel-publish-check { width:15px; height:15px; color:#6B7280; }
+      .reel-publish-progress { position:absolute; right:0; bottom:-1px; left:0; height:2px; overflow:hidden; background:transparent; }
+      .reel-publish-progress > span { display:block; width:0; height:100%; background:#111827; transition:width 420ms cubic-bezier(.2,.7,.2,1); }
+      @media (prefers-reduced-motion:reduce) { .reel-publish-status,.reel-publish-progress > span { transition-duration:.01ms; } }
       .reel-feed {
         flex: 1;
         min-height: 0;
@@ -11991,6 +12000,12 @@
               <span class="reel-create-label">Create Reel</span>
             </button>
           </header>
+          <div class="reel-publish-status" id="reelPublishStatus" role="status" aria-live="polite" hidden>
+            <img id="reelPublishThumbnail" alt="" width="28" height="28">
+            <span class="reel-publish-label" id="reelPublishLabel">Posting...</span>
+            <svg class="reel-publish-check" id="reelPublishCheck" viewBox="0 0 16 16" aria-hidden="true" hidden><path d="m3.5 8.2 3 3 6-6.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div class="reel-publish-progress" aria-hidden="true"><span id="reelPublishProgress"></span></div>
+          </div>
           <div class="reel-feed" id="reelFeed" role="feed" aria-label="Reels" tabindex="0">
             <div id="reelItems"><div class="reel-feed-sentinel" id="reelFeedSentinel" aria-hidden="true" hidden></div></div>
             <div class="reel-feed-state" id="reelFeedState" role="status" aria-live="polite"></div>
@@ -13330,6 +13345,8 @@
       let reelUploadProgressTimer = null;
       let reelUploadCoverUrl = "";
       let reelPreviewFeedbackTimer = null;
+      let reelPublishStatusTimer = null;
+      let reelPublishHideTimer = null;
       const reelStatusPollers = new Map();
       let activeReelStatusSession = null;
       let reelCommentsReelId = "";
@@ -18429,25 +18446,156 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         updateReelUploadButton();
         startReelPreupload(reelUploadFile, generation);
       }
+      function createReelPublishThumbnail() {
+        const video = $("#reelUploadPreview");
+        if (video && video.readyState >= 2 && video.videoWidth && video.videoHeight) {
+          try {
+            const canvas = document.createElement("canvas");
+            canvas.width = 96;
+            canvas.height = Math.max(1, Math.round(96 * video.videoHeight / video.videoWidth));
+            canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+            return canvas.toDataURL("image/jpeg", 0.72);
+          } catch {}
+        }
+        return reelUploadCoverUrl || "";
+      }
+      function showReelPublishStatus(thumbnail, posted = false) {
+        const bar = $("#reelPublishStatus");
+        const progress = $("#reelPublishProgress");
+        clearTimeout(reelPublishStatusTimer);
+        clearTimeout(reelPublishHideTimer);
+        bar.classList.remove("is-hiding");
+        bar.hidden = false;
+        const image = $("#reelPublishThumbnail");
+        if (thumbnail) image.src = thumbnail;
+        else image.removeAttribute("src");
+        $("#reelPublishLabel").textContent = posted ? "Posted" : "Posting...";
+        $("#reelPublishCheck").hidden = !posted;
+        progress.style.width = posted ? "100%" : "0%";
+        if (!posted) {
+          requestAnimationFrame(() => {
+            if (!bar.hidden) progress.style.width = "82%";
+          });
+          return;
+        }
+        reelPublishStatusTimer = setTimeout(() => {
+          bar.classList.add("is-hiding");
+          reelPublishHideTimer = setTimeout(() => {
+            bar.hidden = true;
+            bar.classList.remove("is-hiding");
+            progress.style.width = "0%";
+            image.removeAttribute("src");
+          }, 190);
+        }, 1500);
+      }
+      function removeOptimisticReel(reelId) {
+        reelItems = reelItems.filter((item) => item.id !== reelId);
+        $(`.reel-item[data-reel-id="${CSS.escape(reelId)}"]`)?.remove();
+        reelWindowStart = -1;
+        reelWindowEnd = -1;
+        renderReelWindow(true);
+        observeReelItems();
+        if (activeReelId === reelId) {
+          activeReelId = "";
+          if (reelItems[0]) setActiveReel(reelItems[0].id);
+        }
+      }
+      function showOptimisticReel(reel) {
+        reelItems = [reel, ...reelItems.filter((item) => item.id !== reel.id)];
+        reelCursor = null;
+        reelLoading = false;
+        $(`.reel-item[data-reel-id="${CSS.escape(reel.id)}"]`)?.remove();
+        reelWindowStart = -1;
+        reelWindowEnd = -1;
+        renderReelWindow(true);
+        $("#reelFeed").scrollTop = 0;
+        activeReelId = "";
+        setActiveReel(reel.id);
+        observeReelItems();
+      }
+      function replaceOptimisticReel(reel) {
+        reelItems = [reel, ...reelItems.filter((item) => item.id !== reel.id)];
+        $(`.reel-item[data-reel-id="${CSS.escape(reel.id)}"]`)?.remove();
+        reelWindowStart = -1;
+        reelWindowEnd = -1;
+        renderReelWindow(true);
+        $("#reelFeed").scrollTop = 0;
+        activeReelId = "";
+        setActiveReel(reel.id);
+        observeReelItems();
+      }
       async function uploadReel(event) {
         event.preventDefault();
         if (!requireAuth() || reelUploadBusy || !reelUploadFile || !reelUploadMetadataReady
           || !reelUploadPreuploaded || !reelUploadProcessed || $("#reelCaption").value.length > 280) return;
         reelUploadBusy = true;
         const generation = reelUploadGeneration;
+        const caption = $("#reelCaption").value.trim() || null;
+        const session = reelUploadSession;
+        if (!session) {
+          reelUploadBusy = false;
+          updateReelUploadButton();
+          return;
+        }
+        const thumbnail = createReelPublishThumbnail();
+        const previewUrl = reelUploadPreviewUrl;
+        const optimisticReel = {
+          id: session.id,
+          caption,
+          status: "READY",
+          durationMs: Math.round(($("#reelUploadPreview").duration || 0) * 1000),
+          width: $("#reelUploadPreview").videoWidth || 0,
+          height: $("#reelUploadPreview").videoHeight || 0,
+          createdAt: new Date().toISOString(),
+          publishedAt: new Date().toISOString(),
+          author: { ...currentUser, isFollowing: false },
+          counts: { likes: 0, comments: 0, reposts: 0, shares: 0, views: 0 },
+          viewer: { liked: false, bookmarked: false, reposted: false },
+          videoUrl: previewUrl,
+          posterUrl: thumbnail,
+        };
         updateReelUploadButton();
+        showOptimisticReel(optimisticReel);
+        showReelPublishStatus(thumbnail, false);
+        if ($("#reelCreateDialog").open) $("#reelCreateDialog").close();
         try {
-          const session = reelUploadSession || await (reelUploadPromise || startReelPreupload(reelUploadFile, generation));
-          if (generation !== reelUploadGeneration || reelUploadCancellation) return;
-          const reel = await api(`/reels/${encodeURIComponent(session.id)}/publish`, {
-            method: "POST",
-            body: JSON.stringify({ caption: $("#reelCaption").value.trim() || null }),
-          });
+          let reel;
+          try {
+            reel = await api(`/reels/${encodeURIComponent(session.id)}/publish`, {
+              method: "POST",
+              body: JSON.stringify({ caption }),
+            });
+          } catch (publishError) {
+            const recovered = await api(`/reels/${encodeURIComponent(session.id)}`);
+            if (recovered?.status === "READY" && recovered.publishedAt && recovered.videoUrl) reel = recovered;
+            else throw publishError;
+          }
           if (generation !== reelUploadGeneration) return;
+          if (!reel || reel.id !== session.id || reel.status !== "READY" || !reel.videoUrl || !reel.publishedAt) {
+            throw new Error("The Reel could not be confirmed as published.");
+          }
           reelUploadCommitted = true;
-          await finishReelUpload(reel);
+          replaceOptimisticReel(reel);
+          showReelPublishStatus(thumbnail || (reel.posterUrl ? mediaHref(reel.posterUrl) : ""), true);
+          if (previewUrl) URL.revokeObjectURL(previewUrl);
+          reelUploadPreviewUrl = "";
+          $("#reelUploadPreview").removeAttribute("src");
+          $("#reelUploadPreview").load();
+          reelUploadFile = null;
+          reelUploadSession = null;
+          reelUploadPromise = null;
+          reelUploadCreatedId = "";
+          reelCursor = null;
+          reelFeedScrollTop = 0;
         } catch (error) {
           if (generation !== reelUploadGeneration || (error.name === "AbortError" && reelUploadCancellation)) return;
+          removeOptimisticReel(session.id);
+          clearTimeout(reelPublishStatusTimer);
+          clearTimeout(reelPublishHideTimer);
+          $("#reelPublishStatus").hidden = true;
+          $("#reelPublishStatus").classList.remove("is-hiding");
+          $("#reelPublishProgress").style.width = "0%";
+          if (!$("#reelCreateDialog").open) $("#reelCreateDialog").showModal();
           setReelUploadStatus(error.message || "Could not publish this Reel.", "error");
         } finally {
           if (generation === reelUploadGeneration) {
