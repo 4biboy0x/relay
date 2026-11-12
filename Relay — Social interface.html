@@ -10016,6 +10016,21 @@
         .reel-upload-progress[data-state="processing"] > span { animation: none; }
         .reel-feed { scroll-behavior: auto; }
       }
+          .confirm-dialog.simple { width: min(420px, calc(100vw - 32px)); }
+      .confirm-dialog.simple .confirm-dialog-card {
+        padding: 18px; border: 1px solid #e5e7eb; border-radius: 8px;
+        color: #18181b; background: #fff; box-shadow: 0 8px 24px rgba(0,0,0,.12);
+        transition: none;
+      }
+      .confirm-dialog.simple .confirm-dialog-card.is-entering { opacity: 1; transform: none; }
+      .confirm-dialog.simple h2 { color: #18181b; }
+      .confirm-dialog.simple p { color: #52525b; }
+      .confirm-dialog.simple::backdrop { background: rgba(0,0,0,.28); -webkit-backdrop-filter: none; backdrop-filter: none; }
+      .confirm-dialog.simple .confirm-dialog-actions { justify-content: flex-end; gap: 8px; }
+      .confirm-dialog.simple .confirm-dialog-actions button { width: auto; min-height: 36px; padding: 0 14px; border-radius: 6px; }
+      .confirm-dialog.simple .confirm-cancel { color: #3f3f46; background: #f4f4f5; }
+      .confirm-dialog.simple .confirm-submit.danger { color: #fff; background: #dc2626; }
+      .confirm-dialog.simple .confirm-submit.danger:hover { background: #b91c1c; }
     </style>
   </head>
   <body>
@@ -20870,31 +20885,40 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (action === "delete") {
           const row = button.closest(".conversation-row");
           if (!row || button.disabled || !conversations.some((item) => item.id === conversationId)) return;
-          button.disabled = true;
           closeInboxConversationMenus();
-          row.style.maxHeight = `${row.getBoundingClientRect().height}px`;
-          requestAnimationFrame(() => row.classList.add("is-deleting"));
-          try {
-            await api(`/conversations/${encodeURIComponent(conversationId)}`, { method: "DELETE" });
-            conversations = conversations.filter((item) => item.id !== conversationId);
-            if (activeConversation?.id === conversationId) resetActiveConversation();
-            if (selectedConversationId === conversationId) syncConversationSelection("");
-            await new Promise((resolve) => window.setTimeout(resolve, 270));
-            row.remove();
-            $("#startConversation").hidden = conversations.length > 0;
-            if (!conversations.length) renderConversationItems([]);
-            filterConversations();
-            writeViewCache("messages", $("#conversationList").innerHTML);
-            setUnreadBadge($("#mbadge"), conversations.reduce((sum, item) => sum + (Number(item.unreadCount) || 0), 0), "messages");
-            if (conversationSearchState.query) searchConversations();
-            syncPresenceSubscriptions();
-            toast("Conversation deleted");
-          } catch (error) {
-            row.classList.remove("is-deleting");
-            row.style.maxHeight = "";
-            button.disabled = false;
-            toast(error.message || "Could not delete conversation. Please try again.");
-          }
+          await ConfirmDialog({
+            title: "Delete conversation?",
+            description: "This conversation will be deleted from your inbox. Other people in the conversation will still be able to see it.",
+            confirmLabel: "Delete",
+            onCancel: () => {},
+            onConfirm: async () => {
+              if (!row.isConnected || !conversations.some((item) => item.id === conversationId)) return;
+              button.disabled = true;
+              row.style.maxHeight = `${row.getBoundingClientRect().height}px`;
+              requestAnimationFrame(() => row.classList.add("is-deleting"));
+              try {
+                await api(`/conversations/${encodeURIComponent(conversationId)}`, { method: "DELETE" });
+                conversations = conversations.filter((item) => item.id !== conversationId);
+                if (activeConversation?.id === conversationId) resetActiveConversation();
+                if (selectedConversationId === conversationId) syncConversationSelection("");
+                await new Promise((resolve) => window.setTimeout(resolve, 270));
+                row.remove();
+                $("#startConversation").hidden = conversations.length > 0;
+                if (!conversations.length) renderConversationItems([]);
+                filterConversations();
+                writeViewCache("messages", $("#conversationList").innerHTML);
+                setUnreadBadge($("#mbadge"), conversations.reduce((sum, item) => sum + (Number(item.unreadCount) || 0), 0), "messages");
+                if (conversationSearchState.query) searchConversations();
+                syncPresenceSubscriptions();
+                toast("Conversation deleted");
+              } catch (error) {
+                row.classList.remove("is-deleting");
+                row.style.maxHeight = "";
+                button.disabled = false;
+                toast(error.message || "Could not delete conversation. Please try again.");
+              }
+            },
+          });
           return;
         }
         const preference = action === "pin" || action === "unpin"
@@ -22767,6 +22791,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         danger = false,
         reelDelete = null,
         confirmDelayMs = 0,
+        simple = false,
       }) {
         const dialog = confirmDialogElement;
         if (dialog.open || confirmDialogState) {
@@ -22792,6 +22817,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         cancel.textContent = cancelLabel;
         submit.textContent = confirmLabel;
         submit.classList.toggle("danger", danger);
+        dialog.classList.toggle("simple", simple);
         submit.disabled = confirmDelayMs > 0;
         preview.hidden = !reelDelete;
         previewImage.hidden = !reelDelete?.posterUrl;
@@ -22810,6 +22836,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             openedAt: performance.now(),
             confirmAfter: performance.now() + confirmDelayMs,
             reelDeleteId: reelDelete?.id || "",
+            simple,
             pointerDownTargets: new Map(),
             pointerClickTarget: null,
             confirmationTimer: null,
@@ -22817,11 +22844,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           confirmDialogState = state;
           try {
             if (dialog.parentElement !== document.body) document.body.append(dialog);
-            card.classList.add("is-entering");
+            if (!simple) card.classList.add("is-entering");
             document.body.classList.add("confirm-dialog-open");
             document.body.style.overflow = "hidden";
             dialog.showModal();
-            requestAnimationFrame(() => card.classList.remove("is-entering"));
+            if (!simple) requestAnimationFrame(() => card.classList.remove("is-entering"));
             (danger || reelDelete ? cancel : submit).focus({ preventScroll: true });
             if (confirmDelayMs > 0) {
               state.confirmationTimer = setTimeout(() => {
@@ -22833,6 +22860,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             if (dialog.open) dialog.close();
             document.body.classList.remove("confirm-dialog-open");
             document.body.style.overflow = previousBodyOverflow;
+            dialog.classList.remove("simple");
             submit.disabled = false;
             preview.hidden = true;
             previewImage.removeAttribute("src");
@@ -22842,6 +22870,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
         });
       }
+      function ConfirmDialog({ title, description, confirmLabel, onConfirm, onCancel }) {
+        return confirmDialog({ title, message: description, confirmLabel, cancelLabel: "Cancel", danger: true, simple: true })
+          .then(async (confirmed) => {
+            if (confirmed) { await onConfirm?.(); return true; }
+            onCancel?.();
+            return false;
+          });
+      }
       function settleConfirmDialog(confirmed) {
         const state = confirmDialogState;
         if (!state || state.closing) return;
@@ -22849,6 +22885,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         state.closing = true;
         clearTimeout(state.confirmationTimer);
         confirmDialogElement.querySelector(".confirm-dialog-card").classList.remove("is-entering");
+        confirmDialogElement.classList.remove("simple");
         confirmDialogElement.close();
         document.body.classList.remove("confirm-dialog-open");
         document.body.style.overflow = state.previousBodyOverflow;
@@ -24992,7 +25029,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       });
       confirmDialogElement.addEventListener("click", (event) => {
         if (event.target !== confirmDialogElement) return;
-        if (performance.now() - (confirmDialogState?.openedAt || 0) < 200) return;
+        if (!confirmDialogState?.simple && performance.now() - (confirmDialogState?.openedAt || 0) < 200) return;
         const bounds = confirmDialogElement.getBoundingClientRect();
         if (event.clientX < bounds.left || event.clientX > bounds.right
           || event.clientY < bounds.top || event.clientY > bounds.bottom) {
