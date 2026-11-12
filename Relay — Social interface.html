@@ -22836,6 +22836,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             openedAt: performance.now(),
             confirmAfter: performance.now() + confirmDelayMs,
             reelDeleteId: reelDelete?.id || "",
+            simple,
             pointerDownTargets: new Map(),
             pointerClickTarget: null,
             confirmationTimer: null,
@@ -22859,6 +22860,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             if (dialog.open) dialog.close();
             document.body.classList.remove("confirm-dialog-open");
             document.body.style.overflow = previousBodyOverflow;
+            dialog.classList.remove("simple");
             submit.disabled = false;
             preview.hidden = true;
             previewImage.removeAttribute("src");
@@ -25027,7 +25029,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       });
       confirmDialogElement.addEventListener("click", (event) => {
         if (event.target !== confirmDialogElement) return;
-        if (performance.now() - (confirmDialogState?.openedAt || 0) < 200) return;
+        if (!confirmDialogState?.simple && performance.now() - (confirmDialogState?.openedAt || 0) < 200) return;
         const bounds = confirmDialogElement.getBoundingClientRect();
         if (event.clientX < bounds.left || event.clientX > bounds.right
           || event.clientY < bounds.top || event.clientY > bounds.bottom) {
