@@ -9824,7 +9824,8 @@
       .reel-upload-status[data-state="processing"] .reel-upload-status-icon { border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: reel-spinner .8s linear infinite; }
       .reel-upload-status-text { min-width: 0; overflow-wrap: normal; }
       .reel-upload-status-retry { align-self: start; flex-shrink: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-weight: 600; line-height: 1.4; text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; cursor: pointer; }
-      .reel-upload-progress { width: 100%; height: 2px; margin-top: 8px; overflow: hidden; border-radius: 99px; background: var(--border); opacity: 1; transition: opacity 150ms ease; }
+      .reel-upload-progress { width: 100%; height: 4px; margin-top: 8px; overflow: hidden; border-radius: 99px; background: var(--border); opacity: 1; transition: opacity 150ms ease; }
+      .reel-upload-status[data-state="ready"] .reel-upload-status-text { padding: 4px 9px; border: 1px solid color-mix(in srgb, var(--ok) 24%, transparent); border-radius: 999px; background: color-mix(in srgb, var(--ok) 9%, transparent); color: var(--ok); font-size: 12px; font-weight: 650; }
       .reel-upload-progress[hidden] { display: none; }
       .reel-upload-progress.is-fading { opacity: 0; }
       .reel-upload-progress > span { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--accent); transition: width 120ms linear; }
