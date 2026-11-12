@@ -6115,21 +6115,22 @@
         margin-inline-end: 5px;
         color: var(--text-3);
         opacity: .82;
+        line-height: 0;
         transform-origin: center;
         animation: conversation-pin-in 220ms cubic-bezier(.2, .75, .25, 1) both;
       }
       .conversation-pin-indicator .i {
-        width: 13px;
-        height: 13px;
+        width: 15px;
+        height: 15px;
         fill: none;
         stroke: currentColor;
-        stroke-width: 1.8;
+        stroke-width: 1.6;
         stroke-linecap: round;
         stroke-linejoin: round;
       }
       @keyframes conversation-pin-in {
-        from { opacity: 0; transform: translateY(-3px) scale(.82) rotate(-12deg); }
-        to { opacity: .82; transform: translateY(0) scale(1) rotate(0); }
+        from { opacity: 0; transform: translateY(-2px) scale(.9); }
+        to { opacity: .82; transform: translateY(0) scale(1); }
       }
       @media (hover: none), (pointer: coarse) {
         .conversation-actions {
@@ -20943,9 +20944,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             preview = `<span class="conversation-preview-text">${esc(preview)}</span>`;
           }
           if (pinned) {
-            const pinMarkup = '<span class="conversation-pin-indicator" title="Pinned" aria-label="Pinned"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a2.25 2.25 0 0 0-2.25 2.25v4.1L7.5 11.5V13h3.5v7.5L12 22l1-1.5V13h3.5v-1.5l-2.25-2.65v-4.1A2.25 2.25 0 0 0 12 2.5Z"/></svg></span>';
+            const pinMarkup = '<span class="conversation-pin-indicator" role="img" title="Pinned" aria-label="Pinned"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 3.5h6l-.8 4.7 2.8 3.1V13H7v-1.7l2.8-3.1L9 3.5Z"/><path d="M12 13v8"/></svg></span>';
             if (messageTime) messageTime = messageTime.replace("<time", pinMarkup + "<time");
-            else messageTime = `<span class="conversation-preview-time-wrap">${pinMarkup}</span>`;
           }
           const searchMessageId = searchQuery
             ? (searchMode === "messages" ? item.matchedMessage?.id : matchingLastMessage ? lastMessage?.id : "")
