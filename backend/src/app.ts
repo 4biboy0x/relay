@@ -1895,6 +1895,46 @@ api.get("/search", authRequired, searchLimiter, asyncRoute(async (req, res) => {
 }));
 
 api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
+  // Repair missing membership rows for direct conversations. The directKey is
+  // created from the two authenticated participant IDs, so it is a safe source
+  // for restoring memberships when older/partially written data is incomplete.
+  try {
+    const repairCandidates = await prisma.conversation.findMany({
+      where: {
+        OR: [
+          { directKey: { startsWith: `${req.userId}:` } },
+          { directKey: { endsWith: `:${req.userId}` } },
+        ],
+      },
+      select: { id: true, directKey: true },
+    });
+    const memberships = repairCandidates.flatMap((conversation) => {
+      const participantIds = conversation.directKey.split(":");
+      if (participantIds.length !== 2 || !participantIds.includes(req.userId!)) return [];
+      return participantIds.map((userId) => ({ conversationId: conversation.id, userId }));
+    });
+    if (memberships.length) {
+      const existingUsers = await prisma.user.findMany({
+        where: { id: { in: [...new Set(memberships.map((membership) => membership.userId))] } },
+        select: { id: true },
+      });
+      const validUserIds = new Set(existingUsers.map((user) => user.id));
+      const validMemberships = memberships.filter((membership) => validUserIds.has(membership.userId));
+      if (validMemberships.length) {
+        const repaired = await prisma.conversationMember.createMany({
+          data: validMemberships,
+          skipDuplicates: true,
+        });
+        if (repaired.count) {
+          console.warn(`Restored ${repaired.count} missing direct-conversation memberships for inbox user ${req.userId}.`);
+        }
+      }
+    }
+  } catch (error) {
+    // Keep the inbox readable even if the self-healing pass cannot run.
+    console.error("Could not repair direct-conversation memberships before loading inbox.", error);
+  }
+
   const rows = await prisma.conversationMember.findMany({
     where: { userId: req.userId! },
     include: {
@@ -2322,6 +2362,15 @@ api.post("/conversations/:conversationId/messages", authRequired, verifiedEmailR
           members: { create: [{ userId: req.userId! }, { userId: recipientId }] },
         },
         update: {},
+      });
+      // Existing direct conversations may predate a missing-membership repair.
+      // Recreate both participant rows before validating access or writing.
+      await tx.conversationMember.createMany({
+        data: [req.userId!, recipientId].map((userId) => ({
+          conversationId: conversation.id,
+          userId,
+        })),
+        skipDuplicates: true,
       });
       conversationId = conversation.id;
     }
