@@ -12019,6 +12019,7 @@
         accessToken = "";
         if (currentUser?.id) setEmailVerificationNoticeShown(currentUser.id, false);
         currentUser = null;
+        inboxPreferences = { pinned: [], muted: {} };
         clearTimeout(emailVerificationNoticeShowTimer);
         emailVerificationNoticeShowTimer = null;
         removeEmailVerificationNoticeImmediately();
@@ -18295,7 +18296,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (!viewing) {
           setUnreadBadge(badge, getUnreadBadgeCount(badge) + 1, "notifications");
           const conversationId = item.conversationId || item.data?.conversationId;
-          if (!(item.type === "MESSAGE" && isConversationMuted(conversationId))) {
+          if (!(String(item.type || "").toUpperCase() === "MESSAGE" && isConversationMuted(conversationId))) {
             toast(`${item.actor.displayName} ${notificationActions[item.type]}`);
           }
           return;
@@ -21185,6 +21186,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             const result = await api("/conversations");
             await finishSkeleton();
             conversations = result.items;
+            const availableConversationIds = new Set(conversations.map((item) => item.id));
+            inboxPreferences.pinned = inboxPreferences.pinned.filter((id) => availableConversationIds.has(id)).slice(0, 3);
+            Object.keys(inboxPreferences.muted).forEach((id) => { if (!availableConversationIds.has(id)) delete inboxPreferences.muted[id]; });
+            saveInboxPreferences();
             conversationsLoaded = true;
             renderConversationItems(conversations);
             writeViewCache("messages", $("#conversationList").innerHTML);
@@ -22104,6 +22109,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
           setAccessToken(result.accessToken);
           currentUser = result.user;
+          inboxPreferences = readInboxPreferences();
           recordEmailVerificationSuccess();
           authDialog.close();
           hideOtpScreen();
@@ -22869,6 +22875,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         try {
           currentUser = await api("/users/me");
+          inboxPreferences = readInboxPreferences();
           updateAccountUI();
           await Promise.all([renderFeed(), renderSide()]);
           connectRealtime();
@@ -24491,6 +24498,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             }
             setAccessToken(result.accessToken);
             currentUser = result.user;
+            inboxPreferences = readInboxPreferences();
             authDialog.close();
             updateAccountUI();
             await Promise.all([renderFeed(), renderSide()]);
