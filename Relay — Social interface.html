@@ -10820,6 +10820,99 @@
         }
       }
 
+    
+      /* Compose entry points: one shared dialog on desktop and mobile. */
+      .inbox-compose-button {
+        display: none;
+        width: 36px;
+        height: 36px;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        color: var(--text);
+        background: transparent;
+        transition: background-color 140ms ease, color 140ms ease, transform 140ms ease;
+      }
+      .inbox-compose-button:hover { background: var(--surface-2); }
+      .inbox-compose-button:active,
+      .mobile-compose-fab:active { transform: scale(.96); }
+      .conversation-list-header #startConversation { display: none !important; }
+      .conversation-list-header .recipient-picker { display: none !important; }
+      .mobile-compose-fab {
+        display: none;
+        position: fixed;
+        z-index: 24;
+        right: max(16px, env(safe-area-inset-right, 0px));
+        bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+        width: 54px;
+        height: 54px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+        border-radius: 50%;
+        color: #fff;
+        background: var(--accent);
+        box-shadow: 0 8px 24px rgba(9, 9, 11, .2);
+        transition: transform 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .mobile-compose-fab:hover {
+        background: var(--accent-h);
+        box-shadow: 0 10px 28px rgba(9, 9, 11, .24);
+      }
+      .mobile-compose-fab .i { width: 22px; height: 22px; stroke-width: 1.9; }
+      @media (min-width: 641px) {
+        .inbox-compose-button { display: inline-flex; }
+        .mobile-compose-fab { display: none !important; }
+      }
+      @media (max-width: 640px) {
+        body:has(.app.messages-active .messages-layout:not(.has-conversation)) .mobile-compose-fab {
+          display: inline-flex;
+        }
+      }
+
+      /* Fluid shell guardrails for narrow phones through wide desktop displays. */
+      html,
+      body {
+        min-width: 320px;
+        max-width: 100%;
+        overflow-x: clip;
+      }
+      .app,
+      .app > .nav,
+      .app > main,
+      .app > aside[aria-label="Suggestions"],
+      .messages-layout,
+      .conversation-sidebar,
+      .chat-panel,
+      .chat-scroll-area,
+      .chat-log {
+        min-width: 0;
+        box-sizing: border-box;
+      }
+      .app > main { max-width: 100%; }
+      img,
+      video,
+      iframe { max-width: 100%; }
+      @media (min-width: 1101px) {
+        .app { max-width: 1680px; margin-inline: auto; }
+        .app:not(.messages-active) > main {
+          width: min(960px, 100%);
+          justify-self: center;
+        }
+      }
+      @media (max-width: 640px) {
+        .mobile-compose-fab {
+          right: max(16px, env(safe-area-inset-right, 0px));
+          bottom: calc(var(--mobile-nav-height, 56px) + 16px);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .inbox-compose-button,
+        .mobile-compose-fab { transition: none; }
+      }
+
     </style>
   </head>
   <body>
@@ -11232,6 +11325,9 @@
             <section class="conversation-sidebar" aria-label="Your conversations">
               <header class="conversation-list-header">
                 <h2>Inbox</h2>
+                <button class="inbox-compose-button" id="desktopNewMessage" type="button" aria-label="New message" title="New message" aria-haspopup="dialog" aria-controls="newMessageDialog">
+                  <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" /></svg>
+                </button>
                 <div class="recipient-picker">
                   <button id="startConversation" type="button" aria-label="New message" title="New message" aria-haspopup="dialog" aria-controls="newMessageDialog" hidden>
                     <span class="conversation-new-icon" aria-hidden="true">
@@ -11674,6 +11770,9 @@
         <button class="btn btn-primary" type="button" data-close-legal>Close</button>
       </footer>
     </dialog>
+    <button class="mobile-compose-fab" id="mobileNewMessageFab" type="button" aria-label="New message" title="New message" aria-haspopup="dialog" aria-controls="newMessageDialog">
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" /></svg>
+    </button>
     <dialog class="cookie-settings-dialog new-message-dialog" id="newMessageDialog" role="dialog" aria-modal="true" aria-labelledby="newMessageTitle" tabindex="-1">
       <header class="cookie-settings-heading">
         <h2 id="newMessageTitle">New message</h2>
@@ -24996,8 +25095,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           openNewMessageDialog(newConversationSearch, $("#conversationSearch").value.trim());
           return;
         }
-        if (e.target.closest("#startConversation, #emptyNewChat")) {
-          openNewMessageDialog(e.target.closest("#startConversation, #emptyNewChat"));
+        const composeTrigger = e.target.closest("#startConversation, #emptyNewChat, #desktopNewMessage, #mobileNewMessageFab");
+        if (composeTrigger) {
+          openNewMessageDialog(composeTrigger);
           return;
         }
         const recipient = e.target.closest("[data-recipient-id]");
