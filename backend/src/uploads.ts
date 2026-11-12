@@ -118,6 +118,12 @@ export const saveUpload = async (file: Express.Multer.File, extension: string): 
       CacheControl: "public, max-age=31536000, immutable",
     }));
   } else {
+    if (process.env.NODE_ENV === "production") {
+      throw new HttpError(
+        503,
+        "Persistent image storage is not configured. Configure Neon Object Storage before accepting uploads.",
+      );
+    }
     await mkdir(uploadDirectory, { recursive: true });
     await writeFile(path.join(uploadDirectory, filename), file.buffer, { flag: "wx" });
   }
