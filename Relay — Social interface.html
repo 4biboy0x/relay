@@ -10838,6 +10838,7 @@
       .inbox-compose-button:active,
       .mobile-compose-fab:active { transform: scale(.96); }
       .conversation-list-header #startConversation { display: none !important; }
+      .conversation-list-header .recipient-picker { display: none !important; }
       .mobile-compose-fab {
         display: none;
         position: fixed;
@@ -10904,7 +10905,7 @@
       @media (max-width: 640px) {
         .mobile-compose-fab {
           right: max(16px, env(safe-area-inset-right, 0px));
-          bottom: calc(var(--mobile-nav-height, 56px) + 16px + env(safe-area-inset-bottom, 0px));
+          bottom: calc(var(--mobile-nav-height, 56px) + 16px);
         }
       }
       @media (prefers-reduced-motion: reduce) {
