@@ -10017,7 +10017,171 @@
         .reel-feed { scroll-behavior: auto; }
       }
           
-    </style>
+          /* Full-screen, native-scroll Reels presentation */
+      .app.reels-active main {
+        height: 100dvh !important; min-height: 0 !important; padding: 0 !important;
+        overflow: hidden !important; display: block !important;
+      }
+      .app.reels-active #v-reels {
+        position: relative !important; display: block !important; width: 100%;
+        height: 100%; min-height: 0; overflow: hidden !important;
+      }
+      .app.reels-active .reels-top {
+        position: absolute !important; z-index: 10; inset: 0 0 auto;
+        display: flex; height: auto !important; min-height: 0 !important;
+        padding: calc(14px + env(safe-area-inset-top, 0px)) 18px 18px !important;
+        border: 0 !important; background: linear-gradient(180deg, rgba(0,0,0,.2), transparent) !important;
+        color: #fff !important; pointer-events: none;
+      }
+      .app.reels-active .reels-top h1 {
+        color: #fff !important; font-size: 24px !important; font-weight: 750 !important;
+        letter-spacing: -.035em; text-shadow: 0 1px 8px rgba(0,0,0,.32);
+      }
+      .app.reels-active .reels-top #createReelButton {
+        display: grid !important; width: 38px !important; min-width: 38px !important;
+        height: 38px !important; min-height: 38px !important; padding: 0 !important;
+        place-items: center; border: 0 !important; border-radius: 0 !important;
+        background: transparent !important; color: #fff !important; box-shadow: none !important;
+        pointer-events: auto;
+      }
+      .app.reels-active .reels-top #createReelButton .i {
+        width: 28px !important; height: 28px !important; stroke-width: 2.2;
+        filter: drop-shadow(0 1px 4px rgba(0,0,0,.35));
+      }
+      .app.reels-active .reels-top #createReelButton span { display: none !important; }
+      .app.reels-active .reel-feed {
+        position: absolute !important; inset: 0 !important; width: 100%; height: 100%;
+        min-height: 0; overflow-x: hidden !important; overflow-y: auto !important;
+        overscroll-behavior: contain !important; -webkit-overflow-scrolling: touch;
+        scroll-snap-type: y mandatory !important; scroll-behavior: auto !important;
+        scrollbar-width: none; background: #000;
+      }
+      .app.reels-active .reel-feed::-webkit-scrollbar { display: none; }
+      .app.reels-active #reelItems { display: block !important; }
+      .app.reels-active .reel-window-spacer { display: none !important; }
+      .app.reels-active .reel-virtual-placeholder {
+        display: block; width: 100%; height: 100dvh; min-height: 100dvh;
+        scroll-snap-align: start; scroll-snap-stop: always; background: #000;
+      }
+      .app.reels-active .reel-item {
+        position: relative; display: block !important; width: 100%;
+        height: 100dvh !important; min-height: 100dvh !important; padding: 0 !important;
+        margin: 0; scroll-snap-align: start !important; scroll-snap-stop: always !important;
+        overflow: hidden; background: #000;
+      }
+      .app.reels-active .reel-stage {
+        position: absolute !important; inset: 0 !important; width: 100% !important;
+        max-width: none !important; height: 100% !important; max-height: none !important;
+        aspect-ratio: auto !important; border: 0 !important; border-radius: 0 !important;
+        box-shadow: none !important; background: #000 !important;
+      }
+      .app.reels-active .reel-video,
+      .app.reels-active .reel-poster {
+        will-change: transform; object-fit: cover !important; transform: translateZ(0);
+      }
+      .app.reels-active .reel-stage::after {
+        z-index: 2; inset: 0 !important;
+        background: linear-gradient(to bottom, rgba(0,0,0,.14), transparent 20%, transparent 52%, rgba(0,0,0,.5)) !important;
+        pointer-events: none;
+      }
+      .app.reels-active .reel-copy {
+        z-index: 4; right: 88px !important;
+        bottom: calc(var(--reel-nav-height, 0px) + 76px + env(safe-area-inset-bottom, 0px)) !important;
+        left: 16px !important; color: #fff !important; text-shadow: 0 1px 5px rgba(0,0,0,.55) !important;
+      }
+      .app.reels-active .reel-author-line { gap: 10px; margin-bottom: 9px; }
+      .app.reels-active .reel-author-link { gap: 8px; color: #fff; font-weight: 750; text-shadow: 0 1px 5px rgba(0,0,0,.45); }
+      .app.reels-active .reel-author-link .av {
+        width: 36px !important; height: 36px !important; border: 1px solid rgba(255,255,255,.9) !important;
+        box-shadow: none !important;
+      }
+      .app.reels-active .reel-follow-button {
+        min-height: 28px !important; padding: 0 11px !important;
+        border: 1px solid rgba(255,255,255,.82) !important; border-radius: 6px !important;
+        background: transparent !important; color: #fff !important;
+        font-size: 12px !important; font-weight: 650 !important; text-shadow: 0 1px 4px rgba(0,0,0,.3);
+      }
+      .app.reels-active .reel-follow-button[aria-pressed="true"] { border-color: rgba(255,255,255,.52) !important; }
+      .app.reels-active .reel-caption {
+        display: -webkit-box; max-width: 100%; margin: 0; overflow: hidden;
+        -webkit-box-orient: vertical; -webkit-line-clamp: 1; font-size: 13px; line-height: 1.4;
+        overflow-wrap: anywhere; cursor: pointer;
+      }
+      .app.reels-active .reel-caption:not(.is-clamped) { -webkit-line-clamp: unset; }
+      .app.reels-active .reel-caption-more { color: rgba(255,255,255,.92); font-weight: 650; }
+      .app.reels-active .reel-actions {
+        position: absolute !important; z-index: 6; right: 12px !important;
+        bottom: calc(var(--reel-nav-height, 0px) + 104px + env(safe-area-inset-bottom, 0px)) !important;
+        display: flex !important; width: 44px !important; gap: 12px !important; color: #fff !important;
+      }
+      .app.reels-active .reel-action {
+        width: 44px !important; height: 50px !important; min-height: 50px;
+        color: #fff !important; font-size: 13px !important; font-weight: 650 !important;
+        line-height: 1.1 !important; text-shadow: 0 1px 5px rgba(0,0,0,.65);
+      }
+      .app.reels-active .reel-action-icon {
+        width: 44px !important; height: 34px !important; flex: 0 0 34px !important;
+        border-radius: 0 !important; background: transparent !important;
+        -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+      }
+      .app.reels-active .reel-action-icon > svg {
+        width: 28px !important; height: 28px !important; color: #fff !important;
+        fill: none; stroke-width: 1.9; filter: drop-shadow(0 1px 3px rgba(0,0,0,.45));
+      }
+      .app.reels-active .reel-action[aria-pressed="true"] .reel-action-icon > svg { color: #fff !important; }
+      .app.reels-active .reel-action[data-reel-action="like"][aria-pressed="true"] .reel-action-icon > svg {
+        color: #ff3040 !important; fill: #ff3040 !important;
+      }
+      .app.reels-active .reel-action[data-reel-action="bookmark"][aria-pressed="true"] .reel-action-icon > svg {
+        color: #fff !important; fill: #fff !important;
+      }
+      .app.reels-active .reel-action:hover .reel-action-icon { background: transparent !important; }
+      .app.reels-active .reel-action [data-reel-count] {
+        height: 15px; flex: 0 0 15px; line-height: 15px; color: #fff;
+        font-size: 13px; font-weight: 650; text-shadow: 0 1px 5px rgba(0,0,0,.65);
+      }
+      .app.reels-active .reel-action [data-reel-count].is-zero { visibility: hidden; }
+      .app.reels-active .reel-action.is-like-pop .reel-action-icon > svg { animation: reel-like-pop 260ms cubic-bezier(.2,.9,.3,1.4); }
+      .app.reels-active .reel-stage-control {
+        top: calc(58px + env(safe-area-inset-top, 0px)) !important; right: 14px !important;
+        width: 32px !important; height: 32px !important; border: 0 !important;
+        border-radius: 50% !important; background: rgba(0,0,0,.12) !important; color: #fff !important;
+        opacity: 0; pointer-events: none; -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important; transition: opacity 120ms ease;
+      }
+      .app.reels-active .reel-stage-control.is-visible { opacity: .95; pointer-events: auto; }
+      .app.reels-active .reel-stage-control svg { width: 18px; height: 18px; }
+      .app.reels-active .reel-progress-track {
+        z-index: 8; bottom: var(--reel-nav-height, 0px) !important; height: 2px !important;
+        background: rgba(255,255,255,.34) !important;
+      }
+      .app.reels-active .reel-progress-track > span { background: #fff !important; }
+      .app.reels-active .reel-play-overlay {
+        width: 56px; height: 56px; background: rgba(0,0,0,.3);
+        -webkit-backdrop-filter: none; backdrop-filter: none;
+      }
+      .app.reels-active .reel-feed-state {
+        position: absolute; z-index: 9; right: 16px;
+        bottom: calc(var(--reel-nav-height, 0px) + 80px); left: 16px;
+        color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.55); pointer-events: none;
+      }
+      .app.reels-active .reel-feed-sentinel { width: 1px; height: 1px; }
+      @media (max-width: 640px) {
+        .app.reels-active { --reel-nav-height: var(--mobile-nav-height); }
+        .app.reels-active .nav {
+          z-index: 30 !important; background: #000 !important; border-top: 0 !important; color: #fff !important;
+        }
+        .app.reels-active .nav .nav-item { color: rgba(255,255,255,.82) !important; }
+        .app.reels-active .nav .nav-item[aria-current="page"] { color: #fff !important; }
+        .app.reels-active .nav .nav-item .i { color: inherit !important; }
+        .app.reels-active .nav .nav-badge { border-color: #000 !important; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .app.reels-active .reel-video { will-change: auto; }
+        .app.reels-active .reel-action.is-like-pop .reel-action-icon > svg { animation: none !important; }
+      }
+      .app.reels-active .reel-actions { gap: 16px !important; }
+</style>
   </head>
   <body>
     <div class="app-splash" id="appSplash" role="status" aria-label="Loading Relay">
@@ -14327,8 +14491,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       const formatReelCount = (value) => {
         const count = Math.max(0, Number(value) || 0);
         if (count < 1000) return String(count);
-        if (count < 1_000_000) return `${(count / 1000).toFixed(count >= 10_000 ? 0 : 1).replace(/\.0$/, "")}K`;
-        return `${(count / 1_000_000).toFixed(count >= 10_000_000 ? 0 : 1).replace(/\.0$/, "")}M`;
+        if (count < 1_000_000) return `${(count / 1000).toFixed(count >= 100_000 ? 0 : 1).replace(/\.0$/, "")}K`;
+        return `${(count / 1_000_000).toFixed(count >= 100_000_000 ? 0 : 1).replace(/\.0$/, "")}M`;
       };
       function profileReelCardMarkup(reel) {
         const posterUrl = reel.posterUrl ? mediaHref(reel.posterUrl) : "";
@@ -14353,15 +14517,21 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const property = action === "like" ? "liked" : action === "repost" ? "reposted" : action === "bookmark" ? "bookmarked" : "";
         const pressed = property ? !!reel.viewer?.[property] : false;
         const count = action === "comment" ? reel.counts?.comments
-          : action === "bookmark" || action === "more" ? null
-            : reel.counts?.[reelActionLabels[action]];
+          : action === "bookmark" ? reel.counts?.bookmarks
+            : action === "more" ? null
+              : reel.counts?.[action === "share" ? "shares" : reelActionLabels[action]];
         const label = action === "more" ? "More options"
           : action === "bookmark" ? pressed ? "Remove bookmark" : "Save Reel"
             : action === "comment" ? `${formatReelCount(count)} comments`
-              : `${formatReelCount(count)} ${reelActionLabels[action]}`;
-        const text = action === "more" || action === "bookmark" ? "" : formatReelCount(count);
-        const zero = count !== null && Number(count) === 0;
-        return `<button class="reel-action" type="button" data-reel-action="${action}" data-reel-id="${esc(reel.id)}" aria-label="${label}"${property ? ` aria-pressed="${pressed}"` : ""}><span class="reel-action-icon"><svg class="i" aria-hidden="true"><use href="#${reelActionIcons[action]}"/></svg>${action === "like" ? '<span class="reel-like-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>' : ""}</span><span data-reel-count="${action}"${zero ? ' class="is-zero"' : ""}><span class="reel-count-current">${text}</span></span></button>`;
+              : `${formatReelCount(count)} ${action === "share" ? "shares" : reelActionLabels[action]}`;
+        const text = count === null || count === undefined ? "" : formatReelCount(count);
+        const zero = count !== null && count !== undefined && Number(count) === 0;
+        const icon = action === "share"
+          ? '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 15 22l-4-9-9-4 20-7ZM22 2 11 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+          : action === "more"
+            ? '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
+            : `<svg class="i" aria-hidden="true"><use href="#${reelActionIcons[action]}"/></svg>`;
+        return `<button class="reel-action" type="button" data-reel-action="${action}" data-reel-id="${esc(reel.id)}" aria-label="${label}"${property ? ` aria-pressed="${pressed}"` : ""}><span class="reel-action-icon">${icon}${action === "like" ? '<span class="reel-like-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>' : ""}</span><span data-reel-count="${action}"${zero ? ' class="is-zero"' : ""}><span class="reel-count-current">${text}</span></span></button>`;
       }
       function reelMarkup(reel, index) {
         const author = reel.author || {};
@@ -14383,7 +14553,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 <button class="reel-author-link" type="button" data-profile-id="${esc(author.id || "")}" aria-label="View ${esc(author.displayName || author.handle || "creator")}'s profile">${avatarMarkup(author, "sm")}<span>${esc(author.displayName || author.handle || "Relay creator")}</span></button>
                 ${showFollow ? `<button class="reel-follow-button" type="button" data-reel-follow="${esc(author.id)}" aria-pressed="${!!author.isFollowing}">${author.isFollowing ? "Following" : "Follow"}</button>` : ""}
               </div>
-              ${caption ? `<p class="reel-caption${caption.length > 118 ? " is-clamped" : ""}" data-reel-caption="${esc(reel.id)}">${esc(caption)}${caption.length > 118 ? ` <button type="button" class="reel-caption-more" data-reel-caption-more="${esc(reel.id)}">more</button>` : ""}</p>` : ""}
+              ${caption ? `<p class="reel-caption is-clamped" data-reel-caption="${esc(reel.id)}">${esc(caption)}${caption.length > 40 ? ` <button type="button" class="reel-caption-more" data-reel-caption-more="${esc(reel.id)}">more</button>` : ""}</p>` : ""}
               <span class="sr">${formatReelCount(reel.counts?.views)} views</span>
             </div>
             <div class="reel-progress-track" data-reel-progress="${esc(reel.id)}" role="progressbar" aria-label="Reel playback progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0"><span></span></div>
@@ -14392,17 +14562,65 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             ${reelActionMarkup(reel, "like")}
             ${reelActionMarkup(reel, "comment")}
             ${reelActionMarkup(reel, "repost")}
-            ${reelActionMarkup(reel, "bookmark")}
             ${reelActionMarkup(reel, "share")}
+            ${reelActionMarkup(reel, "bookmark")}
             ${reelActionMarkup(reel, "more")}
           </div>
         </article>`;
       }
-      function renderReelMarkup(append = false, items = reelItems) {
-        const markup = items.map((reel) => reelMarkup(reel, reelItems.indexOf(reel))).join("");
-        if (append) $("#reelItems").insertAdjacentHTML("beforeend", markup);
-        else $("#reelItems").innerHTML = markup;
+      let reelWindowStart = -1;
+      let reelWindowEnd = -1;
+      function renderReelMarkup(append = false) {
+        renderReelWindow(!append);
+      }
+      function renderReelWindow(force = false) {
+        const container = $("#reelItems");
+        if (!container) return false;
+        const activeIndex = Math.max(0, profileReelIndex(activeReelId));
+        const start = Math.max(0, activeIndex - 1);
+        const end = Math.min(reelItems.length, activeIndex + 2);
+        const existingSlides = $$(".reel-item", container);
+        const sameWindow = !force && start === reelWindowStart && end === reelWindowEnd
+          && existingSlides.length === end - start
+          && existingSlides.every((slide, offset) => slide.dataset.reelId === reelItems[start + offset]?.id);
+        if (sameWindow) {
+          positionReelFeedSentinel();
+          return false;
+        }
+        const reusableSlides = new Map(Array.from(container.querySelectorAll(".reel-item")).map((slide) => [slide.dataset.reelId, slide]));
+        const sentinel = $("#reelFeedSentinel", container);
+        const fragment = document.createDocumentFragment();
+        reelItems.slice(0, start).forEach((reel) => {
+          const placeholder = document.createElement("div");
+          placeholder.className = "reel-virtual-placeholder";
+          placeholder.dataset.reelId = reel.id;
+          placeholder.setAttribute("aria-hidden", "true");
+          fragment.append(placeholder);
+        });
+        reelItems.slice(start, end).forEach((reel, offset) => {
+          let slide = reusableSlides.get(reel.id);
+          if (!slide) {
+            const template = document.createElement("template");
+            template.innerHTML = reelMarkup(reel, start + offset);
+            slide = template.content.firstElementChild;
+          } else {
+            slide.setAttribute("aria-label", `Reel by @${reel.author?.handle || "user"}, ${start + offset + 1} of ${reelItems.length}`);
+          }
+          fragment.append(slide);
+        });
+        reelItems.slice(end).forEach((reel) => {
+          const placeholder = document.createElement("div");
+          placeholder.className = "reel-virtual-placeholder";
+          placeholder.dataset.reelId = reel.id;
+          placeholder.setAttribute("aria-hidden", "true");
+          fragment.append(placeholder);
+        });
+        if (sentinel) fragment.append(sentinel);
+        container.replaceChildren(fragment);
+        reelWindowStart = start;
+        reelWindowEnd = end;
         positionReelFeedSentinel();
+        return true;
       }
       function positionReelFeedSentinel() {
         const container = $("#reelItems");
@@ -14413,14 +14631,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           sentinel.className = "reel-feed-sentinel";
           sentinel.setAttribute("aria-hidden", "true");
         }
-        const slides = $$(".reel-item", container);
-        sentinel.hidden = !reelCursor || !slides.length;
+        sentinel.hidden = !reelCursor || !reelItems.length;
         if (sentinel.hidden) {
           sentinel.innerHTML = "";
-          container.append(sentinel);
-          return;
+          sentinel.setAttribute("aria-hidden", "true");
         }
-        container.insertBefore(sentinel, slides[Math.max(0, slides.length - 2)]);
+        container.append(sentinel);
       }
       const reelCacheKey = () => `relay_reels_cache:v2:${currentUser?.id || "anonymous"}`;
       function readReelCache() {
@@ -14655,9 +14871,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function reelVideoPreloadMode() {
         const connection = navigator.connection;
-        if (isReelReducedData() || /^(slow-2g|2g|3g)$/i.test(connection?.effectiveType || "")) return "";
-        if (!connection || matchMedia("(pointer: coarse)").matches) return "metadata";
-        return /^(4g|5g)$/i.test(connection.effectiveType || "") ? "auto" : "metadata";
+        if (isReelReducedData() || /^(slow-2g|2g|3g)$/i.test(connection?.effectiveType || "")) return "metadata";
+        return "auto";
       }
       function shouldAutoplayReels() {
         return reelSettings.autoplay && !reelReducedMotion.matches && !isReelReducedData();
@@ -14669,6 +14884,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         if ($("#reelActionsDialog").open) $("#reelActionsDialog").close();
         activeReelId = id;
+        if (renderReelWindow()) observeReelItems();
         if (!profileScopedReelHandle && /^#\/reels(?:\/[^/?]+)?$/.test(location.hash)) {
           writeLastGlobalReel(id);
         }
@@ -14693,11 +14909,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         reelActiveObserver?.disconnect();
         const feed = $("#reelFeed");
         if (!feed || $("#v-reels").hidden) return;
-        const slides = $$(".reel-item", feed);
+        const slides = [...Array.from(feed.querySelectorAll(".reel-item")), ...Array.from(feed.querySelectorAll(".reel-virtual-placeholder"))];
         if ("IntersectionObserver" in window) {
           reelActiveObserver = new IntersectionObserver((entries) => {
             const active = entries
-              .filter((entry) => entry.isIntersecting && entry.intersectionRatio >= .55)
+              .filter((entry) => entry.isIntersecting && entry.intersectionRatio >= .6)
               .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
             if (active) setActiveReel(active.target.dataset.reelId);
           }, { root: feed, threshold: [.55, .7, .9] });
@@ -14713,23 +14929,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
         }
       }
-      let reelScrollFrame = 0;
-      function onReelFeedScroll() {
-        if (reelScrollFrame) return;
-        reelScrollFrame = requestAnimationFrame(() => {
-          reelScrollFrame = 0;
-          const feed = $("#reelFeed");
-          reelFeedScrollTop = feed.scrollTop;
-          if (typeof IntersectionObserver === "function" || !feed.clientHeight) return;
-          const index = Math.max(0, Math.min(
-            reelItems.length - 1,
-            Math.round(feed.scrollTop / feed.clientHeight),
-          ));
-          const reel = reelItems[index];
-          if (reel) setActiveReel(reel.id);
-        });
-      }
-      function removeReelFeedVideo(stage) {
+            function removeReelFeedVideo(stage) {
         const video = stage?.querySelector(".reel-video");
         if (!video) return;
         video.pause();
@@ -14942,7 +15142,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const retainedVideoIds = new Set();
         if (activeIndex >= 0) retainedVideoIds.add(activeReelId);
         if (activeIndex > 0) retainedVideoIds.add(reelItems[activeIndex - 1].id);
-        if (shouldPreloadNext) retainedVideoIds.add(reelItems[nextIndex].id);
+        if (nextIndex < reelItems.length) retainedVideoIds.add(reelItems[nextIndex].id);
         $$(".reel-video", $("#reelFeed")).forEach((video) => {
           const stage = video.closest("[data-reel-stage]");
           if (stage && !retainedVideoIds.has(stage.dataset.reelStage)) removeReelFeedVideo(stage);
@@ -14966,9 +15166,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (video) {
             applyPendingReelResume(video, reel.id);
             video.muted = isActive ? reelMuted : true;
-            if (isActive) video.preload = "metadata";
-            else if (shouldPreload) video.preload = nextPreloadMode;
-            else video.preload = "none";
+            if (isNext && shouldPreload) video.preload = nextPreloadMode;
+            else video.preload = "metadata";
             if (shouldStart && !document.hidden && video.paused) {
               playReelVideo(reel, stage, video).catch((error) => {
                 if (error.name === "AbortError") return;
@@ -15055,6 +15254,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         });
       }
       async function toggleReelMute(button) {
+        button.classList.add("is-visible");
+        clearTimeout(button._reelMuteTimer);
+        button._reelMuteTimer = setTimeout(() => button.classList.remove("is-visible"), 1400);
         const stage = button.closest("[data-reel-stage]");
         const reel = reelItems.find((item) => item.id === stage?.dataset.reelStage);
         const video = stage?.querySelector(".reel-video") || (reel && ensureReelVideo(reel, stage));
@@ -15144,20 +15346,23 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (!button) return;
         const property = action === "like" ? "liked" : action === "repost" ? "reposted" : action === "bookmark" ? "bookmarked" : "";
         if (property) button.setAttribute("aria-pressed", String(!!reel.viewer[property]));
-        const count = action === "comment" ? reel.counts.comments : reel.counts[reelActionLabels[action]];
-        const text = action === "bookmark" || action === "more" ? "" : formatReelCount(count);
+        const count = action === "comment" ? reel.counts.comments
+          : action === "bookmark" ? reel.counts.bookmarks
+            : action === "share" ? reel.counts.shares
+              : action === "more" ? null : reel.counts[reelActionLabels[action]];
+        const text = count === null || count === undefined ? "" : formatReelCount(count);
         const span = button.querySelector("[data-reel-count]");
         if (span) {
           if (animateCount) animateReelCount(span, text);
           else span.textContent = text;
         }
-        if (span && action !== "bookmark" && action !== "more") {
-          span.classList.toggle("is-zero", Number(count) === 0);
+        if (span && action !== "more") {
+          span.classList.toggle("is-zero", count === null || count === undefined || Number(count) === 0);
         }
         if (action === "bookmark") button.setAttribute("aria-label", reel.viewer.bookmarked ? "Remove bookmark" : "Save Reel");
         else if (action === "like") button.setAttribute("aria-label", `${reel.viewer.liked ? "Unlike" : "Like"} · ${text} likes`);
         else if (action === "repost") button.setAttribute("aria-label", `${reel.viewer.reposted ? "Undo repost" : "Repost"} · ${text} reposts`);
-        else if (action !== "more") button.setAttribute("aria-label", `${text} ${action === "comment" ? "comments" : reelActionLabels[action] || ""}`.trim());
+        else if (action !== "more") button.setAttribute("aria-label", `${text} ${action === "comment" ? "comments" : action === "share" ? "shares" : reelActionLabels[action] || ""}`.trim());
       }
       function applyReelCounts(reel, counts, animate = true) {
         if (!reel || !counts) return;
@@ -15729,7 +15934,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const copy = slide?.querySelector(".reel-copy");
           const oldCaption = copy?.querySelector(".reel-caption");
           const nextCaption = reel.caption
-            ? `<p class="reel-caption${reel.caption.length > 118 ? " is-clamped" : ""}" data-reel-caption="${esc(reel.id)}">${esc(reel.caption)}${reel.caption.length > 118 ? ` <button type="button" class="reel-caption-more" data-reel-caption-more="${esc(reel.id)}">more</button>` : ""}</p>`
+            ? `<p class="reel-caption is-clamped" data-reel-caption="${esc(reel.id)}">${esc(reel.caption)}${reel.caption.length > 40 ? ` <button type="button" class="reel-caption-more" data-reel-caption-more="${esc(reel.id)}">more</button>` : ""}</p>`
             : "";
           if (oldCaption) oldCaption.outerHTML = nextCaption;
           else if (nextCaption) copy?.insertAdjacentHTML("beforeend", nextCaption);
@@ -16710,6 +16915,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           captionMore.textContent = expanded ? "more" : "less";
           return;
         }
+        const captionText = event.target.closest("[data-reel-caption]");
+        if (captionText && !event.target.closest("button")) {
+          captionText.classList.toggle("is-clamped");
+          const more = captionText.querySelector("[data-reel-caption-more]");
+          if (more) more.textContent = captionText.classList.contains("is-clamped") ? "more" : "less";
+          return;
+        }
         const action = event.target.closest("[data-reel-action]");
         if (action) {
           if (action.dataset.reelAction === "more") openReelActions(action.dataset.reelId);
@@ -16733,6 +16945,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         const stage = event.target.closest("[data-reel-stage]");
         if (stage && !event.target.closest("button, [data-reel-progress]")) {
+          const muteControl = stage.querySelector("[data-reel-mute]");
+          if (muteControl) {
+            muteControl.classList.add("is-visible");
+            clearTimeout(muteControl._reelMuteTimer);
+            muteControl._reelMuteTimer = setTimeout(() => muteControl.classList.remove("is-visible"), 1400);
+          }
           toggleReelPlayback(stage.dataset.reelStage);
         }
       }
@@ -16891,7 +17109,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#reelFeed").addEventListener("click", handleReelFeedClick);
         $("#reelFeed").addEventListener("dblclick", handleReelFeedDoubleClick);
         $("#reelFeed").addEventListener("pointerup", handleReelFeedPointerUp);
-        $("#reelFeed").addEventListener("scroll", onReelFeedScroll, { passive: true });
+
         $("#reelCommentForm").addEventListener("submit", submitReelComment);
         $("#reelCommentMore").addEventListener("click", () => loadReelComments(true));
         $("#reelCommentList").addEventListener("click", (event) => {
