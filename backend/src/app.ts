@@ -2535,7 +2535,7 @@ api.patch("/messages/:messageId", authRequired, messageLimiter, asyncRoute(async
   let members: Array<{ userId: string }> = [];
   try {
     members = await prisma.conversationMember.findMany({
-      where: { conversationId: result.message.conversationId },
+      where: { conversationId: result.message.conversationId, deletedAt: null },
       select: { userId: true },
     });
   } catch (error) {
@@ -2569,7 +2569,7 @@ api.delete("/messages/:messageId", authRequired, messageLimiter, asyncRoute(asyn
         select: { actorId: true, createdAt: true },
       }),
       tx.conversationMember.findMany({
-        where: { conversationId: message.conversationId },
+        where: { conversationId: message.conversationId, deletedAt: null },
         select: { userId: true, lastReadAt: true },
       }),
     ]);
@@ -2682,7 +2682,7 @@ const updateMessageReaction = async (req: express.Request, res: express.Response
       })).count > 0;
     }
     const members = await tx.conversationMember.findMany({
-      where: { conversationId: message.conversationId, userId: { not: req.userId! } },
+      where: { conversationId: message.conversationId, userId: { not: req.userId! }, deletedAt: null },
       select: { userId: true, lastReadAt: true },
     });
     const now = new Date();
@@ -2774,7 +2774,7 @@ const updateMessageReaction = async (req: express.Request, res: express.Response
         select: { updatedAt: true },
       }),
       tx.conversationMember.findMany({
-        where: { conversationId: message.conversationId },
+        where: { conversationId: message.conversationId, deletedAt: null },
         select: { userId: true, unreadReactionCount: true },
       }),
       tx.user.findUniqueOrThrow({
