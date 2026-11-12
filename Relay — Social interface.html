@@ -11848,12 +11848,12 @@
               <header class="conversation-list-header">
                 <h2>Inbox</h2>
                 <button class="inbox-compose-button" id="desktopNewMessage" type="button" aria-label="New message" title="New message" aria-haspopup="dialog" aria-controls="newMessageDialog">
-                  <svg class="i message-bubble-plus" viewBox="0 0 24 24" aria-hidden="true"><defs><mask id="message-bubble-plus-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24"><rect width="24" height="24" fill="white"></rect><path d="M17.4 18.5Q18.1 17.7 18.9 16.9" fill="none" stroke="black" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"></path></mask></defs><use href="#msg" mask="url(#message-bubble-plus-mask)"></use><path class="message-bubble-plus-mark" d="M16.9 19h4.4M19.1 16.8v4.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                  <svg class="i message-bubble-plus" viewBox="0 0 24 24" aria-hidden="true"><use href="#msg" mask="url(#message-bubble-plus-mask)"></use><path class="message-bubble-plus-mark" d="M16.9 19h4.4M19.1 16.8v4.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
                 </button>
                 <div class="recipient-picker">
                   <button id="startConversation" type="button" aria-label="New message" title="New message" aria-haspopup="dialog" aria-controls="newMessageDialog" hidden>
                     <span class="conversation-new-icon" aria-hidden="true">
-                      <svg class="i message-bubble-plus" viewBox="0 0 24 24" aria-hidden="true"><defs><mask id="message-bubble-plus-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24"><rect width="24" height="24" fill="white"></rect><path d="M17.4 18.5Q18.1 17.7 18.9 16.9" fill="none" stroke="black" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"></path></mask></defs><use href="#msg" mask="url(#message-bubble-plus-mask)"></use><path class="message-bubble-plus-mark" d="M16.9 19h4.4M19.1 16.8v4.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                      <svg class="i message-bubble-plus" viewBox="0 0 24 24" aria-hidden="true"><use href="#msg" mask="url(#message-bubble-plus-mask)"></use><path class="message-bubble-plus-mark" d="M16.9 19h4.4M19.1 16.8v4.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
                     </span>
                   </button>
                 </div>
@@ -12292,7 +12292,7 @@
       </footer>
     </dialog>
     <button class="mobile-compose-fab" id="mobileNewMessageFab" type="button" aria-label="New message" title="New message" aria-haspopup="dialog" aria-controls="newMessageDialog">
-      <svg class="i message-bubble-plus" viewBox="0 0 24 24" aria-hidden="true"><defs><mask id="message-bubble-plus-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24"><rect width="24" height="24" fill="white"></rect><path d="M17.4 18.5Q18.1 17.7 18.9 16.9" fill="none" stroke="black" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"></path></mask></defs><use href="#msg" mask="url(#message-bubble-plus-mask)"></use><path class="message-bubble-plus-mark" d="M16.9 19h4.4M19.1 16.8v4.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      <svg class="i message-bubble-plus" viewBox="0 0 24 24" aria-hidden="true"><use href="#msg" mask="url(#message-bubble-plus-mask)"></use><path class="message-bubble-plus-mark" d="M16.9 19h4.4M19.1 16.8v4.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
     </button>
     <dialog class="cookie-settings-dialog new-message-dialog" id="newMessageDialog" role="dialog" aria-modal="true" aria-labelledby="newMessageTitle" tabindex="-1">
       <header class="cookie-settings-heading">
@@ -12847,7 +12847,7 @@
       const emptyState = (title, subtitle = "", compact = false, icon = "search") =>
         `<div class="empty-state${compact ? " empty-state-compact" : ""}" role="status">${ic(icon)}<strong>${esc(String(title))}</strong>${subtitle ? `<span>${esc(String(subtitle))}</span>` : ""}</div>`;
       const conversationSearchNewMarkup = () =>
-        `<button class="btn btn-line conversation-search-new post-live-in" type="button" data-new-conversation-search aria-haspopup="dialog" aria-controls="newMessageDialog"><span class="conversation-new-icon" aria-hidden="true"><svg class="i message-bubble-plus" viewBox="0 0 24 24" aria-hidden="true"><defs><mask id="message-bubble-plus-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24"><rect width="24" height="24" fill="white"></rect><path d="M17.4 18.5Q18.1 17.7 18.9 16.9" fill="none" stroke="black" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"></path></mask></defs><use href="#msg" mask="url(#message-bubble-plus-mask)"></use><path class="message-bubble-plus-mark" d="M16.9 19h4.4M19.1 16.8v4.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>New conversation</button>`;
+        `<button class="btn btn-line conversation-search-new post-live-in" type="button" data-new-conversation-search aria-haspopup="dialog" aria-controls="newMessageDialog"><span class="conversation-new-icon" aria-hidden="true"><svg class="i message-bubble-plus" viewBox="0 0 24 24" aria-hidden="true"><use href="#msg" mask="url(#message-bubble-plus-mask)"></use><path class="message-bubble-plus-mark" d="M16.9 19h4.4M19.1 16.8v4.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>New conversation</button>`;
       const conversationStartMarkup = () =>
         `<div class="conversation-start-empty"><span class="conversation-start-icon" aria-hidden="true">${ic("msg")}</span><h2>Start Conversation</h2><p>Choose from your existing conversations, or start a new one.</p><button class="conversation-start-action" id="emptyNewChat" type="button">New chat</button></div>`;
       const fmt = (n) =>
