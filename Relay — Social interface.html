@@ -32553,7 +32553,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             if (recovered?.status === "READY" && recovered.publishedAt && recovered.videoUrl) reel = recovered;
             else throw publishError;
           }
-          if (generation !== reelUploadGeneration) return;
+          if (generation !== reelUploadGeneration) {
+            removeOptimisticReel(session.id);
+            releaseOptimisticReelPreview(previewUrl);
+            return;
+          }
           if (!reel || reel.id !== session.id || reel.status !== "READY" || !reel.videoUrl || !reel.publishedAt) {
             throw new Error("The Reel could not be confirmed as published.");
           }
@@ -32571,7 +32575,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           reelCursor = null;
           reelFeedScrollTop = 0;
         } catch (error) {
-          if (generation !== reelUploadGeneration || (error.name === "AbortError" && reelUploadCancellation)) return;
+          if (generation !== reelUploadGeneration || (error.name === "AbortError" && reelUploadCancellation)) {
+            removeOptimisticReel(session.id);
+            releaseOptimisticReelPreview(previewUrl);
+            return;
+          }
           removeOptimisticReel(session.id);
           releaseOptimisticReelPreview(previewUrl);
           clearTimeout(reelPublishStatusTimer);
