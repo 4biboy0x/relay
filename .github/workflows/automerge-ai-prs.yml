@@ -5,6 +5,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
+  checks: read
   contents: write
   pull-requests: write
 
@@ -21,11 +22,39 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - name: Wait for all pull request checks and merge
+      - name: Wait for validation checks and merge
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          gh pr checks "$PR_URL" --watch --fail-fast
+
+          while true; do
+            checks="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${PR_HEAD_SHA}/check-runs?per_page=100" --jq '.check_runs')"
+
+            if jq -e '
+              ([.[] | select(.name != "automerge")] as $checks |
+                ($checks | length) > 0 and
+                any($checks[]; .name == "backend" and .status == "completed" and .conclusion == "success") and
+                any($checks[]; .name == "frontend" and .status == "completed" and .conclusion == "success") and
+                all($checks[]; .status == "completed" and
+                  (.conclusion == "success" or .conclusion == "neutral" or .conclusion == "skipped")))
+            ' <<<"$checks" >/dev/null; then
+              break
+            fi
+
+            if jq -e '
+              any(.[] | select(.name != "automerge");
+                .status == "completed" and
+                (.conclusion == "failure" or .conclusion == "cancelled" or
+                 .conclusion == "timed_out" or .conclusion == "action_required"))
+            ' <<<"$checks" >/dev/null; then
+              echo "A validation check failed; refusing to merge."
+              exit 1
+            fi
+
+            sleep 15
+          done
+
           gh pr merge "$PR_URL" --squash --delete-branch
