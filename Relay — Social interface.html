@@ -5972,6 +5972,120 @@
         border: 1px solid var(--border);
         border-radius: 10px;
       }
+      .conversation-row {
+        position: relative;
+        display: flex;
+        align-items: center;
+        min-width: 0;
+        margin: 2px 16px;
+        border-radius: 16px;
+      }
+      .conversation-row[hidden],
+      .conversation-actions [hidden] {
+        display: none !important;
+      }
+      .conversation-row > .conversation-item {
+        width: auto;
+        min-width: 0;
+        flex: 1;
+        margin: 0;
+        padding-inline-end: 2px;
+      }
+      .conversation-row > .conversation-item .grow {
+        padding-inline-end: 4px;
+      }
+      .conversation-actions {
+        position: relative;
+        z-index: 3;
+        flex: none;
+        margin-inline-end: 5px;
+      }
+      .conversation-more {
+        display: grid;
+        width: 32px;
+        height: 32px;
+        place-items: center;
+        border-radius: 8px;
+        color: var(--text-3);
+        opacity: .72;
+        transition: color 120ms ease, background 120ms ease, opacity 120ms ease;
+      }
+      .conversation-row:hover .conversation-more,
+      .conversation-more:focus-visible,
+      .conversation-more[aria-expanded="true"] {
+        color: var(--text);
+        background: var(--surface-2);
+        opacity: 1;
+      }
+      .conversation-more .i {
+        width: 18px;
+        height: 18px;
+      }
+      .conversation-menu {
+        position: absolute;
+        z-index: 20;
+        top: calc(100% + 4px);
+        inset-inline-end: 0;
+        display: flex;
+        width: min(208px, calc(100vw - 56px));
+        flex-direction: column;
+        gap: 2px;
+        padding: 5px;
+        border: 1px solid var(--border);
+        border-radius: 11px;
+        background: var(--surface);
+        box-shadow: 0 8px 28px rgba(9, 9, 11, .14);
+      }
+      .conversation-menu > button,
+      .conversation-mute-options > button {
+        display: flex;
+        min-height: 36px;
+        align-items: center;
+        width: 100%;
+        padding: 0 10px;
+        border-radius: 7px;
+        color: var(--text);
+        text-align: start;
+        font-size: 12.5px;
+      }
+      .conversation-menu > button:hover,
+      .conversation-mute-options > button:hover {
+        background: var(--surface-2);
+      }
+      .conversation-mute-options {
+        display: flex;
+        flex-direction: column;
+        padding: 5px 0 0 8px;
+        border-top: 1px solid var(--border);
+      }
+      .conversation-mute-options > span {
+        padding: 5px 10px 3px;
+        color: var(--text-3);
+        font-size: 11px;
+      }
+      .conversation-section-label {
+        flex: none;
+        padding: 12px 22px 5px;
+        color: var(--text-3);
+        font-size: 11px;
+        font-weight: 650;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+      }
+      .conversation-state-icon {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        color: var(--text-3);
+      }
+      .conversation-state-icon .i {
+        width: 13px;
+        height: 13px;
+        stroke-width: 1.8;
+      }
+      @media (hover: none) {
+        .conversation-more { opacity: 1; }
+      }
       .conversation-item {
         position: relative;
       }
@@ -11905,6 +12019,7 @@
         accessToken = "";
         if (currentUser?.id) setEmailVerificationNoticeShown(currentUser.id, false);
         currentUser = null;
+        inboxPreferences = { pinned: [], muted: {} };
         clearTimeout(emailVerificationNoticeShowTimer);
         emailVerificationNoticeShowTimer = null;
         removeEmailVerificationNoticeImmediately();
@@ -18180,7 +18295,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const viewing = !$("#v-notifs").hidden;
         if (!viewing) {
           setUnreadBadge(badge, getUnreadBadgeCount(badge) + 1, "notifications");
-          toast(`${item.actor.displayName} ${notificationActions[item.type]}`);
+          const conversationId = item.conversationId || item.data?.conversationId;
+          if (!(String(item.type || "").toUpperCase() === "MESSAGE" && isConversationMuted(conversationId))) {
+            toast(`${item.actor.displayName} ${notificationActions[item.type]}`);
+          }
           return;
         }
         $("#nl").insertAdjacentHTML("afterbegin", markup);
@@ -19870,7 +19988,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             api(`/conversations/${message.conversationId}/messages?limit=1`).catch((error) =>
               console.error("Could not update message read state", error));
           }
-        } else if (message.senderId !== currentUser?.id) {
+        } else if (message.senderId !== currentUser?.id && !isConversationMuted(message.conversationId)) {
           toast(`New message from ${message.sender.displayName}`);
         }
         refreshMessageBadge();
@@ -20540,6 +20658,113 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const target = targetLabels[targetType] || "a message";
         return `<span class="conversation-preview-text">${esc(prefix)} ${emoji} to ${target}</span>`;
       }
+      const inboxPreferencesKey = (userId) => `relay_inbox_preferences:${userId || "anonymous"}`;
+      function readInboxPreferences() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(inboxPreferencesKey(currentUser?.id)) || "{}");
+          const muted = saved.muted && typeof saved.muted === "object" ? saved.muted : {};
+          const now = Date.now();
+          Object.entries(muted).forEach(([conversationId, until]) => {
+            if (until !== null && (!Number.isFinite(until) || until <= now)) delete muted[conversationId];
+          });
+          return {
+            pinned: Array.isArray(saved.pinned) ? [...new Set(saved.pinned.filter((id) => typeof id === "string"))].slice(0, 3) : [],
+            muted,
+          };
+        } catch (error) {
+          console.warn("Could not read inbox preferences.", error);
+          return { pinned: [], muted: {} };
+        }
+      }
+      let inboxPreferences = readInboxPreferences();
+      function saveInboxPreferences() {
+        try {
+          localStorage.setItem(inboxPreferencesKey(currentUser?.id), JSON.stringify(inboxPreferences));
+        } catch (error) {
+          console.warn("Could not save inbox preferences.", error);
+          toast("Could not save conversation preferences on this device.");
+        }
+      }
+      function isConversationMuted(conversationId) {
+        if (!conversationId) return false;
+        const until = inboxPreferences.muted[conversationId];
+        if (until === undefined) return false;
+        if (until !== null && (!Number.isFinite(until) || until <= Date.now())) {
+          delete inboxPreferences.muted[conversationId];
+          saveInboxPreferences();
+          return false;
+        }
+        return true;
+      }
+      function closeInboxConversationMenus(except = null) {
+        document.querySelectorAll(".conversation-actions").forEach((container) => {
+          if (container === except) return;
+          const trigger = $("[data-inbox-menu-trigger]", container);
+          const menu = $("[data-inbox-menu]", container);
+          if (menu) menu.hidden = true;
+          trigger?.setAttribute("aria-expanded", "false");
+        });
+      }
+      function refreshInboxConversationRows() {
+        if (!conversationsLoaded || $("#conversationSearch").value.trim()) return;
+        renderConversationItems(conversations);
+        filterConversations();
+        writeViewCache("messages", $("#conversationList").innerHTML);
+      }
+      function handleInboxConversationAction(button) {
+        const conversationId = button.dataset.conversationId;
+        if (!conversationId) return;
+        const container = button.closest(".conversation-actions");
+        const menu = $("[data-inbox-menu]", container);
+        const action = button.dataset.inboxAction;
+        if (action === "toggle-menu") {
+          const shouldOpen = menu?.hidden;
+          closeInboxConversationMenus(container);
+          if (menu) menu.hidden = !shouldOpen;
+          $("[data-inbox-menu-trigger]", container)?.setAttribute("aria-expanded", String(Boolean(shouldOpen)));
+          return;
+        }
+        if (action === "toggle-mute-options") {
+          const options = $("[data-mute-options]", container);
+          if (options) options.hidden = !options.hidden;
+          return;
+        }
+        if (action === "pin" || action === "unpin") {
+          const pinned = inboxPreferences.pinned.includes(conversationId);
+          if (!pinned && inboxPreferences.pinned.length >= 3) {
+            toast("You can pin up to 3 conversations.");
+            return;
+          }
+          inboxPreferences.pinned = pinned
+            ? inboxPreferences.pinned.filter((id) => id !== conversationId)
+            : [...inboxPreferences.pinned, conversationId];
+          saveInboxPreferences();
+          closeInboxConversationMenus();
+          refreshInboxConversationRows();
+          return;
+        }
+        if (action === "mute") {
+          const duration = button.dataset.muteDuration;
+          inboxPreferences.muted[conversationId] = duration === "always"
+            ? null
+            : Date.now() + Number(duration);
+          saveInboxPreferences();
+          closeInboxConversationMenus();
+          refreshInboxConversationRows();
+          toast("Conversation muted");
+          return;
+        }
+        if (action === "unmute") {
+          delete inboxPreferences.muted[conversationId];
+          saveInboxPreferences();
+          closeInboxConversationMenus();
+          refreshInboxConversationRows();
+          toast("Conversation unmuted");
+        }
+      }
+      document.addEventListener("click", (event) => {
+        if (!event.target.closest(".conversation-actions")) closeInboxConversationMenus();
+      });
       function renderConversationItems(items, searchQuery = "", searchMode = "all", append = false) {
         const normalizedQuery = searchQuery.normalize("NFKC").toLowerCase();
         const queryTerms = normalizedConversationQuery(searchQuery);
@@ -20557,7 +20782,16 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
           return;
         }
-        const markup = items.map((item, index) => {
+        const renderItems = resultList.id === "conversationList" && !searchQuery
+          ? [...items].sort((first, second) => {
+              const firstPinned = inboxPreferences.pinned.includes(first.id);
+              const secondPinned = inboxPreferences.pinned.includes(second.id);
+              if (firstPinned !== secondPinned) return firstPinned ? -1 : 1;
+              if (firstPinned) return inboxPreferences.pinned.indexOf(first.id) - inboxPreferences.pinned.indexOf(second.id);
+              return new Date(second.updatedAt || 0).getTime() - new Date(first.updatedAt || 0).getTime();
+            })
+          : items;
+        const markup = renderItems.map((item, index) => {
           const other = item.members.find((member) => member.id !== currentUser?.id);
           const current = searchMode !== "messages" && (item.id === selectedConversationId
             || (!selectedConversationId && item.id === activeConversation?.id));
@@ -20597,38 +20831,45 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             ? (searchMode === "messages" ? item.matchedMessage?.id : matchingLastMessage ? lastMessage?.id : "")
             : "";
           const searchMessageCandidate = Boolean(searchQuery && searchMode === "conversations" && !searchMessageId);
-          return `<button class="conversation-item${searchQuery ? " is-search-result" : ""}${searchMode === "messages" ? " message-search-result" : ""}${unreadCount ? " has-unread" : ""}" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-mode="${esc(searchMode)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}"${searchQuery ? ` aria-selected="${current}"` : ""}>${presenceAvatarMarkup(other, "sm")}<span class="grow"><span class="conversation-item-heading"><b>${esc(other?.displayName || "Relay user")}</b>${messageTime}</span><small>${preview}</small></span></button>`;
+          const isInboxList = resultList.id === "conversationList";
+          const pinned = isInboxList && !searchQuery && inboxPreferences.pinned.includes(item.id);
+          const muted = isInboxList && isConversationMuted(item.id);
+          const previousPinned = index > 0 && inboxPreferences.pinned.includes(renderItems[index - 1].id);
+          const sectionLabel = isInboxList && !searchQuery
+            ? index === 0 ? (pinned ? "Pinned" : "All conversations")
+              : pinned !== previousPinned ? "All conversations" : ""
+            : "";
+          const row = `<div class="conversation-row" data-conversation-row="${esc(item.id)}">
+            <button class="conversation-item${searchQuery ? " is-search-result" : ""}${searchMode === "messages" ? " message-search-result" : ""}${unreadCount ? " has-unread" : ""}" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-mode="${esc(searchMode)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}"${searchQuery ? ` aria-selected="${current}"` : ""}>
+              ${presenceAvatarMarkup(other, "sm")}
+              <span class="grow">
+                <span class="conversation-item-heading"><b>${esc(other?.displayName || "Relay user")}</b>${pinned ? '<span class="conversation-state-icon" title="Pinned" aria-label="Pinned"><svg class="i" viewBox="0 0 24 24"><path d="m16 3 5 5-4 1-4 4v5l-2 2-2-7-6-6 2-2 6 6h5l4-4z"/></svg></span>' : ""}${muted ? '<span class="conversation-state-icon" title="Muted" aria-label="Muted"><svg class="i" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4M4 4l16 16"/></svg></span>' : ""}${messageTime}</span>
+                <small>${preview}</small>
+              </span>
+            </button>
+            ${isInboxList && !searchQuery ? `<div class="conversation-actions">
+              <button class="conversation-more" type="button" data-inbox-action="toggle-menu" data-conversation-id="${esc(item.id)}" data-inbox-menu-trigger aria-label="Conversation options" aria-haspopup="menu" aria-expanded="false">
+                <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
+              </button>
+              <div class="conversation-menu" data-inbox-menu role="menu" hidden>
+                <button type="button" role="menuitem" data-inbox-action="${pinned ? "unpin" : "pin"}" data-conversation-id="${esc(item.id)}">${pinned ? "Unpin conversation" : "Pin conversation"}</button>
+                ${muted ? '<button type="button" role="menuitem" data-inbox-action="unmute" data-conversation-id="' + esc(item.id) + '">Unmute</button>' : `<button type="button" role="menuitem" data-inbox-action="toggle-mute-options" data-conversation-id="${esc(item.id)}">Mute</button>
+                <div class="conversation-mute-options" data-mute-options hidden>
+                  <span>Mute for</span>
+                  <button type="button" role="menuitem" data-inbox-action="mute" data-mute-duration="3600000" data-conversation-id="${esc(item.id)}">1 hour</button>
+                  <button type="button" role="menuitem" data-inbox-action="mute" data-mute-duration="28800000" data-conversation-id="${esc(item.id)}">8 hours</button>
+                  <button type="button" role="menuitem" data-inbox-action="mute" data-mute-duration="604800000" data-conversation-id="${esc(item.id)}">1 week</button>
+                  <button type="button" role="menuitem" data-inbox-action="mute" data-mute-duration="always" data-conversation-id="${esc(item.id)}">Always</button>
+                </div>`}
+              </div>
+            </div>` : ""}
+          </div>`;
+          return sectionLabel ? `<div class="conversation-section-label">${sectionLabel}</div>${row}` : row;
         }).join("");
         if (append) resultList.insertAdjacentHTML("beforeend", markup);
         else if (resultList.id !== "conversationList") resultList.innerHTML = markup;
         else {
-          const template = document.createElement("template");
-          template.innerHTML = markup;
-          const existingRows = new Map(
-            $$(":scope > .conversation-item", resultList).map((row) => [row.dataset.conversation, row]),
-          );
-          const renderedRows = [...template.content.children].map((freshRow) => {
-            const existingRow = existingRows.get(freshRow.dataset.conversation);
-            if (!existingRow) return freshRow;
-            existingRows.delete(freshRow.dataset.conversation);
-
-            const currentAvatar = existingRow.querySelector(":scope > [data-presence-avatar]");
-            const freshAvatar = freshRow.querySelector(":scope > [data-presence-avatar]");
-            const presenceAvatar = currentAvatar?.dataset.presenceUser === freshAvatar?.dataset.presenceUser
-              ? currentAvatar
-              : freshAvatar;
-            for (const attribute of [...existingRow.attributes]) {
-              if (!freshRow.hasAttribute(attribute.name)) existingRow.removeAttribute(attribute.name);
-            }
-            for (const attribute of [...freshRow.attributes]) {
-              existingRow.setAttribute(attribute.name, attribute.value);
-            }
-            const freshChildren = [...freshRow.childNodes].filter((node) => node !== freshAvatar);
-            existingRow.replaceChildren(...(presenceAvatar ? [presenceAvatar] : []), ...freshChildren);
-            return existingRow;
-          });
-          existingRows.forEach((row) => row.remove());
-          resultList.replaceChildren(...renderedRows);
+          resultList.innerHTML = markup;
           resultList.dataset.loaded = "true";
         }
         const rows = Array.from(resultList.querySelectorAll(".conversation-item"));
@@ -20806,17 +21047,18 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
           return;
         }
-        const items = $$(".conversation-item", $("#conversationList"));
+        const items = $(".conversation-row", $("#conversationList"));
         if (!items.length) {
           renderConversationItems([], terms.join(" "));
           empty.hidden = true;
           return;
         }
-        items.forEach((item) => {
-          item.hidden = !terms.every((term) => item.dataset.search.includes(term));
+        items.forEach((row) => {
+          const item = $(".conversation-item", row);
+          row.hidden = !terms.every((term) => (item?.dataset.search || "").includes(term));
         });
         empty.innerHTML = emptyState("No matching conversations.", "Try a different search or filter.", true);
-        const hasMatches = items.some((item) => !item.hidden);
+        const hasMatches = items.some((row) => !row.hidden);
         conversationList.hidden = !!terms.length && !hasMatches;
         empty.hidden = !terms.length || hasMatches;
       }
@@ -20944,6 +21186,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             const result = await api("/conversations");
             await finishSkeleton();
             conversations = result.items;
+            const availableConversationIds = new Set(conversations.map((item) => item.id));
+            inboxPreferences.pinned = inboxPreferences.pinned.filter((id) => availableConversationIds.has(id)).slice(0, 3);
+            Object.keys(inboxPreferences.muted).forEach((id) => { if (!availableConversationIds.has(id)) delete inboxPreferences.muted[id]; });
+            saveInboxPreferences();
             conversationsLoaded = true;
             renderConversationItems(conversations);
             writeViewCache("messages", $("#conversationList").innerHTML);
@@ -21863,6 +22109,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
           setAccessToken(result.accessToken);
           currentUser = result.user;
+          inboxPreferences = readInboxPreferences();
           recordEmailVerificationSuccess();
           authDialog.close();
           hideOtpScreen();
@@ -22628,6 +22875,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         try {
           currentUser = await api("/users/me");
+          inboxPreferences = readInboxPreferences();
           updateAccountUI();
           await Promise.all([renderFeed(), renderSide()]);
           connectRealtime();
@@ -22943,6 +23191,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       window.addEventListener("hashchange", routeFromHash);
       $("#messagesLayout").addEventListener("click", async (event) => {
+        const actionButton = event.target.closest("[data-inbox-action]");
+        if (actionButton) {
+          event.preventDefault();
+          event.stopPropagation();
+          handleInboxConversationAction(actionButton);
+          return;
+        }
         const conversationButton = event.target.closest("[data-conversation]");
         if (!conversationButton) return;
         event.stopPropagation();
@@ -24243,6 +24498,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             }
             setAccessToken(result.accessToken);
             currentUser = result.user;
+            inboxPreferences = readInboxPreferences();
             authDialog.close();
             updateAccountUI();
             await Promise.all([renderFeed(), renderSide()]);
