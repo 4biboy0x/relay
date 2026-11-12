@@ -329,7 +329,7 @@ export const processReelJob = async (jobId: string, reelId: string): Promise<Ree
             height: outputProbe.height,
             sizeBytes: BigInt(outputStats.size),
             mime: "video/mp4",
-            publishedAt: new Date(),
+            publishedAt: null,
             processingError: null,
           },
         });

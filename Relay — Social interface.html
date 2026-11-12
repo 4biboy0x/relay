@@ -9644,6 +9644,15 @@
         box-shadow: 0 24px 80px rgba(9,9,11,.24);
       }
       .reel-create-dialog { width: min(100% - 32px, 640px); max-width: 640px; }
+      .reel-upload-confirm-dialog { width: min(100% - 32px, 380px); padding: 22px; border: 1px solid var(--border); border-radius: 18px; background: var(--bg); color: var(--text); box-shadow: 0 24px 80px rgba(9,9,11,.3); }
+      .reel-upload-confirm-dialog::backdrop { background: rgba(9,9,11,.58); backdrop-filter: blur(4px); }
+      .reel-upload-confirm-content { display: grid; gap: 10px; }
+      .reel-upload-confirm-content h2 { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -.02em; }
+      .reel-upload-confirm-content p { margin: 0; color: var(--text-2); font-size: 13px; line-height: 1.5; }
+      .reel-upload-confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+      .reel-upload-confirm-actions .btn { min-height: 40px; }
+      #reelUploadDiscard { border-color: #dc2626; background: #dc2626; color: #fff; }
+      #reelUploadDiscard:hover { background: #b91c1c; }
       .reel-create-dialog::backdrop,
       .reel-comments-dialog::backdrop,
       .reel-actions-dialog::backdrop,
@@ -9815,7 +9824,8 @@
       .reel-upload-status[data-state="processing"] .reel-upload-status-icon { border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: reel-spinner .8s linear infinite; }
       .reel-upload-status-text { min-width: 0; overflow-wrap: normal; }
       .reel-upload-status-retry { align-self: start; flex-shrink: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-weight: 600; line-height: 1.4; text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; cursor: pointer; }
-      .reel-upload-progress { width: 100%; height: 2px; margin-top: 8px; overflow: hidden; border-radius: 99px; background: var(--border); opacity: 1; transition: opacity 150ms ease; }
+      .reel-upload-progress { width: 100%; height: 4px; margin-top: 8px; overflow: hidden; border-radius: 99px; background: var(--border); opacity: 1; transition: opacity 150ms ease; }
+      .reel-upload-status[data-state="ready"] .reel-upload-status-text { padding: 4px 9px; border: 1px solid color-mix(in srgb, var(--ok) 24%, transparent); border-radius: 999px; background: color-mix(in srgb, var(--ok) 9%, transparent); color: var(--ok); font-size: 12px; font-weight: 650; }
       .reel-upload-progress[hidden] { display: none; }
       .reel-upload-progress.is-fading { opacity: 0; }
       .reel-upload-progress > span { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--accent); transition: width 120ms linear; }
@@ -12590,9 +12600,19 @@
         </div>
         <div class="reel-dialog-actions">
           <button class="btn" id="reelCancelUpload" type="button" data-reel-dialog-close>Cancel</button>
-          <button class="btn btn-primary" id="reelSubmitUpload" type="submit" disabled>Upload Reel</button>
+          <button class="btn btn-primary" id="reelSubmitUpload" type="submit" disabled>Publish</button>
         </div>
       </form>
+    </dialog>
+    <dialog class="reel-upload-confirm-dialog" id="reelUploadDiscardDialog" aria-labelledby="reelUploadDiscardTitle">
+      <div class="reel-upload-confirm-content">
+        <h2 id="reelUploadDiscardTitle">Cancel Reel upload?</h2>
+        <p>If you leave now, your uploaded video and progress will be discarded.</p>
+        <div class="reel-upload-confirm-actions">
+          <button class="btn" id="reelUploadContinue" type="button">Continue Upload</button>
+          <button class="btn" id="reelUploadDiscard" type="button">Discard Upload</button>
+        </div>
+      </div>
     </dialog>
     <dialog class="reel-comments-dialog" id="reelCommentsDialog" aria-labelledby="reelCommentsTitle">
       <div class="reel-comments-drag-handle" aria-hidden="true"></div>
@@ -13309,6 +13329,7 @@
       let reelUploadPromise = null;
       let reelUploadGeneration = 0;
       let reelUploadCommitted = false;
+      let reelUploadProcessed = false;
       let reelUploadFile = null;
       let reelUploadMetadataReady = false;
       let reelUploadBusy = false;
@@ -17813,7 +17834,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function updateReelUploadButton() {
         $("#reelSubmitUpload").disabled = reelUploadBusy || reelUploadCommitted || !reelUploadFile
-          || !reelUploadMetadataReady || $("#reelCaption").value.length > 280;
+          || !reelUploadMetadataReady || !reelUploadPreuploaded || $("#reelCaption").value.length > 280;
       }
       function selectReelFile(file) {
         if (!file) return;
@@ -17880,6 +17901,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         reelUploadPromise = null;
         reelUploadCreatedId = "";
         reelUploadCommitted = false;
+        reelUploadProcessed = false;
         reelUploadBusy = false;
         reelUploadPreuploaded = false;
         reelUploadCancellation = false;
@@ -17989,6 +18011,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           reelUploadPromise = null;
           reelUploadCreatedId = "";
           reelUploadCommitted = false;
+          reelUploadProcessed = false;
           if (reelUploadPreviewUrl) URL.revokeObjectURL(reelUploadPreviewUrl);
           reelUploadPreviewUrl = "";
           $("#reelUploadPreview").removeAttribute("src");
@@ -18010,9 +18033,20 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function closeReelCreateDialog({ cancelUpload = true } = {}) {
         closeReelDeleteConfirmation();
-        if (cancelUpload && (reelUploadBusy || reelUploadRequest || reelUploadPromise
-          || (reelUploadCreatedId && !reelUploadCommitted))) cancelReelUpload();
+        const hasUnpublishedDraft = !reelUploadCommitted
+          && (reelUploadFile || reelUploadBusy || reelUploadRequest || reelUploadPromise || reelUploadCreatedId);
+        if (cancelUpload && hasUnpublishedDraft) {
+          const warning = $("#reelUploadDiscardDialog");
+          if (!warning.open) warning.showModal();
+          return;
+        }
         if ($("#reelCreateDialog").open) $("#reelCreateDialog").close();
+      }
+      function discardReelUploadAndClose() {
+        cancelReelUpload();
+        const warning = $("#reelUploadDiscardDialog");
+        if (warning.open) warning.close();
+        closeReelCreateDialog({ cancelUpload: false });
       }
       function uploadRequest(url, method, body, headers = {}, authenticated = false, generation = reelUploadGeneration) {
         return new Promise((resolve, reject) => {
@@ -18091,7 +18125,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const existing = reelStatusPollers.get(reelId);
         if (existing) return existing.promise;
         if (session.settled || session.paused || document.hidden || reelUploadCancellation) return session.promise;
-        reelUploadCommitted = true;
         setReelUploadStatus("Processing…", "processing");
         setReelUploadProgress(0, "processing");
         const poller = {
@@ -18279,7 +18312,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             if (status?.timedOut) setReelUploadStatus("Processing is taking longer than expected.", "error");
             return;
           }
-          await finishReelUpload(reelId);
+          reelUploadProcessed = true;
+          setReelUploadProgress(100);
+          setReelUploadStatus("Ready to publish", "ready");
         } catch (error) {
           setReelUploadStatus(error.message || "Could not check Reel processing status.", "error");
         } finally {
@@ -18322,8 +18357,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           throw new DOMException("Upload canceled", "AbortError");
         }
         reelUploadPreuploaded = true;
-        setReelUploadStatus("Ready to share", "ready");
-        hideReelUploadProgress();
+        setReelUploadProgress(100);
+        setReelUploadStatus("Ready to publish", "ready");
         updateReelUploadButton();
         return session;
       }
@@ -18352,6 +18387,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         reelUploadPromise = null;
         reelUploadCreatedId = "";
         reelUploadCommitted = false;
+        reelUploadProcessed = false;
         reelUploadPreuploaded = false;
         if (previousReelId) {
           cancelReelUploadDraft(previousReelId)
@@ -18379,21 +18415,28 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             await cancelReelUploadDraft(session.id);
             return;
           }
-          setReelUploadStatus("Processing…", "processing");
-          setReelUploadProgress(0, "processing");
-          await api(`/reels/${encodeURIComponent(session.id)}/complete`, {
-            method: "POST",
-            body: JSON.stringify({ caption: $("#reelCaption").value.trim() || null }),
-          });
+          if (!reelUploadProcessed) {
+            setReelUploadStatus("Preparing video…", "processing");
+            setReelUploadProgress(0, "processing");
+            await api(`/reels/${encodeURIComponent(session.id)}/complete`, {
+              method: "POST",
+              body: JSON.stringify({ caption: $("#reelCaption").value.trim() || null }),
+            });
+            if (generation !== reelUploadGeneration) return;
+            const ready = await waitForReelProcessing(session.id);
+            if (generation !== reelUploadGeneration) return;
+            if (!ready || reelUploadCancellation) return;
+            if (ready.timedOut) {
+              setReelUploadStatus("Processing is taking longer than expected.", "error");
+              return;
+            }
+            reelUploadProcessed = true;
+          }
+          if (generation !== reelUploadGeneration || reelUploadCancellation) return;
+          setReelUploadStatus("Publishing Reel…", "processing");
+          await api(`/reels/${encodeURIComponent(session.id)}/publish`, { method: "POST" });
           if (generation !== reelUploadGeneration) return;
           reelUploadCommitted = true;
-          const ready = await waitForReelProcessing(session.id);
-          if (generation !== reelUploadGeneration) return;
-          if (!ready || reelUploadCancellation) return;
-          if (ready.timedOut) {
-            setReelUploadStatus("Processing is taking longer than expected.", "error");
-            return;
-          }
           await finishReelUpload(session.id);
         } catch (error) {
           if (generation !== reelUploadGeneration || (error.name === "AbortError" && reelUploadCancellation)) return;
@@ -18705,10 +18748,16 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           dropzone.classList.remove("is-dragging");
         }));
         dropzone.addEventListener("drop", (event) => selectReelFile(event.dataTransfer?.files?.[0]));
-        $("#reelCreateDialog").addEventListener("cancel", () => {
-          if (reelUploadBusy || reelUploadRequest || reelUploadPromise
-            || (reelUploadCreatedId && !reelUploadCommitted)) cancelReelUpload();
+        $("#reelCreateDialog").addEventListener("cancel", (event) => {
+          event.preventDefault();
+          closeReelCreateDialog();
         });
+        $("#reelUploadContinue").addEventListener("click", () => {
+          const warning = $("#reelUploadDiscardDialog");
+          if (warning.open) warning.close();
+        });
+        $("#reelUploadDiscard").addEventListener("click", discardReelUploadAndClose);
+        $("#reelUploadDiscardDialog").addEventListener("cancel", (event) => event.preventDefault());
         $("#reelCreateDialog").addEventListener("close", () => {
           reelFeedIgnorePointersUntil = performance.now() + 300;
           closeReelDeleteConfirmation();
