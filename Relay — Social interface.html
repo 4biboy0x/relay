@@ -10175,7 +10175,8 @@
         .app.reels-active .reel-video { will-change: auto; }
         .app.reels-active .reel-action.is-like-pop .reel-action-icon > svg { animation: none !important; }
       }
-      .app.reels-active .reel-actions { gap: 16px !important; }
+      /* Keep the compact Reels action spacing as the final cascade rule. */
+      .app.reels-active .reel-actions { gap: 6px !important; }
 </style>
   </head>
   <body>
