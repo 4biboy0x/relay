@@ -9840,6 +9840,52 @@
       }
       .reel-comment.is-reply .reel-comment-avatar-link { width: 28px; height: 28px; }
       .reel-comment-copy { min-width: 0; overflow-wrap: anywhere; }
+      .reel-comment-actions { flex-wrap: wrap; }
+      .reel-comment-manage {
+        flex: 0 0 auto;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: var(--text-3);
+        font: inherit;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.4;
+        cursor: pointer;
+      }
+      .reel-comment-manage:hover { color: var(--text); }
+      .reel-comment-manage.is-danger { color: var(--like); }
+      .reel-comment-editor { display: grid; gap: 7px; margin-top: 7px; }
+      .reel-comment-editor textarea {
+        width: 100%;
+        min-height: 66px;
+        resize: vertical;
+        padding: 9px 10px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        outline: none;
+        background: var(--bg);
+        color: var(--text);
+        font: inherit;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .reel-comment-editor textarea:focus { border-color: var(--accent); }
+      .reel-comment-editor-actions { display: flex; justify-content: flex-end; gap: 8px; }
+      .reel-comment-editor-actions button {
+        min-height: 28px;
+        padding: 4px 10px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: transparent;
+        color: var(--text-2);
+        font: inherit;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .reel-comment-editor-actions button[type="submit"] { border-color: var(--accent); background: var(--accent); color: white; }
+      .reel-comment-editor-actions button:disabled { cursor: wait; opacity: .6; }
       .reel-comment-copy strong { font-size: 12px; }
       .reel-comment-copy p { margin: 4px 0 0; color: var(--text-2); font-size: 13px; line-height: 1.45; white-space: pre-wrap; }
       .reel-comment-copy .profile-link { padding: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
@@ -13144,6 +13190,8 @@
       let reelCommentsGeneration = 0;
       const reelCommentReplyStates = new Map();
       const reelCommentLikeRequests = new WeakSet();
+      const reelCommentEditRequests = new WeakSet();
+      const reelCommentDeleteRequests = new WeakSet();
       let reelStatsGeneration = 0;
       let reelCommentReplyToId = "";
       let reelActionsId = "";
@@ -13653,6 +13701,7 @@
           socket.on("reel:interaction", receiveReelInteraction);
           socket.on("reel:comment:new", receiveLiveReelComment);
           socket.on("reel:comment:like", receiveLiveReelCommentLike);
+          socket.on("reel:comment:updated", receiveLiveReelCommentUpdate);
           socket.on("reel:comment:deleted", receiveDeletedReelComments);
           socket.on("user:suggestion:new", receiveLiveSuggestion);
           socket.on("user:followed", receiveViewerFollowed);
@@ -16742,6 +16791,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const pressed = button.getAttribute("aria-pressed") === "true";
         button.setAttribute("aria-label", `${pressed ? "Unlike" : "Like"} comment · ${count} ${count === 1 ? "like" : "likes"}`);
       }
+      function receiveLiveReelCommentUpdate(event) {
+        if (!event?.reelId || !event.commentId || typeof event.body !== "string") return;
+        if (reelCommentsReelId !== event.reelId) return;
+        const comment = $(`[data-reel-comment="${CSS.escape(event.commentId)}"]`, $("#reelCommentList"));
+        if (!comment || comment.classList.contains("is-editing")) return;
+        const body = comment.querySelector(".reel-comment-copy > p");
+        if (body) body.textContent = event.body;
+      }
       function receiveLiveReelCommentLike(event) {
         if (!event?.reelId || !event.commentId || !Number.isFinite(event.likeCount)) return;
         if (reelCommentsReelId !== event.reelId) return;
@@ -16921,6 +16978,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const replyCount = reelCommentReplyCount(comment);
         const likeCount = Math.max(0, Number(comment.likeCount) || 0);
         const likedByMe = Boolean(comment.likedByMe);
+        const reel = reelItems.find((item) => item.id === reelCommentsReelId);
+        const isAuthor = Boolean(currentUser?.id && currentUser.id === author.id);
+        const canDelete = isAuthor || Boolean(currentUser?.id && currentUser.id === reel?.author?.id);
         return `<div class="reel-comment${depth ? " is-reply" : ""}${live ? " is-live" : ""}" data-reel-comment="${esc(comment.id)}" data-reply-count="${replyCount}" data-depth="${Math.min(depth, 4)}">
           <button type="button" class="reel-comment-avatar-link" data-profile-id="${esc(author.id || "")}" aria-label="View ${esc(author.displayName || author.handle || "commenter")}'s profile">${avatarMarkup(author, "sm")}</button>
           <div class="reel-comment-copy">
@@ -16929,6 +16989,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             <div class="reel-comment-actions">
               <button type="button" class="reel-comment-reply" data-reel-reply="${esc(comment.id)}" data-reel-reply-handle="${esc(author.handle || "")}">Reply</button>
               <button type="button" class="reel-comment-replies-toggle" data-reel-replies-toggle="${esc(comment.id)}" aria-controls="reel-replies-${esc(comment.id)}" aria-expanded="false"${replyCount ? "" : " hidden"}>View replies (${replyCount})</button>
+              ${isAuthor ? `<button type="button" class="reel-comment-manage" data-reel-comment-edit="${esc(comment.id)}">Edit</button>` : ""}
+              ${canDelete ? `<button type="button" class="reel-comment-manage is-danger" data-reel-comment-delete="${esc(comment.id)}">Delete</button>` : ""}
             </div>
             <div class="reel-comment-replies" id="reel-replies-${esc(comment.id)}" data-reel-replies="${esc(comment.id)}" data-depth="${Math.min(depth + 1, 4)}" hidden><div class="reel-comment-replies-inner"></div></div>
           </div>
@@ -17147,6 +17209,86 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         reelCommentReplyToId = "";
         $("#reelReplyTarget").hidden = true;
         $("#reelCommentInput").placeholder = "Add a comment…";
+      }
+      function finishReelCommentEdit(comment, body) {
+        const copy = $(".reel-comment-copy", comment);
+        const editor = $(".reel-comment-editor", copy);
+        if (!copy || !editor) return;
+        const paragraph = document.createElement("p");
+        paragraph.textContent = body;
+        editor.replaceWith(paragraph);
+        comment.classList.remove("is-editing");
+      }
+      function startReelCommentEdit(button) {
+        const comment = button.closest("[data-reel-comment]");
+        const paragraph = comment?.querySelector(".reel-comment-copy > p");
+        if (!comment || !paragraph || comment.classList.contains("is-editing")) return;
+        const editor = document.createElement("form");
+        editor.className = "reel-comment-editor";
+        const textarea = document.createElement("textarea");
+        textarea.maxLength = 280;
+        textarea.required = true;
+        textarea.dir = "auto";
+        textarea.value = paragraph.textContent || "";
+        textarea.setAttribute("aria-label", "Edit comment");
+        const actions = document.createElement("div");
+        actions.className = "reel-comment-editor-actions";
+        actions.innerHTML = '<button type="button" data-reel-comment-cancel>Cancel</button><button type="submit" data-reel-comment-save>Save</button>';
+        editor.append(textarea, actions);
+        paragraph.replaceWith(editor);
+        comment.classList.add("is-editing");
+        focusInput(textarea, { isTypingMainScreen: true, preventScroll: true });
+      }
+      async function saveReelCommentEdit(form) {
+        const comment = form.closest("[data-reel-comment]");
+        const textarea = form.querySelector("textarea");
+        const submit = form.querySelector('[data-reel-comment-save]');
+        const body = textarea?.value.trim() || "";
+        if (!comment || !textarea || !submit || !body) return;
+        if (reelCommentEditRequests.has(comment)) return;
+        reelCommentEditRequests.add(comment);
+        textarea.disabled = true;
+        submit.disabled = true;
+        try {
+          const updated = await api(`/reels/${encodeURIComponent(reelCommentsReelId)}/comments/${encodeURIComponent(comment.dataset.reelComment)}`, {
+            method: "PATCH",
+            body: JSON.stringify({ body }),
+          });
+          finishReelCommentEdit(comment, updated.body);
+          toast("Comment updated");
+        } catch (error) {
+          toast(error.message || "Could not update comment.");
+          textarea.disabled = false;
+          submit.disabled = false;
+          textarea.focus({ preventScroll: true });
+        } finally {
+          reelCommentEditRequests.delete(comment);
+        }
+      }
+      async function deleteReelComment(button) {
+        const comment = button.closest("[data-reel-comment]");
+        if (!comment || reelCommentDeleteRequests.has(comment)) return;
+        const confirmed = await confirmDialog({
+          title: "Delete comment?",
+          message: "This comment and its replies will be permanently deleted.",
+          confirmLabel: "Delete",
+          danger: true,
+        });
+        if (!confirmed) return;
+        reelCommentDeleteRequests.add(comment);
+        button.disabled = true;
+        try {
+          const result = await api(`/reels/${encodeURIComponent(reelCommentsReelId)}/comments/${encodeURIComponent(comment.dataset.reelComment)}`, {
+            method: "DELETE",
+          });
+          receiveDeletedReelComments(result);
+          toast("Comment deleted");
+        } catch (error) {
+          toast(error.message || "Could not delete comment.");
+          button.disabled = false;
+        } finally {
+          reelCommentDeleteRequests.delete(comment);
+        }
       }
       async function submitReelComment(event) {
         event.preventDefault();
@@ -18437,6 +18579,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
 
         $("#reelCommentForm").addEventListener("submit", submitReelComment);
         $("#reelCommentMore").addEventListener("click", () => loadReelComments(true));
+        $("#reelCommentList").addEventListener("submit", (event) => {
+          const form = event.target.closest(".reel-comment-editor");
+          if (!form) return;
+          event.preventDefault();
+          void saveReelCommentEdit(form);
+        });
         $("#reelCommentList").addEventListener("click", (event) => {
           // Close the comments sheet before the shared profile navigation handler runs.
           if (event.target.closest("[data-profile-id]")) {
@@ -18445,6 +18593,26 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             return;
           }
           if (event.target.closest("[data-reel-comments-retry]")) loadReelComments();
+          const edit = event.target.closest("[data-reel-comment-edit]");
+          if (edit) {
+            startReelCommentEdit(edit);
+            return;
+          }
+          const remove = event.target.closest("[data-reel-comment-delete]");
+          if (remove) {
+            void deleteReelComment(remove);
+            return;
+          }
+          const cancelEdit = event.target.closest("[data-reel-comment-cancel]");
+          if (cancelEdit) {
+            const comment = cancelEdit.closest("[data-reel-comment]");
+            const editor = cancelEdit.closest(".reel-comment-editor");
+            const originalBody = editor?.querySelector("textarea")?.defaultValue ?? "";
+            if (comment) finishReelCommentEdit(comment, originalBody);
+            return;
+          }
+          const editForm = event.target.closest(".reel-comment-editor");
+          if (editForm && event.target.closest("[data-reel-comment-save]")) return;
           const like = event.target.closest("[data-reel-comment-like]");
           if (like) {
             void toggleReelCommentLike(like);
