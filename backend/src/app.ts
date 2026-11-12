@@ -2265,12 +2265,8 @@ api.patch("/conversations/:conversationId/preferences", authRequired, asyncRoute
     const existing = await tx.conversationPreference.findUnique({ where: memberKey });
     const data: { pinned?: boolean; pinnedAt?: Date | null; muted?: boolean; mutedUntil?: Date | null } = {};
     if (input.pinned !== undefined) {
-      if (input.pinned && !existing?.pinned) {
-        const pinnedCount = await tx.conversationPreference.count({
-          where: { userId: req.userId!, pinned: true, conversationId: { not: conversationId } },
-        });
-        if (pinnedCount >= 3) throw new HttpError(409, "You can pin up to 3 conversations.");
-      }
+      // Pins are unlimited. The inbox gives pinned conversations priority,
+      // while their relative order follows each conversation's latest activity.
       data.pinned = input.pinned;
       data.pinnedAt = input.pinned ? new Date() : null;
     }
