@@ -10325,7 +10325,7 @@
               <header class="conversation-list-header">
                 <h2>Inbox</h2>
                 <div class="recipient-picker">
-                  <button id="startConversation" type="button" aria-label="New message" title="New message" aria-haspopup="dialog" aria-controls="newMessageDialog">
+                  <button id="startConversation" type="button" aria-label="New message" title="New message" aria-haspopup="dialog" aria-controls="newMessageDialog" hidden>
                     <span class="conversation-new-icon" aria-hidden="true">
                       <svg class="i"><use href="#msg"></use></svg>
                       <span class="conversation-new-plus"><svg class="i"><use href="#plus"></use></svg></span>
@@ -21159,6 +21159,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             const result = await api("/conversations");
             await finishSkeleton();
             conversations = result.items;
+            // Only offer starting a conversation after the inbox has loaded and is confirmed empty.
+            $("#startConversation").hidden = conversations.length > 0;
             inboxPreferences.pinned = conversations.filter((item) => item.pinned).sort((a, b) =>
         new Date(a.pinnedAt || 0).getTime() - new Date(b.pinnedAt || 0).getTime()
       ).map((item) => item.id).slice(0, 3);
