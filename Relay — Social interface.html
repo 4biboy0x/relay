@@ -17241,6 +17241,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         focusInput(textarea, { isTypingMainScreen: true, preventScroll: true });
       }
       async function saveReelCommentEdit(form) {
+        const reelId = reelCommentsReelId;
         const comment = form.closest("[data-reel-comment]");
         const textarea = form.querySelector("textarea");
         const submit = form.querySelector('[data-reel-comment-save]');
@@ -17251,7 +17252,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         textarea.disabled = true;
         submit.disabled = true;
         try {
-          const updated = await api(`/reels/${encodeURIComponent(reelCommentsReelId)}/comments/${encodeURIComponent(comment.dataset.reelComment)}`, {
+          const updated = await api(`/reels/${encodeURIComponent(reelId)}/comments/${encodeURIComponent(comment.dataset.reelComment)}`, {
             method: "PATCH",
             body: JSON.stringify({ body }),
           });
@@ -17267,6 +17268,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
       }
       async function deleteReelComment(button) {
+        const reelId = reelCommentsReelId;
         const comment = button.closest("[data-reel-comment]");
         if (!comment || reelCommentDeleteRequests.has(comment)) return;
         const confirmed = await confirmDialog({
@@ -17279,7 +17281,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         reelCommentDeleteRequests.add(comment);
         button.disabled = true;
         try {
-          const result = await api(`/reels/${encodeURIComponent(reelCommentsReelId)}/comments/${encodeURIComponent(comment.dataset.reelComment)}`, {
+          const result = await api(`/reels/${encodeURIComponent(reelId)}/comments/${encodeURIComponent(comment.dataset.reelComment)}`, {
             method: "DELETE",
           });
           receiveDeletedReelComments(result);
