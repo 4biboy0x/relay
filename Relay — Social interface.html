@@ -10176,6 +10176,7 @@
         .app.reels-active .reel-video { will-change: auto; }
         .app.reels-active .reel-action.is-like-pop .reel-action-icon > svg { animation: none !important; }
       }
+      .app.reels-active .reel-actions { gap: 16px !important; }
 </style>
   </head>
   <body>
@@ -14548,7 +14549,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 <button class="reel-author-link" type="button" data-profile-id="${esc(author.id || "")}" aria-label="View ${esc(author.displayName || author.handle || "creator")}'s profile">${avatarMarkup(author, "sm")}<span>${esc(author.displayName || author.handle || "Relay creator")}</span></button>
                 ${showFollow ? `<button class="reel-follow-button" type="button" data-reel-follow="${esc(author.id)}" aria-pressed="${!!author.isFollowing}">${author.isFollowing ? "Following" : "Follow"}</button>` : ""}
               </div>
-              ${caption ? `<p class="reel-caption${caption.length > 118 ? " is-clamped" : ""}" data-reel-caption="${esc(reel.id)}">${esc(caption)}${caption.length > 118 ? ` <button type="button" class="reel-caption-more" data-reel-caption-more="${esc(reel.id)}">more</button>` : ""}</p>` : ""}
+              ${caption ? `<p class="reel-caption${caption.length > 40 ? " is-clamped" : ""}" data-reel-caption="${esc(reel.id)}">${esc(caption)}${caption.length > 40 ? ` <button type="button" class="reel-caption-more" data-reel-caption-more="${esc(reel.id)}">more</button>` : ""}</p>` : ""}
               <span class="sr">${formatReelCount(reel.counts?.views)} views</span>
             </div>
             <div class="reel-progress-track" data-reel-progress="${esc(reel.id)}" role="progressbar" aria-label="Reel playback progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0"><span></span></div>
@@ -14565,8 +14566,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       let reelWindowStart = -1;
       let reelWindowEnd = -1;
-      function renderReelMarkup() {
-        renderReelWindow(true);
+      function renderReelMarkup(append = false) {
+        renderReelWindow(!append);
       }
       function renderReelWindow(force = false) {
         const container = $("#reelItems");
@@ -15323,7 +15324,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (property) button.setAttribute("aria-pressed", String(!!reel.viewer[property]));
         const count = action === "comment" ? reel.counts.comments
           : action === "bookmark" ? reel.counts.bookmarks
-            : action === "more" ? null : reel.counts[reelActionLabels[action]];
+            : action === "share" ? reel.counts.shares
+              : action === "more" ? null : reel.counts[reelActionLabels[action]];
         const text = count === null || count === undefined ? "" : formatReelCount(count);
         const span = button.querySelector("[data-reel-count]");
         if (span) {
@@ -15336,7 +15338,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (action === "bookmark") button.setAttribute("aria-label", reel.viewer.bookmarked ? "Remove bookmark" : "Save Reel");
         else if (action === "like") button.setAttribute("aria-label", `${reel.viewer.liked ? "Unlike" : "Like"} · ${text} likes`);
         else if (action === "repost") button.setAttribute("aria-label", `${reel.viewer.reposted ? "Undo repost" : "Repost"} · ${text} reposts`);
-        else if (action !== "more") button.setAttribute("aria-label", `${text} ${action === "comment" ? "comments" : reelActionLabels[action] || ""}`.trim());
+        else if (action !== "more") button.setAttribute("aria-label", `${text} ${action === "comment" ? "comments" : action === "share" ? "shares" : reelActionLabels[action] || ""}`.trim());
       }
       function applyReelCounts(reel, counts, animate = true) {
         if (!reel || !counts) return;
@@ -16889,6 +16891,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           captionMore.textContent = expanded ? "more" : "less";
           return;
         }
+        const captionText = event.target.closest("[data-reel-caption]");
+        if (captionText && !event.target.closest("button")) {
+          captionText.classList.toggle("is-clamped");
+          const more = captionText.querySelector("[data-reel-caption-more]");
+          if (more) more.textContent = captionText.classList.contains("is-clamped") ? "more" : "less";
+          return;
+        }
         const action = event.target.closest("[data-reel-action]");
         if (action) {
           if (action.dataset.reelAction === "more") openReelActions(action.dataset.reelId);
@@ -16912,6 +16921,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         const stage = event.target.closest("[data-reel-stage]");
         if (stage && !event.target.closest("button, [data-reel-progress]")) {
+          const muteControl = stage.querySelector("[data-reel-mute]");
+          if (muteControl) {
+            muteControl.classList.add("is-visible");
+            clearTimeout(muteControl._reelMuteTimer);
+            muteControl._reelMuteTimer = setTimeout(() => muteControl.classList.remove("is-visible"), 1400);
+          }
           toggleReelPlayback(stage.dataset.reelStage);
         }
       }
