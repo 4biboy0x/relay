@@ -9881,6 +9881,33 @@
       .reel-comment-replies-inner > .reel-comment:last-child { padding-bottom: 0; }
       .reel-comment.is-reply { padding: 7px 0; border: 0; }
       .reel-comment.is-reply .av { width: 28px; height: 28px; }
+      /* Keep nested replies on a real, shrink-safe text track. */
+      .reel-comment-replies,
+      .reel-comment-replies-inner {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+      .reel-comment.is-reply {
+        width: 100%;
+        min-width: 0;
+        grid-template-columns: 28px minmax(0, 1fr) 28px;
+      }
+      .reel-comment.is-reply .reel-comment-copy {
+        display: block;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        overflow-wrap: normal;
+      }
+      .reel-comment.is-reply .reel-comment-copy p {
+        min-width: 0;
+        max-width: 100%;
+        overflow-wrap: break-word;
+        word-break: normal;
+        white-space: pre-wrap;
+      }
       .reel-comment.is-live { animation: reel-comment-arrive 260ms cubic-bezier(.2, .8, .2, 1) both; }
       .reel-comment.is-notification-target { border-radius: 10px; animation: reel-comment-focus 1.8s ease-out both; }
       @keyframes reel-comment-arrive {
