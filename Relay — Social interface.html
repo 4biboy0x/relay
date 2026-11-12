@@ -10086,7 +10086,7 @@
       }
       .app.reels-active .reel-copy {
         z-index: 4; right: 88px !important;
-        bottom: calc(var(--reel-nav-height, 0px) + 58px + env(safe-area-inset-bottom, 0px)) !important;
+        bottom: calc(var(--reel-nav-height, 0px) + 14px + env(safe-area-inset-bottom, 0px)) !important;
         left: 16px !important; color: #fff !important; text-shadow: 0 1px 5px rgba(0,0,0,.55) !important;
       }
       .app.reels-active .reel-author-line { gap: 10px; margin-bottom: 9px; }
@@ -14528,7 +14528,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const icon = action === "share"
           ? '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 15 22l-4-9-9-4 20-7ZM22 2 11 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
           : action === "more"
-            ? '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
+            ? '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 14h9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>'
             : `<svg class="i" aria-hidden="true"><use href="#${reelActionIcons[action]}"/></svg>`;
         return `<button class="reel-action" type="button" data-reel-action="${action}" data-reel-id="${esc(reel.id)}" aria-label="${label}"${property ? ` aria-pressed="${pressed}"` : ""}><span class="reel-action-icon">${icon}${action === "like" ? '<span class="reel-like-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>' : ""}</span><span data-reel-count="${action}"${zero ? ' class="is-zero"' : ""}><span class="reel-count-current">${text}</span></span></button>`;
       }
