@@ -1936,7 +1936,7 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
   }
 
   const rows = await prisma.conversationMember.findMany({
-    where: { userId: req.userId! },
+    where: { userId: req.userId!, deletedAt: null },
     include: {
       conversation: {
         include: {
@@ -2056,6 +2056,7 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
         JOIN "ConversationMember" AS viewer
           ON viewer."conversationId" = message."conversationId"
           AND viewer."userId" = ${req.userId!}
+          AND viewer."deletedAt" IS NULL
         WHERE ${Prisma.join(terms.map((term) => Prisma.sql`
           message."body" ILIKE ${`%${term}%`} ESCAPE '\\'
         `), " AND ")}
@@ -2103,6 +2104,7 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
     JOIN "ConversationMember" AS viewer
       ON viewer."conversationId" = conversation."id"
       AND viewer."userId" = ${req.userId!}
+      AND viewer."deletedAt" IS NULL
     WHERE ${Prisma.join(termConditions, " AND ")}
     ${requestedConversationId
       ? Prisma.sql`AND conversation."id" = ${requestedConversationId}`
@@ -2237,10 +2239,29 @@ api.post("/conversations", authRequired, verifiedEmailRequired, asyncRoute(async
     update: {},
     include: { members: { include: { user: { select: publicUser } } } },
   });
+  await prisma.conversationMember.updateMany({
+    where: { conversationId: conversation.id, userId: req.userId!, deletedAt: { not: null } },
+    data: { deletedAt: null },
+  });
   res.status(200).json({
     id: conversation.id,
     members: conversation.members.map(({ user }) => user),
   });
+}));
+
+api.delete("/conversations/:conversationId", authRequired, asyncRoute(async (req, res) => {
+  const conversationId = z.string().cuid().parse(req.params.conversationId);
+  const deletedAt = new Date();
+  await prisma.$transaction(async (tx) => {
+    const membership = await tx.conversationMember.updateMany({
+      where: { conversationId, userId: req.userId!, deletedAt: null },
+      data: { deletedAt },
+    });
+    if (membership.count !== 1) throw new HttpError(404, "Conversation not found");
+    await tx.conversationPreference.deleteMany({ where: { conversationId, userId: req.userId! } });
+  });
+  emitToUser(req.userId!, "conversation:deleted", { conversationId });
+  res.json({ ok: true, conversationId, deletedAt });
 }));
 
 const conversationPreferenceSchema = z.object({
@@ -2256,8 +2277,8 @@ api.patch("/conversations/:conversationId/preferences", authRequired, asyncRoute
   const memberKey = { conversationId_userId: { conversationId, userId: req.userId! } };
   const preference = await prisma.$transaction(async (tx) => {
     await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${req.userId!}))`);
-    const member = await tx.conversationMember.findUnique({
-      where: memberKey,
+    const member = await tx.conversationMember.findFirst({
+      where: { conversationId, userId: req.userId!, deletedAt: null },
       select: { conversationId: true },
     });
     if (!member) throw new HttpError(404, "Conversation not found");
@@ -2293,7 +2314,10 @@ api.get("/conversations/:conversationId/messages", authRequired, asyncRoute(asyn
   const conversationId = z.string().cuid().parse(req.params.conversationId);
   const page = pageSchema.parse(req.query);
   const memberKey = { conversationId_userId: { conversationId, userId: req.userId! } };
-  const member = await prisma.conversationMember.findUnique({ where: memberKey, select: { conversationId: true } });
+  const member = await prisma.conversationMember.findFirst({
+    where: { conversationId, userId: req.userId!, deletedAt: null },
+    select: { conversationId: true },
+  });
   if (!member) throw new HttpError(404, "Conversation not found");
   const cursor = decodeCursor(page.cursor);
   const records = await prisma.message.findMany({
@@ -2370,9 +2394,11 @@ api.post("/conversations/:conversationId/messages", authRequired, verifiedEmailR
     }
     members = await tx.conversationMember.findMany({
       where: { conversationId },
-      select: { userId: true },
+      select: { userId: true, deletedAt: true },
     });
-    if (!members.some((member) => member.userId === req.userId)) throw new HttpError(404, "Conversation not found");
+    if (!members.some((member) => member.userId === req.userId && member.deletedAt === null)) {
+      throw new HttpError(404, "Conversation not found");
+    }
     if (messageInput.replyToId) {
       const replyTarget = await tx.message.findFirst({
         where: { id: messageInput.replyToId, conversationId },
@@ -2380,6 +2406,10 @@ api.post("/conversations/:conversationId/messages", authRequired, verifiedEmailR
       });
       if (!replyTarget) throw new HttpError(404, "Reply target not found");
     }
+    await tx.conversationMember.updateMany({
+      where: { conversationId, deletedAt: { not: null } },
+      data: { deletedAt: null },
+    });
     const created = await tx.message.create({
       data: { conversationId, senderId: req.userId!, ...messageData },
       include: {
