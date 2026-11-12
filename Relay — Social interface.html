@@ -10017,6 +10017,54 @@
         .reel-feed { scroll-behavior: auto; }
       }
           
+
+      /* Instagram-style full-screen Reels presentation. */
+      .app.reels-active #v-reels { position:fixed; z-index:8; inset:0; display:flex; width:100vw; height:100dvh; min-height:0; flex-direction:column; overflow:hidden; background:#000; }
+      .app.reels-active main { padding:0; }
+      .app.reels-active .reels-top { position:absolute; z-index:7; inset:env(safe-area-inset-top,0px) 0 auto; display:flex; min-height:0; justify-content:space-between; padding:14px 18px 10px; border:0; background:transparent; color:#fff; pointer-events:none; }
+      .app.reels-active .reels-top h1 { margin:0; color:#fff; font-size:24px; font-weight:750; letter-spacing:-.035em; text-shadow:0 1px 5px rgba(0,0,0,.28); }
+      .app.reels-active .reels-create-button { display:grid; width:36px; height:36px; place-items:center; color:#fff; pointer-events:auto; filter:drop-shadow(0 1px 4px rgba(0,0,0,.35)); }
+      .app.reels-active .reels-create-button .i { width:28px; height:28px; stroke-width:2.2; }
+      .app.reels-active .reel-feed { position:absolute; inset:0; width:100%; height:100dvh; min-height:0; flex:none; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; scroll-snap-type:y mandatory; scroll-behavior:auto; scrollbar-width:none; }
+      .app.reels-active .reel-feed::-webkit-scrollbar { display:none; }
+      .app.reels-active #reelItems { display:contents; }
+      .app.reels-active .reel-virtual-spacer { display:block; width:1px; pointer-events:none; }
+      .app.reels-active .reel-item { display:block; position:relative; width:100%; height:100dvh; min-height:100dvh; padding:0; scroll-snap-align:start; scroll-snap-stop:always; }
+      .app.reels-active .reel-stage { position:absolute; inset:0; width:100%; height:100%; max-width:none; max-height:none; aspect-ratio:auto; border:0; border-radius:0; box-shadow:none; overflow:hidden; background:#000; will-change:transform; }
+      .app.reels-active .reel-video,.app.reels-active .reel-poster { object-fit:cover; will-change:transform; filter:none; }
+      .app.reels-active .reel-stage::after { inset:0; background:linear-gradient(180deg,rgba(0,0,0,.12) 0%,transparent 19%),linear-gradient(0deg,rgba(0,0,0,.5) 0%,transparent 42%); }
+      .app.reels-active .reel-copy { right:92px; bottom:calc(var(--mobile-nav-height,56px) + env(safe-area-inset-bottom,0px) + 22px); left:16px; z-index:4; max-width:calc(100% - 108px); text-shadow:0 1px 4px rgba(0,0,0,.42); }
+      .app.reels-active .reel-author-line { gap:10px; margin-bottom:10px; }
+      .app.reels-active .reel-author-link { gap:8px; color:#fff; font-size:14px; font-weight:700; text-shadow:0 1px 4px rgba(0,0,0,.4); }
+      .app.reels-active .reel-author-link .av { width:36px; height:36px; border:1px solid rgba(255,255,255,.9); }
+      .app.reels-active .reel-follow-button { min-height:29px; padding:0 12px; border:1px solid rgba(255,255,255,.9); border-radius:6px; background:transparent; color:#fff; font-size:12px; font-weight:650; white-space:nowrap; }
+      .app.reels-active .reel-caption { display:block; max-width:100%; margin:0 0 16px; overflow:hidden; font-size:13px; line-height:1.35; white-space:nowrap; text-overflow:ellipsis; }
+      .app.reels-active .reel-caption.is-clamped { display:block; -webkit-line-clamp:unset; }
+      .app.reels-active .reel-caption.is-expanded { white-space:normal; overflow:visible; text-overflow:clip; }
+      .app.reels-active .reel-caption-more { color:rgba(255,255,255,.9); }
+      .app.reels-active .reel-actions { position:absolute; z-index:5; right:12px; bottom:calc(var(--mobile-nav-height,56px) + env(safe-area-inset-bottom,0px) + 22px); display:flex; width:48px; flex-direction:column; align-items:center; gap:10px; color:#fff; }
+      .app.reels-active .reel-action { display:flex; width:48px; height:auto; min-height:48px; align-items:center; justify-content:flex-start; gap:2px; color:#fff; font-size:13px; font-weight:650; line-height:1; text-shadow:0 1px 4px rgba(0,0,0,.45); }
+      .app.reels-active .reel-action-icon { width:40px; height:34px; flex:0 0 34px; border-radius:0; background:transparent; transition:none; }
+      .app.reels-active .reel-action-icon>svg { width:28px; height:28px; color:#fff; stroke-width:1.9; filter:drop-shadow(0 1px 3px rgba(0,0,0,.35)); }
+      .app.reels-active .reel-action:hover .reel-action-icon { background:transparent; }
+      .app.reels-active .reel-action [data-reel-count] { height:15px; flex:0 0 15px; font-size:13px; font-weight:650; line-height:15px; text-shadow:0 1px 4px rgba(0,0,0,.45); }
+      .app.reels-active .reel-action [data-reel-count].is-zero,.app.reels-active .reel-action [data-reel-count]:empty { display:none; }
+      .app.reels-active .reel-action[aria-pressed="true"] .reel-action-icon>svg { color:#fff; }
+      .app.reels-active .reel-action[data-reel-action="like"][aria-pressed="true"] .reel-action-icon>svg { color:#ff3040; fill:#ff3040; }
+      .app.reels-active .reel-action[data-reel-action="bookmark"][aria-pressed="true"] .reel-action-icon>svg { color:#fff; fill:#fff; }
+      .app.reels-active .reel-stage-control { top:calc(env(safe-area-inset-top,0px) + 58px); right:16px; width:28px; height:28px; border:0; border-radius:0; background:transparent; color:#fff; opacity:.55; backdrop-filter:none; }
+      .app.reels-active .reel-stage-control svg { width:17px; height:17px; }
+      .app.reels-active .reel-stage.is-mute-visible .reel-stage-control { opacity:1; }
+      .app.reels-active .reel-progress-track { bottom:calc(var(--mobile-nav-height,56px) + env(safe-area-inset-bottom,0px)); height:2px; background:rgba(255,255,255,.28); }
+      .app.reels-active .reel-progress-track>span { background:#fff; }
+      .app.reels-active .reel-feed-state:not(:empty) { position:fixed; z-index:9; right:12px; bottom:calc(var(--mobile-nav-height,56px) + 8px); left:12px; color:#fff; text-shadow:0 1px 4px #000; pointer-events:none; }
+      .app.reels-active .reel-skeleton { width:100%; height:100dvh; max-width:none; border-radius:0; }
+      @media (max-width:640px) {
+        .app.reels-active .nav { background:#000; border-top:0; color:#fff; }
+        .app.reels-active .nav-item,.app.reels-active .nav-item[aria-current="page"] { color:#fff; background:transparent; }
+        .app.reels-active .nav-item:hover { background:rgba(255,255,255,.08); }
+        .app.reels-active main { padding-bottom:0; }
+      }
     </style>
   </head>
   <body>
@@ -10111,6 +10159,9 @@
           <circle cx="12" cy="12" r="10" />
           <path d="M8 14s1.5 2 4 2 4-2 4-2" />
           <path d="M9 9h.01M15 9h.01" />
+        </symbol>
+        <symbol id="menu-lines" viewBox="0 0 24 24">
+          <path d="M4 6h16M4 12h16M4 18h16" />
         </symbol>
         <symbol id="dots" viewBox="0 0 24 24">
           <circle cx="12" cy="12" r="1" />
@@ -10382,12 +10433,9 @@
 
         <section id="v-reels" data-v hidden aria-label="Reels">
           <header class="reels-top">
-            <div>
-              <h1>Reels</h1>
-            </div>
-            <button class="btn btn-primary" id="createReelButton" type="button" aria-label="Create Reel">
+            <h1>Reels</h1>
+            <button class="reels-create-button" id="createReelButton" type="button" aria-label="Create Reel">
               <svg class="i" aria-hidden="true"><use href="#plus" /></svg>
-              <span class="reel-create-label">Create Reel</span>
             </button>
           </header>
           <div class="reel-feed" id="reelFeed" role="feed" aria-label="Reels" tabindex="0">
@@ -11693,7 +11741,6 @@
       let reelFeedScrollTop = 0;
       let reelAwayState = null;
       let reelResumeSeek = null;
-      let reelFeedIgnorePointersUntil = 0;
       let reelUploadPreviewUrl = "";
       let reelUploadValidationUrl = "";
       let reelPreviewMuted = true;
@@ -14339,8 +14386,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         comment: "msg",
         repost: "repeat",
         bookmark: "bookmark",
-        share: "share",
-        more: "dots",
+        share: "send",
+        more: "menu-lines",
       };
       const reelActionLabels = {
         like: "likes",
@@ -14353,15 +14400,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const property = action === "like" ? "liked" : action === "repost" ? "reposted" : action === "bookmark" ? "bookmarked" : "";
         const pressed = property ? !!reel.viewer?.[property] : false;
         const count = action === "comment" ? reel.counts?.comments
-          : action === "bookmark" || action === "more" ? null
-            : reel.counts?.[reelActionLabels[action]];
+          : action === "bookmark" ? reel.counts?.bookmarks
+            : action === "more" ? null : reel.counts?.[reelActionLabels[action]];
         const label = action === "more" ? "More options"
           : action === "bookmark" ? pressed ? "Remove bookmark" : "Save Reel"
-            : action === "comment" ? `${formatReelCount(count)} comments`
-              : `${formatReelCount(count)} ${reelActionLabels[action]}`;
-        const text = action === "more" || action === "bookmark" ? "" : formatReelCount(count);
-        const zero = count !== null && Number(count) === 0;
-        return `<button class="reel-action" type="button" data-reel-action="${action}" data-reel-id="${esc(reel.id)}" aria-label="${label}"${property ? ` aria-pressed="${pressed}"` : ""}><span class="reel-action-icon"><svg class="i" aria-hidden="true"><use href="#${reelActionIcons[action]}"/></svg>${action === "like" ? '<span class="reel-like-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>' : ""}</span><span data-reel-count="${action}"${zero ? ' class="is-zero"' : ""}><span class="reel-count-current">${text}</span></span></button>`;
+            : `${formatReelCount(count)} ${action === "comment" ? "comments" : action === "bookmark" ? "saves" : reelActionLabels[action]}`;
+        const text = action === "more" || count == null || Number(count) <= 0 ? "" : formatReelCount(count);
+        const zero = count != null && Number(count) <= 0;
+        return `<button class="reel-action" type="button" data-reel-action="${action}" data-reel-id="${esc(reel.id)}" aria-label="${label}"${property ? ` aria-pressed="${pressed}"` : ""}><span class="reel-action-icon"><svg class="i" aria-hidden="true"><use href="#${reelActionIcons[action]}"/></svg>${action === "like" ? '<span class="reel-like-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>' : ""}</span><span data-reel-count="${action}"${zero ? ' class="is-zero"' : ""}>${text ? `<span class="reel-count-current">${text}</span>` : ""}</span></button>`;
       }
       function reelMarkup(reel, index) {
         const author = reel.author || {};
@@ -14380,7 +14426,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             <button class="reel-stage-control" type="button" data-reel-mute aria-label="${reelMuted ? "Unmute" : "Mute"} Reel" aria-pressed="${!reelMuted}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path class="reel-sound-wave" d="M15.5 8.5a5 5 0 0 1 0 7"${reelMuted ? " hidden" : ""}/><path class="reel-muted-mark" d="m17 9 5 6m0-6-5 6"${reelMuted ? "" : " hidden"}/></svg></button>
             <div class="reel-copy">
               <div class="reel-author-line">
-                <button class="reel-author-link" type="button" data-profile-id="${esc(author.id || "")}" aria-label="View ${esc(author.displayName || author.handle || "creator")}'s profile">${avatarMarkup(author, "sm")}<span>${esc(author.displayName || author.handle || "Relay creator")}</span></button>
+                <button class="reel-author-link" type="button" data-profile-id="${esc(author.id || "")}" aria-label="View ${esc(author.displayName || author.handle || "creator")}'s profile">${avatarMarkup(author, "sm")}<span>@${esc(author.handle || author.displayName || "creator")}</span></button>
                 ${showFollow ? `<button class="reel-follow-button" type="button" data-reel-follow="${esc(author.id)}" aria-pressed="${!!author.isFollowing}">${author.isFollowing ? "Following" : "Follow"}</button>` : ""}
               </div>
               ${caption ? `<p class="reel-caption${caption.length > 118 ? " is-clamped" : ""}" data-reel-caption="${esc(reel.id)}">${esc(caption)}${caption.length > 118 ? ` <button type="button" class="reel-caption-more" data-reel-caption-more="${esc(reel.id)}">more</button>` : ""}</p>` : ""}
@@ -14392,16 +14438,42 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             ${reelActionMarkup(reel, "like")}
             ${reelActionMarkup(reel, "comment")}
             ${reelActionMarkup(reel, "repost")}
-            ${reelActionMarkup(reel, "bookmark")}
             ${reelActionMarkup(reel, "share")}
+            ${reelActionMarkup(reel, "bookmark")}
             ${reelActionMarkup(reel, "more")}
           </div>
         </article>`;
       }
       function renderReelMarkup(append = false, items = reelItems) {
-        const markup = items.map((reel) => reelMarkup(reel, reelItems.indexOf(reel))).join("");
-        if (append) $("#reelItems").insertAdjacentHTML("beforeend", markup);
-        else $("#reelItems").innerHTML = markup;
+        const feed = $("#reelFeed");
+        const container = $("#reelItems");
+        const previousStart = container.dataset.windowStart == null ? -1 : Number(container.dataset.windowStart);
+        const activeIndex = Math.max(0, profileReelIndex(activeReelId));
+        const start = Math.max(0, activeIndex - 1);
+        const end = Math.min(reelItems.length, activeIndex + 2);
+        let topSpacer = $("#reelVirtualTop");
+        let bottomSpacer = $("#reelVirtualBottom");
+        if (!topSpacer) {
+          topSpacer = document.createElement("div");
+          topSpacer.id = "reelVirtualTop";
+          topSpacer.className = "reel-virtual-spacer";
+          feed.insertBefore(topSpacer, container);
+        }
+        if (!bottomSpacer) {
+          bottomSpacer = document.createElement("div");
+          bottomSpacer.id = "reelVirtualBottom";
+          bottomSpacer.className = "reel-virtual-spacer";
+          feed.insertBefore(bottomSpacer, container.nextSibling);
+        }
+        topSpacer.style.height = `${start * 100}dvh`;
+        bottomSpacer.style.height = `${Math.max(0, reelItems.length - end) * 100}dvh`;
+        container.dataset.windowStart = String(start);
+        container.innerHTML = reelItems.slice(start, end)
+          .map((reel, offset) => reelMarkup(reel, start + offset)).join("");
+        if (feed.clientHeight) {
+          if (previousStart >= 0) feed.scrollTop -= (start - previousStart) * feed.clientHeight;
+          else feed.scrollTop = (activeIndex - start) * feed.clientHeight;
+        }
         positionReelFeedSentinel();
       }
       function positionReelFeedSentinel() {
@@ -14414,13 +14486,16 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           sentinel.setAttribute("aria-hidden", "true");
         }
         const slides = $$(".reel-item", container);
-        sentinel.hidden = !reelCursor || !slides.length;
+        const start = Number(container.dataset.windowStart || 0);
+        const end = start + slides.length;
+        sentinel.hidden = !reelCursor || !slides.length || end < reelItems.length - 2;
+        sentinel.innerHTML = "";
         if (sentinel.hidden) {
-          sentinel.innerHTML = "";
+          sentinel.setAttribute("aria-hidden", "true");
           container.append(sentinel);
           return;
         }
-        container.insertBefore(sentinel, slides[Math.max(0, slides.length - 2)]);
+        container.insertBefore(sentinel, slides.at(-1));
       }
       const reelCacheKey = () => `relay_reels_cache:v2:${currentUser?.id || "anonymous"}`;
       function readReelCache() {
@@ -14598,7 +14673,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               if (requestedReelId) feed.scrollTop = 0;
               else if (reelFeedScrollTop > 0) feed.scrollTop = reelFeedScrollTop;
               else if (activeReelId) {
-                $(`.reel-item[data-reel-id="${CSS.escape(activeReelId)}"]`, feed)?.scrollIntoView({ block: "start" });
+                const localIndex = profileReelIndex(activeReelId) - Number($("#reelItems").dataset.windowStart || 0);
+                feed.scrollTop = Math.max(0, localIndex) * feed.clientHeight;
               }
               observeReelItems();
               syncReelPlayback();
@@ -14654,10 +14730,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           || matchMedia("(prefers-reduced-data: reduce)").matches;
       }
       function reelVideoPreloadMode() {
-        const connection = navigator.connection;
-        if (isReelReducedData() || /^(slow-2g|2g|3g)$/i.test(connection?.effectiveType || "")) return "";
-        if (!connection || matchMedia("(pointer: coarse)").matches) return "metadata";
-        return /^(4g|5g)$/i.test(connection.effectiveType || "") ? "auto" : "metadata";
+        return isReelReducedData() ? "metadata" : "auto";
       }
       function shouldAutoplayReels() {
         return reelSettings.autoplay && !reelReducedMotion.matches && !isReelReducedData();
@@ -14669,6 +14742,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         if ($("#reelActionsDialog").open) $("#reelActionsDialog").close();
         activeReelId = id;
+        renderReelMarkup();
+        observeReelItems();
         if (!profileScopedReelHandle && /^#\/reels(?:\/[^/?]+)?$/.test(location.hash)) {
           writeLastGlobalReel(id);
         }
@@ -14697,10 +14772,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if ("IntersectionObserver" in window) {
           reelActiveObserver = new IntersectionObserver((entries) => {
             const active = entries
-              .filter((entry) => entry.isIntersecting && entry.intersectionRatio >= .55)
+              .filter((entry) => entry.isIntersecting && entry.intersectionRatio >= .6)
               .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
             if (active) setActiveReel(active.target.dataset.reelId);
-          }, { root: feed, threshold: [.55, .7, .9] });
+          }, { root: feed, threshold: [.6, .75, .9] });
           slides.forEach((slide) => reelActiveObserver.observe(slide));
           const sentinel = $("#reelFeedSentinel");
           if (sentinel && reelCursor) {
@@ -14937,12 +15012,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const activeReady = reelVideoReadyIds.has(activeReelId)
           || activeVideo?.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA;
         const nextIndex = activeIndex + 1;
-        const shouldPreloadNext = nextIndex < reelItems.length && activeReady && nextPreloadMode
-          && !document.hidden && (shouldAutoplayReels() || reelManualPlayback === activeReelId);
+        const shouldPreloadNext = nextIndex < reelItems.length && nextPreloadMode && !document.hidden;
         const retainedVideoIds = new Set();
         if (activeIndex >= 0) retainedVideoIds.add(activeReelId);
         if (activeIndex > 0) retainedVideoIds.add(reelItems[activeIndex - 1].id);
-        if (shouldPreloadNext) retainedVideoIds.add(reelItems[nextIndex].id);
+        if (nextIndex < reelItems.length) retainedVideoIds.add(reelItems[nextIndex].id);
         $$(".reel-video", $("#reelFeed")).forEach((video) => {
           const stage = video.closest("[data-reel-stage]");
           if (stage && !retainedVideoIds.has(stage.dataset.reelStage)) removeReelFeedVideo(stage);
@@ -14967,7 +15041,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             applyPendingReelResume(video, reel.id);
             video.muted = isActive ? reelMuted : true;
             if (isActive) video.preload = "metadata";
-            else if (shouldPreload) video.preload = nextPreloadMode;
+            else if (shouldPreload) video.preload = "auto";
             else video.preload = "none";
             if (shouldStart && !document.hidden && video.paused) {
               playReelVideo(reel, stage, video).catch((error) => {
@@ -16880,13 +16954,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               : $("#reelFeed");
             focusTarget?.focus({ preventScroll: true });
           });
-        });
-        ["pointerdown", "pointerup", "click"].forEach((type) => {
-          $("#reelFeed").addEventListener(type, (event) => {
-            if (performance.now() >= reelFeedIgnorePointersUntil) return;
-            event.preventDefault();
-            event.stopImmediatePropagation();
-          }, true);
         });
         $("#reelFeed").addEventListener("click", handleReelFeedClick);
         $("#reelFeed").addEventListener("dblclick", handleReelFeedDoubleClick);
