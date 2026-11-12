@@ -9827,6 +9827,18 @@
         border-bottom: 1px solid var(--border);
       }
       .reel-comment .av { width: 34px; height: 34px; }
+      .reel-comment-avatar-link {
+        display: block;
+        width: 34px;
+        height: 34px;
+        flex: none;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background: transparent;
+        cursor: pointer;
+      }
+      .reel-comment.is-reply .reel-comment-avatar-link { width: 28px; height: 28px; }
       .reel-comment-copy { min-width: 0; overflow-wrap: anywhere; }
       .reel-comment-copy strong { font-size: 12px; }
       .reel-comment-copy p { margin: 4px 0 0; color: var(--text-2); font-size: 13px; line-height: 1.45; white-space: pre-wrap; }
@@ -15647,7 +15659,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const likeCount = Math.max(0, Number(comment.likeCount) || 0);
         const likedByMe = Boolean(comment.likedByMe);
         return `<div class="reel-comment${depth ? " is-reply" : ""}${live ? " is-live" : ""}" data-reel-comment="${esc(comment.id)}" data-reply-count="${replyCount}" data-depth="${Math.min(depth, 4)}">
-          ${avatarMarkup(author, "sm")}
+          <button type="button" class="reel-comment-avatar-link" data-profile-id="${esc(author.id || "")}" aria-label="View ${esc(author.displayName || author.handle || "commenter")}'s profile">${avatarMarkup(author, "sm")}</button>
           <div class="reel-comment-copy">
             <button type="button" class="profile-link" data-profile-id="${esc(author.id || "")}" data-reel-comment-author="${esc(author.id || "")}">${esc(author.displayName || author.handle || "Relay user")}</button>
             <p>${esc(comment.body || "")}</p>
@@ -17163,6 +17175,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#reelCommentForm").addEventListener("submit", submitReelComment);
         $("#reelCommentMore").addEventListener("click", () => loadReelComments(true));
         $("#reelCommentList").addEventListener("click", (event) => {
+          // Close the comments sheet before the shared profile navigation handler runs.
+          if (event.target.closest("[data-profile-id]")) {
+            const commentsDialog = $("#reelCommentsDialog");
+            if (commentsDialog.open) commentsDialog.close();
+            return;
+          }
           if (event.target.closest("[data-reel-comments-retry]")) loadReelComments();
           const like = event.target.closest("[data-reel-comment-like]");
           if (like) {
