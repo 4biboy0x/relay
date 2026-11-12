@@ -10862,14 +10862,10 @@
         box-shadow: 0 10px 28px rgba(9, 9, 11, .24);
       }
       .mobile-compose-fab .i { width: 22px; height: 22px; stroke-width: 1.9; }
-      .inbox-compose-button { --message-icon-cutout: var(--bg); }
-      .inbox-compose-button:hover { --message-icon-cutout: var(--surface-2); }
-      .mobile-compose-fab { --message-icon-cutout: var(--accent); }
-      .mobile-compose-fab:hover { --message-icon-cutout: var(--accent-h); }
       .message-bubble-plus { width: 24px; height: 24px; overflow: visible; stroke-width: 2; }
-      .message-bubble-plus-mark { stroke-width: 2; }
-      .reel-comment-bubble-icon { stroke-width: 1.8; }
-      .reel-comment-bubble-icon circle { stroke: none; }
+      .message-bubble-plus-mark { stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+      .reel-comment-bubble-icon { stroke-width: 1.75; }
+      .reel-comment-bubble-icon circle { fill: currentColor; stroke: none; }
       @media (min-width: 641px) {
         .inbox-compose-button { display: inline-flex; }
         .mobile-compose-fab { display: none !important; }
@@ -11489,6 +11485,10 @@
             d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"
           />
         </symbol>
+        <mask id="message-bubble-plus-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
+          <rect width="24" height="24" fill="white" />
+          <path d="M17.4 18.5Q18.1 17.7 18.9 16.9" fill="none" stroke="black" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" />
+        </mask>
         <symbol id="msg" viewBox="0 0 24 24">
           <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
         </symbol>
@@ -11848,12 +11848,12 @@
               <header class="conversation-list-header">
                 <h2>Inbox</h2>
                 <button class="inbox-compose-button" id="desktopNewMessage" type="button" aria-label="New message" title="New message" aria-haspopup="dialog" aria-controls="newMessageDialog">
-                  <svg class="i message-bubble-plus" viewBox="0 0 24 24" aria-hidden="true"><use href="#msg"></use><path class="message-bubble-plus-cutout" d="M17.4 18.5Q18.1 17.7 18.9 16.9" fill="none" stroke="var(--message-icon-cutout, var(--bg))" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"></path><path class="message-bubble-plus-mark" d="M16.9 19h4.4M19.1 16.8v4.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                  <svg class="i message-bubble-plus" viewBox="0 0 24 24" aria-hidden="true"><defs><mask id="message-bubble-plus-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24"><rect width="24" height="24" fill="white"></rect><path d="M17.4 18.5Q18.1 17.7 18.9 16.9" fill="none" stroke="black" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"></path></mask></defs><use href="#msg" mask="url(#message-bubble-plus-mask)"></use><path class="message-bubble-plus-mark" d="M16.9 19h4.4M19.1 16.8v4.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
                 </button>
                 <div class="recipient-picker">
                   <button id="startConversation" type="button" aria-label="New message" title="New message" aria-haspopup="dialog" aria-controls="newMessageDialog" hidden>
                     <span class="conversation-new-icon" aria-hidden="true">
-                      <svg class="i message-bubble-plus" viewBox="0 0 24 24" aria-hidden="true"><use href="#msg"></use><path class="message-bubble-plus-cutout" d="M17.4 18.5Q18.1 17.7 18.9 16.9" fill="none" stroke="var(--message-icon-cutout, var(--bg))" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"></path><path class="message-bubble-plus-mark" d="M16.9 19h4.4M19.1 16.8v4.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                      <svg class="i message-bubble-plus" viewBox="0 0 24 24" aria-hidden="true"><defs><mask id="message-bubble-plus-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24"><rect width="24" height="24" fill="white"></rect><path d="M17.4 18.5Q18.1 17.7 18.9 16.9" fill="none" stroke="black" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"></path></mask></defs><use href="#msg" mask="url(#message-bubble-plus-mask)"></use><path class="message-bubble-plus-mark" d="M16.9 19h4.4M19.1 16.8v4.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
                     </span>
                   </button>
                 </div>
@@ -12292,7 +12292,7 @@
       </footer>
     </dialog>
     <button class="mobile-compose-fab" id="mobileNewMessageFab" type="button" aria-label="New message" title="New message" aria-haspopup="dialog" aria-controls="newMessageDialog">
-      <svg class="i message-bubble-plus" viewBox="0 0 24 24" aria-hidden="true"><use href="#msg"></use><path class="message-bubble-plus-cutout" d="M17.4 18.5Q18.1 17.7 18.9 16.9" fill="none" stroke="var(--message-icon-cutout, var(--bg))" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"></path><path class="message-bubble-plus-mark" d="M16.9 19h4.4M19.1 16.8v4.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      <svg class="i message-bubble-plus" viewBox="0 0 24 24" aria-hidden="true"><defs><mask id="message-bubble-plus-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24"><rect width="24" height="24" fill="white"></rect><path d="M17.4 18.5Q18.1 17.7 18.9 16.9" fill="none" stroke="black" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"></path></mask></defs><use href="#msg" mask="url(#message-bubble-plus-mask)"></use><path class="message-bubble-plus-mark" d="M16.9 19h4.4M19.1 16.8v4.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
     </button>
     <dialog class="cookie-settings-dialog new-message-dialog" id="newMessageDialog" role="dialog" aria-modal="true" aria-labelledby="newMessageTitle" tabindex="-1">
       <header class="cookie-settings-heading">
@@ -12847,7 +12847,7 @@
       const emptyState = (title, subtitle = "", compact = false, icon = "search") =>
         `<div class="empty-state${compact ? " empty-state-compact" : ""}" role="status">${ic(icon)}<strong>${esc(String(title))}</strong>${subtitle ? `<span>${esc(String(subtitle))}</span>` : ""}</div>`;
       const conversationSearchNewMarkup = () =>
-        `<button class="btn btn-line conversation-search-new post-live-in" type="button" data-new-conversation-search aria-haspopup="dialog" aria-controls="newMessageDialog"><span class="conversation-new-icon" aria-hidden="true"><svg class="i message-bubble-plus" viewBox="0 0 24 24" aria-hidden="true"><use href="#msg"></use><path class="message-bubble-plus-cutout" d="M17.4 18.5Q18.1 17.7 18.9 16.9" fill="none" stroke="var(--message-icon-cutout, var(--bg))" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"></path><path class="message-bubble-plus-mark" d="M16.9 19h4.4M19.1 16.8v4.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>New conversation</button>`;
+        `<button class="btn btn-line conversation-search-new post-live-in" type="button" data-new-conversation-search aria-haspopup="dialog" aria-controls="newMessageDialog"><span class="conversation-new-icon" aria-hidden="true"><svg class="i message-bubble-plus" viewBox="0 0 24 24" aria-hidden="true"><defs><mask id="message-bubble-plus-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24"><rect width="24" height="24" fill="white"></rect><path d="M17.4 18.5Q18.1 17.7 18.9 16.9" fill="none" stroke="black" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"></path></mask></defs><use href="#msg" mask="url(#message-bubble-plus-mask)"></use><path class="message-bubble-plus-mark" d="M16.9 19h4.4M19.1 16.8v4.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>New conversation</button>`;
       const conversationStartMarkup = () =>
         `<div class="conversation-start-empty"><span class="conversation-start-icon" aria-hidden="true">${ic("msg")}</span><h2>Start Conversation</h2><p>Choose from your existing conversations, or start a new one.</p><button class="conversation-start-action" id="emptyNewChat" type="button">New chat</button></div>`;
       const fmt = (n) =>
@@ -15794,7 +15794,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           : action === "more"
             ? '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 14h9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>'
             : action === "comment"
-            ? '<svg class="i reel-comment-bubble-icon" aria-hidden="true"><use href="#msg"></use><circle cx="9" cy="12" r="1.05" fill="currentColor" stroke="none"></circle><circle cx="13" cy="12" r="1.05" fill="currentColor" stroke="none"></circle><circle cx="17" cy="12" r="1.05" fill="currentColor" stroke="none"></circle></svg>'
+            ? '<svg class="i reel-comment-bubble-icon" aria-hidden="true"><use href="#msg"></use><circle cx="8.5" cy="12" r="1.4" fill="currentColor" stroke="none"></circle><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"></circle><circle cx="15.5" cy="12" r="1.4" fill="currentColor" stroke="none"></circle></svg>'
             : `<svg class="i" aria-hidden="true"><use href="#${reelActionIcons[action]}"/></svg>`;
         return `<button class="reel-action" type="button" data-reel-action="${action}" data-reel-id="${esc(reel.id)}" aria-label="${label}"${property ? ` aria-pressed="${pressed}"` : ""}><span class="reel-action-icon">${icon}${action === "like" ? '<span class="reel-like-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>' : ""}</span><span data-reel-count="${action}"${zero ? ' class="is-zero"' : ""}><span class="reel-count-current">${text}</span></span></button>`;
       }
