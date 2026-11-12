@@ -20697,7 +20697,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         return true;
       }
       function closeInboxConversationMenus(except = null) {
-        $(".conversation-actions").forEach((container) => {
+        $$$".conversation-actions").forEach((container) => {
           if (container === except) return;
           const trigger = $("[data-inbox-menu-trigger]", container);
           const menu = $("[data-inbox-menu]", container);
