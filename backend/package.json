@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "prestart": "npm run db:deploy",
+    "prestart": "npm run db:recover && npm run db:deploy",
     "start": "node dist/index.js",
     "reel-worker": "tsx src/reel-worker.ts",
     "test:email": "tsx --test src/email.test.ts",
@@ -18,7 +18,8 @@
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
     "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy"
+    "db:deploy": "prisma migrate deploy",
+    "db:recover": "node scripts/recover-conversation-preferences-migration.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1160.0",
@@ -42,7 +43,6 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.3.0",
     "@types/node": "^22.15.30",
