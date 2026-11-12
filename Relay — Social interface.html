@@ -9994,6 +9994,121 @@
       .reel-comment-form { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
       .reel-comment-form input { min-width: 0; height: 40px; box-sizing: border-box; }
       .reel-comment-form .btn { height: 40px; flex: none; align-self: center; }
+      .reel-comments-drag-handle { display: none; }
+      @keyframes reel-comments-sheet-in {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+      }
+      @keyframes reel-comments-sheet-out {
+        from { transform: translateY(0); }
+        to { transform: translateY(100%); }
+      }
+      @media (max-width: 640px) {
+        .reel-comments-dialog[open] {
+          position: fixed;
+          inset: auto 0 0;
+          display: flex;
+          width: 100%;
+          max-width: none;
+          height: 65vh;
+          height: 65dvh;
+          max-height: 90dvh;
+          min-height: 0;
+          flex-direction: column;
+          margin: 0;
+          padding: 0;
+          border: 0;
+          border-radius: 20px 20px 0 0;
+          overflow: hidden;
+          box-shadow: 0 -12px 40px rgba(9,9,11,.18);
+          animation: reel-comments-sheet-in 260ms cubic-bezier(.22,.8,.24,1) both;
+          transform: translateY(0);
+        }
+        .reel-comments-dialog[open].is-sheet-dragging { animation: none; transition: none; }
+        .reel-comments-dialog[open].is-sheet-closing { animation: reel-comments-sheet-out 210ms cubic-bezier(.4,0,1,1) both; }
+        .reel-comments-dialog::backdrop { background: rgba(9,9,11,.52); backdrop-filter: blur(2px); }
+        .reel-comments-drag-handle {
+          display: block;
+          width: 36px;
+          height: 4px;
+          flex: 0 0 4px;
+          margin: 10px auto 2px;
+          border-radius: 999px;
+          background: #D1D5DB;
+          touch-action: none;
+        }
+        .reel-comments-dialog .reel-dialog-header {
+          min-height: 54px;
+          flex: 0 0 auto;
+          padding: 8px 16px 12px;
+          border-bottom: 1px solid #F3F4F6;
+          touch-action: pan-y;
+        }
+        .reel-comments-dialog .reel-dialog-header h2 { font-size: 16px; }
+        .reel-comments-dialog .reel-dialog-header p { display: inline; margin: 0 0 0 6px; font-size: 12px; }
+        .reel-comments-dialog .reel-dialog-header > div { display: flex; align-items: baseline; min-width: 0; }
+        .reel-comments-dialog .reel-dialog-header .icon-btn {
+          display: grid;
+          width: 32px;
+          height: 32px;
+          flex: 0 0 32px;
+          place-items: center;
+          border: 0;
+          border-radius: 50%;
+          background: #F3F4F6;
+          color: #52525B;
+        }
+        .reel-comments-dialog .reel-dialog-header .icon-btn:hover { background: #E5E7EB; }
+        .reel-comments-dialog .reel-comment-list {
+          min-height: 0;
+          max-height: none;
+          flex: 1 1 auto;
+          padding: 8px 16px;
+          overscroll-behavior: contain;
+          -webkit-overflow-scrolling: touch;
+        }
+        .reel-comments-dialog #reelCommentMore { flex: 0 0 auto; }
+        .reel-comments-dialog .reel-reply-target { flex: 0 0 auto; padding: 8px 16px 0; }
+        .reel-comments-dialog .reel-comment-form {
+          position: relative;
+          display: flex;
+          flex: 0 0 auto;
+          gap: 0;
+          padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+          border-top: 1px solid #F3F4F6;
+          background: var(--bg);
+        }
+        .reel-comments-dialog .reel-comment-form input {
+          width: 100%;
+          height: 44px;
+          min-height: 44px;
+          padding: 0 54px 0 16px;
+          border: 1px solid var(--border);
+          border-radius: 999px;
+          background: var(--surface-2);
+          font-size: 14px;
+        }
+        .reel-comments-dialog .reel-comment-form .btn {
+          position: absolute;
+          top: 16px;
+          right: 20px;
+          display: grid;
+          width: 32px;
+          height: 32px;
+          min-height: 32px;
+          padding: 0;
+          place-items: center;
+          border: 0;
+          border-radius: 50%;
+          background: #2563EB;
+          color: #fff;
+        }
+        .reel-comments-dialog .reel-comment-form .btn .i { width: 16px; height: 16px; }
+        .reel-comments-dialog .reel-comment-form .btn:disabled { opacity: .45; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .reel-comments-dialog[open] { animation: none !important; }
+      }
       .reel-menu-actions { display: grid; padding: 8px; }
       .reel-menu-actions button {
         min-height: 44px;
@@ -12473,6 +12588,7 @@
       </form>
     </dialog>
     <dialog class="reel-comments-dialog" id="reelCommentsDialog" aria-labelledby="reelCommentsTitle">
+      <div class="reel-comments-drag-handle" aria-hidden="true"></div>
       <header class="reel-dialog-header">
         <div><h2 id="reelCommentsTitle">Comments</h2><p id="reelCommentsCount"></p></div>
         <button class="icon-btn" type="button" data-reel-dialog-close aria-label="Close comments">
@@ -12485,7 +12601,9 @@
       <form class="reel-comment-form" id="reelCommentForm">
         <label class="sr" for="reelCommentInput">Write a comment</label>
         <input id="reelCommentInput" maxlength="280" placeholder="Add a comment…" dir="auto" required>
-        <button class="btn btn-primary" type="submit">Reply</button>
+        <button class="btn btn-primary" type="submit" aria-label="Send comment" title="Send comment">
+          <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+        </button>
       </form>
     </dialog>
     <dialog class="reel-actions-dialog" id="reelActionsDialog" aria-labelledby="reelActionsTitle">
@@ -18615,6 +18733,64 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#reelFeed").addEventListener("dblclick", handleReelFeedDoubleClick);
         $("#reelFeed").addEventListener("pointerup", handleReelFeedPointerUp);
 
+        const reelCommentsDialog = $("#reelCommentsDialog");
+        const reelCommentsDragArea = reelCommentsDialog.querySelector(".reel-dialog-header");
+        let reelSheetTouchStartY = 0;
+        let reelSheetTouchCurrentY = 0;
+        let reelSheetDragging = false;
+        let reelSheetCloseTimer = 0;
+        const resetReelCommentsSheet = () => {
+          window.clearTimeout(reelSheetCloseTimer);
+          reelCommentsDialog.classList.remove("is-sheet-dragging", "is-sheet-closing");
+          reelCommentsDialog.style.removeProperty("--reel-sheet-drag-y");
+          reelCommentsDialog.style.transform = "";
+          reelSheetDragging = false;
+          reelSheetTouchStartY = 0;
+          reelSheetTouchCurrentY = 0;
+        };
+        const startReelCommentsSheetDrag = (event) => {
+          if (window.matchMedia("(min-width: 641px)").matches || event.touches.length !== 1) return;
+          if (event.target.closest("button, a, input, textarea")) return;
+          reelSheetTouchStartY = event.touches[0].clientY;
+          reelSheetTouchCurrentY = reelSheetTouchStartY;
+          reelSheetDragging = true;
+          reelCommentsDialog.classList.add("is-sheet-dragging");
+        };
+        const moveReelCommentsSheetDrag = (event) => {
+          if (!reelSheetDragging || !event.touches.length) return;
+          const delta = Math.max(0, event.touches[0].clientY - reelSheetTouchStartY);
+          reelSheetTouchCurrentY = event.touches[0].clientY;
+          if (delta > 0) {
+            event.preventDefault();
+            reelCommentsDialog.style.transform = `translateY(${delta}px)`;
+          }
+        };
+        const endReelCommentsSheetDrag = () => {
+          if (!reelSheetDragging) return;
+          const distance = Math.max(0, reelSheetTouchCurrentY - reelSheetTouchStartY);
+          reelSheetDragging = false;
+          reelCommentsDialog.classList.remove("is-sheet-dragging");
+          if (distance >= 100) {
+            reelCommentsDialog.classList.add("is-sheet-closing");
+            reelSheetCloseTimer = window.setTimeout(() => {
+              if (reelCommentsDialog.open) reelCommentsDialog.close();
+              resetReelCommentsSheet();
+            }, 210);
+          } else {
+            reelCommentsDialog.style.transition = "transform 220ms cubic-bezier(.2,.8,.2,1)";
+            reelCommentsDialog.style.transform = "translateY(0)";
+            window.setTimeout(() => {
+              reelCommentsDialog.style.removeProperty("transition");
+              reelCommentsDialog.style.removeProperty("transform");
+            }, 230);
+          }
+        };
+        reelCommentsDragArea.addEventListener("touchstart", startReelCommentsSheetDrag, { passive: true });
+        reelCommentsDragArea.addEventListener("touchmove", moveReelCommentsSheetDrag, { passive: false });
+        reelCommentsDragArea.addEventListener("touchend", endReelCommentsSheetDrag, { passive: true });
+        reelCommentsDragArea.addEventListener("touchcancel", endReelCommentsSheetDrag, { passive: true });
+        reelCommentsDialog.querySelector(".reel-comments-drag-handle").addEventListener("touchstart", startReelCommentsSheetDrag, { passive: true });
+        reelCommentsDialog.addEventListener("close", resetReelCommentsSheet);
         $("#reelCommentForm").addEventListener("submit", submitReelComment);
         $("#reelCommentMore").addEventListener("click", () => loadReelComments(true));
         $("#reelCommentList").addEventListener("submit", (event) => {
