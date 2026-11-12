@@ -20943,7 +20943,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             preview = `<span class="conversation-preview-text">${esc(preview)}</span>`;
           }
           if (pinned) {
-            const pinMarkup = '<span class="conversation-pin-indicator" title="Pinned" aria-label="Pinned"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 3 21 8 17 9 13 13V18L11 20 9 13 3 7 5 5 11 11H16L20 7Z"/></svg></span>';
+            const pinMarkup = '<span class="conversation-pin-indicator" title="Pinned" aria-label="Pinned"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a2.25 2.25 0 0 0-2.25 2.25v4.1L7.5 11.5V13h3.5v7.5L12 22l1-1.5V13h3.5v-1.5l-2.25-2.65v-4.1A2.25 2.25 0 0 0 12 2.5Z"/></svg></span>';
             if (messageTime) messageTime = messageTime.replace("<time", pinMarkup + "<time");
             else messageTime = `<span class="conversation-preview-time-wrap">${pinMarkup}</span>`;
           }
