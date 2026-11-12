@@ -13705,6 +13705,7 @@
           socket.on("user:suggestion:new", receiveLiveSuggestion);
           socket.on("user:followed", receiveViewerFollowed);
           socket.on("user:follow-state", receiveFollowState);
+          socket.on("user:follow-counts", receiveFollowCounts);
           socket.on("trending:updated", () => {
             renderTrending(true).catch((error) => console.error("Could not refresh trending topics", error));
           });
@@ -16967,19 +16968,26 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function syncReelReplyButton(parent, replyCount) {
         if (!parent) return;
         const safeCount = Math.max(0, Number(replyCount) || 0);
+        const parentId = parent.dataset.reelComment;
         parent.dataset.replyCount = String(safeCount);
-        const state = reelCommentReplyStates.get(parent.dataset.reelComment);
-        let button = $(":scope > .reel-comment-copy > .reel-comment-replies-toggle", parent);
+        const state = reelCommentReplyStates.get(parentId);
+        const actions = parent.querySelector(":scope > .reel-comment-copy > .reel-comment-actions");
+        if (!actions) return;
+        const buttons = [...actions.querySelectorAll(":scope > .reel-comment-replies-toggle")];
+        let button = buttons.shift() || null;
+        buttons.forEach((duplicate) => duplicate.remove());
         if (!button && (safeCount > 0 || state?.loadedCount)) {
           button = document.createElement("button");
           button.className = "reel-comment-replies-toggle";
           button.type = "button";
-          button.dataset.reelRepliesToggle = parent.dataset.reelComment;
-          button.setAttribute("aria-controls", `reel-replies-${parent.dataset.reelComment}`);
-          parent.querySelector(":scope > .reel-comment-copy > .reel-comment-reply")?.after(button);
-          if (!button.isConnected) parent.querySelector(":scope > .reel-comment-copy").append(button);
+          button.dataset.reelRepliesToggle = parentId;
+          button.setAttribute("aria-controls", `reel-replies-${parentId}`);
+          const replyButton = actions.querySelector(":scope > .reel-comment-reply");
+          if (replyButton) replyButton.after(button);
+          else actions.append(button);
         }
         if (!button) return;
+        button.dataset.reelRepliesToggle = parentId;
         button.hidden = safeCount === 0 && !state?.loadedCount;
         button.disabled = Boolean(state?.loading);
         button.setAttribute("aria-expanded", String(Boolean(state?.expanded)));
@@ -20403,6 +20411,34 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
         }
         if (changed && !$("#v-profile").hidden && viewedProfileId === userId) renderProfile();
+      }
+      function receiveFollowCounts(event) {
+        if (!event || typeof event.userId !== "string" || !event.counts) return;
+        const { userId, counts } = event;
+        people = people.map((person) => person.id === userId
+          ? { ...person, followerCount: Number(counts.followers) || 0, followingCount: Number(counts.following) || 0 }
+          : person);
+        suggestedPeople = suggestedPeople.map((person) => person.id === userId
+          ? { ...person, followerCount: Number(counts.followers) || 0, followingCount: Number(counts.following) || 0 }
+          : person);
+        if (!$("#v-profile").hidden && (viewedProfileId || currentUser?.id) === userId) {
+          const followerNode = $("#followerCount");
+          const followingNode = $("#followingCount");
+          const updateCount = (node, value) => {
+            if (!node) return;
+            const next = fmt(Math.max(0, Number(value) || 0));
+            if (node.textContent === next) return;
+            node.textContent = next;
+            if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+              node.animate(
+                [{ transform: "scale(1)", opacity: 1 }, { transform: "scale(1.16)", opacity: .72 }, { transform: "scale(1)", opacity: 1 }],
+                { duration: 280, easing: "cubic-bezier(.2,.8,.2,1)" },
+              );
+            }
+          };
+          updateCount(followerNode, counts.followers);
+          updateCount(followingNode, counts.following);
+        }
       }
       function receiveProfileUpdate(user) {
         if (!user || typeof user.id !== "string") return;
@@ -25919,7 +25955,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               if (feedTab === "following") await renderFeed();
               if (shouldFollow) await removeFollowedSuggestion(f.dataset.fol);
               else await renderSide();
-              if (!$("#v-profile").hidden && viewedProfileId) await renderProfile();
               toast(shouldFollow ? "Following" : "Unfollowed");
             }).catch((error) => {
               f.setAttribute("aria-pressed", String(!shouldFollow));
