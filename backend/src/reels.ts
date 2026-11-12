@@ -1071,12 +1071,12 @@ router.delete("/:id/comments/:commentId", authRequired, writeLimiter, asyncRoute
       WITH RECURSIVE descendants("id") AS (
         SELECT "id"
         FROM "ReelComment"
-        WHERE "id" = ${commentId} AND "reelId" = ${reelId} AND "deletedAt" IS NULL
+        WHERE "id" = ${commentId} AND "reelId" = CAST(${reelId} AS uuid) AND "deletedAt" IS NULL
         UNION ALL
         SELECT child."id"
         FROM "ReelComment" child
         INNER JOIN descendants parent ON child."replyToId" = parent."id"
-        WHERE child."reelId" = ${reelId} AND child."deletedAt" IS NULL
+        WHERE child."reelId" = CAST(${reelId} AS uuid) AND child."deletedAt" IS NULL
       )
       SELECT "id" FROM descendants
     `);
