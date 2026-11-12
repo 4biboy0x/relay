@@ -2261,7 +2261,6 @@ api.patch("/conversations/:conversationId/preferences", authRequired, asyncRoute
       select: { conversationId: true },
     });
     if (!member) throw new HttpError(404, "Conversation not found");
-    const existing = await tx.conversationPreference.findUnique({ where: memberKey });
     const data: { pinned?: boolean; pinnedAt?: Date | null; muted?: boolean; mutedUntil?: Date | null } = {};
     if (input.pinned !== undefined) {
       // Pins are unlimited. The inbox gives pinned conversations priority,
