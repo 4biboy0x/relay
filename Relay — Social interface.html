@@ -5993,6 +5993,17 @@
         min-height: 0;
         margin-top: 24px;
       }
+      #conversationList > .conversation-empty-action {
+        display: flex;
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+        min-height: 0;
+        padding: 24px 16px;
+      }
+      #conversationList > .conversation-empty-action .conversation-search-new {
+        margin-top: 0;
+      }
       .conversation-search-empty {
         display: flex;
         align-items: flex-start;
@@ -20535,11 +20546,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const resultList = searchMode === "messages" ? $("#messageSearchResults") : $("#conversationList");
         if (!items.length) {
           if (!append) {
-            resultList.innerHTML = emptyState(
-              searchQuery ? (searchMode === "messages" ? "No matching messages." : "No matching conversations.") : "No conversations yet.",
-              searchQuery ? "Try a different search or filter." : "Start a new conversation to get things going.",
-              true,
-            );
+            resultList.innerHTML = searchQuery
+              ? emptyState(
+                  searchMode === "messages" ? "No matching messages." : "No matching conversations.",
+                  "Try a different search or filter.",
+                  true,
+                )
+              : `<div class="conversation-empty-action">${conversationSearchNewMarkup()}</div>`;
             resultList.dataset.loaded = "true";
           }
           return;
