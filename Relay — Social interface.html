@@ -9833,12 +9833,36 @@
       .reel-comment-copy .profile-link { padding: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
       .reel-comment-actions {
         display: flex;
+        flex-flow: row nowrap;
         align-items: center;
+        justify-content: flex-start;
+        gap: 12px;
+        width: 100%;
+        min-width: 0;
         min-height: 22px;
         margin-top: 6px;
       }
       .reel-comment-reply,
-      .reel-comment-replies-toggle { margin: 0 12px 0 0; padding: 0; border: 0; background: none; color: var(--text-3); font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; }
+      .reel-comment-replies-toggle {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        width: auto;
+        max-width: none;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: var(--text-3);
+        font: inherit;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.4;
+        white-space: nowrap;
+        overflow-wrap: normal;
+        word-break: normal;
+        cursor: pointer;
+      }
       .reel-comment-reply:hover,
       .reel-comment-replies-toggle:hover { color: var(--text-2); }
       .reel-comment-replies-toggle:disabled { cursor: default; opacity: .7; }
