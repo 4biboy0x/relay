@@ -1372,14 +1372,12 @@ api.put("/users/:userId/follow", authRequired, verifiedEmailRequired, asyncRoute
     prisma.follow.count({ where: { followedId: targetId } }),
     prisma.follow.count({ where: { followerId: targetId } }),
   ]);
-  emitToUser(req.userId!, "user:follow-counts", {
-    userId: req.userId!,
-    counts: { followers: actorFollowers, following: actorFollowing },
-  });
-  emitToUser(targetId, "user:follow-counts", {
-    userId: targetId,
-    counts: { followers: targetFollowers, following: targetFollowing },
-  });
+  const actorCounts = { followers: actorFollowers, following: actorFollowing };
+  const targetCounts = { followers: targetFollowers, following: targetFollowing };
+  emitToUser(req.userId!, "user:follow-counts", { userId: req.userId!, counts: actorCounts });
+  emitToUser(targetId, "user:follow-counts", { userId: targetId, counts: targetCounts });
+  emitToUser(req.userId!, "user:follow-counts", { userId: targetId, counts: targetCounts });
+  emitToUser(targetId, "user:follow-counts", { userId: req.userId!, counts: actorCounts });
   res.status(204).end();
 }));
 
@@ -1394,14 +1392,12 @@ api.delete("/users/:userId/follow", authRequired, asyncRoute(async (req, res) =>
       prisma.follow.count({ where: { followedId: targetId } }),
       prisma.follow.count({ where: { followerId: targetId } }),
     ]);
-    emitToUser(req.userId!, "user:follow-counts", {
-      userId: req.userId!,
-      counts: { followers: actorFollowers, following: actorFollowing },
-    });
-    emitToUser(targetId, "user:follow-counts", {
-      userId: targetId,
-      counts: { followers: targetFollowers, following: targetFollowing },
-    });
+    const actorCounts = { followers: actorFollowers, following: actorFollowing };
+    const targetCounts = { followers: targetFollowers, following: targetFollowing };
+    emitToUser(req.userId!, "user:follow-counts", { userId: req.userId!, counts: actorCounts });
+    emitToUser(targetId, "user:follow-counts", { userId: targetId, counts: targetCounts });
+    emitToUser(req.userId!, "user:follow-counts", { userId: targetId, counts: targetCounts });
+    emitToUser(targetId, "user:follow-counts", { userId: req.userId!, counts: actorCounts });
   }
   res.status(204).end();
 }));
