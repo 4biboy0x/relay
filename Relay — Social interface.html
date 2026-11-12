@@ -14491,8 +14491,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       const formatReelCount = (value) => {
         const count = Math.max(0, Number(value) || 0);
         if (count < 1000) return String(count);
-        if (count < 1_000_000) return `${(count / 1000).toFixed(count >= 10_000 ? 0 : 1).replace(/\.0$/, "")}K`;
-        return `${(count / 1_000_000).toFixed(count >= 10_000_000 ? 0 : 1).replace(/\.0$/, "")}M`;
+        if (count < 1_000_000) return `${(count / 1000).toFixed(count >= 100_000 ? 0 : 1).replace(/\.0$/, "")}K`;
+        return `${(count / 1_000_000).toFixed(count >= 100_000_000 ? 0 : 1).replace(/\.0$/, "")}M`;
       };
       function profileReelCardMarkup(reel) {
         const posterUrl = reel.posterUrl ? mediaHref(reel.posterUrl) : "";
