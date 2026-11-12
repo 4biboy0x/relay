@@ -755,7 +755,10 @@ router.post("/:id/cancel-upload", authRequired, writeLimiter, asyncRoute(async (
     select: { status: true, publishedAt: true, deletedAt: true },
   });
   if (!reel) throw new HttpError(404, "Reel not found");
-  if (reel.deletedAt || reel.publishedAt !== null || ![ReelStatus.UPLOADING, ReelStatus.PROCESSING, ReelStatus.READY].includes(reel.status)) {
+  if (reel.deletedAt || reel.publishedAt !== null
+    || (reel.status !== ReelStatus.UPLOADING
+      && reel.status !== ReelStatus.PROCESSING
+      && reel.status !== ReelStatus.READY)) {
     res.json({ canceled: false, status: reel.deletedAt ? ReelStatus.REMOVED : reel.status });
     return;
   }
