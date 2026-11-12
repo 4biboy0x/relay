@@ -2076,6 +2076,7 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
       JOIN "ConversationMember" AS viewer
         ON viewer."conversationId" = message."conversationId"
         AND viewer."userId" = ${req.userId!}
+          AND viewer."deletedAt" IS NULL
       WHERE ${Prisma.join(terms.map((term) => Prisma.sql`
         message."body" ILIKE ${`%${term}%`} ESCAPE '\\'
       `), " AND ")}
@@ -2454,7 +2455,7 @@ api.patch("/messages/:messageId", authRequired, messageLimiter, asyncRoute(async
       where: {
         id: messageId,
         senderId: req.userId!,
-        conversation: { members: { some: { userId: req.userId! } } },
+        conversation: { members: { some: { userId: req.userId!, deletedAt: null } } },
         mediaUrl: null,
         audioUrl: null,
         stickerId: null,
@@ -2555,7 +2556,7 @@ api.delete("/messages/:messageId", authRequired, messageLimiter, asyncRoute(asyn
       where: {
         id: messageId,
         senderId: req.userId!,
-        conversation: { members: { some: { userId: req.userId! } } },
+        conversation: { members: { some: { userId: req.userId!, deletedAt: null } } },
       },
       select: { id: true, conversationId: true },
     });
@@ -2653,7 +2654,7 @@ const updateMessageReaction = async (req: express.Request, res: express.Response
       SELECT "id" FROM "Message" WHERE "id" = ${messageId} FOR UPDATE
     `);
     const message = await tx.message.findFirst({
-      where: { id: messageId, conversation: { members: { some: { userId: req.userId! } } } },
+      where: { id: messageId, conversation: { members: { some: { userId: req.userId!, deletedAt: null } } } },
     });
     if (!message) throw new HttpError(404, "Message not found");
     const [existingReactions, previousActivities] = await Promise.all([
