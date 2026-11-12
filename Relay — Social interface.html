@@ -12058,6 +12058,7 @@
       let activeReelId = "";
       let deepLinkedReelId = "";
       let profileScopedReelHandle = "";
+      let globalReelContextSnapshot = null;
       let joinedReelRoomId = "";
       let pendingReelNotification = null;
       let reelFeedObserver = null;
@@ -14869,6 +14870,67 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           console.warn("Unable to cache the Reels feed.", error);
         }
       }
+      function captureGlobalReelContext() {
+        if (globalReelContextSnapshot || profileScopedReelHandle) return;
+        const feed = $("#reelFeed");
+        const video = activeReelId
+          ? $(`[data-reel-stage="${CSS.escape(activeReelId)}"]`, feed)?.querySelector(".reel-video")
+          : null;
+        const currentTime = video && Number.isFinite(video.currentTime)
+          ? video.currentTime
+          : reelLastTime.get(activeReelId) || 0;
+        if (activeReelId && currentTime > 0) reelLastTime.set(activeReelId, currentTime);
+        globalReelContextSnapshot = {
+          items: reelItems.slice(),
+          cursor: reelCursor,
+          activeId: activeReelId,
+          deepLinkedId: deepLinkedReelId,
+          scrollTop: feed?.scrollTop || reelFeedScrollTop,
+          currentTime,
+          lastTimes: new Map(reelLastTime),
+          windowStart: reelWindowStart,
+          windowEnd: reelWindowEnd,
+        };
+        ++reelRenderGeneration;
+        reelLoading = false;
+        reelFeedObserver?.disconnect();
+        reelActiveObserver?.disconnect();
+        $(".reel-video", feed).forEach((item) => item.pause());
+      }
+      function restoreGlobalReelContext() {
+        const saved = globalReelContextSnapshot;
+        if (!saved) return false;
+        globalReelContextSnapshot = null;
+        ++reelRenderGeneration;
+        reelLoading = false;
+        reelItems = saved.items.slice();
+        reelCursor = saved.cursor;
+        activeReelId = saved.activeId;
+        deepLinkedReelId = saved.deepLinkedId;
+        reelFeedScrollTop = saved.scrollTop;
+        reelWindowStart = saved.windowStart;
+        reelWindowEnd = saved.windowEnd;
+        reelLastTime.clear();
+        saved.lastTimes.forEach((time, id) => reelLastTime.set(id, time));
+        if (saved.activeId && saved.currentTime > 0) {
+          reelResumeSeek = { reelId: saved.activeId, currentTime: saved.currentTime };
+        }
+        profileScopedReelHandle = "";
+        renderReelMarkup();
+        positionReelFeedSentinel();
+        renderReelFeedState(!reelItems.length
+          ? "No reels yet"
+          : !reelCursor && activeReelId === reelItems.at(-1)?.id ? "You're all caught up." : "");
+        requestAnimationFrame(() => {
+          const feed = $("#reelFeed");
+          if (!feed || $("#v-reels").hidden) return;
+          feed.scrollTop = reelFeedScrollTop;
+          observeReelItems();
+          syncActiveReelRoom();
+          syncReelPlayback();
+        });
+        return true;
+      }
       function renderReelFeedState(message = "", retry = false, retryMore = false) {
         const status = $("#reelFeedState");
         if (message) status.dataset.state = message === "You're all caught up." ? "end" : "notice";
@@ -15526,6 +15588,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function openReelById(reelId) {
         if (!reelId) return;
+        captureGlobalReelContext();
         deepLinkedReelId = reelId;
         profileScopedReelHandle = viewedProfileHandle || "";
         reelFeedScrollTop = 0;
@@ -23726,6 +23789,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (hash === "#privacy" || hash === "#terms") return;
         const profileReelMatch = hash.match(/^#\/reel\/([^/?]+)$/);
         if (profileReelMatch) {
+          if (!globalReelContextSnapshot && !$("#v-reels").hidden) captureGlobalReelContext();
           let requestedReelId = "";
           try {
             requestedReelId = decodeURIComponent(profileReelMatch[1]);
@@ -23744,6 +23808,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         const reelMatch = hash.match(/^#\/reels(?:\/([^/?]+))?$/);
         if (reelMatch) {
+          const restoredGlobalContext = restoreGlobalReelContext();
           profileScopedReelHandle = "";
           try {
             var requestedReelId = reelMatch[1]
@@ -23753,7 +23818,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             toast("This Reel link is invalid.");
             return;
           }
-          if (!requestedReelId) {
+          if (!requestedReelId && !restoredGlobalContext) {
             profileScopedReelHandle = "";
             reelItems = [];
             reelCursor = null;
@@ -23775,7 +23840,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             if ($("#reelActionsDialog").open) $("#reelActionsDialog").close();
             deepLinkedReelId = requestedReelId;
             renderReels(false, requestedReelId);
-          } else if (!requestedReelId) {
+          } else if (!requestedReelId && !restoredGlobalContext) {
             renderReels(false);
           }
           return;
