@@ -406,9 +406,10 @@ router.post("/:id/complete", authRequired, verifiedEmailRequired, writeLimiter, 
 router.post("/:id/publish", authRequired, verifiedEmailRequired, writeLimiter, asyncRoute(async (req, res) => {
   const reelId = reelIdFrom(req.params.id);
   const userId = viewerIdFrom(req);
+  const { caption } = captionSchema.parse(req.body ?? {});
   const result = await prisma.reel.updateMany({
     where: { id: reelId, authorId: userId, status: ReelStatus.READY, publishedAt: null, deletedAt: null },
-    data: { publishedAt: new Date() },
+    data: { caption, publishedAt: new Date() },
   });
   if (!result.count) {
     const reel = await prisma.reel.findFirst({
