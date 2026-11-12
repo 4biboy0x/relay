@@ -1946,7 +1946,6 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
       },
     },
     orderBy: { conversation: { updatedAt: "desc" } },
-    take: 50,
   });
   const conversationIds = rows.map((row) => row.conversationId);
   // Inbox membership is the source of truth. Optional preferences and unread
