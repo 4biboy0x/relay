@@ -2256,7 +2256,7 @@ api.patch("/conversations/:conversationId/preferences", authRequired, asyncRoute
   const input = conversationPreferenceSchema.parse(req.body);
   const memberKey = { conversationId_userId: { conversationId, userId: req.userId! } };
   const preference = await prisma.$transaction(async (tx) => {
-    await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${req.userId!}))`);
+    await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${req.userId!}))`);
     const member = await tx.conversationMember.findUnique({
       where: memberKey,
       select: { conversationId: true },
