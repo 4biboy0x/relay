@@ -13327,6 +13327,7 @@
       let reelResumeSeek = null;
       let reelFeedIgnorePointersUntil = 0;
       let reelUploadPreviewUrl = "";
+      const optimisticReelPreviewUrls = new Set();
       let reelUploadValidationUrl = "";
       let reelPreviewMuted = true;
       let reelUploadRequest = null;
@@ -13973,7 +13974,7 @@
           preview.hidden = true;
           image.removeAttribute("src");
           image.hidden = false;
-          if (previewUrl) URL.revokeObjectURL(previewUrl);
+          releaseOptimisticReelPreview(previewUrl);
         }
         $(".composer .box").classList.remove("has-media");
         $("#attachImage").setAttribute("aria-pressed", "false");
@@ -17904,7 +17905,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         preview.pause();
         preview.removeAttribute("src");
         preview.load();
-        if (previousPreviewUrl) URL.revokeObjectURL(previousPreviewUrl);
+        if (previousPreviewUrl && !optimisticReelPreviewUrls.has(previousPreviewUrl)) URL.revokeObjectURL(previousPreviewUrl);
         reelUploadPreviewUrl = previewUrl;
         preview.preload = "auto";
         preview.muted = true;
@@ -18500,6 +18501,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (reelItems[0]) setActiveReel(reelItems[0].id);
         }
       }
+      function releaseOptimisticReelPreview(url) {
+        if (!url) return;
+        optimisticReelPreviewUrls.delete(url);
+        URL.revokeObjectURL(url);
+      }
       function showOptimisticReel(reel) {
         reelItems = [reel, ...reelItems.filter((item) => item.id !== reel.id)];
         reelCursor = null;
@@ -18555,6 +18561,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           posterUrl: thumbnail,
         };
         updateReelUploadButton();
+        if (previewUrl) optimisticReelPreviewUrls.add(previewUrl);
         showOptimisticReel(optimisticReel);
         showReelPublishStatus(thumbnail, false);
         if ($("#reelCreateDialog").open) $("#reelCreateDialog").close();
@@ -18590,6 +18597,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         } catch (error) {
           if (generation !== reelUploadGeneration || (error.name === "AbortError" && reelUploadCancellation)) return;
           removeOptimisticReel(session.id);
+          releaseOptimisticReelPreview(previewUrl);
           clearTimeout(reelPublishStatusTimer);
           clearTimeout(reelPublishHideTimer);
           $("#reelPublishStatus").hidden = true;
@@ -18926,7 +18934,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           setReelPreviewMuted(true);
           preview.removeAttribute("src");
           preview.load();
-          if (previousPreviewUrl) URL.revokeObjectURL(previousPreviewUrl);
+          if (previousPreviewUrl && !optimisticReelPreviewUrls.has(previousPreviewUrl)) URL.revokeObjectURL(previousPreviewUrl);
           preview.hidden = true;
           $("#reelUploadPreviewFrame").removeAttribute("data-has-video");
           $("#reelUploadPreviewFrame").classList.remove("is-preview-paused", "is-preview-feedback", "is-preview-playing", "is-preview-pause", "is-preview-fading");

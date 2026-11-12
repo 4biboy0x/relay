@@ -317,6 +317,73 @@ export const processReelJob = async (jobId: string, reelId: string): Promise<Ree
 
       const inputProbe = await measureStage(timings, "probeMs", () => probeVideo(inputPath));
       const fastPath = reel.mime === "video/mp4" && canUseReelFastPath(inputProbe, sourceHead.contentLength);
+      if (fastPath) {
+        // The uploaded MP4 is already browser-compatible. Make it publishable as soon as
+        // FFprobe has validated it; poster extraction remains worker-side and best-effort.
+        const markedReady = await prisma.$transaction(async (tx) => {
+          const current = await tx.reel.findFirst({
+            where: { id: reel.id, deletedAt: null, status: ReelStatus.PROCESSING },
+            select: { id: true },
+          });
+          if (!current) return false;
+          await tx.reel.update({
+            where: { id: reel.id },
+            data: {
+              status: ReelStatus.READY,
+              videoKey: reel.originalKey,
+              posterKey: null,
+              durationMs: inputProbe.durationMs,
+              width: inputProbe.width,
+              height: inputProbe.height,
+              sizeBytes: BigInt(sourceHead.contentLength),
+              mime: "video/mp4",
+              publishedAt: null,
+              processingError: null,
+            },
+          });
+          return true;
+        });
+        if (!markedReady) {
+          await prisma.processingJob.update({
+            where: { id: jobId },
+            data: { status: ProcessingJobStatus.COMPLETED, lockedAt: null, lastError: null },
+          });
+          return null;
+        }
+
+        // READY is visible to the publish endpoint before this potentially slow FFmpeg work.
+        // A poster failure must never demote an already-valid playable Reel to FAILED.
+        let posterStored = false;
+        try {
+          await measureStage(timings, "posterMs", () => createPoster(inputPath, posterPath));
+          await stat(posterPath);
+          await putReelFile(posterKey, posterPath, "image/jpeg");
+          posterStored = true;
+          const posterAttached = await prisma.reel.updateMany({
+            where: { id: reel.id, status: ReelStatus.READY, deletedAt: null, posterKey: null },
+            data: { posterKey },
+          });
+          if (!posterAttached.count) {
+            await deleteReelObject(posterKey);
+            posterStored = false;
+          }
+        } catch (error) {
+          console.error(`Reel ${reel.id} is READY, but background poster generation failed:`, error);
+          if (posterStored) {
+            try {
+              await deleteReelObject(posterKey);
+            } catch (cleanupError) {
+              console.error(`Could not clean the failed background poster for Reel ${reel.id}:`, cleanupError);
+            }
+          }
+        }
+
+        await prisma.processingJob.update({
+          where: { id: jobId },
+          data: { status: ProcessingJobStatus.COMPLETED, lockedAt: null, lastError: null },
+        });
+        return timings;
+      }
       let outputProbe: VideoProbe;
       if (fastPath) {
         outputProbe = inputProbe;
