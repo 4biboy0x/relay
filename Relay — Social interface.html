@@ -16807,19 +16807,38 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           event.actorId === currentUser?.id ? Boolean(event.active) : undefined,
         );
       }
-      function receiveDeletedReelComments(event) {
+      async function receiveDeletedReelComments(event) {
         if (!event?.reelId || !Array.isArray(event.commentIds)) return;
         const reel = reelItems.find((item) => item.id === event.reelId);
         if (reel) applyReelCounts(reel, event.counts);
         if (reelCommentsReelId === event.reelId) {
+          const list = $("#reelCommentList");
           const parent = event.parentId
-            ? $(`[data-reel-comment="${CSS.escape(event.parentId)}"]`, $("#reelCommentList"))
+            ? $(`[data-reel-comment="${CSS.escape(event.parentId)}"]`, list)
             : null;
-          event.commentIds.forEach((id) => {
-            $(`[data-reel-comment="${CSS.escape(id)}"]`, $("#reelCommentList"))?.remove();
-            reelCommentReplyStates.delete(id);
+          const removals = event.commentIds
+            .map((id) => ({ id, node: $(`[data-reel-comment="${CSS.escape(id)}"]`, list) }))
+            .filter(({ node }) => node && !node.dataset.deleting);
+          removals.forEach(({ node }) => {
+            node.dataset.deleting = "true";
+            node.setAttribute("aria-hidden", "true");
+            node.style.pointerEvents = "none";
           });
-          if (parent) {
+          if (reelReducedMotion.matches) {
+            removals.forEach(({ node }) => node.remove());
+          } else {
+            await Promise.all(removals.map(({ node }) => {
+              const height = node.getBoundingClientRect().height;
+              node.style.overflow = "hidden";
+              const animation = node.animate([
+                { height: `${height}px`, opacity: 1, transform: "translateY(0)", marginBlock: getComputedStyle(node).marginBlock, paddingBlock: getComputedStyle(node).paddingBlock },
+                { height: "0px", opacity: 0, transform: "translateY(-7px)", marginBlock: "0px", paddingBlock: "0px" },
+              ], { duration: 220, easing: "cubic-bezier(.2,.7,.2,1)", fill: "forwards" });
+              return animation.finished.catch(() => {}).then(() => node.remove());
+            }));
+          }
+          event.commentIds.forEach((id) => reelCommentReplyStates.delete(id));
+          if (parent?.isConnected) {
             const state = reelCommentReplyStates.get(parent.dataset.reelComment);
             const replies = $(`[data-reel-replies="${CSS.escape(parent.dataset.reelComment)}"]`, parent);
             const inner = $(".reel-comment-replies-inner", replies);
@@ -16840,8 +16859,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             syncReelReplyButton(parent, event.parentReplyCount);
           }
           $("#reelCommentsCount").textContent = `${formatReelCount(reel?.counts?.comments)} comments`;
-          if (!$("#reelCommentList").querySelector(".reel-comment")) {
-            $("#reelCommentList").innerHTML = '<div class="relay-load-error">No comments yet. Start the conversation.</div>';
+          if (!list.querySelector(".reel-comment")) {
+            list.innerHTML = '<div class="relay-load-error">No comments yet. Start the conversation.</div>';
           }
         }
         writeReelCache();
@@ -18917,7 +18936,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (generation !== directorySearchGeneration) return;
           people = [...new Map([...result.items, ...people].map((user) => [user.id, user])).values()];
           results.innerHTML = result.items.map((user) =>
-            `<article class="row directory-result">${avatarMarkup(user, "sm")}<div class="grow user-search-copy"><b>${profileLink(user)}</b><small>@${esc(user.handle)} · ${fmt(user.followerCount)} followers</small></div>${fbtn(user)}</article>`,
+            `<article class="row directory-result">${avatarMarkup(user, "sm")}<div class="grow user-search-copy"><b>${profileLink(user)}</b><small>@${esc(user.handle)} · ${fmt(user.followerCount)} ${Number(user.followerCount) === 1 ? "follower" : "followers"}</small></div>${fbtn(user)}</article>`,
           ).join("") || emptyState(`No people found for “${query}”.`, "Try a different search or filter.", true);
         } catch (error) {
           if (generation === directorySearchGeneration) {
@@ -19779,7 +19798,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             if (!isCurrentRequest()) {
               return;
             }
-            const people = result.users.map((person) => `<div class="explore-person-row" role="link" tabindex="0" aria-label="View @${esc(person.handle)} profile" data-explore-profile-id="${esc(person.id)}">${avatarMarkup(person)}<div class="explore-person-copy"><strong>${esc(person.displayName)}</strong><small>@${esc(person.handle)} · ${fmt(person.followerCount)} followers</small><span>${esc(person.bio || "")}</span></div>${fbtn(person)}</div>`).join("");
+            const people = result.users.map((person) => `<div class="explore-person-row" role="link" tabindex="0" aria-label="View @${esc(person.handle)} profile" data-explore-profile-id="${esc(person.id)}">${avatarMarkup(person)}<div class="explore-person-copy"><strong>${esc(person.displayName)}</strong><small>@${esc(person.handle)}</small><span>${esc(person.bio || "")}</span></div>${fbtn(person)}</div>`).join("");
             const posts = explorePostCards(result.posts.items.map((item) => post(normalizePost(item), searchTerm)).join(""));
             const content = requestFilter === "People" ? people : posts;
             await removeAppendSkeleton?.();
@@ -19825,7 +19844,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               return;
             }
             const html = requestTab === "people"
-              ? result.items.map((person) => `<div class="explore-person-row" role="link" tabindex="0" aria-label="View @${esc(person.handle)} profile" data-explore-profile-id="${esc(person.id)}">${avatarMarkup(person)}<div class="explore-person-copy"><strong>${esc(person.displayName)}</strong><small>@${esc(person.handle)} · ${fmt(person.followerCount)} followers</small><span>${esc(person.bio || "")}</span></div>${fbtn(person)}</div>`).join("")
+              ? result.items.map((person) => `<div class="explore-person-row" role="link" tabindex="0" aria-label="View @${esc(person.handle)} profile" data-explore-profile-id="${esc(person.id)}">${avatarMarkup(person)}<div class="explore-person-copy"><strong>${esc(person.displayName)}</strong><small>@${esc(person.handle)}</small><span>${esc(person.bio || "")}</span></div>${fbtn(person)}</div>`).join("")
               : explorePostCards(result.items.map((item) => post(normalizePost(item))).join(""));
             await removeAppendSkeleton?.();
             if (append) $("#exp").innerHTML += html;
