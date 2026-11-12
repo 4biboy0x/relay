@@ -20751,7 +20751,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           saveInboxPreferences();
           closeInboxConversationMenus();
           refreshInboxConversationRows();
-          toast(duration === "always" ? "Conversation muted" : "Conversation muted");
+          toast("Conversation muted");
           return;
         }
         if (action === "unmute") {
