@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Relay Realtime demo</title>
+    <style>
+      body { max-width: 720px; margin: 48px auto; padding: 0 20px; font: 16px/1.5 system-ui, sans-serif; color: #20232a; }
+      form { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0; }
+      input, button { padding: 10px 12px; font: inherit; }
+      input { flex: 1 1 200px; }
+      button { cursor: pointer; }
+      #status { min-height: 1.5em; }
+      li { padding: 8px 0; border-bottom: 1px solid #ddd; overflow-wrap: anywhere; }
+      a { color: #4045c8; }
+    </style>
+  </head>
+  <body>
+    <p><a href="/">Back to Relay</a></p>
+    <h1>Realtime live-query demo</h1>
+    <p>Sign in with a Relay account, subscribe to your private live query, then add a row.</p>
+    <form id="login-form">
+      <input name="email" type="email" autocomplete="username" placeholder="Relay email" required />
+      <input name="password" type="password" autocomplete="current-password" placeholder="Password" required />
+      <button type="submit">Sign in and subscribe</button>
+    </form>
+    <p id="status" role="status">Not connected.</p>
+    <form id="insert-form">
+      <input name="value" maxlength="240" placeholder="A value to publish live" required />
+      <button type="submit" disabled>Add live row</button>
+    </form>
+    <ol id="rows"></ol>
+    <script type="module" src="/assets/realtime-demo.js"></script>
+  </body>
+</html>

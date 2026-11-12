@@ -1,0 +1,506 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [pg_trgm]
+}
+
+model User {
+  id               String               @id @default(cuid())
+  handle           String               @unique @db.VarChar(30)
+  email            String               @unique @db.VarChar(254)
+  passwordHash     String
+  emailVerifiedAt  DateTime?
+  displayName      String               @db.VarChar(60)
+  bio           String               @default("") @db.VarChar(280)
+  avatarUrl     String?
+  bannerUrl     String?
+  isOnline      Boolean              @default(false)
+  lastSeen      DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  followers     Follow[]             @relation("Followers")
+  following     Follow[]             @relation("Following")
+  interactions  Interaction[]
+  sentNotifs    Notification[]       @relation("NotificationActor")
+  notifications Notification[]       @relation("NotificationRecipient")
+  authCodes     AuthCode[]
+  postViews     PostView[]
+  reelViews     ReelView[]
+  reels         Reel[]
+  reelLikes     ReelLike[]
+  reelReposts   ReelRepost[]
+  reelBookmarks ReelBookmark[]
+  reelShares    ReelShare[]
+  reelComments  ReelComment[]
+  reelCommentLikes ReelCommentLike[]
+  reelReports   ReelReport[]
+  posts         Post[]
+  refreshTokens RefreshToken[]
+  conversations ConversationMember[]
+  sentMessages  Message[]
+  messageReactions MessageReaction[]
+  realtimeDemos RealtimeDemo[]
+  reactionActivities ConversationReactionActivity[] @relation("ConversationReactionActor")
+  conversationPreferences ConversationPreference[]
+
+  @@index([createdAt])
+}
+
+model RealtimeDemo {
+  id        String   @id @default(cuid())
+  ownerId   String
+  value     String   @db.VarChar(240)
+  createdAt DateTime @default(now())
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, createdAt(sort: Desc)])
+}
+
+model Post {
+  id            String         @id @default(cuid())
+  authorId      String
+  body          String         @db.VarChar(280)
+  mediaUrl      String?
+  mediaCrop     Json?          @map("media_crop")
+  mediaAlt      String?        @map("media_alt") @db.VarChar(1000)
+  location      String?        @db.VarChar(80)
+  replyToId     String?
+  replyCount    Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  deletedAt     DateTime?
+  interactions  Interaction[]
+  notifications Notification[]
+  viewRecords   PostView[]
+  author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  replyTo       Post?          @relation("PostReplies", fields: [replyToId], references: [id], onDelete: Cascade)
+  replies       Post[]         @relation("PostReplies")
+  hashtags      PostHashtag[]
+  views         Int            @default(0) @map("view_count")
+
+  @@index([createdAt(sort: Desc), id(sort: Desc)])
+  @@index([authorId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([replyToId, createdAt(sort: Desc)])
+}
+
+model PostView {
+  postId        String   @map("post_id")
+  viewerKey     String   @map("viewer_key")
+  userId        String?  @map("user_id")
+  firstViewedAt DateTime @default(now()) @map("first_viewed_at") @db.Timestamptz(6)
+  post          Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user          User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, viewerKey])
+  @@index([postId], map: "post_views_post_id_idx")
+  @@map("post_views")
+}
+
+model Reel {
+  id               String         @id @default(uuid()) @db.Uuid
+  authorId         String
+  caption          String?        @db.VarChar(280)
+  status           ReelStatus     @default(UPLOADING)
+  originalKey      String
+  videoKey         String?
+  posterKey        String?
+  durationMs       Int?
+  width            Int?
+  height           Int?
+  sizeBytes        BigInt
+  mime             String         @db.VarChar(100)
+  likeCount        Int            @default(0)
+  commentCount     Int            @default(0)
+  repostCount      Int            @default(0)
+  shareCount       Int            @default(0)
+  viewCount        Int            @default(0)
+  createdAt        DateTime       @default(now())
+  publishedAt      DateTime?
+  deletedAt        DateTime?
+  storageDeletedAt DateTime?
+  processingError  String?
+  author           User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes            ReelLike[]
+  reposts          ReelRepost[]
+  bookmarks        ReelBookmark[]
+  shares           ReelShare[]
+  views            ReelView[]
+  comments         ReelComment[]
+  reports          ReelReport[]
+  notifications    Notification[] @relation("NotificationReel")
+
+  // The SQL migration adds these as partial indexes; Prisma 6.19 cannot model the predicate.
+  @@index([status, publishedAt(sort: Desc), id(sort: Desc)])
+  @@index([authorId, publishedAt(sort: Desc), id(sort: Desc)])
+  @@index([storageDeletedAt, deletedAt])
+}
+
+model ReelLike {
+  userId    String
+  reelId    String   @db.Uuid
+  createdAt DateTime @default(now())
+  reel      Reel     @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, reelId])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model ReelBookmark {
+  userId    String
+  reelId    String   @db.Uuid
+  createdAt DateTime @default(now())
+  reel      Reel     @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, reelId])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model ReelRepost {
+  userId    String
+  reelId    String   @db.Uuid
+  createdAt DateTime @default(now())
+  reel      Reel     @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, reelId])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model ReelShare {
+  userId    String
+  reelId    String   @db.Uuid
+  createdAt DateTime @default(now())
+  reel      Reel     @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, reelId])
+}
+
+model ReelView {
+  reelId        String   @db.Uuid @map("reel_id")
+  viewerKey     String   @map("viewer_key")
+  userId        String?  @map("user_id")
+  firstViewedAt DateTime @default(now()) @map("first_viewed_at") @db.Timestamptz(6)
+  reel          Reel     @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  user          User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([reelId, viewerKey])
+  @@index([reelId, firstViewedAt], map: "reel_views_reel_id_first_viewed_at_idx")
+  @@map("reel_views")
+}
+
+model ReelComment {
+  id        String        @id @default(cuid())
+  reelId    String        @db.Uuid
+  authorId  String
+  replyToId String?
+  body      String        @db.VarChar(280)
+  createdAt DateTime      @default(now())
+  deletedAt DateTime?
+  reel      Reel          @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  replyTo   ReelComment?  @relation("ReelCommentReplies", fields: [replyToId], references: [id], onDelete: Cascade)
+  replies   ReelComment[] @relation("ReelCommentReplies")
+  likes     ReelCommentLike[]
+  notifications Notification[]
+
+  @@index([reelId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([replyToId, createdAt(sort: Desc)])
+}
+
+model ReelCommentLike {
+  commentId String
+  userId    String
+  createdAt DateTime    @default(now())
+  comment   ReelComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([commentId, userId])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model ReelReport {
+  id         String           @id @default(cuid())
+  reelId     String           @db.Uuid
+  reporterId String
+  reason     ReelReportReason
+  details    String?          @db.VarChar(1000)
+  status     ReelReportStatus @default(PENDING)
+  createdAt  DateTime         @default(now())
+  reel       Reel             @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  reporter   User             @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([reelId, reporterId])
+  @@index([status, createdAt])
+}
+
+model ProcessingJob {
+  id        String              @id @default(cuid())
+  type      ProcessingJobType
+  payload   Json
+  status    ProcessingJobStatus @default(PENDING)
+  attempts  Int                 @default(0)
+  runAt     DateTime            @default(now())
+  lockedAt  DateTime?
+  lastError String?
+  createdAt DateTime            @default(now())
+
+  @@index([status, runAt])
+}
+
+model Interaction {
+  id        String          @id @default(cuid())
+  userId    String
+  postId    String
+  type      InteractionType
+  createdAt DateTime        @default(now())
+  post      Post            @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId, type])
+  @@index([postId, type, createdAt(sort: Desc)])
+  @@index([userId, type, createdAt(sort: Desc)])
+}
+
+model Follow {
+  followerId String
+  followedId String
+  createdAt  DateTime @default(now())
+  followed   User     @relation("Followers", fields: [followedId], references: [id], onDelete: Cascade)
+  follower   User     @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followedId])
+  @@index([followedId, createdAt(sort: Desc)])
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  recipientId String
+  actorId     String
+  postId      String?
+  reelId      String?          @db.Uuid
+  reelCommentId String?
+  type        NotificationType
+  readAt      DateTime?
+  createdAt   DateTime         @default(now())
+  actor       User             @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  post        Post?            @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reel        Reel?            @relation("NotificationReel", fields: [reelId], references: [id], onDelete: Cascade)
+  reelComment ReelComment?     @relation(fields: [reelCommentId], references: [id], onDelete: SetNull)
+  recipient   User             @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([recipientId, readAt])
+}
+
+enum AuthCodePurpose {
+  signup
+  reset
+}
+
+model AuthCode {
+  id        String           @id @default(cuid())
+  userId    String?
+  email     String           @db.VarChar(254)
+  purpose   AuthCodePurpose
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int              @default(0)
+  consumedAt DateTime?
+  createdAt DateTime         @default(now())
+  user      User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([email, purpose, createdAt(sort: Desc)])
+  @@index([userId, purpose, createdAt(sort: Desc)])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model Hashtag {
+  id        String        @id @default(cuid())
+  tag       String        @unique @db.VarChar(100)
+  createdAt DateTime      @default(now())
+  posts     PostHashtag[]
+
+  @@index([tag])
+}
+
+model PostHashtag {
+  postId    String
+  hashtagId String
+  createdAt DateTime @default(now())
+  hashtag   Hashtag  @relation(fields: [hashtagId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([postId, hashtagId])
+  @@index([hashtagId, createdAt(sort: Desc)])
+}
+
+model Conversation {
+  id        String               @id @default(cuid())
+  directKey String               @unique
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+  members   ConversationMember[]
+  messages  Message[]
+  lastMessage Json?
+  reactionActivities ConversationReactionActivity[]
+  preferences ConversationPreference[]
+
+  @@index([updatedAt(sort: Desc)])
+}
+
+model ConversationMember {
+  conversationId String
+  userId         String
+  joinedAt       DateTime     @default(now())
+  lastReadAt     DateTime?
+  unreadReactionCount Int     @default(0)
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, userId])
+  @@index([userId, lastReadAt])
+}
+
+model ConversationPreference {
+  conversationId String
+  userId         String
+  pinned         Boolean    @default(false)
+  pinnedAt       DateTime?
+  muted          Boolean    @default(false)
+  mutedUntil     DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, userId])
+  @@index([userId, pinned, pinnedAt])
+  @@index([userId, muted, mutedUntil])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String       @default("") @db.VarChar(2000)
+  mediaUrl       String?
+  attachments    Json?
+  mediaDimensions Json?
+  audioUrl       String?
+  waveform       Int[]        @default([])
+  stickerId      String?      @db.VarChar(64)
+  replyToId      String?
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo        Message?     @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies        Message[]    @relation("MessageReplies")
+  reactions      MessageReaction[]
+  reactionActivities ConversationReactionActivity[]
+
+  @@index([conversationId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([senderId, createdAt(sort: Desc)])
+  @@index([replyToId])
+  @@index([body(ops: raw("gin_trgm_ops"))], type: Gin)
+}
+
+model MessageReaction {
+  messageId String
+  userId    String
+  emoji     String   @db.VarChar(16)
+  createdAt DateTime @default(now())
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, userId, emoji])
+  @@index([messageId, emoji])
+}
+
+model ConversationReactionActivity {
+  id             String       @id @default(cuid())
+  conversationId String
+  messageId      String
+  actorId        String
+  emoji          String       @db.VarChar(16)
+  targetType     String       @db.VarChar(16)
+  targetText     String?      @db.VarChar(2000)
+  createdAt      DateTime     @default(now())
+  isActive       Boolean      @default(true)
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  message        Message      @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  actor          User         @relation("ConversationReactionActor", fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, isActive, createdAt(sort: Desc)])
+  @@index([messageId, actorId, isActive])
+}
+
+enum InteractionType {
+  LIKE
+  REPOST
+}
+
+enum NotificationType {
+  FOLLOW
+  LIKE
+  REPOST
+  REPLY
+  MENTION
+  REEL_LIKE
+  REEL_COMMENT
+  REEL_REPOST
+}
+
+enum ReelStatus {
+  UPLOADING
+  PROCESSING
+  READY
+  FAILED
+  REMOVED
+}
+
+enum ReelReportReason {
+  SPAM
+  HARASSMENT
+  VIOLENCE
+  SEXUAL_CONTENT
+  MISINFORMATION
+  COPYRIGHT
+  OTHER
+}
+
+enum ReelReportStatus {
+  PENDING
+  REVIEWED
+  DISMISSED
+  ACTIONED
+}
+
+enum ProcessingJobType {
+  PROCESS_REEL
+}
+
+enum ProcessingJobStatus {
+  PENDING
+  RUNNING
+  FAILED
+  COMPLETED
+}

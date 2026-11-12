@@ -1,0 +1,13 @@
+ALTER TABLE "Post" DROP CONSTRAINT "Post_replyToId_fkey";
+ALTER TABLE "Post"
+ADD CONSTRAINT "Post_replyToId_fkey"
+FOREIGN KEY ("replyToId") REFERENCES "Post"("id")
+ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "Notification" DROP CONSTRAINT "Notification_postId_fkey";
+ALTER TABLE "Notification"
+ADD CONSTRAINT "Notification_postId_fkey"
+FOREIGN KEY ("postId") REFERENCES "Post"("id")
+ON DELETE CASCADE ON UPDATE CASCADE;
+
+DELETE FROM "Post" WHERE "deletedAt" IS NOT NULL;
