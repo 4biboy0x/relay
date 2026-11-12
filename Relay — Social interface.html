@@ -14587,18 +14587,39 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           positionReelFeedSentinel();
           return false;
         }
-        const feed = $("#reelFeed");
-        const scrollTop = feed.scrollTop;
-        const before = reelItems.slice(0, start)
-          .map((reel) => `<div class="reel-virtual-placeholder" data-reel-id="${esc(reel.id)}" aria-hidden="true"></div>`).join("");
-        const slides = reelItems.slice(start, end).map((reel, offset) => reelMarkup(reel, start + offset)).join("");
-        const after = reelItems.slice(end)
-          .map((reel) => `<div class="reel-virtual-placeholder" data-reel-id="${esc(reel.id)}" aria-hidden="true"></div>`).join("");
-        container.innerHTML = before + slides + after;
+        const existingSlides = new Map($(".reel-item", container).map((slide) => [slide.dataset.reelId, slide]));
+        const sentinel = $("#reelFeedSentinel", container);
+        const fragment = document.createDocumentFragment();
+        reelItems.slice(0, start).forEach((reel) => {
+          const placeholder = document.createElement("div");
+          placeholder.className = "reel-virtual-placeholder";
+          placeholder.dataset.reelId = reel.id;
+          placeholder.setAttribute("aria-hidden", "true");
+          fragment.append(placeholder);
+        });
+        reelItems.slice(start, end).forEach((reel, offset) => {
+          let slide = existingSlides.get(reel.id);
+          if (!slide) {
+            const template = document.createElement("template");
+            template.innerHTML = reelMarkup(reel, start + offset);
+            slide = template.content.firstElementChild;
+          } else {
+            slide.setAttribute("aria-label", `Reel by @${reel.author?.handle || "user"}, ${start + offset + 1} of ${reelItems.length}`);
+          }
+          fragment.append(slide);
+        });
+        reelItems.slice(end).forEach((reel) => {
+          const placeholder = document.createElement("div");
+          placeholder.className = "reel-virtual-placeholder";
+          placeholder.dataset.reelId = reel.id;
+          placeholder.setAttribute("aria-hidden", "true");
+          fragment.append(placeholder);
+        });
+        if (sentinel) fragment.append(sentinel);
+        container.replaceChildren(fragment);
         reelWindowStart = start;
         reelWindowEnd = end;
         positionReelFeedSentinel();
-        feed.scrollTop = scrollTop;
         return true;
       }
       function positionReelFeedSentinel() {
@@ -14888,7 +14909,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         reelActiveObserver?.disconnect();
         const feed = $("#reelFeed");
         if (!feed || $("#v-reels").hidden) return;
-        const slides = [...$(".reel-item", feed), ...$(".reel-virtual-placeholder", feed)];
+        const slides = [...$( ".reel-item", feed), ...$( ".reel-virtual-placeholder", feed)];
         if ("IntersectionObserver" in window) {
           reelActiveObserver = new IntersectionObserver((entries) => {
             const active = entries
