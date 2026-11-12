@@ -21015,7 +21015,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
           return;
         }
-        const items = $(".conversation-row", $("#conversationList"));
+        const items = $$(".conversation-row", $("#conversationList"));
         if (!items.length) {
           renderConversationItems([], terms.join(" "));
           empty.hidden = true;
