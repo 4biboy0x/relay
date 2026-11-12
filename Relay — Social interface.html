@@ -18202,7 +18202,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           reject: null,
           settled: false,
           paused: false,
-          deadline: Date.now() + 3 * 60_000,
+          deadline: Date.now() + 10 * 60_000,
           timeoutTimer: null,
           networkRetries: 0,
           etag: "",
@@ -18216,7 +18216,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         session.timeoutTimer = setTimeout(() => {
           stopReelStatusPoller(reelId, { timedOut: true });
           showReelStatusTimeout(reelId);
-        }, 3 * 60_000);
+        }, 10 * 60_000);
         return startReelStatusPoller(session);
       }
       function cacheCreatedReel(reel, activateInFeed = false) {
