@@ -20657,7 +20657,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const target = targetLabels[targetType] || "a message";
         return `<span class="conversation-preview-text">${esc(prefix)} ${emoji} to ${target}</span>`;
       }
-      const inboxPreferencesKey = (userId) => \`relay_inbox_preferences:\${userId || "anonymous"}\`;
+      const inboxPreferencesKey = (userId) => `relay_inbox_preferences:${userId || "anonymous"}`;
       function readInboxPreferences() {
         try {
           const saved = JSON.parse(localStorage.getItem(inboxPreferencesKey(currentUser?.id)) || "{}");
@@ -20838,32 +20838,32 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             ? index === 0 ? (pinned ? "Pinned" : "All conversations")
               : pinned !== previousPinned ? "All conversations" : ""
             : "";
-          const row = \`<div class="conversation-row" data-conversation-row="\${esc(item.id)}">
-            <button class="conversation-item\${searchQuery ? " is-search-result" : ""}\${searchMode === "messages" ? " message-search-result" : ""}\${unreadCount ? " has-unread" : ""}" type="button" style="--conversation-index:\${index}" data-conversation="\${esc(item.id)}" data-search="\${esc(search)}" data-search-mode="\${esc(searchMode)}" data-search-message-id="\${esc(searchMessageId)}" data-search-message-candidate="\${searchMessageCandidate}" aria-current="\${current}"\${searchQuery ? \` aria-selected="\${current}"\` : ""}>
-              \${presenceAvatarMarkup(other, "sm")}
+          const row = `<div class="conversation-row" data-conversation-row="${esc(item.id)}">
+            <button class="conversation-item${searchQuery ? " is-search-result" : ""}${searchMode === "messages" ? " message-search-result" : ""}${unreadCount ? " has-unread" : ""}" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-mode="${esc(searchMode)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}"${searchQuery ? ` aria-selected="${current}"` : ""}>
+              ${presenceAvatarMarkup(other, "sm")}
               <span class="grow">
-                <span class="conversation-item-heading"><b>\${esc(other?.displayName || "Relay user")}</b>\${pinned ? '<span class="conversation-state-icon" title="Pinned" aria-label="Pinned"><svg class="i" viewBox="0 0 24 24"><path d="m16 3 5 5-4 1-4 4v5l-2 2-2-7-6-6 2-2 6 6h5l4-4z"/></svg></span>' : ""}\${muted ? '<span class="conversation-state-icon" title="Muted" aria-label="Muted"><svg class="i" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4M4 4l16 16"/></svg></span>' : ""}\${messageTime}</span>
-                <small>\${preview}</small>
+                <span class="conversation-item-heading"><b>${esc(other?.displayName || "Relay user")}</b>${pinned ? '<span class="conversation-state-icon" title="Pinned" aria-label="Pinned"><svg class="i" viewBox="0 0 24 24"><path d="m16 3 5 5-4 1-4 4v5l-2 2-2-7-6-6 2-2 6 6h5l4-4z"/></svg></span>' : ""}${muted ? '<span class="conversation-state-icon" title="Muted" aria-label="Muted"><svg class="i" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4M4 4l16 16"/></svg></span>' : ""}${messageTime}</span>
+                <small>${preview}</small>
               </span>
             </button>
-            \${isInboxList && !searchQuery ? \`<div class="conversation-actions">
-              <button class="conversation-more" type="button" data-inbox-action="toggle-menu" data-conversation-id="\${esc(item.id)}" data-inbox-menu-trigger aria-label="Conversation options" aria-haspopup="menu" aria-expanded="false">
+            ${isInboxList && !searchQuery ? `<div class="conversation-actions">
+              <button class="conversation-more" type="button" data-inbox-action="toggle-menu" data-conversation-id="${esc(item.id)}" data-inbox-menu-trigger aria-label="Conversation options" aria-haspopup="menu" aria-expanded="false">
                 <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
               </button>
               <div class="conversation-menu" data-inbox-menu role="menu" hidden>
-                <button type="button" role="menuitem" data-inbox-action="\${pinned ? "unpin" : "pin"}" data-conversation-id="\${esc(item.id)}">\${pinned ? "Unpin conversation" : "Pin conversation"}</button>
-                \${muted ? '<button type="button" role="menuitem" data-inbox-action="unmute" data-conversation-id="' + esc(item.id) + '">Unmute</button>' : \`<button type="button" role="menuitem" data-inbox-action="toggle-mute-options" data-conversation-id="\${esc(item.id)}">Mute</button>
+                <button type="button" role="menuitem" data-inbox-action="${pinned ? "unpin" : "pin"}" data-conversation-id="${esc(item.id)}">${pinned ? "Unpin conversation" : "Pin conversation"}</button>
+                ${muted ? '<button type="button" role="menuitem" data-inbox-action="unmute" data-conversation-id="' + esc(item.id) + '">Unmute</button>' : `<button type="button" role="menuitem" data-inbox-action="toggle-mute-options" data-conversation-id="${esc(item.id)}">Mute</button>
                 <div class="conversation-mute-options" data-mute-options hidden>
                   <span>Mute for</span>
-                  <button type="button" role="menuitem" data-inbox-action="mute" data-mute-duration="3600000" data-conversation-id="\${esc(item.id)}">1 hour</button>
-                  <button type="button" role="menuitem" data-inbox-action="mute" data-mute-duration="28800000" data-conversation-id="\${esc(item.id)}">8 hours</button>
-                  <button type="button" role="menuitem" data-inbox-action="mute" data-mute-duration="604800000" data-conversation-id="\${esc(item.id)}">1 week</button>
-                  <button type="button" role="menuitem" data-inbox-action="mute" data-mute-duration="always" data-conversation-id="\${esc(item.id)}">Always</button>
-                </div>\`}
+                  <button type="button" role="menuitem" data-inbox-action="mute" data-mute-duration="3600000" data-conversation-id="${esc(item.id)}">1 hour</button>
+                  <button type="button" role="menuitem" data-inbox-action="mute" data-mute-duration="28800000" data-conversation-id="${esc(item.id)}">8 hours</button>
+                  <button type="button" role="menuitem" data-inbox-action="mute" data-mute-duration="604800000" data-conversation-id="${esc(item.id)}">1 week</button>
+                  <button type="button" role="menuitem" data-inbox-action="mute" data-mute-duration="always" data-conversation-id="${esc(item.id)}">Always</button>
+                </div>`}
               </div>
-            </div>\` : ""}
-          </div>\`;
-          return sectionLabel ? \`<div class="conversation-section-label">\${sectionLabel}</div>\${row}\` : row;
+            </div>` : ""}
+          </div>`;
+          return sectionLabel ? `<div class="conversation-section-label">${sectionLabel}</div>${row}` : row;
         }).join("");
         if (append) resultList.insertAdjacentHTML("beforeend", markup);
         else if (resultList.id !== "conversationList") resultList.innerHTML = markup;
