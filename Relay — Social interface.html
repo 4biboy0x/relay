@@ -6235,89 +6235,6 @@
       .conversation-item.is-search-result[aria-selected="true"] {
         background: var(--accent-soft);
       }
-      #messageSearchResults {
-        gap: 10px;
-        padding: 14px 0 22px;
-        overscroll-behavior: contain;
-      }
-      #messageSearchResults .message-search-result {
-        width: calc(100% - 32px);
-        min-height: 84px;
-        align-items: flex-start;
-        gap: 13px;
-        margin: 0 16px;
-        padding: 14px;
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        background: var(--surface);
-        box-shadow: 0 1px 2px rgba(9, 9, 11, .035);
-        transition:
-          border-color 160ms ease,
-          background-color 160ms ease,
-          box-shadow 160ms ease,
-          transform 160ms ease;
-      }
-      #messageSearchResults .message-search-result > .presence-avatar {
-        flex: none;
-        margin-top: 2px;
-      }
-      #messageSearchResults .message-search-result .grow {
-        display: flex;
-        min-width: 0;
-        flex-direction: column;
-        gap: 8px;
-      }
-      #messageSearchResults .message-search-result .conversation-item-heading {
-        width: 100%;
-        gap: 10px;
-      }
-      #messageSearchResults .message-search-result .conversation-item-heading b {
-        font-size: 14px;
-        font-weight: 650;
-      }
-      #messageSearchResults .message-search-result small {
-        display: block;
-        min-width: 0;
-        overflow: visible;
-        margin-top: 0;
-        color: var(--text-2);
-        font-size: 13px;
-        font-weight: 400;
-        line-height: 1.55;
-        white-space: normal;
-        overflow-wrap: anywhere;
-      }
-      #messageSearchResults .message-search-result .message-search-sender {
-        color: var(--text-3);
-        font-weight: 600;
-      }
-      #messageSearchResults .message-search-result:hover {
-        border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
-        background: var(--surface);
-        box-shadow: 0 4px 14px rgba(9, 9, 11, .055);
-      }
-      #messageSearchResults .message-search-result[aria-selected="true"] {
-        border-color: color-mix(in srgb, var(--accent) 48%, var(--border));
-        background: var(--accent-soft);
-        box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent);
-      }
-      @media (max-width: 640px) {
-        #messageSearchResults {
-          padding: 12px 0 18px;
-        }
-        #messageSearchResults .message-search-result {
-          width: calc(100% - 24px);
-          gap: 11px;
-          margin-inline: 12px;
-          padding: 13px 12px;
-          border-radius: 13px;
-        }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        #messageSearchResults .message-search-result {
-          transition: none;
-        }
-      }
       #conversationList mark,
       #messageSearchResults mark {
         border-radius: 4px;
@@ -21135,65 +21052,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
       }
       function renderMessageSearchItems(items, append = false) {
-        const list = $("#messageSearchResults");
-        list.querySelector(".message-search-sentinel")?.remove();
-        if (!append) list.replaceChildren();
-        if (!items.length && !append) {
-          list.innerHTML = conversationSearchState.query
-            ? emptyState("No messages found", "Try a different search.", true)
-            : "";
-          return;
-        }
-        const fragment = document.createDocumentFragment();
-        items.forEach((item) => {
-          const other = item.members.find((member) => member.id !== currentUser?.id);
-          const message = item.matchedMessage;
-          if (!message) return;
-          const row = document.createElement("button");
-          row.type = "button";
-          row.className = "conversation-item is-search-result message-search-result";
-          row.dataset.conversation = item.id;
-          row.dataset.searchMode = "messages";
-          row.dataset.searchMessageId = message.id;
-          row.setAttribute("aria-current", "false");
-          row.setAttribute("aria-selected", "false");
-          const avatar = document.createElement("span");
-          avatar.innerHTML = presenceAvatarMarkup(other, "sm");
-          row.append(avatar.firstElementChild);
-          const copy = document.createElement("span");
-          copy.className = "grow";
-          const heading = document.createElement("span");
-          heading.className = "conversation-item-heading";
-          const name = document.createElement("b");
-          appendConversationMatch(name, other?.displayName || "Relay user", conversationSearchState.query);
-          heading.append(name);
-          const timestamp = messageSearchTime(message.createdAt);
-          const time = document.createElement("time");
-          time.className = "message-search-time";
-          time.dateTime = message.createdAt;
-          time.title = timestamp.title;
-          time.textContent = timestamp.label;
-          heading.append(time);
-          const preview = document.createElement("small");
-          const sender = message.senderId === currentUser?.id
-            ? "You"
-            : message.sender?.displayName || other?.displayName || "Relay user";
-          const body = message.body?.trim()
-            || (message.mediaUrl ? "Photo" : message.audioUrl ? "Voice message" : message.stickerId ? "Sticker" : "");
-          const snippet = conversationMessageSnippet(body, conversationSearchState.query);
-          if (snippet.clippedStart) preview.append(document.createTextNode("…"));
-          const prefix = document.createElement("span");
-          prefix.className = "message-search-sender";
-          prefix.textContent = `${sender}: `;
-          const snippetContent = document.createElement("span");
-          appendConversationMatch(snippetContent, snippet.text, conversationSearchState.query);
-          preview.append(prefix, snippetContent);
-          if (snippet.clippedEnd) preview.append(document.createTextNode("…"));
-          copy.append(heading, preview);
-          row.append(copy);
-          fragment.append(row);
-        });
-        list.append(fragment);
+        // Keep message matches visually consistent with conversation search rows.
+        // The shared renderer preserves message-specific sender, snippet and timestamp data.
+        renderConversationItems(items, conversationSearchState.query, "messages", append);
       }
       async function loadMoreMessageSearchResults() {
         const { query, generation } = conversationSearchState;
