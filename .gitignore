@@ -1,9 +1,0 @@
-node_modules/
-backend/node_modules/
-backend/.env
-dist/
-backend/dist/
-backend/uploads/*
-!backend/uploads/.gitkeep
-.neon
-.env.local

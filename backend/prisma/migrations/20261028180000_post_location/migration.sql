@@ -1,1 +1,0 @@
-ALTER TABLE "Post" ADD COLUMN "location" VARCHAR(80);
