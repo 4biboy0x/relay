@@ -6005,17 +6005,28 @@
         width: 32px;
         height: 32px;
         place-items: center;
-        border-radius: 8px;
+        border-radius: 9px;
         color: var(--text-3);
-        opacity: .72;
-        transition: color 120ms ease, background 120ms ease, opacity 120ms ease;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateX(4px) scale(.94);
+        transition:
+          color 160ms ease,
+          background 160ms ease,
+          opacity 180ms ease,
+          transform 180ms cubic-bezier(.2, .75, .25, 1),
+          visibility 180ms ease;
       }
-      .conversation-row:hover .conversation-more,
-      .conversation-more:focus-visible,
-      .conversation-more[aria-expanded="true"] {
-        color: var(--text);
-        background: var(--surface-2);
-        opacity: 1;
+      @media (hover: hover) and (pointer: fine) {
+        .conversation-row:hover .conversation-more,
+        .conversation-more:focus-visible,
+        .conversation-more[aria-expanded="true"] {
+          color: var(--text);
+          background: var(--surface-2);
+          opacity: 1;
+          visibility: visible;
+          transform: translateX(0) scale(1);
+        }
       }
       .conversation-more .i {
         width: 18px;
@@ -6032,9 +6043,22 @@
         gap: 2px;
         padding: 5px;
         border: 1px solid var(--border);
-        border-radius: 11px;
+        border-radius: 12px;
         background: var(--surface);
-        box-shadow: 0 8px 28px rgba(9, 9, 11, .14);
+        box-shadow: 0 12px 34px rgba(9, 9, 11, .18);
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-6px) scale(.97);
+        transform-origin: top right;
+        transition:
+          opacity 170ms ease,
+          transform 190ms cubic-bezier(.2, .75, .25, 1),
+          visibility 170ms ease;
+      }
+      .conversation-menu.is-open {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0) scale(1);
       }
       .conversation-menu > button,
       .conversation-mute-options > button {
@@ -6083,8 +6107,30 @@
         height: 13px;
         stroke-width: 1.8;
       }
-      @media (hover: none) {
-        .conversation-more { opacity: 1; }
+      @media (hover: none), (pointer: coarse) {
+        .conversation-actions {
+          position: absolute;
+          z-index: 4;
+          top: 50%;
+          inset-inline-end: 8px;
+          margin: 0;
+          transform: translateY(-50%);
+          pointer-events: none;
+        }
+        .conversation-more {
+          display: none;
+        }
+        .conversation-menu {
+          top: calc(100% + 8px);
+          transform-origin: top right;
+          pointer-events: auto;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .conversation-more,
+        .conversation-menu {
+          transition-duration: .01ms;
+        }
       }
       .conversation-item {
         position: relative;
@@ -20673,13 +20719,32 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         return true;
       }
+      function setInboxConversationMenuOpen(container, open) {
+        if (!container) return;
+        const trigger = $("[data-inbox-menu-trigger]", container);
+        const menu = $("[data-inbox-menu]", container);
+        if (!menu) return;
+        clearTimeout(menu._inboxCloseTimer);
+        if (open) {
+          menu.hidden = false;
+          requestAnimationFrame(() => menu.classList.add("is-open"));
+          trigger?.setAttribute("aria-expanded", "true");
+          return;
+        }
+        menu.classList.remove("is-open");
+        trigger?.setAttribute("aria-expanded", "false");
+        menu._inboxCloseTimer = window.setTimeout(() => {
+          if (!menu.classList.contains("is-open")) menu.hidden = true;
+        }, 190);
+      }
+      function openInboxConversationMenu(container) {
+        closeInboxConversationMenus(container);
+        setInboxConversationMenuOpen(container, true);
+      }
       function closeInboxConversationMenus(except = null) {
         document.querySelectorAll(".conversation-actions").forEach((container) => {
           if (container === except) return;
-          const trigger = $("[data-inbox-menu-trigger]", container);
-          const menu = $("[data-inbox-menu]", container);
-          if (menu) menu.hidden = true;
-          trigger?.setAttribute("aria-expanded", "false");
+          setInboxConversationMenuOpen(container, false);
         });
       }
       function refreshInboxConversationRows() {
@@ -20695,10 +20760,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const menu = $("[data-inbox-menu]", container);
         const action = button.dataset.inboxAction;
         if (action === "toggle-menu") {
-          const shouldOpen = menu?.hidden;
-          closeInboxConversationMenus(container);
-          if (menu) menu.hidden = !shouldOpen;
-          $("[data-inbox-menu-trigger]", container)?.setAttribute("aria-expanded", String(Boolean(shouldOpen)));
+          const shouldOpen = menu?.hidden || !menu.classList.contains("is-open");
+          if (shouldOpen) openInboxConversationMenu(container);
+          else setInboxConversationMenuOpen(container, false);
           return;
         }
         if (action === "toggle-mute-options") {
@@ -20732,6 +20796,58 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       document.addEventListener("click", (event) => {
         if (!event.target.closest(".conversation-actions")) closeInboxConversationMenus();
+      });
+      let inboxLongPressTimer = null;
+      let inboxLongPressRow = null;
+      let inboxLongPressStart = null;
+      let suppressInboxLongPressClick = false;
+      const inboxConversationList = $("#conversationList");
+      function cancelInboxLongPress() {
+        clearTimeout(inboxLongPressTimer);
+        inboxLongPressTimer = null;
+        inboxLongPressRow = null;
+        inboxLongPressStart = null;
+      }
+      inboxConversationList.addEventListener("pointerdown", (event) => {
+        if (event.pointerType === "mouse" || event.button !== 0) return;
+        const target = event.target instanceof Element ? event.target : event.target.parentElement;
+        const row = target?.closest(".conversation-row");
+        if (!row || target.closest(".conversation-actions")) return;
+        cancelInboxLongPress();
+        inboxLongPressRow = row;
+        inboxLongPressStart = { x: event.clientX, y: event.clientY };
+        inboxLongPressTimer = window.setTimeout(() => {
+          if (!inboxLongPressRow?.isConnected) return;
+          const actions = $(".conversation-actions", inboxLongPressRow);
+          if (!actions) return;
+          suppressInboxLongPressClick = true;
+          openInboxConversationMenu(actions);
+          if (navigator.vibrate) navigator.vibrate(8);
+        }, 480);
+      });
+      inboxConversationList.addEventListener("pointermove", (event) => {
+        if (!inboxLongPressStart) return;
+        if (Math.hypot(event.clientX - inboxLongPressStart.x, event.clientY - inboxLongPressStart.y) > 10) {
+          cancelInboxLongPress();
+        }
+      }, { passive: true });
+      ["pointerup", "pointercancel", "pointerleave"].forEach((type) => {
+        inboxConversationList.addEventListener(type, cancelInboxLongPress, { passive: true });
+      });
+      inboxConversationList.addEventListener("click", (event) => {
+        if (!suppressInboxLongPressClick) return;
+        suppressInboxLongPressClick = false;
+        event.preventDefault();
+        event.stopPropagation();
+      }, true);
+      inboxConversationList.addEventListener("contextmenu", (event) => {
+        const target = event.target instanceof Element ? event.target : event.target.parentElement;
+        if (target?.closest(".conversation-row")) event.preventDefault();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && document.querySelector(".conversation-menu.is-open")) {
+          closeInboxConversationMenus();
+        }
       });
       function renderConversationItems(items, searchQuery = "", searchMode = "all", append = false) {
         const normalizedQuery = searchQuery.normalize("NFKC").toLowerCase();
