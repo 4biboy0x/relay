@@ -10086,7 +10086,7 @@
       }
       .app.reels-active .reel-copy {
         z-index: 4; right: 88px !important;
-        bottom: calc(var(--reel-nav-height, 0px) + 76px + env(safe-area-inset-bottom, 0px)) !important;
+        bottom: calc(var(--reel-nav-height, 0px) + 58px + env(safe-area-inset-bottom, 0px)) !important;
         left: 16px !important; color: #fff !important; text-shadow: 0 1px 5px rgba(0,0,0,.55) !important;
       }
       .app.reels-active .reel-author-line { gap: 10px; margin-bottom: 9px; }
@@ -10111,8 +10111,8 @@
       .app.reels-active .reel-caption-more { color: rgba(255,255,255,.92); font-weight: 650; }
       .app.reels-active .reel-actions {
         position: absolute !important; z-index: 6; right: 12px !important;
-        bottom: calc(var(--reel-nav-height, 0px) + 104px + env(safe-area-inset-bottom, 0px)) !important;
-        display: flex !important; width: 44px !important; gap: 12px !important; color: #fff !important;
+        bottom: calc(var(--reel-nav-height, 0px) + 88px + env(safe-area-inset-bottom, 0px)) !important;
+        display: flex !important; width: 44px !important; gap: 6px !important; color: #fff !important;
       }
       .app.reels-active .reel-action {
         width: 44px !important; height: 50px !important; min-height: 50px;
@@ -10168,13 +10168,8 @@
       .app.reels-active .reel-feed-sentinel { width: 1px; height: 1px; }
       @media (max-width: 640px) {
         .app.reels-active { --reel-nav-height: var(--mobile-nav-height); }
-        .app.reels-active .nav {
-          z-index: 30 !important; background: #000 !important; border-top: 0 !important; color: #fff !important;
-        }
-        .app.reels-active .nav .nav-item { color: rgba(255,255,255,.82) !important; }
-        .app.reels-active .nav .nav-item[aria-current="page"] { color: #fff !important; }
-        .app.reels-active .nav .nav-item .i { color: inherit !important; }
-        .app.reels-active .nav .nav-badge { border-color: #000 !important; }
+        /* Keep the shared navigation appearance and interaction states on Reels too. */
+        .app.reels-active .nav { z-index: 30 !important; }
       }
       @media (prefers-reduced-motion: reduce) {
         .app.reels-active .reel-video { will-change: auto; }
@@ -10275,6 +10270,9 @@
           <circle cx="12" cy="12" r="10" />
           <path d="M8 14s1.5 2 4 2 4-2 4-2" />
           <path d="M9 9h.01M15 9h.01" />
+        </symbol>
+        <symbol id="reels-menu" viewBox="0 0 24 24">
+          <path d="M4 7h16M4 14h9" />
         </symbol>
         <symbol id="dots" viewBox="0 0 24 24">
           <circle cx="12" cy="12" r="1" />
@@ -14504,7 +14502,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         repost: "repeat",
         bookmark: "bookmark",
         share: "share",
-        more: "dots",
+        more: "reels-menu",
       };
       const reelActionLabels = {
         like: "likes",
