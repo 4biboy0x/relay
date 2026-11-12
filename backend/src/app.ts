@@ -1980,6 +1980,7 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
           AND message."senderId" <> member."userId"
           AND (member."lastReadAt" IS NULL OR message."createdAt" > member."lastReadAt")
         WHERE member."userId" = ${req.userId}
+          AND member."deletedAt" IS NULL
           AND member."conversationId" IN (${Prisma.join(conversationIds)})
         GROUP BY member."conversationId", member."unreadReactionCount"
       `);
@@ -2187,6 +2188,7 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
       AND message."senderId" <> member."userId"
       AND (member."lastReadAt" IS NULL OR message."createdAt" > member."lastReadAt")
     WHERE member."userId" = ${req.userId!}
+      AND member."deletedAt" IS NULL
       AND member."conversationId" IN (${Prisma.join(conversationIds)})
     GROUP BY member."conversationId"
   `);
