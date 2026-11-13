@@ -6717,6 +6717,8 @@
       .message-bubble.text-message {
         width: fit-content;
         max-width: min(230px, calc(100% - 115px));
+        padding: 9px 16px;
+        border-radius: 999px;
         unicode-bidi: plaintext;
         text-align: start;
       }
@@ -6726,23 +6728,16 @@
         color: #fff;
         background: var(--accent);
       }
-      .message-bubble.message-group-first:not(.mine) {
-        border-radius: 12px 12px 12px 4px;
+      /* Keep every text message uniformly rounded, including consecutive messages. */
+      .message-bubble.text-message,
+      .message-bubble.text-message.mine {
+        border-radius: 999px;
       }
-      .message-bubble.message-group-middle:not(.mine) {
-        border-radius: 4px 12px 12px 4px;
-      }
-      .message-bubble.message-group-last:not(.mine) {
-        border-radius: 4px 12px 12px 12px;
-      }
-      .message-bubble.message-group-first.mine {
-        border-radius: 12px 12px 4px 12px;
-      }
-      .message-bubble.message-group-middle.mine {
-        border-radius: 12px 4px 4px 12px;
-      }
-      .message-bubble.message-group-last.mine {
-        border-radius: 12px 4px 12px 12px;
+      /* Explicit line breaks identify authored multi-line paragraphs without touching reply previews. */
+      .message-bubble.text-message:has(br),
+      .message-bubble.text-message.mine:has(br) {
+        padding: 11px 16px;
+        border-radius: 22px;
       }
       .message-row {
         position: relative;
