@@ -12171,6 +12171,91 @@
           background: #18181b;
         }
       }
+
+      /* Unify the Relay wordmark without changing its existing Piazzolla typography. */
+      @media (min-width: 768px) {
+        .app > .nav > .brand {
+          padding-inline: 14px;
+          margin-inline-start: -2px;
+          margin-bottom: 16px;
+        }
+      }
+      @media (min-width: 1200px) {
+        .app > .nav > .brand .wordmark {
+          position: relative;
+          transition: max-width 480ms cubic-bezier(0.22, 1, 0.36, 1),
+            color 220ms ease;
+        }
+        .app > .nav > .brand .wordmark::after {
+          content: "R";
+          position: absolute;
+          inset: 0;
+          display: grid;
+          place-items: center;
+          color: var(--text);
+          font: inherit;
+          opacity: 0;
+          transition: opacity 220ms ease;
+        }
+        .app.messages-active > .nav > .brand {
+          justify-content: center;
+          padding-inline: 0;
+          margin-inline-start: 0;
+        }
+        .app.messages-active > .nav > .brand .wordmark {
+          width: 28px;
+          max-width: 28px !important;
+          flex: 0 0 28px;
+          overflow: hidden;
+          color: transparent;
+          opacity: 1 !important;
+          transform: none !important;
+          text-align: center;
+        }
+        .app.messages-active > .nav > .brand .wordmark::after {
+          opacity: 1;
+        }
+      }
+      @media (max-width: 767px) {
+        .app > .nav > .brand {
+          display: none !important;
+        }
+        .mobile-home-brand {
+          display: none;
+        }
+        .app.home-active .mobile-home-brand {
+          position: fixed;
+          inset: 0 0 auto;
+          z-index: 40;
+          display: flex;
+          width: 100%;
+          height: calc(48px + env(safe-area-inset-top, 0px));
+          min-height: calc(48px + env(safe-area-inset-top, 0px));
+          box-sizing: border-box;
+          align-items: center;
+          justify-content: center;
+          margin: 0;
+          padding: env(safe-area-inset-top, 0px) 16px 0;
+          border-bottom: 1px solid var(--border);
+          background: var(--bg);
+          transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+            opacity 200ms ease;
+          will-change: transform, opacity;
+        }
+        .app.home-active > main {
+          padding-top: calc(48px + env(safe-area-inset-top, 0px)) !important;
+        }
+        .mobile-home-brand.is-hidden {
+          opacity: 0;
+          transform: translateY(-105%);
+          pointer-events: none;
+        }
+      }
+      @media (max-width: 767px) and (prefers-reduced-motion: reduce) {
+        .app.home-active .mobile-home-brand {
+          transition: none;
+        }
+      }
 </style>
   </head>
   <body>
@@ -25954,6 +26039,41 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (navigationType !== "reload" && navigationType !== "back_forward") return;
         history.replaceState(null, "", `${location.pathname}${location.search}#/reels`);
       }
+      const mobileHomeBrandHeader = document.createElement("header");
+      mobileHomeBrandHeader.className = "brand mobile-home-brand";
+      mobileHomeBrandHeader.setAttribute("aria-label", "Relay");
+      const mobileHomeWordmark = document.createElement("span");
+      mobileHomeWordmark.className = "wordmark";
+      mobileHomeWordmark.textContent = "Relay";
+      mobileHomeBrandHeader.append(mobileHomeWordmark);
+      $("#main").prepend(mobileHomeBrandHeader);
+
+      let mobileHomeLastScrollTop = 0;
+      document.addEventListener("scroll", (event) => {
+        if (!window.matchMedia("(max-width: 767px)").matches
+          || !$(".app").classList.contains("home-active")) return;
+        const target = event.target;
+        const homeView = $("#v-home");
+        const main = $("#main");
+        const relevantScroll = target === document
+          || target === document.documentElement
+          || target === document.body
+          || target === main
+          || homeView.contains(target)
+          || target?.contains?.(homeView);
+        if (!relevantScroll) return;
+        const currentTop = target === document || target === document.documentElement
+          || target === document.body ? window.scrollY : target.scrollTop;
+        if (currentTop <= 8) {
+          mobileHomeBrandHeader.classList.remove("is-hidden");
+        } else if (currentTop > mobileHomeLastScrollTop + 3) {
+          mobileHomeBrandHeader.classList.add("is-hidden");
+        } else if (currentTop < mobileHomeLastScrollTop - 3) {
+          mobileHomeBrandHeader.classList.remove("is-hidden");
+        }
+        mobileHomeLastScrollTop = currentTop;
+      }, { capture: true, passive: true });
+
       function go(v, updateRoute = true, preserveProfile = false, restoreConversationId = "") {
         if (!requireAuth()) return;
         const explicitReelId = deepLinkedReelId;
@@ -26013,6 +26133,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $(".app").classList.toggle("messages-active", v === "messages");
         $(".app").classList.toggle("thread-active", v === "thread");
         $(".app").classList.toggle("reels-active", v === "reels");
+        $(".app").classList.toggle("home-active", v === "home");
+        if (v === "home") {
+          mobileHomeLastScrollTop = 0;
+          mobileHomeBrandHeader.classList.remove("is-hidden");
+        }
         $$("[data-v]").forEach((s) => (s.hidden = s.id !== "v-" + v));
         updateEmailVerificationNotice();
         syncActiveReelRoom();
