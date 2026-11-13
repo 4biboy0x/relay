@@ -6883,6 +6883,18 @@
       }
       .message-row.mine > .reply-stack { align-items: flex-end; }
       .message-row:not(.mine) > .reply-stack { align-items: flex-start; }
+      .message-row.mine .reply-header {
+        align-self: flex-end;
+        margin-left: auto;
+        margin-right: 4px;
+        text-align: right;
+      }
+      .message-row:not(.mine) .reply-header {
+        align-self: flex-start;
+        margin-right: auto;
+        margin-left: 4px;
+        text-align: left;
+      }
       .reply-header {
         display: inline-flex;
         min-width: 0;
@@ -6951,7 +6963,7 @@
       .reply-preview--text {
         width: fit-content;
         min-width: 0;
-        max-width: min(240px, 72vw);
+        max-width: 100%;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
