@@ -29595,7 +29595,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               method: "PATCH",
               body: JSON.stringify({
                 body,
-                topics: selectedPostTopics,
+                topics: selectedPostTopics.length ? selectedPostTopics : undefined,
                 mediaUrl: composerMediaUrl || null,
                 mediaCrop: composerMediaUrl ? composerMediaCrop : null,
                 mediaAlt: composerMediaUrl ? composerMediaAlt : null,
@@ -29632,7 +29632,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         try {
           if (composerUploadPromise) await composerUploadPromise;
           if (composerPreviewUrl && !composerMediaUrl) throw new Error("Wait for the image upload to finish.");
-          const postBody = { body, topics: selectedPostTopics };
+          const postBody = { body, topics: selectedPostTopics.length ? selectedPostTopics : undefined };
           if (composerMediaUrl) postBody.mediaUrl = composerMediaUrl;
           if (composerMediaUrl && composerMediaCrop) postBody.mediaCrop = composerMediaCrop;
           if (composerMediaUrl && composerMediaAlt) postBody.mediaAlt = composerMediaAlt;
