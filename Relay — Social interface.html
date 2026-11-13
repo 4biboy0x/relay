@@ -23381,10 +23381,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const chatLog = $("#chatLog");
         const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
         const previousNavigation = replyNavigationTimers.get(row);
-        if (previousNavigation) {
-          clearTimeout(previousNavigation.timer);
-          previousNavigation.scroller?.removeEventListener("scrollend", previousNavigation.onScrollEnd);
-        }
+        if (previousNavigation) previousNavigation.cancel?.();
         const before = row.getBoundingClientRect();
         const viewport = chatLog.getBoundingClientRect();
         const distance = Math.abs((before.top + before.height / 2) - (viewport.top + chatLog.clientHeight / 2));
@@ -23395,16 +23392,19 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         let settled = false;
         let settleTimer = null;
-        const finishNavigation = () => {
-          if (settled) return;
-          settled = true;
+        const cleanupNavigation = () => {
           clearTimeout(navigation.timer);
           clearTimeout(settleTimer);
           chatLog.removeEventListener("scrollend", finishNavigation);
           chatLog.removeEventListener("scroll", onScroll);
           document.removeEventListener("scrollend", finishNavigation);
           window.removeEventListener("scroll", onScroll);
-          replyNavigationTimers.delete(row);
+          if (replyNavigationTimers.get(row) === navigation) replyNavigationTimers.delete(row);
+        };
+        const finishNavigation = () => {
+          if (settled) return;
+          settled = true;
+          cleanupNavigation();
           if (loadGeneration === activeConversationLoadGeneration && activeConversation?.id === conversationId) {
             triggerReplyTargetHighlight(row);
           }
@@ -23414,8 +23414,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           settleTimer = setTimeout(finishNavigation, 180);
         };
         const navigation = {
-          scroller: chatLog,
-          onScrollEnd: finishNavigation,
+          cancel: () => {
+            if (settled) return;
+            settled = true;
+            cleanupNavigation();
+          },
           timer: setTimeout(finishNavigation, Math.min(2800, Math.max(700, distance * 1.1 + 350))),
         };
         replyNavigationTimers.set(row, navigation);
