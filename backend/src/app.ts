@@ -2084,7 +2084,11 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
       conversation: {
         include: {
           members: { include: { user: { select: publicUser } } },
-          messages: { orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1, include: { sender: { select: publicUser } } },
+          messages: {
+            where: { createdAt: { gt: new Date(0) } },
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1,
+            include: { sender: { select: publicUser } },
+          },
         },
       },
     },
@@ -2121,6 +2125,7 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
         LEFT JOIN "Message" AS message
           ON message."conversationId" = member."conversationId"
           AND message."senderId" <> member."userId"
+          AND (member."historyCutoffAt" IS NULL OR message."createdAt" > member."historyCutoffAt")
           AND (member."lastReadAt" IS NULL OR message."createdAt" > member."lastReadAt")
         WHERE member."userId" = ${req.userId}
           AND member."deletedAt" IS NULL
@@ -2133,11 +2138,15 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
   }
   const unread = new Map(unreadRows.map((row) => [row.conversationId, row.unreadCount]));
   res.json({
-    items: rows.map((row) => ({
+    items: rows.map((row) => {
+      const cutoff = row.historyCutoffAt;
+      const preview = row.conversation.messages[0] ?? null;
+      const lastMessage = preview && (!cutoff || preview.createdAt > cutoff) ? preview : null;
+      return {
       id: row.conversationId,
       updatedAt: row.conversation.updatedAt,
       members: row.conversation.members.map(({ user }) => user),
-      lastMessage: row.conversation.lastMessage ?? row.conversation.messages[0] ?? null,
+      lastMessage,
       unreadCount: unread.get(row.conversationId) ?? 0,
       pinned: Boolean(preferenceByConversation.get(row.conversationId)?.pinned),
       pinnedAt: preferenceByConversation.get(row.conversationId)?.pinnedAt ?? null,
@@ -2145,7 +2154,7 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
         && (!preferenceByConversation.get(row.conversationId)?.mutedUntil
           || preferenceByConversation.get(row.conversationId)!.mutedUntil! > new Date())),
       mutedUntil: preferenceByConversation.get(row.conversationId)?.mutedUntil ?? null,
-    })),
+    }; }),
   });
 }));
 
@@ -2401,7 +2410,7 @@ api.delete("/conversations/:conversationId", authRequired, asyncRoute(async (req
   await prisma.$transaction(async (tx) => {
     const membership = await tx.conversationMember.updateMany({
       where: { conversationId, userId: req.userId!, deletedAt: null },
-      data: { deletedAt },
+      data: { deletedAt, historyCutoffAt: deletedAt, lastReadAt: deletedAt, unreadReactionCount: 0 },
     });
     if (membership.count !== 1) throw new HttpError(404, "Conversation not found");
     await tx.conversationPreference.deleteMany({ where: { conversationId, userId: req.userId! } });
@@ -2462,13 +2471,14 @@ api.get("/conversations/:conversationId/messages", authRequired, asyncRoute(asyn
   const memberKey = { conversationId_userId: { conversationId, userId: req.userId! } };
   const member = await prisma.conversationMember.findFirst({
     where: { conversationId, userId: req.userId!, deletedAt: null },
-    select: { conversationId: true },
+    select: { conversationId: true, historyCutoffAt: true },
   });
   if (!member) throw new HttpError(404, "Conversation not found");
   const cursor = decodeCursor(page.cursor);
   const records = await prisma.message.findMany({
     where: {
       conversationId,
+      ...(member.historyCutoffAt ? { createdAt: { gt: member.historyCutoffAt } } : {}),
       ...(cursor ? {
         OR: [
           { createdAt: { lt: new Date(cursor.createdAt) } },
@@ -2552,8 +2562,16 @@ api.post("/conversations/:conversationId/messages", authRequired, verifiedEmailR
       throw new HttpError(404, "Conversation not found");
     }
     if (messageInput.replyToId) {
+      const senderMembership = await tx.conversationMember.findUnique({
+        where: { conversationId_userId: { conversationId, userId: req.userId! } },
+        select: { historyCutoffAt: true },
+      });
       const replyTarget = await tx.message.findFirst({
-        where: { id: messageInput.replyToId, conversationId },
+        where: {
+          id: messageInput.replyToId,
+          conversationId,
+          ...(senderMembership?.historyCutoffAt ? { createdAt: { gt: senderMembership.historyCutoffAt } } : {}),
+        },
         select: { id: true },
       });
       if (!replyTarget) throw new HttpError(404, "Reply target not found");
