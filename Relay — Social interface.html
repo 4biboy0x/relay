@@ -23388,29 +23388,42 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const before = row.getBoundingClientRect();
         const viewport = chatLog.getBoundingClientRect();
         const distance = Math.abs((before.top + before.height / 2) - (viewport.top + chatLog.clientHeight / 2));
-        row.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
         if (reduceMotion || distance < 8) {
+          row.scrollIntoView({ behavior: "auto", block: "center" });
           triggerReplyTargetHighlight(row);
           return;
         }
         let settled = false;
+        let settleTimer = null;
         const finishNavigation = () => {
           if (settled) return;
           settled = true;
           clearTimeout(navigation.timer);
-          chatLog.removeEventListener("scrollend", navigation.onScrollEnd);
+          clearTimeout(settleTimer);
+          chatLog.removeEventListener("scrollend", finishNavigation);
+          chatLog.removeEventListener("scroll", onScroll);
+          document.removeEventListener("scrollend", finishNavigation);
+          window.removeEventListener("scroll", onScroll);
           replyNavigationTimers.delete(row);
           if (loadGeneration === activeConversationLoadGeneration && activeConversation?.id === conversationId) {
             triggerReplyTargetHighlight(row);
           }
         };
+        const onScroll = () => {
+          clearTimeout(settleTimer);
+          settleTimer = setTimeout(finishNavigation, 180);
+        };
         const navigation = {
           scroller: chatLog,
           onScrollEnd: finishNavigation,
-          timer: setTimeout(finishNavigation, Math.min(1100, Math.max(260, distance * 0.42 + 180))),
+          timer: setTimeout(finishNavigation, Math.min(2800, Math.max(700, distance * 1.1 + 350))),
         };
         replyNavigationTimers.set(row, navigation);
-        chatLog.addEventListener("scrollend", finishNavigation, { once: true });
+        chatLog.addEventListener("scrollend", finishNavigation);
+        document.addEventListener("scrollend", finishNavigation);
+        chatLog.addEventListener("scroll", onScroll, { passive: true });
+        window.addEventListener("scroll", onScroll, { passive: true });
+        row.scrollIntoView({ behavior: "smooth", block: "center" });
       }
       function triggerReplyTargetHighlight(row) {
         if (!row) return;
