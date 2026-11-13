@@ -1207,6 +1207,37 @@
       }
       #v-home #pb:disabled { opacity: .45; }
       #v-home .composer { border-bottom: 1px solid var(--border); }
+
+      /* Keep the post composer toolbar usable on narrow mobile screens. */
+      @media (max-width: 767px) {
+        #composer .c-bar {
+          gap: 10px;
+          min-width: 0;
+        }
+        #composer .c-bar .icon-btn {
+          flex: 0 0 24px;
+          width: 24px;
+          height: 32px;
+          padding: 0;
+        }
+        #composer .c-bar .icon-btn > .i,
+        #composer #toggleComposerTopics > svg {
+          width: 19px;
+          height: 19px;
+        }
+        #composer .c-bar-spacer {
+          flex: 1 1 0;
+          min-width: 0;
+        }
+        #composer #cc,
+        #composer #pb {
+          flex-shrink: 0;
+        }
+        #composer #cc {
+          margin-left: 0;
+          margin-right: 6px;
+        }
+      }
       .c-bar {
         position: relative;
         display: flex;
