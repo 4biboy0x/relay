@@ -2153,11 +2153,11 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
     items: rows.map((row) => {
       const cutoff = row.historyCutoffAt;
       const preview = row.conversation.messages[0] ?? null;
-      const storedPreview = row.conversation.lastMessage as { createdAt?: string; kind?: string } | null;
+      const storedPreview = row.conversation.lastMessage as { createdAt?: string; kind?: string; messageCreatedAt?: string } | null;
       const storedPreviewAt = storedPreview?.createdAt ? new Date(storedPreview.createdAt) : null;
       const storedPreviewMessageAt = storedPreview?.kind === "reaction" && storedPreview.messageCreatedAt
         ? new Date(storedPreview.messageCreatedAt)
-        : storedPreviewAt;
+        : null;
       const storedPreviewIsVisible = storedPreview && (!cutoff || (
         storedPreview.kind === "reaction"
           ? Boolean(storedPreviewMessageAt && storedPreviewMessageAt > cutoff)
@@ -2706,7 +2706,10 @@ api.patch("/messages/:messageId", authRequired, messageLimiter, asyncRoute(async
       tx.conversationReactionActivity.findFirst({
         where: { conversationId: message.conversationId, isActive: true },
         orderBy: { createdAt: "desc" },
-        select: { actorId: true, emoji: true, targetType: true, targetText: true, createdAt: true },
+        select: {
+          actorId: true, emoji: true, targetType: true, targetText: true, createdAt: true, messageId: true,
+          message: { select: { createdAt: true } },
+        },
       }),
       tx.conversation.findUniqueOrThrow({
         where: { id: message.conversationId },
@@ -2720,13 +2723,21 @@ api.patch("/messages/:messageId", authRequired, messageLimiter, asyncRoute(async
     if (reactionIsLatest && latestReactionActivity) {
       await tx.conversation.update({
         where: { id: message.conversationId },
-        data: { lastMessage: reactionLastMessage(latestReactionActivity) },
+        data: { lastMessage: reactionLastMessage({
+            ...latestReactionActivity,
+            messageId: latestReactionActivity.messageId,
+            messageCreatedAt: latestReactionActivity.message.createdAt,
+          }) },
       });
       return {
         message,
         inboxPreview: {
           kind: "reaction" as const,
-          lastMessage: reactionLastMessage(latestReactionActivity),
+          lastMessage: reactionLastMessage({
+            ...latestReactionActivity,
+            messageId: latestReactionActivity.messageId,
+            messageCreatedAt: latestReactionActivity.message.createdAt,
+          }),
           updatedAt: conversation.updatedAt,
         },
       };
@@ -2834,7 +2845,11 @@ api.delete("/messages/:messageId", authRequired, messageLimiter, asyncRoute(asyn
         && (!latestMessage || latestReactionActivity.createdAt > latestMessage.createdAt),
     );
     const lastMessage = reactionIsLatest && latestReactionActivity
-      ? reactionLastMessage(latestReactionActivity)
+      ? reactionLastMessage({
+            ...latestReactionActivity,
+            messageId: latestReactionActivity.messageId,
+            messageCreatedAt: latestReactionActivity.message.createdAt,
+          })
       : null;
     const updatedAt = reactionIsLatest && latestReactionActivity
       ? latestReactionActivity.createdAt
