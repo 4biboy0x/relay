@@ -117,6 +117,8 @@ const reactionLastMessage = (
     targetType: string;
     targetText: string | null;
     createdAt: Date;
+    messageId?: string;
+    messageCreatedAt?: Date;
   },
 ) => ({
   kind: "reaction" as const,
@@ -124,6 +126,8 @@ const reactionLastMessage = (
   emoji: activity.emoji,
   targetType: activity.targetType,
   ...(activity.targetText ? { targetText: activity.targetText } : {}),
+  ...(activity.messageId ? { messageId: activity.messageId } : {}),
+  ...(activity.messageCreatedAt ? { messageCreatedAt: activity.messageCreatedAt.toISOString() } : {}),
   createdAt: activity.createdAt.toISOString(),
 });
 
@@ -2151,7 +2155,15 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
       const preview = row.conversation.messages[0] ?? null;
       const storedPreview = row.conversation.lastMessage as { createdAt?: string; kind?: string } | null;
       const storedPreviewAt = storedPreview?.createdAt ? new Date(storedPreview.createdAt) : null;
-      const lastMessage = storedPreview && (!cutoff || (storedPreview.kind !== "reaction" && storedPreviewAt && storedPreviewAt > cutoff))
+      const storedPreviewMessageAt = storedPreview?.kind === "reaction" && storedPreview.messageCreatedAt
+        ? new Date(storedPreview.messageCreatedAt)
+        : storedPreviewAt;
+      const storedPreviewIsVisible = storedPreview && (!cutoff || (
+        storedPreview.kind === "reaction"
+          ? Boolean(storedPreviewMessageAt && storedPreviewMessageAt > cutoff)
+          : Boolean(storedPreviewAt && storedPreviewAt > cutoff)
+      ));
+      const lastMessage = storedPreviewIsVisible
         ? storedPreview
         : preview && (!cutoff || preview.createdAt > cutoff) ? preview : null;
       return {
@@ -2995,7 +3007,10 @@ const updateMessageReaction = async (req: express.Request, res: express.Response
       tx.conversationReactionActivity.findFirst({
         where: { conversationId: message.conversationId, isActive: true },
         orderBy: { createdAt: "desc" },
-        select: { actorId: true, emoji: true, targetType: true, targetText: true, createdAt: true },
+        select: {
+          actorId: true, emoji: true, targetType: true, targetText: true, createdAt: true, messageId: true,
+          message: { select: { createdAt: true } },
+        },
       }),
       tx.conversation.findUniqueOrThrow({
         where: { id: message.conversationId },
@@ -3018,12 +3033,30 @@ const updateMessageReaction = async (req: express.Request, res: express.Response
       latestReactionActivity
         && (!latestMessage || latestReactionActivity.createdAt > latestMessage.createdAt),
     );
-    const lastMessage = reactionIsLatest && latestReactionActivity
-      ? reactionLastMessage(latestReactionActivity)
-      : latestMessage;
-    const updatedAt = reactionIsLatest && latestReactionActivity
-      ? latestReactionActivity.createdAt
-      : latestMessage?.createdAt || conversation.updatedAt;
+    // A newly added reaction is itself fresh inbox activity, even when its
+    // target is an older (but post-cutoff) message in a reopened conversation.
+    const lastMessage = active && changed
+      ? reactionLastMessage({
+          actorId: req.userId!,
+          emoji,
+          targetType,
+          targetText,
+          createdAt: now,
+          messageId: message.id,
+          messageCreatedAt: message.createdAt,
+        })
+      : reactionIsLatest && latestReactionActivity
+        ? reactionLastMessage({
+            ...latestReactionActivity,
+            messageId: latestReactionActivity.messageId,
+            messageCreatedAt: latestReactionActivity.message.createdAt,
+          })
+        : latestMessage;
+    const updatedAt = active && changed
+      ? now
+      : reactionIsLatest && latestReactionActivity
+        ? latestReactionActivity.createdAt
+        : latestMessage?.createdAt || conversation.updatedAt;
     return {
       conversationId: message.conversationId,
       actor,
