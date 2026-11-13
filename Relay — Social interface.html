@@ -25113,9 +25113,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           toast(`New message from ${actor}`);
         }
         const conversation = conversations.find((item) => item.id === event.conversationId);
-        if (conversation) {
-          if (Object.prototype.hasOwnProperty.call(event, "lastMessage")) {
+        if (Object.prototype.hasOwnProperty.call(event, "lastMessage")) {
+          if (conversation) {
             syncInboxConversationPreview(event.conversationId, event.lastMessage, event.updatedAt || conversation.updatedAt);
+          } else {
+            renderConversations().catch((error) =>
+              console.error("Could not restore the inbox after a reaction update.", error),
+            );
           }
         }
         if (event.active && actorId !== currentUser?.id && isViewingConversation) {
