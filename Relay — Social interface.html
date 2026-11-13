@@ -13375,6 +13375,33 @@
       }
 
 
+      /* Mobile views: the bottom navigation is an overlay, never reserved layout space. */
+      @media (max-width: 767px) {
+        .app > main {
+          padding-bottom: 0 !important;
+        }
+        .app.messages-active > main,
+        .app.thread-active > main,
+        .app.reels-active > main {
+          height: 100vh;
+          height: 100dvh;
+          min-height: 100dvh;
+          box-sizing: border-box;
+          padding-bottom: 0 !important;
+          margin-bottom: 0 !important;
+        }
+        .app.messages-active #v-messages,
+        .app.thread-active #v-thread,
+        .app.reels-active #v-reels {
+          min-height: 0;
+        }
+        .app > .nav {
+          background: color-mix(in srgb, var(--bg) 72%, transparent);
+          -webkit-backdrop-filter: blur(16px);
+          backdrop-filter: blur(16px);
+        }
+      }
+
       /* Active mobile DM: remove every trace of the hidden bottom-nav offset. */
       @media (max-width: 767px) {
         .app.mobile-chat-nav-hidden.messages-active > main {
