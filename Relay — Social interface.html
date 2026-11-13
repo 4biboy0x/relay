@@ -8268,11 +8268,13 @@
       .explore-topic-follow { display: inline-grid; width: 24px; min-width: 24px; height: 24px; place-items: center; padding: 0; border: 0; border-radius: 50%; color: var(--text-2); font-size: 19px; line-height: 1; }
       .explore-topic-follow:hover { background: var(--surface-2); color: var(--text); }
       .explore-topic-follow[aria-pressed="true"] { color: var(--accent); font-size: 15px; }
-      .composer-topic-picker { position: relative; margin-top: 8px; }
-      .composer-topic-toggle { display: inline-flex; min-height: 28px; align-items: center; gap: 6px; padding: 3px 9px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-2); font-size: 12px; }
-      .composer-topic-toggle:hover, .composer-topic-toggle[aria-expanded="true"] { background: var(--surface-2); color: var(--text); }
-      .composer-topic-count { color: var(--accent); font-weight: 600; }
+      .composer-topic-picker { position: relative; }
       .composer-topic-options { display: flex; flex-wrap: wrap; gap: 7px; padding-top: 8px; }
+      .composer-selected-topics { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+      .composer-selected-topics:empty { display: none; }
+      .composer-selected-topic { display: inline-flex; min-height: 24px; align-items: center; gap: 6px; padding: 4px 10px; border: 0; border-radius: 999px; color: #4F46E5; background: rgba(79, 70, 229, 0.08); font-size: 12px; font-weight: 600; line-height: 16px; }
+      .composer-selected-topic svg { width: 12px; height: 12px; flex: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+      #toggleComposerTopics { color: var(--accent); }
       .composer-topic-option { min-height: 29px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-2); font-size: 12px; }
       .composer-topic-option[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
       .composer-topic-option:disabled { opacity: .4; cursor: not-allowed; }
@@ -13138,11 +13140,9 @@
               </div>
               <button class="media-preview-alt-action" id="addMediaDescription" type="button" hidden>Add description</button>
               <div class="composer-topic-picker" id="composerTopicPicker">
-                <button class="composer-topic-toggle" id="toggleComposerTopics" type="button" aria-expanded="false" aria-controls="composerTopicOptions">
-                  Topics <span class="composer-topic-count" id="composerTopicCount" hidden></span>
-                </button>
                 <div class="composer-topic-options" id="composerTopicOptions" role="group" aria-label="Choose up to three topics" hidden></div>
               </div>
+              <div class="composer-selected-topics" id="composerSelectedTopics" aria-label="Selected topics"></div>
               <div class="c-bar">
                 <button class="icon-btn" id="attachImage" aria-label="Attach image" aria-pressed="false">
                   <svg class="i" aria-hidden="true"><use href="#image" /></svg>
@@ -13156,6 +13156,14 @@
                 </button>
                 <button class="icon-btn" id="addLocation" aria-label="Add location" aria-expanded="false" aria-controls="locationPopover" aria-haspopup="dialog" aria-pressed="false">
                   <svg class="i" aria-hidden="true"><use href="#pin" /></svg>
+                </button>
+                <button class="icon-btn" id="toggleComposerTopics" type="button" aria-label="Choose topics" aria-expanded="false" aria-controls="composerTopicOptions">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="3" width="7" height="7" rx="2" />
+                    <rect x="14" y="3" width="7" height="7" rx="2" />
+                    <rect x="14" y="14" width="7" height="7" rx="2" />
+                    <rect x="3" y="14" width="7" height="7" rx="2" />
+                  </svg>
                 </button>
                 <span class="c-bar-spacer" aria-hidden="true"></span>
                 <span class="count" id="cc" aria-live="polite" hidden>280</span>
@@ -15417,10 +15425,15 @@
         $("#composerTopicOptions").innerHTML = composerTopics.map((topic) =>
           `<button class="composer-topic-option" type="button" data-composer-topic="${esc(topic.slug)}" aria-pressed="${selected.has(topic.slug)}" ${selected.size >= 3 && !selected.has(topic.slug) ? "disabled" : ""}>${esc(topic.name)}</button>`
         ).join("");
-        const count = $("#composerTopicCount");
-        count.hidden = selected.size === 0;
-        count.textContent = String(selected.size);
-        $("#toggleComposerTopics").setAttribute("aria-expanded", String(!$("#composerTopicOptions").hidden));
+        const selectedRow = $("#composerSelectedTopics");
+        selectedRow.innerHTML = selectedPostTopics.map((slug) => {
+          const topic = composerTopics.find((item) => item.slug === slug);
+          const name = topic?.name || slug;
+          return `<button class="composer-selected-topic" type="button" data-remove-composer-topic="${esc(slug)}" aria-label="Remove ${esc(name)}">${esc(name)} <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg></button>`;
+        }).join("");
+        const toggle = $("#toggleComposerTopics");
+        toggle.style.opacity = selected.size >= 3 ? "0.45" : "";
+        toggle.setAttribute("aria-expanded", String(!$("#composerTopicOptions").hidden));
       }
       async function loadComposerTopics() {
         if (!composerTopicsLoaded) {
@@ -21774,7 +21787,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               const topicResult = await api("/topics");
               const topic = topicResult.items.find((item) => item.slug === slug);
               if (!topic) throw new Error("Topic not found.");
-              heading = `<section class="topic-view-heading"><button class="topic-view-back" type="button" data-topic-back aria-label="Back to Explore">${ic("arrow-left")}</button><div><h2>${esc(topic.name)}</h2><p>${fmt(topic.postCount)} posts</p></div></section>`;
+              heading = `<section class="topic-view-heading"><button class="topic-view-back" type="button" data-topic-back aria-label="Back to Explore">${ic("arrow-left")}</button><div><h2>${esc(topic.name)}</h2><p>${fmt(topic.postCount)} ${topic.postCount === 1 ? "post" : "posts"}</p></div></section>`;
             }
             const postsHtml = explorePostCards(result.items.map((item) => post(normalizePost(item))).join(""));
             const content = postsHtml || (!append ? emptyState("No posts yet.", "Check back later.") : "");
@@ -29590,6 +29603,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           event.preventDefault();
           $("#messageForm").requestSubmit();
         }
+      });
+      $("#composerSelectedTopics").addEventListener("click", (event) => {
+        const remove = event.target.closest("[data-remove-composer-topic]");
+        if (!remove) return;
+        setComposerTopics(selectedPostTopics.filter((slug) => slug !== remove.dataset.removeComposerTopic));
       });
       $("#toggleComposerTopics").addEventListener("click", async () => {
         const options = $("#composerTopicOptions");
