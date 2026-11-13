@@ -12751,9 +12751,10 @@
         <symbol id="square" viewBox="0 0 24 24">
           <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none" />
         </symbol>
-        <symbol id="mic" viewBox="0 0 24 24">
-          <rect x="9" y="2" width="6" height="12" rx="3" />
-          <path d="M5 10a7 7 0 0 0 14 0M12 17v5M8 22h8" />
+        <symbol id="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="2" width="6" height="11" rx="3" />
+          <path d="M5 10a7 7 0 0 0 14 0" />
+          <line x1="12" y1="17" x2="12" y2="21" />
         </symbol>
         <symbol id="relay" viewBox="0 0 24 24">
           <path d="M5 12h6a4 4 0 0 0 4-4V4" />
@@ -13099,7 +13100,7 @@
                     </div>
                     <div class="message-empty-actions" id="messageEmptyActions">
                       <button class="message-action chat-compose-icon" id="messageAudioButton" type="button" aria-label="Record voice message" disabled>
-                        <svg class="i" aria-hidden="true"><use href="#mic" /></svg>
+                        <svg class="i" width="20" height="20" aria-hidden="true"><use href="#mic" /></svg>
                       </button>
                       <button class="chat-compose-icon" id="messageImageButton" type="button" aria-label="Attach image" disabled>
                         <svg class="i" aria-hidden="true"><use href="#image" /></svg>
@@ -22756,7 +22757,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             $("#messageComposeField").hidden = false;
             $("#messageRecording").classList.remove("is-active");
             $("#messageComposePill").classList.remove("is-recording");
-            $("#messageAudioButton").innerHTML = '<svg class="i" aria-hidden="true"><use href="#mic" /></svg>';
+            $("#messageAudioButton").innerHTML = '<svg class="i" width="20" height="20" aria-hidden="true"><use href="#mic" /></svg>';
             const type = recorder.mimeType || "audio/webm";
             const blob = new Blob(voiceChunks, { type });
             if (voiceRecordingCanceled || !blob.size) {
