@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <style>
+    @font-face {
+      font-family: "Piazzolla";
+      src: url("/assets/fonts/Piazzolla-Light.woff2") format("woff2");
+      font-style: normal;
+      font-weight: 300;
+    }
+    text {
+      font-family: "Piazzolla", Georgia, serif;
+      font-size: 55px;
+      font-weight: 300;
+      text-anchor: middle;
+      dominant-baseline: central;
+    }
+  </style>
+  <rect width="64" height="64" rx="13" fill="#09090b"/>
+  <text x="32" y="32" fill="#fff">R</text>
+</svg>
