@@ -27968,8 +27968,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             await api(`/topics/${encodeURIComponent(slug)}/follow`, { method: following ? "DELETE" : "PUT" });
             topicFollow.dataset.following = String(!following);
             topicFollow.setAttribute("aria-pressed", String(!following));
-            const name = topicFollow.textContent.split(" · ")[0];
-            topicFollow.textContent = `${name} · ${following ? "Follow" : "Following"}`;
+            topicFollow.textContent = following ? "Follow" : "Following";
           } catch (error) {
             toast(error.message || "Could not update topic.");
           }
