@@ -13346,7 +13346,34 @@
         }
       }
 
-    </style>
+    
+
+      /* Mobile floating navigation curtain: overlay the feed without reserving space. */
+      @media (max-width: 767px) {
+        .app > main {
+          min-height: 100dvh;
+          padding-bottom: 0 !important;
+        }
+        .app > .nav {
+          position: fixed;
+          inset: auto 0 0 0;
+          z-index: 40;
+          background: color-mix(in srgb, var(--bg) 72%, transparent);
+          -webkit-backdrop-filter: blur(16px);
+          backdrop-filter: blur(16px);
+          transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+          will-change: transform;
+          transform: translateY(0);
+        }
+        .app > .nav.mobile-nav-hidden {
+          transform: translateY(100%);
+          pointer-events: none;
+        }
+        .app.mobile-chat-nav-hidden > .nav {
+          display: none !important;
+        }
+      }
+</style>
   </head>
   <body>
     <div class="app-splash" id="appSplash" role="status" aria-label="Loading Relay">
@@ -27776,10 +27803,56 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         mobileHomeLastScrollTop = currentTop;
       }, { capture: true, passive: true });
 
+      let mobileNavScrollFrame = 0;
+      let mobileNavScrollTarget = null;
+      let mobileNavLastScrollTop = 0;
+      let mobileNavPendingScrollTarget = null;
+      function setMobileNavHidden(hidden) {
+        if (!window.matchMedia("(max-width: 767px)").matches) return;
+        const nav = $(".app > .nav");
+        if (!nav || $(".app")?.classList.contains("mobile-chat-nav-hidden")) return;
+        nav.classList.toggle("mobile-nav-hidden", Boolean(hidden));
+      }
+      document.addEventListener("scroll", (event) => {
+        if (!window.matchMedia("(max-width: 767px)").matches
+          || $(".app")?.classList.contains("mobile-chat-nav-hidden")) return;
+        const activeView = $("[data-v]:not([hidden])");
+        const main = $("#main");
+        const target = event.target;
+        const relevant = target === document || target === document.documentElement
+          || target === document.body || target === window || target === main
+          || activeView?.contains(target) || target?.contains?.(activeView);
+        if (!relevant) return;
+        mobileNavPendingScrollTarget = target;
+        if (mobileNavScrollFrame) return;
+        mobileNavScrollFrame = requestAnimationFrame(() => {
+          mobileNavScrollFrame = 0;
+          const scrollTarget = mobileNavPendingScrollTarget;
+          const currentTop = scrollTarget === document || scrollTarget === document.documentElement
+            || scrollTarget === document.body || scrollTarget === window
+            ? window.scrollY : Number(scrollTarget?.scrollTop) || 0;
+          if (scrollTarget !== mobileNavScrollTarget) {
+            mobileNavScrollTarget = scrollTarget;
+            mobileNavLastScrollTop = currentTop;
+            if (currentTop <= 10) setMobileNavHidden(false);
+            return;
+          }
+          const delta = currentTop - mobileNavLastScrollTop;
+          if (currentTop <= 10 || delta <= -14) setMobileNavHidden(false);
+          else if (currentTop > 24 && delta > 0) setMobileNavHidden(true);
+          mobileNavLastScrollTop = currentTop;
+        });
+      }, { capture: true, passive: true });
+
       function go(v, updateRoute = true, preserveProfile = false, restoreConversationId = "") {
         if (!requireAuth()) return;
         const explicitReelId = deepLinkedReelId;
         const currentView = $("[data-v]:not([hidden])")?.id?.replace(/^v-/, "");
+        if (currentView !== v && window.matchMedia("(max-width: 767px)").matches) {
+          mobileNavScrollTarget = null;
+          mobileNavLastScrollTop = 0;
+          setMobileNavHidden(false);
+        }
         if (v === "reels" && currentView === "reels") {
           const feed = $("#reelFeed");
           feed?.scrollTo({ top: 0, behavior: "smooth" });
