@@ -8272,12 +8272,12 @@
       .composer-selected-topics { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
       .composer-topics-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,.38); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
       .composer-topics-modal[hidden] { display: none; }
-      .composer-topics-card { display: flex; flex-direction: column; width: 100%; max-width: 400px; max-height: min(82dvh, 460px); overflow: hidden; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); color: var(--text); box-shadow: 0 18px 60px rgba(0,0,0,.2); }
+      .composer-topics-card { display: flex; flex-direction: column; width: 100%; max-width: 400px; max-height: 82vh; max-height: min(82dvh, 460px); overflow: hidden; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); color: var(--text); box-shadow: 0 18px 60px rgba(0,0,0,.2); }
       .composer-topics-header { display: flex; min-height: 58px; flex: none; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
       .composer-topics-title { margin: 0; font-size: 16px; font-weight: 650; }
       .composer-topics-counter { margin-left: auto; color: var(--text-2); font-size: 12px; font-variant-numeric: tabular-nums; }
       .composer-topics-done { min-height: 32px; padding: 0 12px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 12px; font-weight: 600; }
-      .composer-topics-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+      .composer-topics-body { min-height: 0; flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
       .composer-topics-body .composer-topic-option { min-height: 34px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-2); font-size: 13px; }
       .composer-topics-body .composer-topic-option[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: #fff; }
       .composer-topics-body .composer-topic-option:disabled { opacity: .4; }
