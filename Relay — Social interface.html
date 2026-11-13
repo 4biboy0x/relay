@@ -21558,7 +21558,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         syncMessageComposer();
         $("#sendMessage").disabled = true;
         syncConversationSelection("");
-        requestAnimationFrame(() => focusInput($("#messageInput"), { isTypingMainScreen: true, preventScroll: true }));
+        if (window.matchMedia("(max-width: 767px)").matches && isTouchDevice()) {
+          $("#messageInput").blur();
+        } else {
+          requestAnimationFrame(() => focusInput($("#messageInput"), { isTypingMainScreen: true, preventScroll: true }));
+        }
       }
       async function searchDirectory(rawHandle) {
         const input = $("#directorySearch");
