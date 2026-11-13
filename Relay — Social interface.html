@@ -12148,7 +12148,8 @@
       /* Keep the desktop account menu above the Messages inbox without clipping. */
       @media (min-width: 1200px) {
         .app > .nav {
-          position: relative;
+          position: sticky;
+          top: 0;
           z-index: 50;
           overflow: visible;
         }
