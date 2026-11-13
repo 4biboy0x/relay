@@ -23876,7 +23876,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 <button class="message-media-button" type="button" data-lightbox-image="${esc(imageUrl)}" data-lightbox-index="${index}" aria-label="Open shared ${isGif ? "GIF" : "image"}"><img class="message-media" src="${esc(imageUrl)}" width="${width || 1}" height="${height || 1}" alt="${isGif ? "Shared GIF" : "Shared image"}" loading="${mediaLoading}" decoding="async" /></button>
                 ${index === 3 && mediaItems.length > 4 ? `<span class="message-image-overflow">+${mediaItems.length - 4}</span>` : ""}
               </div>
-              ${""}
             </div>`).join("")}</div>`
           : "";
         const waveform = validVoiceWaveform(message.waveform) ? message.waveform : Array(voiceWaveformBarCount).fill(0);
