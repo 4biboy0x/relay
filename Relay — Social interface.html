@@ -13402,6 +13402,23 @@
         }
       }
 
+      /* Keep the final post actions clear of the floating mobile navigation. */
+      @media (max-width: 767px) {
+        #feed,
+        #exp,
+        #v-thread {
+          padding-bottom: calc(76px + env(safe-area-inset-bottom));
+        }
+        #v-profile:has(.profile-tabs [data-pt="Posts"][aria-selected="true"]) #pf,
+        #v-profile:has(.profile-tabs [data-pt="Replies"][aria-selected="true"]) #pf,
+        #v-profile:has(.profile-tabs [data-pt="Media"][aria-selected="true"]) #pf {
+          padding-bottom: calc(76px + env(safe-area-inset-bottom));
+        }
+        .app > .nav.mobile-nav-hidden {
+          pointer-events: none;
+        }
+      }
+
       /* Active mobile DM: remove every trace of the hidden bottom-nav offset. */
       @media (max-width: 767px) {
         .app.mobile-chat-nav-hidden.messages-active > main {
