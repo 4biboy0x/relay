@@ -12832,6 +12832,29 @@
         .app.reels-active .reel-pull-refresh { transition: none; }
         .app.reels-active .reel-pull-refresh-spinner { animation-duration: 1.5s; }
       }
+
+      /* DM action bar and reply interaction */
+      .chat-compose#messageForm { display:flex; width:100%; flex-direction:column; align-items:stretch; }
+      #messageReplyPreview, #messageComposePill { width:100%; flex:none; }
+      .message-tools { display:inline-flex; align-items:center; gap:4px; padding:3px 6px; border:1px solid var(--border); border-radius:999px; background:var(--surface); box-shadow:var(--shadow, 0 2px 12px rgba(0,0,0,.10)); flex-shrink:0; }
+      .message-tool-button { width:36px; height:36px; }
+      .message-row.is-active-message { z-index:40; }
+      .message-row.is-active-message > .message-bubble, .message-row.is-active-message .message-attachment-group > .message-bubble, .message-row.is-active-message .message-image-item { transform:scale(1.01); transition:transform 180ms cubic-bezier(.22,1,.36,1); }
+      .message-bubble, .message-image-item { touch-action:pan-y; }
+      .message-swipe-indicator { position:absolute; top:50%; z-index:1; display:grid; width:34px; height:34px; place-items:center; border:1px solid var(--border); border-radius:50%; color:var(--accent); background:var(--surface); opacity:0; transform:translateY(-50%) scale(.8); transition:opacity 120ms ease, transform 120ms ease; pointer-events:none; }
+      .message-swipe-indicator.is-visible { opacity:1; transform:translateY(-50%) scale(1); }
+      .message-row:not(.mine) .message-swipe-indicator { left:-42px; }
+      .message-row.mine .message-swipe-indicator { right:-42px; }
+      .message-bubble.is-swiping { transition:none !important; will-change:transform; }
+      .message-bubble:not(.is-swiping) { transition:transform 220ms cubic-bezier(.22,1,.36,1); }
+      .message-row.is-active-message .message-tools { opacity:1; pointer-events:auto; z-index:40; }
+      @media (hover:hover) and (pointer:fine) {
+        .message-row:hover .message-tools, .message-row:focus-within .message-tools, .message-tools:focus-within { opacity:1; pointer-events:auto; }
+      }
+      @media (hover:none), (pointer:coarse) {
+        .message-row:hover .message-tools, .message-bubble:hover > .message-tools, .message-image-item:hover > .message-tools, .message-attachment-group:hover > .message-tools { opacity:0; pointer-events:none; }
+        .message-row.is-active-message .message-tools, .message-row.is-active-message .message-bubble > .message-tools, .message-row.is-active-message .message-attachment-group > .message-tools, .message-row.is-active-message .message-image-item > .message-tools { opacity:1; pointer-events:auto; }
+      }
 </style>
   </head>
   <body>
@@ -27424,6 +27447,72 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           options[next].click();
         }
       });
+
+      // Touch-first message actions and native swipe-to-reply.
+      let activeTouchMessageRow = null, messageSwipeState = null, messageLongPressTimer = null;
+      let lastMessageTap = { id:"", time:0 };
+      const clearActiveTouchMessage = () => {
+        document.querySelectorAll(".message-row.is-active-message").forEach(row => {
+          if (!row.classList.contains("has-message-popover")) { row.classList.remove("is-active-message","tools-visible"); }
+        });
+        activeTouchMessageRow = null;
+      };
+      const cancelMessageLongPress = () => { clearTimeout(messageLongPressTimer); messageLongPressTimer = null; };
+      const swipeTargetFor = target => target?.closest(".message-bubble, .message-image-item");
+      const swipeMessageId = target => target?.dataset.messageId || target?.closest("[data-message-id]")?.dataset.messageId || "";
+      document.addEventListener("pointerdown", event => {
+        if (event.pointerType === "mouse" || !event.isPrimary) return;
+        const target = event.target instanceof Element ? event.target : event.target.parentElement;
+        if (target?.closest(".message-tools, .message-action-menu, .message-reaction-picker")) return;
+        const row = target?.closest(".message-row"), bubble = swipeTargetFor(target), messageId = swipeMessageId(bubble);
+        if (!row || !bubble || !messageId) { if (!row) clearActiveTouchMessage(); return; }
+        cancelMessageLongPress();
+        messageSwipeState = {row,target:bubble,messageId,pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,distance:0,moved:false,triggered:false,direction:row.classList.contains("mine")?-1:1};
+        messageLongPressTimer = setTimeout(() => {
+          if (!messageSwipeState || messageSwipeState.row !== row || messageSwipeState.moved) return;
+          clearActiveTouchMessage(); row.classList.add("is-active-message"); revealMessageTools(row,bubble); activeTouchMessageRow=row;
+        },320);
+      },{passive:true});
+      document.addEventListener("pointermove", event => {
+        const state=messageSwipeState; if(!state || event.pointerId!==state.pointerId) return;
+        const dx=event.clientX-state.startX, dy=event.clientY-state.startY;
+        if(Math.abs(dy)>10 && Math.abs(dy)>Math.abs(dx)){ cancelMessageLongPress(); state.target.style.removeProperty("transform"); state.target.classList.remove("is-swiping"); messageSwipeState=null; return; }
+        if(Math.abs(dx)>8){state.moved=true;cancelMessageLongPress();}
+        if(!state.moved || dx*state.direction<0) return;
+        event.preventDefault();
+        const distance=Math.min(56,Math.max(0,dx*state.direction)); state.distance=distance;
+        state.target.classList.add("is-swiping"); state.target.style.transform=`translateX(${state.direction*distance}px)`;
+        let icon=state.target.querySelector(":scope > .message-swipe-indicator");
+        if(!icon){icon=document.createElement("span");icon.className="message-swipe-indicator";icon.setAttribute("aria-hidden","true");icon.textContent="↩";state.target.append(icon);}
+        icon.classList.toggle("is-visible",distance>=20); state.triggered=distance>=44;
+      },{passive:false});
+      const finishMessageSwipe = event => {
+        const state=messageSwipeState; if(!state || (event.pointerId!=null && event.pointerId!==state.pointerId)) return;
+        cancelMessageLongPress(); state.target.classList.remove("is-swiping"); state.target.style.removeProperty("transform"); state.target.querySelector(".message-swipe-indicator")?.classList.remove("is-visible"); messageSwipeState=null;
+        if(state.triggered){setMessageReplyTarget(state.messageId);return;}
+        if(!state.moved){
+          const now=Date.now();
+          if(lastMessageTap.id===state.messageId && now-lastMessageTap.time<280){lastMessageTap={id:"",time:0};void toggleMessageReaction(state.messageId,"❤️");clearActiveTouchMessage();return;}
+          lastMessageTap={id:state.messageId,time:now}; clearActiveTouchMessage(); state.row.classList.add("is-active-message"); revealMessageTools(state.row,state.target); activeTouchMessageRow=state.row;
+        }
+      };
+      document.addEventListener("pointerup",finishMessageSwipe,{passive:true});
+      document.addEventListener("pointercancel",finishMessageSwipe,{passive:true});
+      document.addEventListener("contextmenu",event=>{const t=event.target instanceof Element?event.target:event.target.parentElement;if(t?.closest(".message-bubble,.message-image-item"))event.preventDefault();});
+      document.addEventListener("selectstart",event=>{if(messageSwipeState && event.target instanceof Element && event.target.closest(".message-bubble,.message-image-item"))event.preventDefault();});
+      $("#chatLog")?.addEventListener("scroll",()=>{cancelMessageLongPress();if(activeTouchMessageRow)clearActiveTouchMessage();},{passive:true});
+      document.addEventListener("pointerdown",event=>{
+        if(event.pointerType==="mouse")return;
+        const target=event.target instanceof Element?event.target:event.target.parentElement;
+        if(activeTouchMessageRow && !target?.closest(".message-row.is-active-message,.message-tools,.message-action-menu,.message-reaction-picker"))clearActiveTouchMessage();
+      },true);
+      document.addEventListener("click",event=>{
+        const button=event.target instanceof Element?event.target.closest(".message-tools button"):null;
+        if(!button)return;
+        event.stopPropagation();
+        const row=button.closest(".message-row"); row?.classList.remove("is-active-message");
+        if(activeTouchMessageRow===row)activeTouchMessageRow=null;
+      },true);
       document.addEventListener("pointerdown", (event) => {
         const target = event.target instanceof Element ? event.target : event.target.parentElement;
         const owner = target?.closest(".message-row");
