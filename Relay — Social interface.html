@@ -23381,36 +23381,52 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const chatLog = $("#chatLog");
         const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
         const previousNavigation = replyNavigationTimers.get(row);
-        if (previousNavigation) {
-          clearTimeout(previousNavigation.timer);
-          previousNavigation.scroller?.removeEventListener("scrollend", previousNavigation.onScrollEnd);
-        }
+        if (previousNavigation) previousNavigation.cancel?.();
         const before = row.getBoundingClientRect();
         const viewport = chatLog.getBoundingClientRect();
         const distance = Math.abs((before.top + before.height / 2) - (viewport.top + chatLog.clientHeight / 2));
-        row.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
         if (reduceMotion || distance < 8) {
+          row.scrollIntoView({ behavior: "auto", block: "center" });
           triggerReplyTargetHighlight(row);
           return;
         }
         let settled = false;
+        let settleTimer = null;
+        const cleanupNavigation = () => {
+          clearTimeout(navigation.timer);
+          clearTimeout(settleTimer);
+          chatLog.removeEventListener("scrollend", finishNavigation);
+          chatLog.removeEventListener("scroll", onScroll);
+          document.removeEventListener("scrollend", finishNavigation);
+          window.removeEventListener("scroll", onScroll);
+          if (replyNavigationTimers.get(row) === navigation) replyNavigationTimers.delete(row);
+        };
         const finishNavigation = () => {
           if (settled) return;
           settled = true;
-          clearTimeout(navigation.timer);
-          chatLog.removeEventListener("scrollend", navigation.onScrollEnd);
-          replyNavigationTimers.delete(row);
+          cleanupNavigation();
           if (loadGeneration === activeConversationLoadGeneration && activeConversation?.id === conversationId) {
             triggerReplyTargetHighlight(row);
           }
         };
+        const onScroll = () => {
+          clearTimeout(settleTimer);
+          settleTimer = setTimeout(finishNavigation, 180);
+        };
         const navigation = {
-          scroller: chatLog,
-          onScrollEnd: finishNavigation,
-          timer: setTimeout(finishNavigation, Math.min(1100, Math.max(260, distance * 0.42 + 180))),
+          cancel: () => {
+            if (settled) return;
+            settled = true;
+            cleanupNavigation();
+          },
+          timer: setTimeout(finishNavigation, Math.min(2800, Math.max(700, distance * 1.1 + 350))),
         };
         replyNavigationTimers.set(row, navigation);
-        chatLog.addEventListener("scrollend", finishNavigation, { once: true });
+        chatLog.addEventListener("scrollend", finishNavigation);
+        document.addEventListener("scrollend", finishNavigation);
+        chatLog.addEventListener("scroll", onScroll, { passive: true });
+        window.addEventListener("scroll", onScroll, { passive: true });
+        row.scrollIntoView({ behavior: "smooth", block: "center" });
       }
       function triggerReplyTargetHighlight(row) {
         if (!row) return;
