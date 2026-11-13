@@ -7317,8 +7317,8 @@
         .reply-preview-gif .reply-preview-media-static { display: block; }
       }
       .reply-preview-media-static { display: none; }
-      .chat-log > .message-row + .message-row { margin-block-start: 8px; }
-      .chat-log > .message-row.same-sender { margin-block-start: 2px !important; }
+      .chat-log > .message-row + .message-row,
+      .chat-log > .message-row.same-sender { margin-block-start: 0 !important; }
       .message-row > .reply-stack + .message-bubble,
       .message-row > .reply-stack + .message-attachment-group { margin-block-start: 4px; }
       @media (hover: none) {
@@ -23593,7 +23593,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (!activeMessageBottomSheet) return;
         const { backdrop, owner } = activeMessageBottomSheet;
         backdrop.classList.remove("is-open");
-        owner?.classList.remove("has-message-popover");
+        owner?.classList.remove("has-message-popover", "is-active-message", "tools-visible");
+        if (activeTouchMessageRow === owner) activeTouchMessageRow = null;
         setTimeout(() => backdrop.remove(), 180);
         activeMessageBottomSheet = null;
       }
@@ -23617,7 +23618,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           </div>
         </section>`;
         const sheet = backdrop.querySelector(".message-bottom-sheet");
-        sheet.classList.add("message-action-menu");
         sheet._messageRow = owner;
         backdrop.addEventListener("click", event => {
           if (event.target === backdrop) closeMessageBottomSheet();
@@ -23944,11 +23944,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           : "";
         const reactions = messageReactionsMarkup(message);
         const messageContent = hasMultipleImages && !audio && !sticker
-          ? `<div class="message-attachment-group message-multi-image-group" data-message-id="${esc(message.id)}">${image}${text ? `<div class="message-bubble text-message${mine ? " mine" : ""}" dir="auto" data-message-id="${esc(message.id)}">${text}${reactions}</div>` : `<div class="message-bubble message-reaction-host${mine ? " mine" : ""}" data-message-id="${esc(message.id)}">${reactions}</div>`}${messageGroupToolsMarkup({ messageId: message.id, copyText: text ? body : "", canDelete: mine })}</div>`
+          ? `<div class="message-attachment-group message-multi-image-group" data-message-id="${esc(message.id)}">${image}${text ? `<div class="message-bubble text-message${mine ? " mine" : ""}" dir="auto" data-message-id="${esc(message.id)}">${text}${reactions}</div>` : `<div class="message-bubble message-reaction-host${mine ? " mine" : ""}" data-message-id="${esc(message.id)}">${reactions}</div>`}</div>`
           : image && text && !audio && !sticker
           ? `<div class="message-attachment-group">${image}<div class="message-bubble text-message${mine ? " mine" : ""}" dir="auto" data-message-id="${esc(message.id)}">${text}${reactions}</div></div>`
           : `<div class="message-bubble${hasTextContent ? " text-message" : ""}${mine ? " mine" : ""}${image ? " has-message-image" : ""}${mediaOnly ? " media-message" : ""}${imageOnly ? " image-message" : ""}${audioOnly ? " audio-message" : ""}${stickerOnly ? " sticker-message" : ""}"${hasTextContent ? ' dir="auto"' : ""} data-message-id="${esc(message.id)}">${image}${audio}${sticker}${text}${reactions}</div>`;
-        const rowActions = hasMultipleImages && !audio && !sticker ? "" : bubbleActions;
+        const rowActions = hasMultipleImages && !audio && !sticker
+          ? messageGroupToolsMarkup({ messageId: message.id, copyText: text ? body : "", canDelete: mine })
+          : bubbleActions;
         return `<div class="message-row${mine ? " mine" : ""}${reactions ? " has-reactions" : ""}" data-message-row data-conversation-id="${esc(message.conversationId)}" data-sender-id="${esc(message.senderId || "")}" data-reply-to-id="${esc(message.replyToId || replyTo?.id || "")}"><div class="message-main">${replyStack}${messageContent}</div>${rowActions}</div>`;
       }
       function updateMessageRowSpacing(container = $("#chatLog")) {
@@ -27893,7 +27895,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         const menuAction = e.target.closest("[data-message-menu-action]");
         if (menuAction) {
-          const menu = menuAction.closest(".message-action-menu");
+          const menu = menuAction.closest(".message-action-menu, .message-bottom-sheet");
           const owner = menu?._messageRow;
           const trigger = menu?._messageTrigger;
           const action = menuAction.dataset.messageMenuAction;
@@ -27926,7 +27928,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           trigger?.focus();
           return;
         }
-        if (!e.target.closest(".message-action-menu, .message-tools")) closeMessageActionMenus();
+        if (!e.target.closest(".message-action-menu, .message-bottom-sheet, .message-tools")) closeMessageActionMenus();
         else if (!e.target.closest(".message-reaction-picker")) closeMessageReactionPicker();
         const directDownload = e.target.closest(".message-tool-button[data-message-download]");
         if (directDownload) {
