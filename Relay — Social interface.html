@@ -6869,8 +6869,8 @@
       .reply-stack {
         display: flex;
         width: min(70%, 720px);
-        min-width: 0;
-        max-width: 100%;
+        min-width: 120px;
+        max-width: 72%;
         flex-direction: column;
         gap: 4px;
       }
@@ -23616,7 +23616,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           <div class="message-bottom-sheet-actions">
             <button type="button" data-message-reply="${esc(messageId)}">${ic("reply")}<span>Reply</span></button>
             ${message.body ? `<button type="button" data-message-menu-action="copy" data-message-copy="${esc(message.body)}" data-message-id="${esc(messageId)}">${ic("copy")}<span>Copy</span></button>` : ""}
-            ${mine ? `<button type="button" class="is-destructive" data-message-menu-action="delete" data-message-id="${esc(messageId)}">${ic("trash")}<span>Unsend</span></button>` : ""}
+            ${mine ? `<button type="button" class="is-destructive" data-message-menu-action="delete" data-message-id="${esc(messageId)}"><svg class="i" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 14h12l1-14M9 7V4h6v3"/></svg><span>Unsend</span></button>` : ""}
           </div>
         </section>`;
         const sheet = backdrop.querySelector(".message-bottom-sheet");
