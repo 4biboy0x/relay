@@ -12571,7 +12571,7 @@
               <button class="reel-upload-placeholder" id="reelUploadPlaceholder" type="button" aria-label="Choose a video">
                 <svg class="i reels-symbol" aria-hidden="true"><use href="#reels" /></svg>
                 <strong>Choose a video</strong>
-                <span>MP4, MOV, WebM · up to 60 s · 100 MB</span>
+                <span>MP4, MOV, WebM · Max 60 seconds · 100 MB</span>
               </button>
               <div class="reel-upload-controls" id="reelUploadControls" hidden>
                 <button class="reel-upload-control" id="reelEditPreview" type="button" aria-label="Change cover" title="Change cover">
@@ -17834,7 +17834,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           return;
         }
         if (file.size <= 0 || file.size > 100 * 1024 * 1024) {
-          setReelPreviewError("The video must be between 1 byte and 100 MB.");
+          setReelPreviewError("Video is too large. Max file size is 100 MB.");
           return;
         }
         setReelPreviewError("");
@@ -17847,7 +17847,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const error = !Number.isFinite(probe.duration) || probe.duration <= 0
             ? "Could not read this video’s duration."
             : probe.duration > 60
-              ? "Reels can be up to 60 seconds long."
+              ? "Video must be 60 seconds or less."
               : Math.max(probe.videoWidth, probe.videoHeight) > 4096
                 ? "Video resolution must be 4K or lower."
                 : "";
