@@ -23897,7 +23897,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           downloadLabel: audioUrl ? "voice message" : firstImage?.isGif ? "GIF" : "image",
           downloadInMenu: Boolean(audioUrl),
           directDownload: Boolean(firstImage && !audioUrl && !hasMultipleImages),
-          showMore: mine || Boolean(text && image) || (!image && !audio) || Boolean(audioUrl),
+          showMore: Boolean(image) || mine || (!image && !audio) || Boolean(audioUrl),
           canEdit: mine && Boolean(text) && !image && !audio && !sticker,
           canDelete: mine,
         });
