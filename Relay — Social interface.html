@@ -15433,7 +15433,7 @@
           return \`<button class="composer-selected-topic" type="button" data-remove-composer-topic="\${esc(slug)}" aria-label="Remove \${esc(name)}">\${esc(name)} <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg></button>\`;
         }).join("");
         const toggle = $("#toggleComposerTopics");
-        toggle.disabled = selected.size >= 3;
+        toggle.style.opacity = selected.size >= 3 ? "0.45" : "";
         toggle.setAttribute("aria-expanded", String(!$("#composerTopicOptions").hidden));
       }
       async function loadComposerTopics() {
@@ -29611,7 +29611,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         setComposerTopics(selectedPostTopics.filter((slug) => slug !== remove.dataset.removeComposerTopic));
       });
       $("#toggleComposerTopics").addEventListener("click", async () => {
-        if (selectedPostTopics.length >= 3) return;
         const options = $("#composerTopicOptions");
         const opening = options.hidden;
         options.hidden = !opening;
