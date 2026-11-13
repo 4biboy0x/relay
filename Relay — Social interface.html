@@ -6592,11 +6592,11 @@
         height: 32px;
         place-items: center;
         padding: 0;
-        border: 0;
+        border: 1px solid var(--border);
         border-radius: 50%;
-        color: #fff;
-        background: rgba(18, 18, 18, .94);
-        box-shadow: 0 5px 14px rgba(0, 0, 0, .22);
+        color: var(--text);
+        background: var(--surface);
+        box-shadow: var(--shadow);
         cursor: pointer;
         opacity: 0;
         transform: translateY(8px) scale(.88);
@@ -6616,7 +6616,7 @@
         transition-delay: 0s;
       }
       .chat-scroll-to-bottom:hover {
-        background: #252525;
+        background: var(--surface-2);
       }
       .chat-scroll-to-bottom:active {
         transform: scale(.94);
