@@ -12175,12 +12175,14 @@
       /* Unify the Relay wordmark without changing its existing Piazzolla typography. */
       @media (min-width: 768px) {
         .app > .nav > .brand {
-          padding-inline: 14px;
-          margin-inline-start: -2px;
           margin-bottom: 16px;
         }
       }
       @media (min-width: 1200px) {
+        .app > .nav > .brand {
+          padding-inline: 14px;
+          margin-inline-start: -2px;
+        }
         .app > .nav > .brand .wordmark {
           position: relative;
           transition: max-width 480ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -26056,15 +26058,17 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const target = event.target;
         const homeView = $("#v-home");
         const main = $("#main");
-        const relevantScroll = target === document
+        const relevantScroll = target === window
+          || target === document
           || target === document.documentElement
           || target === document.body
           || target === main
           || homeView.contains(target)
           || target?.contains?.(homeView);
         if (!relevantScroll) return;
-        const currentTop = target === document || target === document.documentElement
-          || target === document.body ? window.scrollY : target.scrollTop;
+        const currentTop = target === window || target === document
+          || target === document.documentElement || target === document.body
+          ? window.scrollY : target.scrollTop;
         if (currentTop <= 8) {
           mobileHomeBrandHeader.classList.remove("is-hidden");
         } else if (currentTop > mobileHomeLastScrollTop + 3) {
