@@ -15430,7 +15430,7 @@
         selectedRow.innerHTML = selectedPostTopics.map((slug) => {
           const topic = composerTopics.find((item) => item.slug === slug);
           const name = topic?.name || slug;
-          return \`<button class="composer-selected-topic" type="button" data-remove-composer-topic="\${esc(slug)}" aria-label="Remove \${esc(name)}">\${esc(name)} <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg></button>\`;
+          return `<button class="composer-selected-topic" type="button" data-remove-composer-topic="${esc(slug)}" aria-label="Remove ${esc(name)}">${esc(name)} <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg></button>`;
         }).join("");
         const toggle = $("#toggleComposerTopics");
         toggle.style.opacity = selected.size >= 3 ? "0.45" : "";
