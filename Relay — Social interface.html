@@ -15023,6 +15023,7 @@
             joinVisiblePostRooms();
             syncActiveReelRoom();
             refreshMessageBadge();
+            refreshActiveConversationMessages();
           });
           socket.on("disconnect", () => {
             clearInterval(presenceHeartbeatTimer);
@@ -25157,6 +25158,17 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           await renderConversations();
         } catch (error) {
           console.error("Could not refresh message badge", error);
+        }
+      }
+      async function refreshActiveConversationMessages() {
+        const conversationId = activeConversation?.id;
+        if (!conversationId || $("#v-messages").hidden) return;
+        try {
+          const result = await api(`/conversations/${encodeURIComponent(conversationId)}/messages?limit=40`);
+          if (activeConversation?.id !== conversationId || $("#v-messages").hidden) return;
+          result.items.forEach(receiveMessage);
+        } catch (error) {
+          console.error("Could not sync the active conversation after reconnect.", error);
         }
       }
       async function selectConversationItem(conversationButton) {
