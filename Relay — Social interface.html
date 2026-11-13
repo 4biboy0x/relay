@@ -17476,7 +17476,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
       }
       async function refreshGlobalReels() {
-        if (!currentUser || reelRefreshInFlight || profileScopedReelHandle || /^#\\/reel\\//.test(location.hash)) return reelRefreshInFlight;
+        if (!currentUser || reelRefreshInFlight || profileScopedReelHandle || /^#\/reel\//.test(location.hash)) return reelRefreshInFlight;
         const feed = $("#reelFeed");
         const activeSlide = activeReelId
           ? $(`.reel-item[data-reel-id="${CSS.escape(activeReelId)}"]`, feed)
