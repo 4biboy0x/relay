@@ -6561,7 +6561,7 @@
         --msg-media-max-h: min(384px, 72cqw, 60dvh);
         --msg-media-min-h: min(96px, 18cqw, 60dvh);
         flex-direction: column;
-        gap: 0;
+        gap: 8px;
         overflow-x: hidden;
         overflow-y: auto;
         scroll-behavior: auto;
@@ -6753,29 +6753,49 @@
         min-width: 0;
         flex: none;
       }
-      .message-row.mine { flex-direction: row-reverse; }
+      .message-row.mine { justify-content: flex-end; }
       .message-main {
         display: flex;
         min-width: 0;
-        max-width: calc(100% - 112px);
+        max-width: 100%;
         flex: 0 1 auto;
         flex-direction: column;
         align-items: flex-start;
+        align-self: flex-start;
+        margin-left: 0;
+        margin-right: auto;
         gap: 4px;
       }
-      .message-row.mine > .message-main { align-items: flex-end; }
+      .message-row.mine > .message-main {
+        align-items: flex-end;
+        align-self: flex-end;
+        margin-left: auto;
+        margin-right: 0;
+      }
       .message-row > .message-main > .message-bubble,
       .message-row > .message-main > .message-attachment-group {
         min-width: 0;
         max-width: 100%;
       }
+      @media (max-width: 767px) {
+        .message-bubble.text-message { max-width: 72%; }
+        .message-row > .message-tools { display: none !important; }
+      }
       .message-row > .message-tools {
-        position: static;
-        top: auto;
-        transform: none;
-        flex: 0 0 auto;
-        align-self: flex-end;
+        position: absolute;
+        top: 50%;
+        left: calc(100% + 8px);
+        transform: translateY(-50%);
+        flex: none;
         margin: 0;
+      }
+      .message-row.mine > .message-tools {
+        left: auto;
+        right: calc(100% + 8px);
+      }
+      .message-bubble.text-message {
+        width: fit-content;
+        max-width: min(420px, 100%);
       }
       .message-row:empty { display: none; }
       .message-row.is-preparing-layout {
@@ -7082,6 +7102,82 @@
       .message-tool-button .i {
         width: 18px;
         height: 18px;
+      }
+      .message-bottom-sheet-backdrop {
+        position: fixed;
+        z-index: 10020;
+        inset: 0;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        background: rgba(0,0,0,.45);
+        opacity: 0;
+        transition: opacity 180ms ease;
+      }
+      .message-bottom-sheet-backdrop.is-open { opacity: 1; }
+      .message-bottom-sheet {
+        position: relative;
+        width: 100%;
+        max-width: 560px;
+        max-height: min(72dvh, 520px);
+        padding: 10px 16px calc(18px + env(safe-area-inset-bottom));
+        border: 1px solid var(--border);
+        border-bottom: 0;
+        border-radius: 24px 24px 0 0;
+        color: var(--text);
+        background: var(--surface);
+        box-shadow: 0 -12px 40px rgba(0,0,0,.18);
+        transform: translateY(24px);
+        transition: transform 180ms ease;
+      }
+      .message-bottom-sheet-backdrop.is-open .message-bottom-sheet { transform: translateY(0); }
+      .message-bottom-sheet-handle {
+        width: 36px;
+        height: 4px;
+        margin: 0 auto 16px;
+        border-radius: 999px;
+        background: var(--text-3);
+        opacity: .35;
+      }
+      .message-bottom-sheet-reactions {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 2px 0 16px;
+        border-bottom: 1px solid var(--border);
+      }
+      .message-bottom-sheet-reactions button {
+        display: grid;
+        width: clamp(38px, 11vw, 48px);
+        height: clamp(38px, 11vw, 48px);
+        flex: 1 1 0;
+        place-items: center;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background: var(--surface-2);
+        font-size: 21px;
+      }
+      .message-bottom-sheet-actions { display: grid; padding-top: 8px; }
+      .message-bottom-sheet-actions button {
+        display: flex;
+        min-height: 52px;
+        align-items: center;
+        gap: 14px;
+        padding: 0 8px;
+        border: 0;
+        border-radius: 12px;
+        color: var(--text);
+        background: transparent;
+        font: inherit;
+        font-size: 15px;
+        text-align: start;
+      }
+      .message-bottom-sheet-actions .i { width: 20px; height: 20px; }
+      .message-bottom-sheet-actions button.is-destructive { color: var(--like); }
+      @media (min-width: 768px) {
+        .message-bottom-sheet-backdrop { display: none !important; }
+        .message-bubble.text-message { max-width: min(420px, 100%); }
       }
       .message-action-menu {
         position: fixed;
@@ -23492,6 +23588,45 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         owner.classList.add("tools-visible");
       }
+      let activeMessageBottomSheet = null;
+      function closeMessageBottomSheet() {
+        if (!activeMessageBottomSheet) return;
+        const { backdrop, owner } = activeMessageBottomSheet;
+        backdrop.classList.remove("is-open");
+        owner?.classList.remove("has-message-popover");
+        setTimeout(() => backdrop.remove(), 180);
+        activeMessageBottomSheet = null;
+      }
+      function openMessageBottomSheet(owner, bubble, messageId) {
+        closeMessageBottomSheet();
+        closeMessageActionMenus();
+        const message = messagesById.get(messageId);
+        if (!message) return;
+        const mine = message.senderId === currentUser?.id;
+        const backdrop = document.createElement("div");
+        backdrop.className = "message-bottom-sheet-backdrop";
+        backdrop.innerHTML = `<section class="message-bottom-sheet" role="dialog" aria-modal="true" aria-label="Message actions">
+          <div class="message-bottom-sheet-handle"></div>
+          <div class="message-bottom-sheet-reactions" role="group" aria-label="Quick reactions">
+            ${["❤️","😂","😮","😢","👍","🔥"].map(emoji => `<button type="button" data-message-react-emoji="${esc(emoji)}" data-message-react-id="${esc(messageId)}" aria-label="React with ${esc(emoji)}">${emoji}</button>`).join("")}
+          </div>
+          <div class="message-bottom-sheet-actions">
+            <button type="button" data-message-reply="${esc(messageId)}">${ic("reply")}<span>Reply</span></button>
+            ${message.body ? `<button type="button" data-message-menu-action="copy" data-message-copy="${esc(message.body)}" data-message-id="${esc(messageId)}">${ic("copy")}<span>Copy</span></button>` : ""}
+            ${mine ? `<button type="button" class="is-destructive" data-message-menu-action="delete" data-message-id="${esc(messageId)}">${ic("trash")}<span>Unsend</span></button>` : ""}
+          </div>
+        </section>`;
+        const sheet = backdrop.querySelector(".message-bottom-sheet");
+        sheet.classList.add("message-action-menu");
+        sheet._messageRow = owner;
+        backdrop.addEventListener("click", event => {
+          if (event.target === backdrop) closeMessageBottomSheet();
+        });
+        document.body.append(backdrop);
+        owner.classList.add("has-message-popover");
+        activeMessageBottomSheet = { backdrop, owner, bubble };
+        requestAnimationFrame(() => backdrop.classList.add("is-open"));
+      }
       function closeMessageReactionPicker() {
         if (!activeMessageReactionPicker) return;
         const { picker, owner } = activeMessageReactionPicker;
@@ -23825,7 +23960,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             && !previous.querySelector(".reply-stack")
             && previous.dataset.senderId === row.dataset.senderId;
           row.classList.toggle("same-sender", grouped);
-          row.style.marginBlockStart = grouped ? "2px" : index > 0 ? "8px" : "";
+          row.style.marginBlockStart = "";
           const bubble = row.querySelector(":scope > .message-bubble, :scope > .message-attachment-group > .message-bubble");
           bubble?.classList.remove(
             "message-group-first",
@@ -27602,7 +27737,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         messageSwipeState = {row,target:bubble,messageId,pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,distance:0,moved:false,triggered:false,direction:row.classList.contains("mine")?-1:1};
         messageLongPressTimer = setTimeout(() => {
           if (!messageSwipeState || messageSwipeState.row !== row || messageSwipeState.moved) return;
-          clearActiveTouchMessage(); row.classList.add("is-active-message"); revealMessageTools(row,bubble); activeTouchMessageRow=row;
+          if (!messageSwipeState) return;
+          messageSwipeState.longPressed = true;
+          clearActiveTouchMessage();
+          openMessageBottomSheet(row, bubble, messageId);
+          activeTouchMessageRow = row;
         },320);
       },{passive:true});
       document.addEventListener("pointermove", event => {
@@ -27620,10 +27759,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const state=messageSwipeState; if(!state || (event.pointerId!=null && event.pointerId!==state.pointerId)) return;
         cancelMessageLongPress(); state.target.classList.remove("is-swiping"); state.target.style.removeProperty("transform"); state.target.querySelector(".message-swipe-indicator")?.remove(); messageSwipeState=null;
         if(state.triggered){setMessageReplyTarget(state.messageId);return;}
-        if(!state.moved){
+        if(!state.moved && !state.longPressed){
           const now=Date.now();
-          if(lastMessageTap.id===state.messageId && now-lastMessageTap.time<280){lastMessageTap={id:"",time:0};void toggleMessageReaction(state.messageId,"❤️");clearActiveTouchMessage();return;}
-          lastMessageTap={id:state.messageId,time:now}; clearActiveTouchMessage(); state.row.classList.add("is-active-message"); revealMessageTools(state.row,state.target); activeTouchMessageRow=state.row;
+          if(lastMessageTap.id===state.messageId && now-lastMessageTap.time<280){lastMessageTap={id:"",time:0};void toggleMessageReaction(state.messageId,"❤️");clearMessageBottomSheet();clearActiveTouchMessage();return;}
+          lastMessageTap={id:state.messageId,time:now};
         }
       };
       document.addEventListener("pointerup",finishMessageSwipe,{passive:true});
@@ -27652,6 +27791,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           return;
         }
         if (!matchMedia("(hover: none)").matches) return;
+        if (matchMedia("(max-width: 767px)").matches) return;
         const imageItem = target?.closest(".message-image-item");
         const group = target?.closest(".message-attachment-group");
         const bubble = target?.closest(".message-bubble");
@@ -27666,6 +27806,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (target?.closest("img")) event.preventDefault();
       });
       document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && activeMessageBottomSheet) {
+          event.preventDefault();
+          closeMessageBottomSheet();
+          return;
+        }
         if (event.key === "Escape" && document.querySelector(".message-action-menu:not([hidden])")) {
           event.preventDefault();
           closeMessageActionMenus(true);
@@ -27698,6 +27843,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const pickerReaction = e.target.closest("[data-message-react-emoji]");
         if (pickerReaction) {
           const { dataset } = pickerReaction;
+          closeMessageBottomSheet();
           const animateInLightbox = Boolean(pickerReaction.closest("#postLightbox.is-message-media"));
           closeMessageReactionPicker();
           await toggleMessageReaction(dataset.messageReactId, dataset.messageReactEmoji, { animateInLightbox });
@@ -27710,6 +27856,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         const directReply = e.target.closest("[data-message-reply]");
         if (directReply) {
+          closeMessageBottomSheet();
           setMessageReplyTarget(directReply.dataset.messageReply);
           return;
         }
@@ -27753,6 +27900,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const messageId = menuAction.dataset.messageId || owner?.querySelector(".message-bubble")?.dataset.messageId;
           const copyText = menuAction.dataset.messageCopy;
           closeMessageActionMenus();
+          closeMessageBottomSheet();
           try {
             if (action === "copy") {
               await copyMessageText(copyText || "");
