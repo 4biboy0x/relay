@@ -12845,15 +12845,15 @@
       .message-swipe-indicator.is-visible { opacity:1; transform:translateY(-50%) scale(1); }
       .message-row:not(.mine) .message-swipe-indicator { left:-42px; }
       .message-row.mine .message-swipe-indicator { right:-42px; }
-      .message-bubble.is-swiping { transition:none !important; will-change:transform; }
-      .message-bubble:not(.is-swiping) { transition:transform 220ms cubic-bezier(.22,1,.36,1); }
+      .message-bubble.is-swiping, .message-image-item.is-swiping { transition:none !important; will-change:transform; }
+      .message-bubble:not(.is-swiping), .message-image-item:not(.is-swiping) { transition:transform 220ms cubic-bezier(.22,1,.36,1); }
       .message-row.is-active-message .message-tools { opacity:1; pointer-events:auto; z-index:40; }
       @media (hover:hover) and (pointer:fine) {
         .message-row:hover .message-tools, .message-row:focus-within .message-tools, .message-tools:focus-within { opacity:1; pointer-events:auto; }
       }
       @media (hover:none), (pointer:coarse) {
-        .message-row:hover .message-tools, .message-bubble:hover > .message-tools, .message-image-item:hover > .message-tools, .message-attachment-group:hover > .message-tools { opacity:0; pointer-events:none; }
-        .message-row.is-active-message .message-tools, .message-row.is-active-message .message-bubble > .message-tools, .message-row.is-active-message .message-attachment-group > .message-tools, .message-row.is-active-message .message-image-item > .message-tools { opacity:1; pointer-events:auto; }
+        .message-row:hover .message-tools, .message-bubble:hover > .message-tools, .message-image-item:hover > .message-tools, .message-attachment-group:hover > .message-tools { opacity:0 !important; pointer-events:none !important; }
+        .message-row.is-active-message .message-tools, .message-row.is-active-message .message-bubble > .message-tools, .message-row.is-active-message .message-attachment-group > .message-tools, .message-row.is-active-message .message-image-item > .message-tools { opacity:1 !important; pointer-events:auto !important; }
       }
 </style>
   </head>
