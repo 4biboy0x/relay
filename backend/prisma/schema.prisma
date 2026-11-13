@@ -407,6 +407,7 @@ model ConversationMember {
   userId         String
   joinedAt       DateTime     @default(now())
   deletedAt      DateTime?
+  historyCutoffAt DateTime?
   lastReadAt     DateTime?
   unreadReactionCount Int     @default(0)
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
