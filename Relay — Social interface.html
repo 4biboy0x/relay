@@ -13217,12 +13217,12 @@
         .app.messages-active .chat-log {
           height: 100%;
           min-height: 0;
-          padding-bottom: calc(78px + var(--chat-keyboard-inset, 0px));
+          padding-bottom: 86px;
           box-sizing: border-box;
         }
         .app.messages-active .chat-compose {
           position: absolute;
-          bottom: var(--chat-keyboard-inset, 0px);
+          bottom: 8px;
           left: 0;
           right: 0;
           z-index: 20;
@@ -23574,9 +23574,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           return;
         }
         const viewport = window.visualViewport;
-        const keyboardInset = viewport
-          ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
-          : 0;
+        // The mobile chat panel already follows the resized visual viewport.
+        // Keep the composer anchored to its 8px inset without applying keyboard offset twice.
+        const keyboardInset = 0;
         panel.style.setProperty("--chat-keyboard-inset", `${keyboardInset}px`);
       }
       window.addEventListener("resize", syncMobileChatKeyboardViewport, { passive: true });
