@@ -23295,7 +23295,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const explicitType = ["text", "voice", "image", "gif", "video"].includes(message.type) ? message.type : "";
         const mediaPath = (() => { try { return mediaUrl ? new URL(mediaUrl).pathname : ""; } catch { return ""; } })();
         const mediaHost = (() => { try { return mediaUrl ? new URL(mediaUrl).hostname : ""; } catch { return ""; } })();
-        const isVideoUrl = /\\.(mp4|webm|mov|m4v)$/i.test(mediaPath);
+        const isVideoUrl = /\.(mp4|webm|mov|m4v)$/i.test(mediaPath);
         const isGifVideo = isVideoUrl && /(giphy|tenor)/i.test(mediaHost);
         const type = explicitType || (message.audioUrl ? "voice"
           : isGifMediaUrl(mediaUrl) || isGifVideo ? "gif"
