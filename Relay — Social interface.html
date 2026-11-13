@@ -12599,6 +12599,56 @@
           pointer-events: none !important;
         }
       }
+
+      /* Native-feeling interaction defaults across touch and pointer devices. */
+      *, *::before, *::after {
+        -webkit-tap-highlight-color: transparent;
+      }
+      video, img, button, a, [role="button"],
+      .reel-stage, .post, .reel-progress-track {
+        -webkit-tap-highlight-color: transparent;
+      }
+      *:focus:not(:focus-visible) {
+        outline: none !important;
+      }
+      img, svg {
+        -webkit-user-drag: none;
+        user-drag: none;
+      }
+
+      /* Keep controls and app chrome from becoming accidental text selections. */
+      .app.reels-active .reel-stage,
+      .app.reels-active .reel-stage *,
+      .nav-item, .nav-rail, .nav-sidebar,
+      [role="tab"], .tabs, .post-actions,
+      .reel-progress-track, .reel-actions, .reel-action,
+      .reel-stage-control, .chat-heading, .page-header {
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      /* Actual user content remains selectable and copyable. */
+      .reply-copy, .post-copy, .post-text, .post-content,
+      .reel-copy, .reel-caption, .comment-text, .comment-body,
+      #profileBio, .message-bubble {
+        user-select: text;
+        -webkit-user-select: text;
+      }
+
+      /* Subtle tactile feedback for primary icon controls. */
+      .reel-action, .reel-stage-control, .nav-item,
+      .message-send-text, .act, .icon-btn {
+        transition: transform 100ms ease;
+      }
+      .reel-action:active, .reel-stage-control:active, .nav-item:active,
+      .message-send-text:active, .act:active, .icon-btn:active {
+        transform: scale(0.95);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .reel-action, .reel-stage-control, .nav-item,
+        .message-send-text, .act, .icon-btn {
+          transition: none;
+        }
+      }
 </style>
   </head>
   <body>
