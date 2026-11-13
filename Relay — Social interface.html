@@ -12561,7 +12561,7 @@
       }
 
       /* Keep the short-screen Reels rail close to the standard layout, just tighter. */
-      @media (max-height: 620px), (max-width: 360px) {
+      @media (max-height: 620px) and (max-width: 360px) {
         .app.reels-active .reel-actions {
           right: 10px !important;
           bottom: calc(var(--reel-nav-height, 0px) + 8px + env(safe-area-inset-bottom, 0px)) !important;
