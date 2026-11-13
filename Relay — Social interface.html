@@ -7748,8 +7748,8 @@
         background: transparent;
       }
       .message-bubble.audio-message {
-        width: 220px;
-        max-width: 100%;
+        width: var(--msg-media-w);
+        max-width: 65%;
         min-width: 0;
         padding: 0;
         color: var(--text);
@@ -7906,7 +7906,7 @@
       .message-sticker { display: block; width: 32px; height: 32px; font-size: 32px; line-height: 32px; text-align: center; }
       .relay-voice {
         position: relative;
-        width: 220px;
+        width: 100%;
         max-width: 100%;
         min-width: 0;
         height: 42px;
@@ -7946,7 +7946,7 @@
       .relay-voice-play-icons .relay-voice-pause-icon { transform: scale(.85); opacity: 0; }
       .relay-voice.playing .relay-voice-play-icon { transform: translateX(1px) scale(.85); opacity: 0; }
       .relay-voice.playing .relay-voice-pause-icon { transform: scale(1); opacity: 1; }
-      .relay-waveform { width: auto; min-width: 0; height: 24px; flex: 1; display: flex; align-items: center; justify-content: center; touch-action: pan-y; cursor: pointer; }
+      .relay-waveform { width: auto; min-width: 0; height: 24px; flex: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; touch-action: pan-y; cursor: pointer; }
       .relay-waveform svg { width: 100%; min-width: 0; height: 24px; overflow: visible; pointer-events: none; }
       .relay-waveform rect { fill: var(--voice-unplayed); }
       .relay-waveform rect.is-played { fill: var(--voice-played); }
@@ -8000,8 +8000,8 @@
         }
       }
       @media (max-width: 640px) {
-        .message-bubble.audio-message,
-        .relay-voice { width: 220px; max-width: 100%; }
+        .message-bubble.audio-message { width: var(--msg-media-w); max-width: 65%; }
+        .relay-voice { width: 100%; max-width: 100%; }
       }
 
       .typing-status {
@@ -8958,7 +8958,7 @@
           max-width: min(90%, 720px);
         }
         .relay-voice {
-          width: 220px;
+          width: 100%;
           max-width: 100%;
         }
         .chat-compose {
