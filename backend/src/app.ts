@@ -2151,7 +2151,7 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
       const preview = row.conversation.messages[0] ?? null;
       const storedPreview = row.conversation.lastMessage as { createdAt?: string } | null;
       const storedPreviewAt = storedPreview?.createdAt ? new Date(storedPreview.createdAt) : null;
-      const lastMessage = storedPreview && (!cutoff || (storedPreviewAt && storedPreviewAt > cutoff))
+      const lastMessage = storedPreview && (!cutoff || (storedPreview.kind !== "reaction" && storedPreviewAt && storedPreviewAt > cutoff))
         ? storedPreview
         : preview && (!cutoff || preview.createdAt > cutoff) ? preview : null;
       return {
@@ -2726,8 +2726,8 @@ api.patch("/messages/:messageId", authRequired, messageLimiter, asyncRoute(async
         : null,
     };
   });
-  const serializeUpdate = (viewerId: string) => {
-    const message = serializeMessage(result.message, viewerId);
+  const serializeUpdate = (viewerId: string, historyCutoffAt: Date | null = null) => {
+    const message = serializeMessage(result.message, viewerId, historyCutoffAt);
     return {
       ...message,
       ...(result.inboxPreview ? {
@@ -2748,14 +2748,14 @@ api.patch("/messages/:messageId", authRequired, messageLimiter, asyncRoute(async
         deletedAt: null,
         OR: [{ historyCutoffAt: null }, { historyCutoffAt: { lt: result.message.createdAt } }],
       },
-      select: { userId: true },
+      select: { userId: true, historyCutoffAt: true },
     });
   } catch (error) {
     console.error(`Could not load conversation members to broadcast edited message ${messageId}`, error);
   }
   for (const member of members) {
     try {
-      emitToUser(member.userId, "message:updated", serializeUpdate(member.userId));
+      emitToUser(member.userId, "message:updated", serializeUpdate(member.userId, member.historyCutoffAt));
     } catch (error) {
       console.error(`Could not broadcast an edited message to user ${member.userId}`, error);
     }
@@ -2999,7 +2999,11 @@ const updateMessageReaction = async (req: express.Request, res: express.Response
         select: { updatedAt: true },
       }),
       tx.conversationMember.findMany({
-        where: { conversationId: message.conversationId, deletedAt: null },
+        where: {
+          conversationId: message.conversationId,
+          deletedAt: null,
+          OR: [{ historyCutoffAt: null }, { historyCutoffAt: { lt: message.createdAt } }],
+        },
         select: { userId: true, unreadReactionCount: true },
       }),
       tx.user.findUniqueOrThrow({
