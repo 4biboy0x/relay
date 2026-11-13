@@ -23033,6 +23033,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (!recorder || !["recording", "paused"].includes(recorder.state) || voiceRecordingFinalizing) return;
         voiceRecordingCanceled = discard;
         voiceRecordingFinalizing = true;
+        if (recorder.state === "recording") {
+          voiceRecordingElapsedMs += Date.now() - voiceRecordingRunStartedAt;
+          updateVoiceRecordingTimer();
+        }
         clearInterval(voiceRecordingTimer);
         clearInterval(voiceRecordingSampleTimer);
         voiceRecordingTimer = null;
@@ -23114,10 +23118,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             const blob = new Blob(voiceChunks, { type: mimeType });
             voiceRecorder = null;
             voiceRecordingFinalizing = false;
-            if (voiceRecordingCanceled || !blob.size) {
-              voiceRecordingCanceled = false;
+            const wasCanceled = voiceRecordingCanceled;
+            voiceRecordingCanceled = false;
+            if (wasCanceled || !blob.size) {
               syncMessageComposer();
-              if (!blob.size && !voiceRecordingCanceled) toast("Recording is empty. Try again.");
+              if (!wasCanceled && !blob.size) toast("Recording is empty. Try again.");
               return;
             }
             syncMessageComposer();
