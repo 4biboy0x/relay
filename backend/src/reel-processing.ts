@@ -185,7 +185,7 @@ const probeVideo = async (filePath: string): Promise<VideoProbe> => {
   }
   const durationMs = Math.round(durationSeconds * 1000);
   if (durationMs > MAX_DURATION_MS) {
-    throw new ReelProcessingFailure("Videos must be 60 seconds or shorter.", false);
+    throw new ReelProcessingFailure("Video must be 60 seconds or less.", false);
   }
   if (Math.max(video.width, video.height) > MAX_DIMENSION) {
     throw new ReelProcessingFailure("Video resolution exceeds the supported 4K limit.", false);
