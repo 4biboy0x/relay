@@ -432,7 +432,7 @@ const notify = async (
   if (recipientId === actorId) return;
   const notification = await prisma.notification.create({
     data: { recipientId, actorId, type, postId },
-    include: { actor: { select: publicUser }, post: { select: { id: true, body: true, mediaUrl: true } }, reel: { select: { id: true, posterKey: true } } },
+    include: { actor: { select: publicUser }, post: { select: { id: true, body: true, mediaUrl: true } } },
   });
   emitToUser(recipientId, "notification:new", notification);
 };
@@ -564,7 +564,7 @@ const createMentionNotifications = async (
       type: NotificationType.MENTION,
       recipientId: { in: newRecipientIds },
     },
-    include: { actor: { select: publicUser }, post: { select: { id: true, body: true, mediaUrl: true } }, reel: { select: { id: true, posterKey: true } } },
+    include: { actor: { select: publicUser }, post: { select: { id: true, body: true, mediaUrl: true } } },
   });
 };
 
