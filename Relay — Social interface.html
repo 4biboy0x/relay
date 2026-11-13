@@ -12838,14 +12838,22 @@
       #messageReplyPreview, #messageComposePill { width:100%; flex:none; }
       .message-tools { display:inline-flex; align-items:center; gap:4px; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; flex-shrink:0; }
       .message-tool-button { flex:0 0 36px; }
-      .message-row { display:flex; flex-direction:column; align-items:flex-start; gap:6px; box-sizing:border-box; }
-      .message-row.mine { align-items:flex-end; }
-      .message-row > .message-bubble { box-sizing:border-box; max-width:min(calc(100% - 116px), 720px); }
-      .message-row > .message-attachment-group { box-sizing:border-box; max-width:min(calc(100% - 116px), 720px); }
-      .message-row > .message-attachment-group .message-bubble { max-width:100%; }
-      .message-row > .message-attachment-group:has(> .message-tools) { max-width:min(calc(100% - 156px), 720px); }
+      .message-row { display:flex; flex-direction:row; align-items:flex-end; gap:8px; width:100%; max-width:100%; min-width:0; box-sizing:border-box; }
+      .message-row.mine { justify-content:flex-end; }
+      .message-row:not(.mine) { justify-content:flex-start; }
+      .message-row > .message-bubble,
+      .message-row > .message-attachment-group { box-sizing:border-box; min-width:0; max-width:min(230px, calc(100% - 115px)); }
+      .message-row > .message-bubble { flex:0 1 auto; }
+      .message-row > .message-attachment-group { flex:0 1 auto; }
+      .message-row > .message-attachment-group .message-bubble,
       .message-row > .message-attachment-group .message-image-item { max-width:100%; }
       .message-row > .message-attachment-group .message-tools { max-width:100%; }
+      .message-row > .message-bubble > .message-tools,
+      .message-row > .message-attachment-group > .message-tools { position:static; flex-shrink:0; }
+      .message-row.mine > .message-bubble { order:2; }
+      .message-row.mine > .message-attachment-group { order:2; }
+      .message-row.mine > .message-tools { order:1; }
+      .message-row:not(.mine) > .message-tools { order:2; }
       .message-tool-button { width:36px; height:36px; }
       .message-row.is-active-message { z-index:40; }
       .message-row.is-active-message > .message-bubble, .message-row.is-active-message .message-attachment-group > .message-bubble, .message-row.is-active-message .message-image-item { transform:scale(1.01); transition:transform 180ms cubic-bezier(.22,1,.36,1); }
@@ -24139,14 +24147,16 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         });
         if (isActiveConversation) {
           const chatLog = $("#chatLog");
-          $(".message-row", chatLog)
-            .find((row) => row.querySelector(".message-bubble")?.dataset.messageId === deletedId)
-            ?.remove();
+          const rows = [...chatLog.querySelectorAll(".message-row")];
+          const deletedRow = rows.find((row) =>
+            [...row.querySelectorAll("[data-message-id]")].some((element) => element.dataset.messageId === deletedId)
+          );
+          deletedRow?.remove();
           affectedReplies.forEach((message) => {
-            const row = $(".message-row", chatLog)
-              .find((item) => item.querySelector(".message-bubble")?.dataset.messageId === message.id
-                || item.querySelector("[data-message-id]")?.dataset.messageId === message.id);
-            if (!row) return;
+            const row = rows.find((item) =>
+              [...item.querySelectorAll("[data-message-id]")].some((element) => element.dataset.messageId === String(message.id))
+            );
+            if (!row || !row.isConnected) return;
             const template = document.createElement("template");
             template.innerHTML = messageMarkup(message, { eager: false }).trim();
             const replacement = template.content.firstElementChild;
