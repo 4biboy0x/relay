@@ -2772,7 +2772,7 @@ api.delete("/messages/:messageId", authRequired, messageLimiter, asyncRoute(asyn
         senderId: req.userId!,
         conversation: { members: { some: { userId: req.userId!, deletedAt: null } } },
       },
-      select: { id: true, conversationId: true },
+      select: { id: true, conversationId: true, createdAt: true },
     });
     if (!message) throw new HttpError(404, "Message not found");
     const [reactionActivities, members] = await Promise.all([
@@ -2782,12 +2782,14 @@ api.delete("/messages/:messageId", authRequired, messageLimiter, asyncRoute(asyn
       }),
       tx.conversationMember.findMany({
         where: { conversationId: message.conversationId, deletedAt: null },
-        select: { userId: true, lastReadAt: true },
+        select: { userId: true, lastReadAt: true, historyCutoffAt: true },
       }),
     ]);
     for (const activity of reactionActivities) {
       for (const member of members) {
-        if (member.userId === activity.actorId || (member.lastReadAt && member.lastReadAt >= activity.createdAt)) continue;
+        if (member.userId === activity.actorId
+          || (member.historyCutoffAt && message.createdAt <= member.historyCutoffAt)
+          || (member.lastReadAt && member.lastReadAt >= activity.createdAt)) continue;
         await tx.conversationMember.updateMany({
           where: {
             conversationId: message.conversationId,
@@ -2832,9 +2834,10 @@ api.delete("/messages/:messageId", authRequired, messageLimiter, asyncRoute(asyn
         updatedAt,
       },
     });
-    return { conversationId: message.conversationId, lastMessage, updatedAt, members };
+    return { conversationId: message.conversationId, lastMessage, updatedAt, members, deletedMessageCreatedAt: message.createdAt };
   });
   for (const member of result.members) {
+    if (member.historyCutoffAt && member.historyCutoffAt >= result.deletedMessageCreatedAt) continue;
     try {
       emitToUser(member.userId, "message:deleted", {
         messageId,
