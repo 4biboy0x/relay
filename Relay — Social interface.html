@@ -8335,6 +8335,20 @@
       }
       .explore-tabs:not(.explore-filter-tabs) > .tab {
         min-width: 0;
+        padding-right: clamp(4px, 1.5vw, 12px);
+        padding-left: clamp(4px, 1.5vw, 12px);
+        font-size: clamp(12px, 3.4vw, 14px);
+        white-space: nowrap;
+      }
+      @media (max-width: 380px) {
+        .explore-tabs:not(.explore-filter-tabs) {
+          padding-right: 8px;
+          padding-left: 8px;
+        }
+        .explore-tabs:not(.explore-filter-tabs)::after {
+          right: 8px;
+          left: 8px;
+        }
       }
       .explore-tabs:not(.explore-filter-tabs) > .tab[aria-selected="true"]::after {
         display: none;
