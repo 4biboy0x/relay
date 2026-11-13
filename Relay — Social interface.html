@@ -11855,6 +11855,112 @@
         }
       }
 
+    
+      /* Desktop Messages navigation rail: collapse labels, not the page shell. */
+      @media (min-width: 1200px) {
+        .app > .nav {
+          width: 100%;
+          min-width: 0;
+          box-sizing: border-box;
+          transition: width 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .app .nav .l,
+        .app .nav #navPost .l,
+        .app .nav .nav-foot .who {
+          display: inline-block;
+          max-width: 180px;
+          overflow: hidden;
+          white-space: nowrap;
+          opacity: 1;
+          transform: translateX(0);
+          transition: opacity 180ms ease,
+            max-width 240ms cubic-bezier(0.2, 0.8, 0.2, 1),
+            transform 200ms ease;
+        }
+        .app.messages-active {
+          grid-template-columns: 72px minmax(0, 1fr) minmax(0, 0) !important;
+          width: 100% !important;
+          max-width: none !important;
+          justify-content: stretch !important;
+          column-gap: 16px !important;
+          padding-inline: 16px !important;
+          transition: grid-template-columns 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .app.messages-active > .nav {
+          width: 72px;
+          padding-inline: 6px;
+        }
+        .app.messages-active > .nav .brand {
+          justify-content: center;
+          padding-inline: 0;
+        }
+        .app.messages-active > .nav .brand .wordmark,
+        .app.messages-active > .nav .nav-item .l,
+        .app.messages-active > .nav #navPost .l,
+        .app.messages-active > .nav .nav-foot .who {
+          max-width: 0;
+          opacity: 0;
+          transform: translateX(-6px);
+          pointer-events: none;
+        }
+        .app.messages-active > .nav .nav-item {
+          justify-content: center;
+          gap: 0;
+          padding-inline: 0;
+        }
+        .app.messages-active > .nav #navPost {
+          width: 44px;
+          min-width: 44px;
+          align-self: center;
+          justify-content: center;
+          padding-inline: 0;
+        }
+        .app.messages-active > .nav .nav-foot {
+          grid-template-columns: minmax(0, 1fr);
+          justify-items: center;
+          gap: 8px;
+          padding-inline: 0;
+        }
+        .app.messages-active > .nav .account-trigger {
+          justify-content: center;
+          padding-inline: 0;
+        }
+        .app.messages-active > main {
+          width: 100% !important;
+          max-width: none !important;
+          min-width: 0 !important;
+          justify-self: stretch !important;
+        }
+        .app.messages-active #v-messages,
+        .app.messages-active .messages-layout {
+          width: 100% !important;
+          max-width: 100% !important;
+          min-width: 0 !important;
+        }
+        .app.messages-active .messages-layout {
+          display: flex !important;
+        }
+        .app.messages-active .conversation-sidebar {
+          width: 360px !important;
+          min-width: 360px !important;
+          max-width: 360px !important;
+          flex: 0 0 360px !important;
+        }
+        .app.messages-active .chat-panel {
+          width: 100% !important;
+          min-width: 0 !important;
+          flex: 1 1 0% !important;
+        }
+      }
+      @media (min-width: 1200px) and (prefers-reduced-motion: reduce) {
+        .app,
+        .app > .nav,
+        .app .nav .l,
+        .app .nav #navPost .l,
+        .app .nav .nav-foot .who {
+          transition: none !important;
+        }
+      }
     </style>
   </head>
   <body>
