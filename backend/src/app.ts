@@ -2833,7 +2833,7 @@ api.delete("/messages/:messageId", authRequired, messageLimiter, asyncRoute(asyn
       tx.conversationReactionActivity.findFirst({
         where: { conversationId: message.conversationId, isActive: true },
         orderBy: { createdAt: "desc" },
-        select: { actorId: true, emoji: true, targetType: true, targetText: true, createdAt: true },
+        select: { actorId: true, emoji: true, targetType: true, targetText: true, createdAt: true, messageId: true, message: { select: { createdAt: true } } },
       }),
       tx.conversation.findUniqueOrThrow({
         where: { id: message.conversationId },
