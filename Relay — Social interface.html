@@ -12097,6 +12097,28 @@
         }
       }
 
+      /* Center the collapsed New post icon precisely inside its circular button. */
+      @media (min-width: 1200px) {
+        .app.messages-active > .nav #navPost {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0;
+          padding: 0 !important;
+          line-height: 0;
+        }
+        .app.messages-active > .nav #navPost .l {
+          display: none;
+        }
+        .app.messages-active > .nav #navPost > svg.i {
+          display: block;
+          width: 20px;
+          height: 20px;
+          flex: 0 0 20px;
+          margin: 0;
+        }
+      }
+
 </style>
   </head>
   <body>
