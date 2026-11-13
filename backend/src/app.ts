@@ -27,6 +27,7 @@ import { getNeonRealtime } from "./neon-realtime";
 import { asyncRoute, errorHandler, HttpError } from "./http";
 import { getReelStorageOrigins } from "./reel-storage";
 import { getReelPosterUrl, reelProfileRouter, reelsRouter } from "./reels";
+import { containsProfanity } from "./moderation";
 import { emitToAuthenticated, emitToConversation, emitToPost, emitToUser } from "./realtime";
 import { audioUpload, createUploadReadUrl, getUploadStorageOrigins, imageUpload, saveAudio, saveImage, uploadDirectory } from "./uploads";
 import { createViewerKey, viewRateLimiter, viewRequestGuard } from "./view-tracking";
@@ -758,6 +759,9 @@ const listPosts = async (
 
 api.post("/auth/register", asyncRoute(async (req, res) => {
   const input = registerSchema.parse(req.body);
+  if (containsProfanity(input.handle) || containsProfanity(input.displayName)) {
+    throw new HttpError(400, "Restricted words not allowed.");
+  }
   const email = normalizeEmail(input.email);
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
   if (existing) throw new HttpError(409, "An account with that email already exists");
@@ -1109,6 +1113,9 @@ api.patch("/users/me/password", authRequired, asyncRoute(async (req, res) => {
 
 api.patch("/users/me", authRequired, asyncRoute(async (req, res) => {
   const input = profileSchema.parse(req.body);
+  if (containsProfanity(input.displayName) || containsProfanity(input.bio)) {
+    throw new HttpError(400, "Restricted words not allowed.");
+  }
   const user = await prisma.user.update({
     where: { id: req.userId! },
     data: input,
@@ -1617,6 +1624,7 @@ api.get("/posts/:postId/thread", authRequired, asyncRoute(async (req, res) => {
 
 api.post("/posts", authRequired, verifiedEmailRequired, asyncRoute(async (req, res) => {
   const input = postSchema.parse(req.body);
+  if (containsProfanity(input.body)) throw new HttpError(400, "Restricted words not allowed.");
   let replyRecipientId: string | undefined;
   if (input.replyToId) {
     const parent = await prisma.post.findFirst({
@@ -1672,6 +1680,7 @@ api.post("/posts", authRequired, verifiedEmailRequired, asyncRoute(async (req, r
 api.patch("/posts/:postId", authRequired, asyncRoute(async (req, res) => {
   const postId = z.string().cuid().parse(req.params.postId);
   const input = updatePostSchema.parse(req.body);
+  if (containsProfanity(input.body)) throw new HttpError(400, "Restricted words not allowed.");
   const existing = await prisma.post.findFirst({
     where: { id: postId, deletedAt: null },
     select: { authorId: true, replyToId: true },
