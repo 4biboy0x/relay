@@ -16,12 +16,11 @@ export const asyncRoute = (handler: RequestHandler): RequestHandler =>
   };
 
 export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
-  if (typeof error === "object" && error !== null && "status" in error) {
-    const status = error.status;
-    if (status === 400 || status === 413) {
-      res.status(status).json({ error: status === 413 ? "Request body is too large" : "Malformed JSON request" });
-      return;
-    }
+  // Handle application errors before parser errors: HttpError also has a
+  // numeric "status" property, but its message must be preserved in the JSON body.
+  if (error instanceof HttpError) {
+    res.status(error.status).json({ error: error.message });
+    return;
   }
   if (error instanceof ZodError) {
     res.status(400).json({
@@ -30,9 +29,14 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
     });
     return;
   }
-  if (error instanceof HttpError) {
-    res.status(error.status).json({ error: error.message });
-    return;
+  // Express/body-parser syntax errors carry status=400. Keep these distinct
+  // from HttpError responses and always serialize them as JSON.
+  if (typeof error === "object" && error !== null && "status" in error) {
+    const status = error.status;
+    if (status === 400 || status === 413) {
+      res.status(status).json({ error: status === 413 ? "Request body is too large" : "Malformed JSON request" });
+      return;
+    }
   }
   if (typeof error === "object" && error !== null && "code" in error) {
     const code = error.code;

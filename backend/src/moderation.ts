@@ -3,14 +3,26 @@
  * Matching is performed on complete normalized tokens, never substrings.
  */
 export const BANNED_WORDS = [
-  // English
-  "fuck", "shit", "bitch", "asshole", "bastard", "dick", "cunt",
-  "motherfucker", "bullshit",
+  // English profanity and vulgarities
+  "ass", "arse", "asshole", "arsehole", "bastard", "bitch", "biatch",
+  "bullshit", "crap", "cunt", "damn", "dick", "dickhead", "dildo",
+  "douche", "douchebag", "fag", "faggot", "fuck", "fucker", "fuckers",
+  "fucking", "motherfucker", "motherfuckers", "nigger", "nigga", "piss",
+  "pissed", "prick", "pussy", "retard", "retarded", "shit", "shitty", "slut", "twat",
+  "whore", "wanker", "jackass", "dumbass", " dipshit", "jackhole",
   // French (accents are removed during normalization)
-  "putain", "merde", "connard", "connasse", "salope", "encule", "bordel",
-  // Arabic
-  "كس", "كسم", "قحبة", "شرموط", "شرموطة", "متناك", "منيوك",
-  "خول", "طيز", "زب", "ايري",
+  " putain", "merde", "connard", "connasse", "salope", "pute", "encule",
+  "enculer", "enculee", "batard", "fdp", "ntm", "bordel", "con",
+  "conne", " salaud", "salopard", " enfoire", " branleur", " branleuse",
+  " trouduc", " chiant", " chier", " foutre", " niquer", "nique",
+  // Arabic: MSA and commonly used dialectal insults/profanities
+  "كس", "كسم", "كسي", "كسك", "قحبة", "قحاب", "شرموط", "شرموطة",
+  "شراميط", "متناك", "متناكة", "منيوك", "منيوكة", "نيك", "ينك",
+  "ناك", "طيز", "زب", "زبي", "زبر", "قواد", "ديوث", "خول",
+  "خنيث", "عرص", "عرصة", "وسخ", "وسخة", "حقير", "حقيرة", "سافل", "سافلة",
+  "معرص", "مأحون", "ممحون", "ايري", "اير",
+  "يلعن", "لعنة", "خرا", "خراء", "زق", "تفو", "قذر", "قذرة",
+  "منيك", "منيوك", "مخنث", "لوطي", "سكس", "كسختك", "كحبة",
 ] as const;
 
 const normalizeArabic = (value: string): string => value
@@ -33,7 +45,7 @@ const normalizeText = (value: string): string => normalizeArabic(value)
   .replace(/\s+/gu, " ")
   .trim();
 
-const bannedWordSet = new Set(BANNED_WORDS.map(normalizeText));
+const bannedWordSet = new Set(BANNED_WORDS.map((word) => normalizeText(word.trim())));
 
 export const containsProfanity = (text: unknown): boolean => {
   if (typeof text !== "string" || !text) return false;
