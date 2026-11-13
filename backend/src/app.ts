@@ -1102,7 +1102,7 @@ api.patch("/users/me", authRequired, asyncRoute(async (req, res) => {
 api.post("/uploads/audio", authRequired, verifiedEmailRequired, uploadLimiter, audioUpload, asyncRoute(async (req, res) => {
   if (!req.file) throw new HttpError(400, "Choose an audio recording");
   const url = await saveAudio(req.file);
-  res.status(201).json({ url });
+  res.status(201).json({ url, uploadPath: url });
 }));
 
 api.post("/uploads/:kind", authRequired, verifiedEmailRequired, uploadLimiter, imageUpload, asyncRoute(async (req, res) => {
