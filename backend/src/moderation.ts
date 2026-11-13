@@ -10,7 +10,7 @@ export const BANNED_WORDS = [
   "putain", "merde", "connard", "connasse", "salope", "encule", "bordel",
   // Arabic
   "كس", "كسم", "قحبة", "شرموط", "شرموطة", "متناك", "منيوك",
-  "خول", "طيز", "زب",
+  "خول", "طيز", "زب", "ايري",
 ] as const;
 
 const normalizeArabic = (value: string): string => value
