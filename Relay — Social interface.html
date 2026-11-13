@@ -21749,8 +21749,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const previewText = item.type === "REPLY" ? item.reply?.body || item.post?.body : item.post?.body;
         const preview = ["LIKE", "REPOST", "REPLY"].includes(item.type) && previewText
           ? `<span class="notification-excerpt">${esc(previewText)}</span>` : "";
-        const isReelNotification = ["REEL_LIKE", "REEL_COMMENT", "REEL_REPOST"].includes(item.type);
-        const isPostNotification = ["LIKE", "REPOST", "REPLY", "MENTION"].includes(item.type);
+        const isReelNotification = ["REEL_LIKE", "REEL_COMMENT", "REEL_REPOST"].includes(item.type)
+          || (item.type === "MENTION" && !!item.reelId);
+        const isPostNotification = ["LIKE", "REPOST", "REPLY"].includes(item.type)
+          || (item.type === "MENTION" && !item.reelId);
         const mediaPreview = isReelNotification && item.reel?.posterUrl
           ? `<span class="notification-media-preview notification-reel-preview" aria-label="Reel preview"><img src="${esc(item.reel.posterUrl)}" alt="" loading="lazy"><span class="notification-reel-play" aria-hidden="true">▶</span></span>`
           : isPostNotification && item.post?.mediaUrl
