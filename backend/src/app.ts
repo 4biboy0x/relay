@@ -398,11 +398,13 @@ async function recordPostView(
   return { id: postId, views: updated?.views ?? null, recorded: Boolean(updated) };
 }
 
-type Cursor = { createdAt: string; id: string; likes?: number; followers?: number };
+type Cursor = { createdAt: string; id: string; likes?: number; followers?: number; topicMatches?: number };
 const encodeCursor = (createdAt: Date, id: string): string =>
   Buffer.from(JSON.stringify({ createdAt: createdAt.toISOString(), id })).toString("base64url");
 const encodeRankedCursor = (createdAt: Date, id: string, rank: "likes" | "followers", value: number): string =>
   Buffer.from(JSON.stringify({ createdAt: createdAt.toISOString(), id, [rank]: value })).toString("base64url");
+const encodeTopicCursor = (createdAt: Date, id: string, topicMatches: number): string =>
+  Buffer.from(JSON.stringify({ createdAt: createdAt.toISOString(), id, topicMatches })).toString("base64url");
 const decodeCursor = (value: string | undefined): Cursor | undefined => {
   if (!value) return undefined;
   try {
@@ -412,6 +414,7 @@ const decodeCursor = (value: string | undefined): Cursor | undefined => {
       id: z.string().cuid(),
       likes: z.number().int().nonnegative().optional(),
       followers: z.number().int().nonnegative().optional(),
+      topicMatches: z.number().int().nonnegative().optional(),
     }).parse(decoded);
   } catch {
     throw new HttpError(400, "Invalid pagination cursor");
@@ -1459,18 +1462,64 @@ api.get("/topics/:slug/posts", authRequired, asyncRoute(async (req, res) => {
   res.json(await listPosts(req.userId!, page, { replyToId: null, topics: { some: { topicId: topic.id } } }));
 }));
 
+const listForYouPosts = async (viewerId: string, page: z.infer<typeof pageSchema>) => {
+  const cursor = decodeCursor(page.cursor);
+  const cursorMatches = cursor?.topicMatches ?? 0;
+  const cursorFilter = cursor
+    ? Prisma.sql`WHERE (
+        "topicMatches" < ${cursorMatches}
+        OR ("topicMatches" = ${cursorMatches} AND (
+          "createdAt" < ${new Date(cursor.createdAt)}
+          OR ("createdAt" = ${new Date(cursor.createdAt)} AND id < ${cursor.id})
+        ))
+      )`
+    : Prisma.empty;
+  const ranked = await prisma.$queryRaw<Array<{ id: string; createdAt: Date; topicMatches: number }>>(Prisma.sql`
+    WITH ranked AS (
+      SELECT p.id, p."createdAt",
+        COUNT(DISTINCT pt."topicId") FILTER (WHERE ut."userId" = ${viewerId})::int AS "topicMatches"
+      FROM "Post" p
+      LEFT JOIN "PostTopic" pt ON pt."postId" = p.id
+      LEFT JOIN "UserTopic" ut ON ut."topicId" = pt."topicId" AND ut."userId" = ${viewerId}
+      WHERE p."deletedAt" IS NULL AND p."replyToId" IS NULL
+      GROUP BY p.id
+    )
+    SELECT id, "createdAt", "topicMatches" FROM ranked
+    ${cursorFilter}
+    ORDER BY "topicMatches" DESC, "createdAt" DESC, id DESC
+    LIMIT ${page.limit + 1}
+  `);
+  const hasMore = ranked.length > page.limit;
+  const pageRows = ranked.slice(0, page.limit);
+  const records = pageRows.length ? await prisma.post.findMany({
+    where: { id: { in: pageRows.map((row) => row.id) }, deletedAt: null },
+    include: postInclude(viewerId),
+  }) : [];
+  const byId = new Map(records.map((record) => [record.id, record]));
+  const ordered = pageRows.map((row) => byId.get(row.id)).filter((record): record is PostRecord => Boolean(record));
+  const interactions = await interactionCounts(ordered.map((record) => record.id));
+  const last = pageRows.at(-1);
+  return {
+    items: ordered.map((record) => postResponse(record, interactions.get(record.id))),
+    nextCursor: hasMore && last ? encodeTopicCursor(last.createdAt, last.id, last.topicMatches) : null,
+  };
+};
+
 api.get("/feed", authRequired, asyncRoute(async (req, res) => {
   const page = pageSchema.parse(req.query);
   const feed = z.enum(["for-you", "following"]).default("for-you").parse(req.query.feed);
-  const where: Prisma.PostWhereInput = { replyToId: null };
-  if (feed === "following") {
-    const follows = await prisma.follow.findMany({
-      where: { followerId: req.userId! },
-      select: { followedId: true },
-    });
-    where.authorId = { in: follows.map((follow) => follow.followedId) };
+  if (feed === "for-you") {
+    res.json(await listForYouPosts(req.userId!, page));
+    return;
   }
-  res.json(await listPosts(req.userId!, page, where));
+  const follows = await prisma.follow.findMany({
+    where: { followerId: req.userId! },
+    select: { followedId: true },
+  });
+  res.json(await listPosts(req.userId!, page, {
+    replyToId: null,
+    authorId: { in: follows.map((follow) => follow.followedId) },
+  }));
 }));
 
 api.get("/posts/:postId", authRequired, asyncRoute(async (req, res) => {
