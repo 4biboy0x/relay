@@ -7065,20 +7065,21 @@
       }
       .reply-bar .reply-preview--combined { width: min(100%, 320px); }
       .message-row.reply-target-highlight {
-        animation: reply-target-shake 560ms cubic-bezier(.36, .07, .19, .97) both;
+        animation: reply-target-shake 900ms cubic-bezier(.22, .61, .36, 1) both;
       }
       .message-row.reply-target-highlight .message-bubble,
       .message-row.reply-target-highlight .message-image-list {
-        animation: reply-target-pulse 1050ms ease-out;
+        animation: reply-target-pulse 900ms ease-out;
       }
       @keyframes reply-target-shake {
         0%, 100% { translate: 0 0; }
-        16%, 48%, 80% { translate: -4px 0; }
-        32%, 64%, 92% { translate: 4px 0; }
+        25% { translate: -2px 0; }
+        50% { translate: 2px 0; }
+        75% { translate: -1px 0; }
       }
       @keyframes reply-target-pulse {
-        0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 42%, transparent); }
-        35% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 18%, transparent); }
+        0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 30%, transparent); }
+        40% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent); }
         100% { box-shadow: 0 0 0 0 transparent; }
       }
       @media (prefers-reduced-motion: reduce) {
