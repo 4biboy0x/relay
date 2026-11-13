@@ -8268,9 +8268,19 @@
       .explore-topic-follow { display: inline-grid; width: 24px; min-width: 24px; height: 24px; place-items: center; padding: 0; border: 0; border-radius: 50%; color: var(--text-2); font-size: 19px; line-height: 1; }
       .explore-topic-follow:hover { background: var(--surface-2); color: var(--text); }
       .explore-topic-follow[aria-pressed="true"] { color: var(--accent); font-size: 15px; }
-      .composer-topic-picker { position: relative; }
-      .composer-topic-options { display: flex; flex-wrap: wrap; gap: 7px; padding-top: 8px; }
+      .composer-topic-options { display: flex; flex-wrap: wrap; gap: 8px; padding: 16px; }
       .composer-selected-topics { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+      .composer-topics-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,.38); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+      .composer-topics-modal[hidden] { display: none; }
+      .composer-topics-card { display: flex; flex-direction: column; width: 100%; max-width: 400px; max-height: 82vh; max-height: min(82dvh, 460px); overflow: hidden; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); color: var(--text); box-shadow: 0 18px 60px rgba(0,0,0,.2); }
+      .composer-topics-header { display: flex; min-height: 58px; flex: none; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+      .composer-topics-title { margin: 0; font-size: 16px; font-weight: 650; }
+      .composer-topics-counter { margin-left: auto; color: var(--text-2); font-size: 12px; font-variant-numeric: tabular-nums; }
+      .composer-topics-done { min-height: 32px; padding: 0 12px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 12px; font-weight: 600; }
+      .composer-topics-body { min-height: 0; flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
+      .composer-topics-body .composer-topic-option { min-height: 34px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-2); font-size: 13px; }
+      .composer-topics-body .composer-topic-option[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: #fff; }
+      .composer-topics-body .composer-topic-option:disabled { opacity: .4; }
       .composer-selected-topics:empty { display: none; }
       .composer-selected-topic { display: inline-flex; min-height: 24px; align-items: center; gap: 6px; padding: 4px 10px; border: 0; border-radius: 999px; color: #4F46E5; background: rgba(79, 70, 229, 0.08); font-size: 12px; font-weight: 600; line-height: 16px; }
       .composer-selected-topic svg { width: 12px; height: 12px; flex: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
@@ -13139,9 +13149,6 @@
                 </button>
               </div>
               <button class="media-preview-alt-action" id="addMediaDescription" type="button" hidden>Add description</button>
-              <div class="composer-topic-picker" id="composerTopicPicker">
-                <div class="composer-topic-options" id="composerTopicOptions" role="group" aria-label="Choose up to three topics" hidden></div>
-              </div>
               <div class="composer-selected-topics" id="composerSelectedTopics" aria-label="Selected topics"></div>
               <div class="c-bar">
                 <button class="icon-btn" id="attachImage" aria-label="Attach image" aria-pressed="false">
@@ -13157,7 +13164,7 @@
                 <button class="icon-btn" id="addLocation" aria-label="Add location" aria-expanded="false" aria-controls="locationPopover" aria-haspopup="dialog" aria-pressed="false">
                   <svg class="i" aria-hidden="true"><use href="#pin" /></svg>
                 </button>
-                <button class="icon-btn" id="toggleComposerTopics" type="button" aria-label="Choose topics" aria-expanded="false" aria-controls="composerTopicOptions">
+                <button class="icon-btn" id="toggleComposerTopics" type="button" aria-label="Choose topics" aria-expanded="false" aria-controls="composerTopicsModal">
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <rect x="3" y="3" width="7" height="7" rx="2" />
                     <rect x="14" y="3" width="7" height="7" rx="2" />
@@ -14207,6 +14214,18 @@
       </section>
     </div>
 
+    <div class="composer-topics-modal" id="composerTopicsModal" hidden>
+      <section class="composer-topics-card" role="dialog" aria-modal="true" aria-labelledby="composerTopicsTitle">
+        <header class="composer-topics-header">
+          <h2 class="composer-topics-title" id="composerTopicsTitle">Topics</h2>
+          <span class="composer-topics-counter" id="composerTopicsCounter">0/3</span>
+          <button class="composer-topics-done" id="composerTopicsDone" type="button">Done</button>
+        </header>
+        <div class="composer-topics-body">
+          <div class="composer-topic-options" id="composerTopicOptions" role="group" aria-label="Topics"></div>
+        </div>
+      </section>
+    </div>
     <script>
       const isTouchDevice = () => window.matchMedia("(hover: none) and (pointer: coarse)").matches;
       const origShowModal = HTMLDialogElement.prototype.showModal;
@@ -15425,6 +15444,7 @@
         $("#composerTopicOptions").innerHTML = composerTopics.map((topic) =>
           `<button class="composer-topic-option" type="button" data-composer-topic="${esc(topic.slug)}" aria-pressed="${selected.has(topic.slug)}" ${selected.size >= 3 && !selected.has(topic.slug) ? "disabled" : ""}>${esc(topic.name)}</button>`
         ).join("");
+        $("#composerTopicsCounter").textContent = `${selectedPostTopics.length}/3`;
         const selectedRow = $("#composerSelectedTopics");
         selectedRow.innerHTML = selectedPostTopics.map((slug) => {
           const topic = composerTopics.find((item) => item.slug === slug);
@@ -29609,20 +29629,28 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (!remove) return;
         setComposerTopics(selectedPostTopics.filter((slug) => slug !== remove.dataset.removeComposerTopic));
       });
+      const composerTopicsModal = $("#composerTopicsModal");
+      const closeComposerTopics = () => {
+        composerTopicsModal.hidden = true;
+        $("#toggleComposerTopics").setAttribute("aria-expanded", "false");
+      };
       $("#toggleComposerTopics").addEventListener("click", async () => {
-        const options = $("#composerTopicOptions");
-        const opening = options.hidden;
-        options.hidden = !opening;
-        $("#toggleComposerTopics").setAttribute("aria-expanded", String(opening));
-        if (opening) {
-          try {
-            await loadComposerTopics();
-          } catch (error) {
-            options.hidden = true;
-            $("#toggleComposerTopics").setAttribute("aria-expanded", "false");
-            toast(error.message || "Could not load topics.");
-          }
+        try {
+          await loadComposerTopics();
+          composerTopicsModal.hidden = false;
+          $("#toggleComposerTopics").setAttribute("aria-expanded", "true");
+          $("#composerTopicsDone").focus();
+        } catch (error) {
+          closeComposerTopics();
+          toast(error.message || "Could not load topics.");
         }
+      });
+      $("#composerTopicsDone").addEventListener("click", closeComposerTopics);
+      composerTopicsModal.addEventListener("click", (event) => {
+        if (event.target === composerTopicsModal) closeComposerTopics();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !composerTopicsModal.hidden) closeComposerTopics();
       });
       pb.addEventListener("click", async () => {
         if (!requireAuth()) return;
