@@ -105,6 +105,27 @@ CREATE TABLE "PostHashtag" (
   PRIMARY KEY ("postId", "hashtagId")
 );
 
+CREATE TABLE "Topic" (
+  "id" text PRIMARY KEY,
+  "slug" varchar(40) NOT NULL UNIQUE,
+  "name" varchar(60) NOT NULL,
+  "createdAt" timestamptz(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE "PostTopic" (
+  "postId" text NOT NULL REFERENCES "Post"("id") ON DELETE CASCADE,
+  "topicId" text NOT NULL REFERENCES "Topic"("id") ON DELETE CASCADE,
+  "createdAt" timestamptz(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY ("postId", "topicId")
+);
+CREATE INDEX "PostTopic_topicId_createdAt_idx" ON "PostTopic"("topicId", "createdAt" DESC);
+CREATE TABLE "UserTopic" (
+  "userId" text NOT NULL REFERENCES "User"("id") ON DELETE CASCADE,
+  "topicId" text NOT NULL REFERENCES "Topic"("id") ON DELETE CASCADE,
+  "createdAt" timestamptz(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY ("userId", "topicId")
+);
+CREATE INDEX "UserTopic_topicId_createdAt_idx" ON "UserTopic"("topicId", "createdAt" DESC);
+
 CREATE TABLE "Conversation" (
   "id" text PRIMARY KEY,
   "directKey" text NOT NULL UNIQUE,
