@@ -12286,6 +12286,78 @@
           user-select: none;
         }
       }
+      /* Phone-only New message bottom sheet; tablet and desktop keep the centered dialog. */
+      @media (max-width: 599px) {
+        .new-message-dialog {
+          position: fixed;
+          inset: auto 0 0 0;
+          top: auto;
+          right: 0;
+          bottom: 0;
+          left: 0;
+          width: 100%;
+          max-width: 100vw;
+          height: 88dvh;
+          max-height: 88dvh;
+          margin: 0;
+          padding: 0 0 env(safe-area-inset-bottom, 0px);
+          box-sizing: border-box;
+          transform: none;
+          border: 1px solid var(--border);
+          border-bottom: 0;
+          border-radius: 20px 20px 0 0;
+          overflow: hidden;
+        }
+        .new-message-dialog[open] {
+          transform: none;
+        }
+        .new-message-dialog::before {
+          content: "";
+          display: block;
+          width: 36px;
+          height: 4px;
+          min-height: 4px;
+          flex: 0 0 4px;
+          margin: 10px auto 4px;
+          border-radius: 999px;
+          background: var(--text-3);
+          opacity: .55;
+        }
+        .new-message-dialog > *,
+        .new-message-dialog .new-message-search,
+        .new-message-dialog .new-message-search input,
+        .new-message-dialog .new-message-recipient-list {
+          box-sizing: border-box;
+          min-width: 0;
+          max-width: 100%;
+        }
+        .new-message-dialog .cookie-settings-heading {
+          width: 100%;
+          padding: 10px 16px 12px;
+        }
+        .new-message-search {
+          width: calc(100% - 24px);
+          margin: 4px 12px 8px;
+          padding-inline: 12px;
+        }
+        .new-message-search input {
+          width: 100%;
+          min-width: 0;
+        }
+        .new-message-recipient-list {
+          width: 100%;
+          flex: 1 1 auto;
+          min-height: 0;
+          padding: 8px 8px calc(12px + env(safe-area-inset-bottom, 0px));
+          overflow-x: hidden;
+          overflow-y: auto;
+        }
+        .new-message-empty {
+          width: 100%;
+          box-sizing: border-box;
+          overflow-wrap: anywhere;
+        }
+      }
 </style>
   </head>
   <body>
@@ -25363,34 +25435,48 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         toggleAccountMenu(false);
       }
 
-      // A long press on Profile opens the account menu on touch-sized layouts.
+      // A long press on Profile opens the account menu on phones only.
       const profileNavButton = document.querySelector('.nav-item[data-view="profile"]');
       let profilePressTimer = null;
       let profileLongPressTriggered = false;
+      let profileTouchStart = null;
       if (profileNavButton) {
         profileNavButton.id = "navProfile";
         profileNavButton.setAttribute("aria-haspopup", "true");
         profileNavButton.setAttribute("aria-controls", "accountMenu");
-        profileNavButton.addEventListener("pointerdown", (event) => {
-          if (!window.matchMedia("(max-width: 1199px)").matches || !event.isPrimary) return;
-          if (event.pointerType === "mouse" && event.button !== 0) return;
-          clearTimeout(profilePressTimer);
-          profileLongPressTriggered = false;
-          profilePressTimer = setTimeout(() => {
-            profileLongPressTriggered = true;
-            toggleAccountMenu(true, profileNavButton);
-          }, 480);
-        });
-        const cancelProfilePress = () => {
+        const clearProfilePress = () => {
           clearTimeout(profilePressTimer);
           profilePressTimer = null;
         };
-        profileNavButton.addEventListener("pointerup", cancelProfilePress);
-        profileNavButton.addEventListener("pointerleave", cancelProfilePress);
-        profileNavButton.addEventListener("pointercancel", () => {
-          cancelProfilePress();
+        profileNavButton.addEventListener("touchstart", (event) => {
+          if (!window.matchMedia("(max-width: 767px)").matches || event.touches.length !== 1) return;
+          clearProfilePress();
           profileLongPressTriggered = false;
-        });
+          const touch = event.touches[0];
+          profileTouchStart = { x: touch.clientX, y: touch.clientY };
+          profilePressTimer = setTimeout(() => {
+            profileLongPressTriggered = true;
+            toggleAccountMenu(true, profileNavButton);
+          }, 520);
+        }, { passive: true });
+        profileNavButton.addEventListener("touchmove", (event) => {
+          if (!profileTouchStart || !event.touches.length) return;
+          const touch = event.touches[0];
+          if (Math.abs(touch.clientX - profileTouchStart.x) > 12
+            || Math.abs(touch.clientY - profileTouchStart.y) > 12) {
+            clearProfilePress();
+            profileTouchStart = null;
+          }
+        }, { passive: true });
+        profileNavButton.addEventListener("touchend", () => {
+          clearProfilePress();
+          profileTouchStart = null;
+        }, { passive: true });
+        profileNavButton.addEventListener("touchcancel", () => {
+          clearProfilePress();
+          profileTouchStart = null;
+          if ($("#accountMenu").hidden) profileLongPressTriggered = false;
+        }, { passive: true });
         profileNavButton.addEventListener("contextmenu", (event) => {
           if (profileLongPressTriggered) event.preventDefault();
         });
