@@ -27518,7 +27518,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       document.addEventListener("click",event=>{
         const button=event.target instanceof Element?event.target.closest(".message-tools button"):null;
         if(!button)return;
-        event.stopPropagation();
         const row=button.closest(".message-row"); row?.classList.remove("is-active-message");
         if(activeTouchMessageRow===row)activeTouchMessageRow=null;
       },true);
