@@ -2186,6 +2186,13 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
       SELECT 1
       FROM "Message" AS message
       WHERE message."conversationId" = conversation."id"
+        AND EXISTS (
+          SELECT 1 FROM "ConversationMember" AS viewer
+          WHERE viewer."conversationId" = message."conversationId"
+            AND viewer."userId" = ${req.userId!}
+            AND viewer."deletedAt" IS NULL
+            AND (viewer."historyCutoffAt" IS NULL OR message."createdAt" > viewer."historyCutoffAt")
+        )
         AND message."body" ILIKE ${`%${term}%`} ESCAPE '\\'
     )
   `;
@@ -2207,6 +2214,13 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
       SELECT 1
       FROM "Message" AS message
       WHERE message."conversationId" = conversation."id"
+        AND EXISTS (
+          SELECT 1 FROM "ConversationMember" AS viewer
+          WHERE viewer."conversationId" = message."conversationId"
+            AND viewer."userId" = ${req.userId!}
+            AND viewer."deletedAt" IS NULL
+            AND (viewer."historyCutoffAt" IS NULL OR message."createdAt" > viewer."historyCutoffAt")
+        )
         AND ${Prisma.join(terms.map((term) => Prisma.sql`
           message."body" ILIKE ${`%${term}%`} ESCAPE '\\'
         `), " AND ")}
@@ -2222,6 +2236,7 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
           ON viewer."conversationId" = message."conversationId"
           AND viewer."userId" = ${req.userId!}
           AND viewer."deletedAt" IS NULL
+          AND (viewer."historyCutoffAt" IS NULL OR message."createdAt" > viewer."historyCutoffAt")
         WHERE ${Prisma.join(terms.map((term) => Prisma.sql`
           message."body" ILIKE ${`%${term}%`} ESCAPE '\\'
         `), " AND ")}
@@ -2242,6 +2257,7 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
         ON viewer."conversationId" = message."conversationId"
         AND viewer."userId" = ${req.userId!}
           AND viewer."deletedAt" IS NULL
+          AND (viewer."historyCutoffAt" IS NULL OR message."createdAt" > viewer."historyCutoffAt")
       WHERE ${Prisma.join(terms.map((term) => Prisma.sql`
         message."body" ILIKE ${`%${term}%`} ESCAPE '\\'
       `), " AND ")}
@@ -2298,6 +2314,11 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
               ORDER BY message."createdAt" ASC, message."id" ASC
             ) AS message_rank
           FROM "Message" AS message
+          JOIN "ConversationMember" AS viewer
+            ON viewer."conversationId" = message."conversationId"
+            AND viewer."userId" = ${req.userId!}
+            AND viewer."deletedAt" IS NULL
+            AND (viewer."historyCutoffAt" IS NULL OR message."createdAt" > viewer."historyCutoffAt")
           WHERE message."conversationId" IN (${Prisma.join(rankedConversations.map(({ id }) => id))})
             AND ${Prisma.join(terms.map((term) => Prisma.sql`
               message."body" ILIKE ${`%${term}%`} ESCAPE '\\'
@@ -2365,7 +2386,9 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
       id: row.id,
       updatedAt: row.updatedAt,
       members: row.members.map(({ user }) => user),
-      lastMessage: row.messages[0] ?? null,
+      lastMessage: row.messages[0] && (!row.members.find(({ userId }) => userId === req.userId!)?.historyCutoffAt
+        || row.messages[0].createdAt > row.members.find(({ userId }) => userId === req.userId!)!.historyCutoffAt!)
+        ? row.messages[0] : null,
       matchedMessage: matchedMessageId === undefined
         ? matchedMessageByConversation.get(row.id) ?? null
         : matchedMessagesById.get(matchedMessageId) ?? null,
