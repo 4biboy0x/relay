@@ -18001,7 +18001,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (reelCreatePlaybackSnapshot.reelId && reelCreatePlaybackSnapshot.currentTime > 0) {
           reelLastTime.set(reelCreatePlaybackSnapshot.reelId, reelCreatePlaybackSnapshot.currentTime);
         }
-        $(".reel-video").forEach((item) => item.pause());
+        $$(".reel-video").forEach((item) => item.pause());
       }
       function restoreReelAfterCreateDialog() {
         if (reelCreatePublishInFlight || $("#reelCreateDialog").open) return;
