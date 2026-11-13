@@ -32,6 +32,7 @@ import {
 } from "./reel-storage";
 import { detectReelContainer } from "./reel-processing";
 import { recordUniqueReelShare } from "./reel-shares";
+import { containsProfanity } from "./moderation";
 import { createViewerKey, viewRateLimiter, viewRequestGuard } from "./view-tracking";
 
 const router = express.Router();
@@ -312,6 +313,7 @@ router.get("/bookmarks", authRequired, asyncRoute(async (req, res) => {
 
 router.post("/uploads", authRequired, verifiedEmailRequired, uploadLimiter, asyncRoute(async (req, res) => {
   const input = uploadSchema.parse(req.body);
+  if (containsProfanity(input.caption)) throw new HttpError(400, "Restricted words not allowed.");
   const userId = viewerIdFrom(req);
   const reelId = randomUUID();
   const originalKey = createReelStorageKey(reelId, "original");
@@ -362,6 +364,7 @@ router.post("/local-upload", authRequired, verifiedEmailRequired, writeLimiter, 
 router.post("/:id/complete", authRequired, verifiedEmailRequired, writeLimiter, asyncRoute(async (req, res) => {
   const reelId = reelIdFrom(req.params.id);
   const input = completeSchema.parse(req.body ?? {});
+  if (containsProfanity(input.caption)) throw new HttpError(400, "Restricted words not allowed.");
   const reel = await prisma.reel.findFirst({
     where: { id: reelId, authorId: viewerIdFrom(req), deletedAt: null },
     select: { id: true, originalKey: true, sizeBytes: true, status: true },
@@ -733,6 +736,7 @@ router.post("/:id/view", authOptional, viewRequestGuard, viewRateLimiter, asyncR
 router.patch("/:id", authRequired, writeLimiter, asyncRoute(async (req, res) => {
   const reelId = reelIdFrom(req.params.id);
   const { caption } = captionSchema.parse(req.body);
+  if (containsProfanity(caption)) throw new HttpError(400, "Restricted words not allowed.");
   const result = await prisma.reel.updateMany({
     where: { id: reelId, authorId: viewerIdFrom(req), deletedAt: null },
     data: { caption },
@@ -938,6 +942,7 @@ router.post("/:id/comments", authRequired, verifiedEmailRequired, writeLimiter, 
   const reelId = reelIdFrom(req.params.id);
   const userId = viewerIdFrom(req);
   const input = commentSchema.parse(req.body);
+  if (containsProfanity(input.body)) throw new HttpError(400, "Restricted words not allowed.");
   const result = await prisma.$transaction(async (tx) => {
     const reel = await tx.reel.findFirst({
       where: { id: reelId, status: ReelStatus.READY, deletedAt: null },
