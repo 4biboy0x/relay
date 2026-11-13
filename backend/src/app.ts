@@ -2149,7 +2149,7 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
     items: rows.map((row) => {
       const cutoff = row.historyCutoffAt;
       const preview = row.conversation.messages[0] ?? null;
-      const storedPreview = row.conversation.lastMessage as { createdAt?: string } | null;
+      const storedPreview = row.conversation.lastMessage as { createdAt?: string; kind?: string } | null;
       const storedPreviewAt = storedPreview?.createdAt ? new Date(storedPreview.createdAt) : null;
       const lastMessage = storedPreview && (!cutoff || (storedPreview.kind !== "reaction" && storedPreviewAt && storedPreviewAt > cutoff))
         ? storedPreview
@@ -2634,7 +2634,7 @@ api.post("/conversations/:conversationId/messages", authRequired, verifiedEmailR
     where: { conversationId },
     select: { userId: true, historyCutoffAt: true },
   });
-  let response: ReturnType<typeof serializeMessage> | undefined;
+  let response = serializeMessage(message, req.userId!);
   for (const member of members) {
     // Reply previews are personalized so an old quoted message cannot leak.
     const memberResponse = serializeMessage(message, member.userId, member.historyCutoffAt);
@@ -2740,7 +2740,7 @@ api.patch("/messages/:messageId", authRequired, messageLimiter, asyncRoute(async
       } : {}),
     };
   };
-  let members: Array<{ userId: string }> = [];
+  let members: Array<{ userId: string; historyCutoffAt: Date | null }> = [];
   try {
     members = await prisma.conversationMember.findMany({
       where: {
