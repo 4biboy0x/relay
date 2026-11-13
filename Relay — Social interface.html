@@ -12861,6 +12861,60 @@
         .message-row:hover .message-tools, .message-bubble:hover > .message-tools, .message-image-item:hover > .message-tools, .message-attachment-group:hover > .message-tools { opacity:0 !important; pointer-events:none !important; }
         .message-row.is-active-message .message-tools, .message-row.is-active-message .message-bubble > .message-tools, .message-row.is-active-message .message-attachment-group > .message-tools, .message-row.is-active-message .message-image-item > .message-tools { opacity:1 !important; pointer-events:auto !important; }
       }
+
+      /* Unified back and media navigation arrows */
+      .topic-view-back,
+      .thread-back,
+      .messages-back,
+      .settings-top .icon-btn,
+      .post-lightbox-nav {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        line-height: 0;
+        flex-shrink: 0;
+        box-sizing: border-box;
+      }
+      .topic-view-back svg,
+      .thread-back svg,
+      .messages-back svg,
+      .settings-top .icon-btn svg,
+      .post-lightbox-nav svg {
+        display: block;
+        width: 18px;
+        height: 18px;
+        margin: 0;
+        flex: none;
+      }
+      .topic-view-back,
+      .thread-back,
+      .messages-back,
+      .settings-top .icon-btn {
+        width: 38px;
+        height: 38px;
+      }
+      .post-lightbox-nav {
+        width: 38px;
+        height: 38px;
+        font-size: 0;
+      }
+      @media (max-width: 767px) {
+        .topic-view-back,
+        .thread-back,
+        .messages-back,
+        .settings-top .icon-btn,
+        .post-lightbox-nav {
+          width: 34px;
+          height: 34px;
+        }
+        .post-lightbox-nav.prev { left: 10px; }
+        .post-lightbox-nav.next { right: 10px; }
+      }
+      @media (min-width: 768px) {
+        .post-lightbox-nav.prev { left: 16px; }
+        .post-lightbox-nav.next { right: 16px; }
+      }
 </style>
   </head>
   <body>
@@ -12997,9 +13051,13 @@
           <circle cx="12" cy="13" r="3.25" />
           <path d="M17.5 10h.01" />
         </symbol>
-        <symbol id="back" viewBox="0 0 24 24">
-          <path d="m15 18-6-6 6-6" />
-          <path d="M9 12h12" />
+        <symbol id="back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12" />
+          <polyline points="12 19 5 12 12 5" />
+        </symbol>
+        <symbol id="forward-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12" />
+          <polyline points="12 5 19 12 12 19" />
         </symbol>
         <symbol id="check" viewBox="0 0 24 24">
           <path d="M20 6 9 17l-5-5" />
@@ -13790,10 +13848,10 @@
       <button class="post-lightbox-close" id="postLightboxClose" type="button" data-lightbox-close aria-label="Close image viewer">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>
       </button>
-      <button class="post-lightbox-nav prev" type="button" data-lightbox-prev aria-label="Previous image">‹</button>
+      <button class="post-lightbox-nav prev" type="button" data-lightbox-prev aria-label="Previous image"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg></button>
       <img id="postLightboxImage" alt="">
       <div class="message-lightbox-reaction-burst" id="messageLightboxReactionBurst" aria-hidden="true" hidden></div>
-      <button class="post-lightbox-nav next" type="button" data-lightbox-next aria-label="Next image">›</button>
+      <button class="post-lightbox-nav next" type="button" data-lightbox-next aria-label="Next image"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg></button>
       <span class="post-lightbox-counter" id="postLightboxCounter" aria-live="polite"></span>
       <div class="message-lightbox-actions" id="messageLightboxActions" hidden>
         <div class="message-lightbox-action-row" role="toolbar" aria-label="Image actions">
@@ -21836,7 +21894,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               const topicResult = await api("/topics");
               const topic = topicResult.items.find((item) => item.slug === slug);
               if (!topic) throw new Error("Topic not found.");
-              heading = `<section class="topic-view-heading"><button class="topic-view-back" type="button" data-topic-back aria-label="Back to Explore">${ic("arrow-left")}</button><div><h2>${esc(topic.name)}</h2><p>${fmt(topic.postCount)} ${topic.postCount === 1 ? "post" : "posts"}</p></div></section>`;
+              heading = `<section class="topic-view-heading"><button class="topic-view-back" type="button" data-topic-back aria-label="Back to Explore"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg></button><div><h2>${esc(topic.name)}</h2><p>${fmt(topic.postCount)} ${topic.postCount === 1 ? "post" : "posts"}</p></div></section>`;
             }
             const postsHtml = explorePostCards(result.items.map((item) => post(normalizePost(item))).join(""));
             const content = postsHtml || (!append ? emptyState("No posts yet.", "Check back later.") : "");
