@@ -12836,15 +12836,21 @@
       /* DM action bar and reply interaction */
       .chat-compose#messageForm { display:flex; width:100%; flex-direction:column; align-items:stretch; }
       #messageReplyPreview, #messageComposePill { width:100%; flex:none; }
-      .message-tools { display:inline-flex; align-items:center; gap:4px; padding:3px 6px; border:1px solid var(--border); border-radius:999px; background:var(--surface); box-shadow:var(--shadow, 0 2px 12px rgba(0,0,0,.10)); flex-shrink:0; }
+      .message-tools { display:inline-flex; align-items:center; gap:4px; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; flex-shrink:0; }
+      .message-tool-button { flex:0 0 36px; }
+      .message-row { display:flex; flex-direction:column; align-items:flex-start; gap:6px; box-sizing:border-box; }
+      .message-row.mine { align-items:flex-end; }
+      .message-row > .message-bubble { box-sizing:border-box; max-width:min(calc(100% - 116px), 720px); }
+      .message-row > .message-attachment-group { box-sizing:border-box; max-width:min(calc(100% - 116px), 720px); }
+      .message-row > .message-attachment-group .message-bubble { max-width:100%; }
+      .message-row > .message-attachment-group:has(> .message-tools) { max-width:min(calc(100% - 156px), 720px); }
+      .message-row > .message-attachment-group .message-image-item { max-width:100%; }
+      .message-row > .message-attachment-group .message-tools { max-width:100%; }
       .message-tool-button { width:36px; height:36px; }
       .message-row.is-active-message { z-index:40; }
       .message-row.is-active-message > .message-bubble, .message-row.is-active-message .message-attachment-group > .message-bubble, .message-row.is-active-message .message-image-item { transform:scale(1.01); transition:transform 180ms cubic-bezier(.22,1,.36,1); }
       .message-bubble, .message-image-item { touch-action:pan-y; }
-      .message-swipe-indicator { position:absolute; top:50%; z-index:1; display:grid; width:34px; height:34px; place-items:center; border:1px solid var(--border); border-radius:50%; color:var(--accent); background:var(--surface); opacity:0; transform:translateY(-50%) scale(.8); transition:opacity 120ms ease, transform 120ms ease; pointer-events:none; }
-      .message-swipe-indicator.is-visible { opacity:1; transform:translateY(-50%) scale(1); }
-      .message-row:not(.mine) .message-swipe-indicator { left:-42px; }
-      .message-row.mine .message-swipe-indicator { right:-42px; }
+
       .message-bubble.is-swiping, .message-image-item.is-swiping { transition:none !important; will-change:transform; }
       .message-bubble:not(.is-swiping), .message-image-item:not(.is-swiping) { transition:transform 220ms cubic-bezier(.22,1,.36,1); }
       .message-row.is-active-message .message-tools { opacity:1; pointer-events:auto; z-index:40; }
@@ -23331,6 +23337,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         downloadUrl = "",
         downloadLabel = "media",
         directDownload = false,
+        downloadInMenu = false,
         downloadAll = false,
         showMore = true,
         canEdit = false,
@@ -23345,8 +23352,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const deleteAction = canDelete
           ? `<button type="button" role="menuitem" data-message-menu-action="delete" data-message-id="${esc(messageId)}"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 14h12l1-14M9 7V4h6v3"/></svg><span>Delete message</span></button>`
           : "";
+        const menuDownloadAction = downloadInMenu && downloadUrl
+          ? `<button type="button" role="menuitem" data-message-download="${esc(downloadUrl)}">${ic("download")}<span>Download voice message</span></button>`
+          : "";
         const moreButton = showMore
-          ? `<button class="message-tool-button" type="button" data-message-more aria-expanded="false" aria-haspopup="menu" aria-label="More message actions" title="More">${ic("dots")}</button><div class="message-action-menu" role="menu" hidden>${editAction}${copyAction}${deleteAction}</div>`
+          ? `<button class="message-tool-button" type="button" data-message-more aria-expanded="false" aria-haspopup="menu" aria-label="More message actions" title="More">${ic("dots")}</button><div class="message-action-menu" role="menu" hidden>${editAction}${copyAction}${menuDownloadAction}${deleteAction}</div>`
           : "";
         const downloadButton = downloadAll
           ? `<button class="message-tool-button message-download-all" type="button" data-message-download-all="${esc(messageId)}" aria-label="Download all images" title="Download all images"><svg class="i message-download-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 20h14"/></svg><span class="message-download-spinner" aria-hidden="true"></span></button>`
@@ -23690,7 +23700,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           copyText: text ? body : "",
           downloadUrl: audioUrl,
           downloadLabel: "voice message",
-          directDownload: Boolean(audioUrl),
+          downloadInMenu: Boolean(audioUrl),
+          directDownload: false,
           showMore: mine || Boolean(text && image) || (!image && !audio),
           canEdit: mine && Boolean(text) && !image && !audio && !sticker,
           canDelete: mine,
@@ -27482,13 +27493,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         event.preventDefault();
         const distance=Math.min(56,Math.max(0,dx*state.direction)); state.distance=distance;
         state.target.classList.add("is-swiping"); state.target.style.transform=`translateX(${state.direction*distance}px)`;
-        let icon=state.target.querySelector(":scope > .message-swipe-indicator");
-        if(!icon){icon=document.createElement("span");icon.className="message-swipe-indicator";icon.setAttribute("aria-hidden","true");icon.textContent="↩";state.target.append(icon);}
-        icon.classList.toggle("is-visible",distance>=20); state.triggered=distance>=44;
+        state.triggered=distance>=44;
       },{passive:false});
       const finishMessageSwipe = event => {
         const state=messageSwipeState; if(!state || (event.pointerId!=null && event.pointerId!==state.pointerId)) return;
-        cancelMessageLongPress(); state.target.classList.remove("is-swiping"); state.target.style.removeProperty("transform"); state.target.querySelector(".message-swipe-indicator")?.classList.remove("is-visible"); messageSwipeState=null;
+        cancelMessageLongPress(); state.target.classList.remove("is-swiping"); state.target.style.removeProperty("transform"); state.target.querySelector(".message-swipe-indicator")?.remove(); messageSwipeState=null;
         if(state.triggered){setMessageReplyTarget(state.messageId);return;}
         if(!state.moved){
           const now=Date.now();
