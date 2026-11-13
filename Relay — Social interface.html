@@ -6713,7 +6713,7 @@
         white-space: pre-wrap;
       }
       .message-bubble.text-message {
-        max-width: 65%;
+        max-width: min(var(--msg-media-w), 65%) !important;
         unicode-bidi: plaintext;
         text-align: start;
       }
