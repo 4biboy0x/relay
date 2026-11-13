@@ -23139,7 +23139,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             form.append("file", blob, `voice.${extension}`);
             try {
               const uploaded = await api("/uploads/audio", { method: "POST", body: form });
-              const sent = await sendMessageAttachment({ audioUrl: uploaded.url, waveform }, conversationId);
+              const sent = await sendMessageAttachment({ audioUrl: uploaded.uploadPath || uploaded.url, waveform }, conversationId);
               if (sent?.id) cacheVoiceWaveform(sent.id, waveform);
             } catch (error) {
               toast(error.message || "Could not send this voice message.");
