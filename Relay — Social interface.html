@@ -7587,7 +7587,7 @@
       .message-send-text:disabled:hover { background: transparent; }
       .message-send-text.is-hidden { display: none; }
       .message-send-text { color: var(--accent); }
-      .message-send-text svg { display: block; width: 22px; height: 22px; transform: none; margin: 0; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+      .message-send-text svg { display: block; width: 22px; height: 22px; transform: none; margin: 0; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
       #messageAudioButton { width: 36px; height: 36px; color: var(--text-2); }
       #messageImageButton { width: 36px; height: 36px; }
       #messageGifButton { width: 36px; height: 36px; }
@@ -10129,7 +10129,7 @@
         }
         .reel-comments-dialog .reel-comment-form .btn.is-ready { background: #2563EB; cursor: pointer; }
         .reel-comments-dialog .reel-comment-form .btn span { display: none; }
-        .reel-comments-dialog .reel-comment-form .btn .i { display: block; width: 16px; height: 16px; }
+        .reel-comments-dialog .reel-comment-form .btn .i { display: block; width: 20px; height: 20px; }
         .reel-comments-dialog .reel-comment-form .btn:disabled { opacity: .45; }
       }
       @media (prefers-reduced-motion: reduce) {
@@ -12666,10 +12666,9 @@
           <path d="m7 22-4-4 4-4" />
           <path d="M21 13v1a4 4 0 0 1-4 4H3" />
         </symbol>
-        <symbol id="share" viewBox="0 0 24 24">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="m17 8-5-5-5 5" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M12 3v12" stroke-linecap="round" stroke-linejoin="round" />
+        <symbol id="share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 3L9.218 10.083" />
+          <path d="M11.698 20.334L22 3.001H2L9.218 10.084L11.698 20.334Z" />
         </symbol>
         <symbol id="views" viewBox="0 0 24 24">
           <path d="M3 3v18h18" />
@@ -12746,9 +12745,9 @@
         <symbol id="close" viewBox="0 0 24 24">
           <path d="m18 6-12 12M6 6l12 12" />
         </symbol>
-        <symbol id="send" viewBox="0 0 24 24">
-          <path d="M22 2 9.5 14.5" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="m22 2-7 20-5.5-7.5L2 9l20-7Z" stroke-linecap="round" stroke-linejoin="round" />
+        <symbol id="send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 3L9.218 10.083" />
+          <path d="M11.698 20.334L22 3.001H2L9.218 10.084L11.698 20.334Z" />
         </symbol>
         <symbol id="square" viewBox="0 0 24 24">
           <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none" />
@@ -13097,7 +13096,7 @@
                       <span id="messageRecordingTime">0:00</span>
                       <svg class="message-recording-waveform" id="messageRecordingWaveform" viewBox="0 0 190 24" preserveAspectRatio="none" aria-hidden="true"></svg>
                       <button id="messageRecordingCancel" type="button" aria-label="Discard recording" title="Discard recording"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg></button>
-                      <button id="messageRecordingSend" type="button" aria-label="Send voice message" title="Send voice message"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 2 11 13" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                      <button id="messageRecordingSend" type="button" aria-label="Send voice message" title="Send voice message"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><use href="#send" /></svg></button>
                     </div>
                     <div class="message-empty-actions" id="messageEmptyActions">
                       <button class="message-action chat-compose-icon" id="messageAudioButton" type="button" aria-label="Record voice message" disabled>
@@ -13111,10 +13110,7 @@
                       </button>
                     </div>
                     <button class="message-send-text" id="sendMessage" type="submit" aria-label="Send message" disabled>
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="m3 3 3 9-3 9 19-9Z"/>
-                        <path d="M6 12h16"/>
-                      </svg>
+                      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><use href="#send" /></svg>
                     </button>
                   </div>
                 </div>
@@ -13616,7 +13612,7 @@
         <input id="reelCommentInput" maxlength="280" placeholder="Add a comment…" dir="auto" required>
         <button class="btn btn-primary" type="submit" aria-label="Send comment" title="Send comment">
           <span>Reply</span>
-          <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 2 11 13" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="i" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><use href="#send" /></svg>
         </button>
       </form>
     </dialog>
@@ -16991,7 +16987,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const text = count === null || count === undefined ? "" : formatReelCount(count);
         const zero = count !== null && count !== undefined && Number(count) === 0;
         const icon = action === "share"
-          ? '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 15 22l-4-9-9-4 20-7ZM22 2 11 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+          ? '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#share" /></svg>'
           : action === "more"
             ? '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 14h9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>'
             : action === "comment"
@@ -22543,7 +22539,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         input.placeholder = editing ? "Edit message..." : "Message...";
         const icon = editing
           ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>'
-          : '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 3 3 9-3 9 19-9Z"/><path d="M6 12h16"/></svg>';
+          : '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><use href="#send" /></svg>';
         if (sendButton.innerHTML !== icon) sendButton.innerHTML = icon;
       }
       function messagePreviewText(message) {
