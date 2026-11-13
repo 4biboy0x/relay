@@ -2898,17 +2898,30 @@ const updateMessageReaction = async (req: express.Request, res: express.Response
       SELECT "id" FROM "Message" WHERE "id" = ${messageId} FOR UPDATE
     `);
     const viewerMembership = await tx.conversationMember.findFirst({
-      where: { userId: req.userId!, deletedAt: null, conversation: { messages: { some: { id: messageId } } } },
-      select: { historyCutoffAt: true },
+      where: { userId: req.userId!, conversation: { messages: { some: { id: messageId } } } },
+      select: { conversationId: true, deletedAt: true, historyCutoffAt: true },
     });
     const message = await tx.message.findFirst({
       where: {
         id: messageId,
+        conversationId: viewerMembership?.conversationId,
         ...(viewerMembership?.historyCutoffAt ? { createdAt: { gt: viewerMembership.historyCutoffAt } } : {}),
-        conversation: { members: { some: { userId: req.userId!, deletedAt: null } } },
       },
     });
-    if (!message) throw new HttpError(404, "Message not found");
+    if (!viewerMembership || !message) throw new HttpError(404, "Message not found");
+    // A post-cutoff message is the proof that this conversation has been
+    // reopened for this member. Clear only the hidden flag; preserve the
+    // per-user history cutoff so pre-clear messages remain inaccessible.
+    if (viewerMembership.deletedAt) {
+      await tx.conversationMember.updateMany({
+        where: {
+          conversationId: message.conversationId,
+          userId: req.userId!,
+          deletedAt: { not: null },
+        },
+        data: { deletedAt: null },
+      });
+    }
     const [existingReactions, previousActivities] = await Promise.all([
       tx.messageReaction.findMany({
         where: { messageId, userId: req.userId! },
