@@ -7942,6 +7942,70 @@
       @media (prefers-reduced-motion: reduce) {
         .chat-compose-pill, .message-empty-actions, .message-send-text { transition: none; }
       }
+      /* Mobile DM composer: floating iOS-style glass */
+      @media (max-width: 767px) {
+        .chat-compose {
+          background: transparent;
+          border-top: none;
+          pointer-events: none;
+        }
+        .chat-compose-pill {
+          pointer-events: auto;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.72);
+          backdrop-filter: blur(18px) saturate(180%);
+          -webkit-backdrop-filter: blur(18px) saturate(180%);
+          border: 1px solid rgba(255, 255, 255, 0.65);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        }
+        .message-reply-preview {
+          pointer-events: auto;
+          border-color: rgba(255, 255, 255, 0.65);
+          border-radius: 16px;
+          background: rgba(255, 255, 255, 0.72);
+          backdrop-filter: blur(18px) saturate(180%);
+          -webkit-backdrop-filter: blur(18px) saturate(180%);
+          box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        }
+        .chat-compose-icon,
+        #messageStickerButton,
+        .message-send-text,
+        .message-recording button {
+          transition: background-color 120ms ease, color 120ms ease, transform 80ms ease;
+        }
+        .chat-compose-icon:hover,
+        .chat-compose-icon:active,
+        #messageStickerButton:hover,
+        #messageStickerButton:active,
+        .message-send-text:not(:disabled):hover,
+        .message-send-text:not(:disabled):active,
+        .message-recording button:hover:not(#messageRecordingSend),
+        .message-recording button:active:not(#messageRecordingSend) {
+          background: rgba(120, 120, 128, 0.12);
+        }
+        :root[data-theme="dark"] .chat-compose-pill {
+          background: rgba(28, 28, 32, 0.72);
+          border-color: rgba(255, 255, 255, 0.14);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+        :root[data-theme="dark"] .message-reply-preview {
+          border-color: rgba(255, 255, 255, 0.14);
+          background: rgba(28, 28, 32, 0.72);
+          box-shadow: 0 6px 18px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+        @media (prefers-color-scheme: dark) {
+          :root:not([data-theme="light"]):not([data-theme="dark"]) .chat-compose-pill {
+            background: rgba(28, 28, 32, 0.72);
+            border-color: rgba(255, 255, 255, 0.14);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+          }
+          :root:not([data-theme="light"]):not([data-theme="dark"]) .message-reply-preview {
+            border-color: rgba(255, 255, 255, 0.14);
+            background: rgba(28, 28, 32, 0.72);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+          }
+        }
+      }
       #messageStickerPicker {
         width: 144px !important;
         padding: 5px;
