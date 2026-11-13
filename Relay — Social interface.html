@@ -18634,6 +18634,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (generation !== reelUploadGeneration || (error.name === "AbortError" && reelUploadCancellation)) {
             removeOptimisticReel(session.id);
             releaseOptimisticReelPreview(previewUrl);
+            reelCreatePublishInFlight = false;
+            restoreReelAfterCreateDialog();
             return;
           }
           removeOptimisticReel(session.id);
