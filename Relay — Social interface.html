@@ -13325,6 +13325,8 @@
       let reelFeedScrollTop = 0;
       let reelAwayState = null;
       let reelResumeSeek = null;
+      let reelCreatePlaybackSnapshot = null;
+      let reelCreatePublishInFlight = false;
       let reelFeedIgnorePointersUntil = 0;
       let reelUploadPreviewUrl = "";
       const optimisticReelPreviewUrls = new Set();
@@ -17987,6 +17989,32 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         resetReelPreview();
       }
+      function pauseReelForCreateDialog() {
+        if ($("#v-reels").hidden) return;
+        const video = $("#reelFeed")?.querySelector('[data-reel-stage="' + CSS.escape(activeReelId) + '"] .reel-video');
+        reelCreatePlaybackSnapshot = {
+          reelId: activeReelId,
+          currentTime: video && Number.isFinite(video.currentTime) ? video.currentTime : reelLastTime.get(activeReelId) || 0,
+          scrollTop: $("#reelFeed").scrollTop,
+          wasPlaying: Boolean(video && !video.paused && !video.ended),
+        };
+        if (reelCreatePlaybackSnapshot.reelId && reelCreatePlaybackSnapshot.currentTime > 0) {
+          reelLastTime.set(reelCreatePlaybackSnapshot.reelId, reelCreatePlaybackSnapshot.currentTime);
+        }
+        $$(".reel-video").forEach((item) => item.pause());
+      }
+      function restoreReelAfterCreateDialog() {
+        if (reelCreatePublishInFlight || $("#reelCreateDialog").open) return;
+        const snapshot = reelCreatePlaybackSnapshot;
+        reelCreatePlaybackSnapshot = null;
+        if (!snapshot?.wasPlaying || !snapshot.reelId || $("#v-reels").hidden) return;
+        activeReelId = snapshot.reelId;
+        reelFeedScrollTop = snapshot.scrollTop;
+        reelResumeSeek = { reelId: snapshot.reelId, currentTime: snapshot.currentTime };
+        requestAnimationFrame(() => {
+          if (!$("#v-reels").hidden && !$("#reelCreateDialog").open) syncReelPlayback();
+        });
+      }
       function showReelCreateDialog() {
         if (!requireAuth()) return;
         closeReelDeleteConfirmation();
@@ -18022,6 +18050,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           setReelUploadStatus("");
           updateReelUploadButton();
         }
+        if (!$("#reelCreateDialog").open) pauseReelForCreateDialog();
         $("#reelCreateDialog").showModal();
       }
       function closeReelCreateDialog({ cancelUpload = true } = {}) {
@@ -18564,6 +18593,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (previewUrl) optimisticReelPreviewUrls.add(previewUrl);
         showOptimisticReel(optimisticReel);
         showReelPublishStatus(thumbnail, false);
+        reelCreatePublishInFlight = true;
         if ($("#reelCreateDialog").open) $("#reelCreateDialog").close();
         try {
           let reel;
@@ -18586,6 +18616,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             throw new Error("The Reel could not be confirmed as published.");
           }
           reelUploadCommitted = true;
+          reelCreatePublishInFlight = false;
+          reelCreatePlaybackSnapshot = null;
           replaceOptimisticReel(reel);
           showReelPublishStatus(thumbnail || (reel.posterUrl ? mediaHref(reel.posterUrl) : ""), true);
           releaseOptimisticReelPreview(previewUrl);
@@ -18602,10 +18634,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (generation !== reelUploadGeneration || (error.name === "AbortError" && reelUploadCancellation)) {
             removeOptimisticReel(session.id);
             releaseOptimisticReelPreview(previewUrl);
+            reelCreatePublishInFlight = false;
+            restoreReelAfterCreateDialog();
             return;
           }
           removeOptimisticReel(session.id);
           releaseOptimisticReelPreview(previewUrl);
+          reelCreatePublishInFlight = false;
           clearTimeout(reelPublishStatusTimer);
           clearTimeout(reelPublishHideTimer);
           $("#reelPublishStatus").hidden = true;
@@ -19146,6 +19181,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             else dialog.close();
           }
         }));
+        $("#reelCreateDialog").addEventListener("close", restoreReelAfterCreateDialog);
         $("#reelStatsDialog").addEventListener("close", () => {
           reelStatsGeneration += 1;
           cancelDelayedPlaceholder($("#reelStatsContent"));
