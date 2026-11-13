@@ -12348,6 +12348,18 @@
           overflow-wrap: anywhere;
         }
       }
+      /* The floating New message FAB is phone-only; tablets use the inbox header action. */
+      @media (min-width: 641px) {
+        .mobile-compose-fab {
+          display: none !important;
+        }
+      }
+      @media (max-width: 640px) {
+        body:has(.app.messages-active .messages-layout:not(.has-conversation)) .mobile-compose-fab {
+          display: inline-flex !important;
+        }
+      }
+
 </style>
   </head>
   <body>
