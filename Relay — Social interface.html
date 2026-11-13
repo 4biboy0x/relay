@@ -7638,23 +7638,83 @@
       #messageAudioButton.recording { color: var(--danger, #e5484d); animation: relay-recording-pulse 1.2s ease-in-out infinite; }
       @keyframes relay-recording-pulse { 50% { opacity: .35; } }
       .message-recording {
-        min-height: 40px;
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        min-height: 48px;
         flex: 1;
         display: none;
         align-items: center;
-        gap: 8px;
-        padding: 0 2px;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 6px 8px;
         color: var(--text);
         font-size: 14px;
       }
       .message-recording.is-active { display: flex; }
-      .message-recording-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--danger, #e5484d); }
-      .message-recording-waveform { width: min(112px, 30%); height: 24px; flex: 1; }
+      .message-recording-center {
+        display: flex;
+        min-width: 0;
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+      .message-recording-dot {
+        width: 8px;
+        height: 8px;
+        flex: 0 0 8px;
+        border-radius: 50%;
+        background: var(--danger, #e5484d);
+        animation: relay-recording-pulse 1.2s ease-in-out infinite;
+      }
+      .message-recording-time { flex: none; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      .message-recording-waveform { width: min(112px, 30%); min-width: 28px; height: 24px; flex: 1 1 72px; }
       .message-recording-waveform rect { fill: color-mix(in srgb, var(--text) 42%, transparent); }
-      .message-recording button { display: grid; width: 34px; height: 34px; flex: none; place-items: center; border: 0; padding: 0; border-radius: 50%; color: var(--text-2); background: transparent; cursor: pointer; }
-      .message-recording button:hover { color: var(--text); background: var(--surface-2); }
+      .message-recording button {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        padding: 0;
+        border-radius: 50%;
+        color: var(--text-2);
+        background: transparent;
+        cursor: pointer;
+        line-height: 0;
+      }
+      #messageRecordingCancel { width: 34px; height: 34px; }
+      #messageRecordingPause { width: 32px; height: 32px; }
+      #messageRecordingSend {
+        width: 36px;
+        height: 36px;
+        color: #fff;
+        background: var(--accent);
+      }
+      #messageRecordingSend:hover { background: var(--accent-h); }
+      .message-recording button:hover:not(#messageRecordingSend) { color: var(--text); background: var(--surface-2); }
       .message-recording button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-      .message-recording button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+      .message-recording button svg {
+        display: block;
+        width: 18px;
+        height: 18px;
+        margin: 0;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      #messageRecordingSend svg { width: 20px; height: 20px; }
+      .message-recording.is-paused .message-recording-dot { animation: none; opacity: .5; }
+      .message-recording.is-paused .message-recording-waveform rect { opacity: .65; }
+      .chat-compose-pill.is-recording #messageStickerButton,
+      .chat-compose-pill.is-recording .message-empty-actions { display: none !important; }
+      @media (max-width: 380px) {
+        .message-recording-center { gap: 6px; }
+        .message-recording-waveform { min-width: 18px; flex-basis: 42px; }
+      }
       @media (prefers-reduced-motion: reduce) {
         .chat-compose-pill, .message-empty-actions, .message-send-text { transition: none; }
       }
@@ -13221,12 +13281,21 @@
                     <div class="chat-compose-field" id="messageComposeField">
                       <textarea id="messageInput" rows="1" maxlength="2000" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Message..." aria-label="Write a message" dir="auto" disabled></textarea>
                     </div>
-                    <div class="message-recording" id="messageRecording" aria-live="polite">
-                      <span class="message-recording-dot" aria-hidden="true"></span>
-                      <span id="messageRecordingTime">0:00</span>
-                      <svg class="message-recording-waveform" id="messageRecordingWaveform" viewBox="0 0 190 24" preserveAspectRatio="none" aria-hidden="true"></svg>
-                      <button id="messageRecordingCancel" type="button" aria-label="Discard recording" title="Discard recording"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg></button>
-                      <button id="messageRecordingSend" type="button" aria-label="Send voice message" title="Send voice message"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><use href="#send" /></svg></button>
+                    <div class="message-recording" id="messageRecording" aria-live="off">
+                      <button id="messageRecordingCancel" type="button" aria-label="Discard recording" title="Discard recording">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3" /></svg>
+                      </button>
+                      <div class="message-recording-center">
+                        <span class="message-recording-dot" aria-hidden="true"></span>
+                        <span class="message-recording-time" id="messageRecordingTime">0:00</span>
+                        <svg class="message-recording-waveform" id="messageRecordingWaveform" viewBox="0 0 190 24" preserveAspectRatio="none" aria-hidden="true"></svg>
+                        <button id="messageRecordingPause" type="button" aria-label="Pause recording" title="Pause recording">
+                          <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="9" y1="6" x2="9" y2="18" /><line x1="15" y1="6" x2="15" y2="18" /></svg>
+                        </button>
+                      </div>
+                      <button id="messageRecordingSend" type="button" aria-label="Send voice message" title="Send voice message">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#send" /></svg>
+                      </button>
                     </div>
                     <div class="message-empty-actions" id="messageEmptyActions">
                       <button class="message-action chat-compose-icon" id="messageAudioButton" type="button" aria-label="Record voice message" disabled>
@@ -22326,7 +22395,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       let voiceChunks = [];
       let voiceRecordingCanceled = false;
       let voiceRecordingTimer = null;
-      let voiceRecordingStartedAt = 0;
+      let voiceRecordingElapsedMs = 0;
+      let voiceRecordingRunStartedAt = 0;
+      let voiceRecordingSampleBuffer = null;
       let voiceRecordingSamples = [];
       let voiceRecordingPeak = 0;
       let voiceRecordingAnalyser = null;
@@ -22934,10 +23005,46 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         receiveMessage(message);
         return message;
       }
+      function updateVoiceRecordingTimer() {
+        const elapsed = voiceRecordingElapsedMs
+          + (voiceRecorder?.state === "recording" ? Date.now() - voiceRecordingRunStartedAt : 0);
+        const seconds = Math.floor(elapsed / 1000);
+        $("#messageRecordingTime").textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+      }
+      function startVoiceRecordingMeters() {
+        voiceRecordingRunStartedAt = Date.now();
+        clearInterval(voiceRecordingSampleTimer);
+        clearInterval(voiceRecordingTimer);
+        voiceRecordingSampleTimer = setInterval(() => {
+          if (!voiceRecordingAnalyser || !voiceRecordingSampleBuffer) return;
+          voiceRecordingAnalyser.getFloatTimeDomainData(voiceRecordingSampleBuffer);
+          let sum = 0;
+          for (const sample of voiceRecordingSampleBuffer) sum += sample * sample;
+          const amplitude = Math.sqrt(sum / voiceRecordingSampleBuffer.length);
+          voiceRecordingSamples.push(amplitude);
+          voiceRecordingPeak = Math.max(voiceRecordingPeak, amplitude);
+          updateRecordingWaveform(voiceRecordingPeak ? amplitude / voiceRecordingPeak : 0);
+        }, 50);
+        voiceRecordingTimer = setInterval(updateVoiceRecordingTimer, 200);
+        updateVoiceRecordingTimer();
+      }
+      function stopVoiceRecording(discard = false) {
+        const recorder = voiceRecorder;
+        if (!recorder || !["recording", "paused"].includes(recorder.state) || voiceRecordingFinalizing) return;
+        voiceRecordingCanceled = discard;
+        voiceRecordingFinalizing = true;
+        clearInterval(voiceRecordingTimer);
+        clearInterval(voiceRecordingSampleTimer);
+        voiceRecordingTimer = null;
+        voiceRecordingSampleTimer = null;
+        if (recorder.state === "paused") {
+          try { recorder.requestData(); } catch (error) { console.warn("Could not flush paused voice data.", error); }
+        }
+        recorder.stop();
+      }
       async function toggleVoiceRecording() {
-        if (voiceRecorder?.state === "recording") {
-          voiceRecordingFinalizing = true;
-          voiceRecorder.stop();
+        if (voiceRecorder && ["recording", "paused"].includes(voiceRecorder.state)) {
+          stopVoiceRecording(false);
           return;
         }
         if (voiceRecordingFinalizing) return;
@@ -22951,92 +23058,116 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             stream.getTracks().forEach((track) => track.stop());
             return;
           }
-          voiceRecorder = new MediaRecorder(stream);
-          const recorder = voiceRecorder;
+          if (!window.MediaRecorder) throw new Error("Audio recording is not supported in this browser.");
+          const mimeCandidates = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus", "audio/webm"];
+          let recorder = null;
+          for (const mimeType of mimeCandidates) {
+            if (!MediaRecorder.isTypeSupported || !MediaRecorder.isTypeSupported(mimeType)) continue;
+            try {
+              recorder = new MediaRecorder(stream, { mimeType });
+              break;
+            } catch (error) {
+              console.warn("Could not initialize this audio format.", mimeType, error);
+            }
+          }
+          if (!recorder) recorder = new MediaRecorder(stream);
+          voiceRecorder = recorder;
           voiceRecordingAudioContext = new (window.AudioContext || window.webkitAudioContext)();
           if (voiceRecordingAudioContext.state === "suspended") await voiceRecordingAudioContext.resume();
           voiceRecordingAnalyser = voiceRecordingAudioContext.createAnalyser();
           voiceRecordingAnalyser.fftSize = 256;
           voiceRecordingAudioContext.createMediaStreamSource(stream).connect(voiceRecordingAnalyser);
-          const sampleBuffer = new Float32Array(voiceRecordingAnalyser.fftSize);
+          voiceRecordingSampleBuffer = new Float32Array(voiceRecordingAnalyser.fftSize);
           voiceChunks = [];
           voiceRecordingSamples = [];
           voiceRecordingPeak = 0;
+          voiceRecordingElapsedMs = 0;
           $("#messageRecordingWaveform").innerHTML = voiceWaveformSvg(Array(voiceWaveformBarCount).fill(0));
-          recorder.addEventListener("dataavailable", (event) => { if (event.data.size) voiceChunks.push(event.data); });
+          recorder.addEventListener("dataavailable", (event) => {
+            if (event.data?.size > 0) voiceChunks.push(event.data);
+          });
           recorder.addEventListener("stop", async () => {
             voiceRecordingFinalizing = true;
             $("#messageAudioButton").classList.remove("recording");
             stream.getTracks().forEach((track) => track.stop());
             clearInterval(voiceRecordingTimer);
             clearInterval(voiceRecordingSampleTimer);
+            voiceRecordingTimer = null;
             voiceRecordingSampleTimer = null;
             voiceRecordingAnalyser = null;
+            voiceRecordingSampleBuffer = null;
             try {
               await voiceRecordingAudioContext?.close();
             } catch (error) {
               console.warn("Could not close the voice recording audio context.", error);
             }
             voiceRecordingAudioContext = null;
-            voiceRecordingFinalizing = false;
             $("#messageComposeField").hidden = false;
-            $("#messageRecording").classList.remove("is-active");
+            $("#messageRecording").classList.remove("is-active", "is-paused");
             $("#messageComposePill").classList.remove("is-recording");
             $("#messageAudioButton").innerHTML = '<svg class="i" width="20" height="20" aria-hidden="true"><use href="#mic" /></svg>';
-            const type = recorder.mimeType || "audio/webm";
-            const blob = new Blob(voiceChunks, { type });
+            $("#messageRecordingPause").innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><line x1="9" y1="6" x2="9" y2="18" /><line x1="15" y1="6" x2="15" y2="18" /></svg>';
+            $("#messageRecordingPause").setAttribute("aria-label", "Pause recording");
+            $("#messageRecordingPause").title = "Pause recording";
+            const declaredType = (recorder.mimeType || voiceChunks.find((chunk) => chunk.type)?.type || "audio/webm").toLowerCase();
+            const mimeType = declaredType.split(";")[0].trim();
+            const blob = new Blob(voiceChunks, { type: mimeType });
+            voiceRecorder = null;
+            voiceRecordingFinalizing = false;
             if (voiceRecordingCanceled || !blob.size) {
               voiceRecordingCanceled = false;
               syncMessageComposer();
+              if (!blob.size && !voiceRecordingCanceled) toast("Recording is empty. Try again.");
               return;
             }
             syncMessageComposer();
             const waveform = normalizeVoiceWaveform(voiceRecordingSamples);
-            const extension = type.includes("ogg") ? "ogg" : type.includes("mp4") ? "m4a" : "webm";
+            const extensions = {
+              "audio/webm": "webm", "video/webm": "webm",
+              "audio/ogg": "ogg", "audio/mp4": "m4a", "video/mp4": "m4a",
+              "audio/x-m4a": "m4a", "audio/mpeg": "mp3", "audio/wav": "wav",
+              "audio/x-wav": "wav", "audio/aac": "aac", "audio/aacp": "aac",
+              "audio/flac": "flac", "audio/x-flac": "flac", "audio/opus": "opus",
+            };
+            const extension = extensions[mimeType] || "webm";
             const form = new FormData();
             form.append("file", blob, `voice.${extension}`);
             try {
               const uploaded = await api("/uploads/audio", { method: "POST", body: form });
               const sent = await sendMessageAttachment({ audioUrl: uploaded.url, waveform }, conversationId);
               if (sent?.id) cacheVoiceWaveform(sent.id, waveform);
-            } catch (error) { toast(error.message); }
+            } catch (error) {
+              toast(error.message || "Could not send this voice message.");
+            }
           });
           recorder.start();
           $("#messageAudioButton").classList.add("recording");
           voiceRecordingCanceled = false;
-          voiceRecordingStartedAt = Date.now();
           $("#messageComposeField").hidden = true;
           $("#messageRecording").classList.add("is-active");
+          $("#messageRecording").classList.remove("is-paused");
           $("#messageComposePill").classList.add("is-recording");
           $("#messageRecordingTime").textContent = "0:00";
-          $("#messageAudioButton").innerHTML = '<svg class="i" aria-hidden="true"><use href="#square" /></svg>';
-          clearInterval(voiceRecordingSampleTimer);
-          voiceRecordingSampleTimer = setInterval(() => {
-            if (!voiceRecordingAnalyser) return;
-            voiceRecordingAnalyser.getFloatTimeDomainData(sampleBuffer);
-            let sum = 0;
-            for (const sample of sampleBuffer) sum += sample * sample;
-            const amplitude = Math.sqrt(sum / sampleBuffer.length);
-            voiceRecordingSamples.push(amplitude);
-            voiceRecordingPeak = Math.max(voiceRecordingPeak, amplitude);
-            updateRecordingWaveform(voiceRecordingPeak ? amplitude / voiceRecordingPeak : 0);
-          }, 50);
-          clearInterval(voiceRecordingTimer);
-          voiceRecordingTimer = setInterval(() => {
-            const elapsed = Math.floor((Date.now() - voiceRecordingStartedAt) / 1000);
-            $("#messageRecordingTime").textContent = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, "0")}`;
-          }, 250);
+          $("#messageRecordingPause").innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><line x1="9" y1="6" x2="9" y2="18" /><line x1="15" y1="6" x2="15" y2="18" /></svg>';
+          $("#messageRecordingPause").setAttribute("aria-label", "Pause recording");
+          $("#messageRecordingPause").title = "Pause recording";
+          startVoiceRecordingMeters();
         } catch (error) {
           stream?.getTracks().forEach((track) => track.stop());
           clearInterval(voiceRecordingSampleTimer);
+          clearInterval(voiceRecordingTimer);
           voiceRecordingSampleTimer = null;
+          voiceRecordingTimer = null;
           voiceRecordingAnalyser = null;
+          voiceRecordingSampleBuffer = null;
           try {
             await voiceRecordingAudioContext?.close();
           } catch (closeError) {
             console.warn("Could not close the voice recording audio context.", closeError);
           }
           voiceRecordingAudioContext = null;
+          voiceRecorder = null;
+          voiceRecordingFinalizing = false;
           toast(`Microphone access is unavailable: ${error.message}`);
         }
       }
@@ -29274,17 +29405,31 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         syncMessageComposer();
       });
-      $("#messageRecordingCancel").addEventListener("click", () => {
-        if (voiceRecorder?.state === "recording") {
-          voiceRecordingCanceled = true;
-          voiceRecordingFinalizing = true;
-          voiceRecorder.stop();
-        }
-      });
-      $("#messageRecordingSend").addEventListener("click", () => {
-        if (voiceRecorder?.state === "recording") {
-          voiceRecordingFinalizing = true;
-          voiceRecorder.stop();
+      $("#messageRecordingCancel").addEventListener("click", () => stopVoiceRecording(true));
+      $("#messageRecordingSend").addEventListener("click", () => stopVoiceRecording(false));
+      $("#messageRecordingPause").addEventListener("click", () => {
+        if (voiceRecordingFinalizing || !voiceRecorder) return;
+        const pauseButton = $("#messageRecordingPause");
+        const recording = $("#messageRecording");
+        if (voiceRecorder.state === "recording") {
+          voiceRecordingElapsedMs += Date.now() - voiceRecordingRunStartedAt;
+          clearInterval(voiceRecordingTimer);
+          clearInterval(voiceRecordingSampleTimer);
+          voiceRecordingTimer = null;
+          voiceRecordingSampleTimer = null;
+          voiceRecorder.pause();
+          recording.classList.add("is-paused");
+          pauseButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="11" rx="3" /><path d="M5 10a7 7 0 0 0 14 0" /><line x1="12" y1="17" x2="12" y2="21" /></svg>';
+          pauseButton.setAttribute("aria-label", "Resume recording");
+          pauseButton.title = "Resume recording";
+          updateVoiceRecordingTimer();
+        } else if (voiceRecorder.state === "paused") {
+          voiceRecorder.resume();
+          recording.classList.remove("is-paused");
+          pauseButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><line x1="9" y1="6" x2="9" y2="18" /><line x1="15" y1="6" x2="15" y2="18" /></svg>';
+          pauseButton.setAttribute("aria-label", "Pause recording");
+          pauseButton.title = "Pause recording";
+          startVoiceRecordingMeters();
         }
       });
       $("#messageInput").addEventListener("keydown", (event) => {
