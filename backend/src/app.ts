@@ -89,7 +89,7 @@ const serializeMessage = <T extends { reactions: Array<{ emoji: string; userId: 
   return {
     ...message,
     ...(hiddenReplyTarget ? {
-      replyTo: { id: replyTo!.id, body: "Message sent before you cleared this chat", sender: replyTo!.sender },
+      replyTo: { id: replyTo!.id, body: "Message unavailable", sender: replyTo!.sender },
     } : {}),
     reactions: summarizeMessageReactions(message.reactions, viewerId),
   };
