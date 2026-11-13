@@ -12259,6 +12259,33 @@
           transition: none;
         }
       }
+
+      /* Compact, touch-friendly account menu for phones and small screens. */
+      @media (max-width: 1199px) {
+        .account-menu {
+          z-index: 120;
+          width: min(264px, calc(100vw - 24px));
+          padding: 7px;
+          border-radius: 14px;
+          box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+          transform-origin: bottom center;
+        }
+        .account-menu .menu-account {
+          padding: 11px 12px;
+          margin-bottom: 5px;
+        }
+        .account-menu button {
+          min-height: 44px;
+          padding-inline: 12px;
+          border-radius: 9px;
+          font-size: 14px;
+        }
+        .nav-item[data-view="profile"] {
+          touch-action: pan-y;
+          -webkit-user-select: none;
+          user-select: none;
+        }
+      }
 </style>
   </head>
   <body>
@@ -15071,7 +15098,7 @@
         const stickerPicker = $("#messageStickerPicker");
         if (!stickerPicker.hidden) positionComposerPopover(stickerPicker, $("#messageStickerButton"));
         const accountMenu = $("#accountMenu");
-        if (!accountMenu.hidden) positionFloatingMenu($("#accountTrigger"), accountMenu);
+        if (!accountMenu.hidden) positionFloatingMenu(accountMenuAnchor || $("#accountTrigger"), accountMenu);
         $$(".choice-menu:not([hidden])").forEach((choiceMenu) => {
           const trigger = choiceMenu.closest("[data-choice-control]")?.querySelector(".choice-trigger");
           if (trigger) positionChoiceMenu(trigger, choiceMenu);
@@ -25315,20 +25342,65 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         banner.hidden = !currentUser?.bannerUrl;
         if (currentUser?.bannerUrl) banner.src = mediaHref(currentUser.bannerUrl);
       }
-      function toggleAccountMenu(force) {
+      let accountMenuAnchor = null;
+      function toggleAccountMenu(force, anchor = null) {
         const trigger = $("#accountTrigger");
         const menu = $("#accountMenu");
         const open = force ?? menu.hidden;
         menu.hidden = !open;
         trigger.setAttribute("aria-expanded", String(open));
+        $("#navProfile")?.setAttribute("aria-expanded", String(open));
         if (open) {
-          positionFloatingMenu(trigger, menu);
-          menu.querySelector('[role="menuitem"]')?.focus();
+          accountMenuAnchor = anchor || trigger;
+          positionFloatingMenu(accountMenuAnchor, menu);
+          if (!anchor) menu.querySelector('[role="menuitem"]')?.focus();
+        } else {
+          accountMenuAnchor = null;
         }
       }
       function closeAccountMenu() {
         if ($("#accountMenu").hidden) return;
         toggleAccountMenu(false);
+      }
+
+      // A long press on Profile opens the account menu on touch-sized layouts.
+      const profileNavButton = document.querySelector('.nav-item[data-view="profile"]');
+      let profilePressTimer = null;
+      let profileLongPressTriggered = false;
+      if (profileNavButton) {
+        profileNavButton.id = "navProfile";
+        profileNavButton.setAttribute("aria-haspopup", "true");
+        profileNavButton.setAttribute("aria-controls", "accountMenu");
+        profileNavButton.addEventListener("pointerdown", (event) => {
+          if (!window.matchMedia("(max-width: 1199px)").matches || !event.isPrimary) return;
+          if (event.pointerType === "mouse" && event.button !== 0) return;
+          clearTimeout(profilePressTimer);
+          profileLongPressTriggered = false;
+          profilePressTimer = setTimeout(() => {
+            profileLongPressTriggered = true;
+            toggleAccountMenu(true, profileNavButton);
+          }, 480);
+        });
+        const cancelProfilePress = () => {
+          clearTimeout(profilePressTimer);
+          profilePressTimer = null;
+        };
+        profileNavButton.addEventListener("pointerup", cancelProfilePress);
+        profileNavButton.addEventListener("pointerleave", cancelProfilePress);
+        profileNavButton.addEventListener("pointercancel", () => {
+          cancelProfilePress();
+          profileLongPressTriggered = false;
+        });
+        profileNavButton.addEventListener("contextmenu", (event) => {
+          if (profileLongPressTriggered) event.preventDefault();
+        });
+        document.addEventListener("click", (event) => {
+          if (!profileLongPressTriggered || !event.target.closest("#navProfile")) return;
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          profileLongPressTriggered = false;
+        }, true);
       }
       async function switchAccount() {
         if (currentUser) {
