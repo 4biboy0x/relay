@@ -2093,8 +2093,8 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
         include: {
           members: { include: { user: { select: publicUser } } },
           messages: {
-            where: { createdAt: { gt: new Date(0) } },
-            orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1,
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            take: 1,
             include: { sender: { select: publicUser } },
           },
         },
