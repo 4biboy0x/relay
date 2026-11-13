@@ -11108,7 +11108,7 @@
 
     
       /* Mobile Messages must show one pane at a time: inbox OR active chat. */
-      @media (max-width: 859px) {
+      @media (max-width: 799px) {
         .app.messages-active .messages-layout {
           display: block;
           height: 100%;
@@ -11162,7 +11162,7 @@
           display: inline-flex;
         }
       }
-      @media (min-width: 860px) {
+      @media (min-width: 800px) {
         .inbox-compose-button {
           display: inline-flex;
         }
@@ -11711,7 +11711,7 @@
       .app.messages-active > aside[aria-label="Suggestions"] {
         display: none !important;
       }
-      @media (min-width: 860px) and (max-width: 1199px) {
+      @media (min-width: 800px) and (max-width: 1199px) {
         .app.messages-active .messages-layout {
           grid-template-columns: 280px minmax(0, 1fr);
         }
@@ -11789,6 +11789,69 @@
       @media (min-width: 600px) and (max-width: 767px) and (orientation: landscape) {
         .app:not(.messages-active):not(.thread-active) {
           grid-template-columns: 56px minmax(0, 1fr) !important;
+        }
+      }
+
+    
+      /* Final Messages layout: single pane below 800px, full-width split view above. */
+      @media (min-width: 800px) {
+        .app.messages-active .messages-layout {
+          display: flex !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          min-width: 0 !important;
+          grid-template-columns: none !important;
+          grid-template-rows: minmax(0, 1fr) !important;
+          flex-direction: row !important;
+          align-items: stretch !important;
+        }
+        .app.messages-active .conversation-sidebar {
+          display: flex !important;
+          width: 260px !important;
+          min-width: 260px !important;
+          max-width: 260px !important;
+          flex: 0 0 260px !important;
+        }
+        .app.messages-active .chat-panel {
+          display: flex !important;
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: none !important;
+          flex: 1 1 0% !important;
+        }
+        .app.messages-active .mobile-compose-fab {
+          display: none !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
+        }
+        .app.messages-active .inbox-compose-button {
+          display: inline-flex !important;
+        }
+      }
+      @media (min-width: 1200px) {
+        .app.messages-active .conversation-sidebar {
+          width: 360px !important;
+          min-width: 360px !important;
+          max-width: 360px !important;
+          flex: 0 0 360px !important;
+        }
+      }
+      @media (max-width: 799px) {
+        .app.messages-active .mobile-compose-fab {
+          position: fixed !important;
+          right: max(24px, env(safe-area-inset-right, 0px)) !important;
+          bottom: max(80px, env(safe-area-inset-bottom, 0px)) !important;
+          display: none !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
+        }
+        body:has(.app.messages-active .messages-layout:not(.has-conversation)) .mobile-compose-fab {
+          display: inline-flex !important;
+          visibility: visible !important;
+          pointer-events: auto !important;
+        }
+        .app.messages-active .inbox-compose-button {
+          display: none !important;
         }
       }
 
