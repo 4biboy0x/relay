@@ -6900,15 +6900,15 @@
         flex-direction: column;
         gap: 4px;
       }
-      .message-row.mine > .reply-stack { align-items: flex-end; }
-      .message-row:not(.mine) > .reply-stack { align-items: flex-start; }
-      .message-row.mine .reply-header {
+      .reply-stack--mine { align-self: flex-end; align-items: flex-end; }
+      .reply-stack--other { align-self: flex-start; align-items: flex-start; }
+      .reply-stack--mine .reply-header {
         align-self: flex-end;
         margin-left: auto;
         margin-right: 4px;
         text-align: right;
       }
-      .message-row:not(.mine) .reply-header {
+      .reply-stack--other .reply-header {
         align-self: flex-start;
         margin-right: auto;
         margin-left: 4px;
@@ -24447,7 +24447,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const replyTo = message.replyTo || null;
         const hasReply = Boolean(message.replyToId || replyTo);
         const replyStack = hasReply
-          ? `<div class="reply-stack">${replyHeaderMarkup(replySenderName(replyTo), replyTo?.id || "")}${replyPreviewMarkup(replyTo, { jump: Boolean(replyTo?.id) })}</div>`
+          ? `<div class="reply-stack ${replyTo?.senderId === currentUser?.id || replyTo?.sender?.id === currentUser?.id ? "reply-stack--mine" : "reply-stack--other"}">${replyHeaderMarkup(replySenderName(replyTo), replyTo?.id || "")}${replyPreviewMarkup(replyTo, { jump: Boolean(replyTo?.id) })}</div>`
           : "";
         const reactions = messageReactionsMarkup(message);
         const messageContent = hasMultipleImages && !audio && !sticker
