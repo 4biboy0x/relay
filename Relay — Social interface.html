@@ -10475,21 +10475,26 @@
         transition: opacity 140ms ease, transform 180ms cubic-bezier(.22, 1, .36, 1);
         pointer-events: none;
       }
-      .app.reels-active .reel-progress-track:hover::before,
       .app.reels-active .reel-progress-track:focus-visible::before,
-      .app.reels-active .reel-progress-track.is-scrubbing::before {
-        height: 6px;
-      }
-      .app.reels-active .reel-progress-track:hover .reel-progress-fill,
+      .app.reels-active .reel-progress-track.is-scrubbing::before,
       .app.reels-active .reel-progress-track:focus-visible .reel-progress-fill,
       .app.reels-active .reel-progress-track.is-scrubbing .reel-progress-fill {
         height: 6px;
       }
-      .app.reels-active .reel-progress-track:hover .reel-progress-thumb,
       .app.reels-active .reel-progress-track:focus-visible .reel-progress-thumb,
       .app.reels-active .reel-progress-track.is-scrubbing .reel-progress-thumb {
         opacity: 1;
         transform: translateX(-50%) scale(1);
+      }
+      @media (hover: hover) and (pointer: fine) {
+        .app.reels-active .reel-progress-track:hover::before,
+        .app.reels-active .reel-progress-track:hover .reel-progress-fill {
+          height: 6px;
+        }
+        .app.reels-active .reel-progress-track:hover .reel-progress-thumb {
+          opacity: 1;
+          transform: translateX(-50%) scale(1);
+        }
       }
       .app.reels-active .reel-progress-track.is-scrubbing .reel-progress-time {
         opacity: 1;
@@ -19747,15 +19752,19 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const bounds = progress.getBoundingClientRect();
         if (!bounds.width || !Number.isFinite(video.duration) || video.duration <= 0) return;
         const ratio = Math.max(0, Math.min(1, (clientX - bounds.left) / bounds.width));
-        video.currentTime = ratio * video.duration;
+        const targetTime = ratio * video.duration;
+        video.currentTime = targetTime;
         const percent = ratio * 100;
-        const current = formatReelTimestamp(video.currentTime);
+        const current = formatReelTimestamp(targetTime);
         const total = formatReelTimestamp(video.duration);
         progress.setAttribute("aria-valuenow", String(Math.round(percent)));
         progress.setAttribute("aria-valuetext", `${current} / ${total}`);
         progress.querySelector(".reel-progress-fill").style.width = `${percent}%`;
         progress.querySelector(".reel-progress-thumb").style.left = `${percent}%`;
-        progress.querySelector(".reel-progress-time").textContent = `${current} / ${total}`;
+        const timePill = progress.querySelector(".reel-progress-time");
+        timePill.textContent = `${current} / ${total}`;
+        const pillHalfWidth = timePill.offsetWidth / 2;
+        timePill.style.left = `${Math.max(pillHalfWidth, Math.min(bounds.width - pillHalfWidth, clientX - bounds.left))}px`;
       }
       function handleReelScrubPointerDown(event) {
         const progress = event.target.closest("[data-reel-progress]");
