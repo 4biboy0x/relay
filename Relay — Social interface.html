@@ -29488,7 +29488,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 draftConversationRecipientId = "";
                 $("#chatLog").dataset.conversationId = sendConversationId;
                 $("#messageForm").dataset.conversationId = sendConversationId;
-                $(".message-row", $("#chatLog")).forEach((row) => {
+                Array.from($("#chatLog").querySelectorAll(".message-row")).forEach((row) => {
                   row.dataset.conversationId = sendConversationId;
                 });
                 // The socket event can arrive while this chat still has its draft ID.
