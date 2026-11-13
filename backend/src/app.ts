@@ -1113,7 +1113,7 @@ api.patch("/users/me/password", authRequired, asyncRoute(async (req, res) => {
 
 api.patch("/users/me", authRequired, asyncRoute(async (req, res) => {
   const input = profileSchema.parse(req.body);
-  if (containsProfanity(input.displayName) || containsProfanity(input.bio)) {
+  if (containsProfanity(input.handle) || containsProfanity(input.displayName) || containsProfanity(input.bio)) {
     throw new HttpError(400, "Restricted words not allowed.");
   }
   const user = await prisma.user.update({
