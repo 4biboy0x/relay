@@ -29499,7 +29499,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               if (input.value.trim() === body) input.value = "";
               conversationDrafts.set(sendConversationId, input.value);
               clearMessageAttachments();
-              focusInput(input, { isTypingMainScreen: true, preventScroll: true });
+              if (window.matchMedia("(max-width: 767px)").matches && isTouchDevice()) {
+                input.blur();
+              } else {
+                focusInput(input, { isTypingMainScreen: true, preventScroll: true });
+              }
             }
           } catch (error) {
             removePendingMessageRow(pendingId);
