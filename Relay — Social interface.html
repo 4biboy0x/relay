@@ -1091,6 +1091,9 @@
         color: var(--text-2);
         background: var(--surface-2);
       }
+      .av {
+        transition: background-color 220ms ease, color 220ms ease, border-color 220ms ease;
+      }
       .relay-avatar-mark {
         display: block;
         width: 76%;
@@ -1104,53 +1107,43 @@
         stroke-linejoin: round;
         stroke-width: 2.4;
       }
-      .t0 {
-        background: #e4e4e7;
-        color: #27272a;
-      }
-      .t1 {
-        background: #d4d4d8;
-        color: #18181b;
-      }
-      .t2 {
-        background: #e2e8f0;
-        color: #1e293b;
-      }
-      .t3 {
-        background: #27272a;
-        color: #fafafa;
-      }
-      .t4 {
-        background: #cbd5e1;
-        color: #0f172a;
-      }
-      .t5 {
-        background: var(--accent-soft);
-        color: var(--accent);
-      }
+      /* Neutral avatar tones stay distinct without introducing accent colors. */
+      .t0 { background: #f4f4f5; color: #52525b; }
+      .t1 { background: #e4e4e7; color: #3f3f46; }
+      .t2 { background: #ededed; color: #525252; }
+      .t3 { background: #d4d4d8; color: #3f3f46; }
+      .t4 { background: #e7e7e7; color: #525252; }
+      .t5 { background: #f0f0f0; color: #404040; }
       :root[data-theme="dark"] .t0,
       :root[data-theme="dark"] .t1,
       :root[data-theme="dark"] .t2,
-      :root[data-theme="dark"] .t4 {
-        background: #27272a;
-        color: #e4e4e7;
+      :root[data-theme="dark"] .t3,
+      :root[data-theme="dark"] .t4,
+      :root[data-theme="dark"] .t5 {
+        background: #29292c;
+        color: #d4d4d8;
       }
-      :root[data-theme="dark"] .t3 {
-        background: #e4e4e7;
-        color: #18181b;
-      }
+      :root[data-theme="dark"] .t1,
+      :root[data-theme="dark"] .t4 { background: #303033; }
+      :root[data-theme="dark"] .t2,
+      :root[data-theme="dark"] .t5 { background: #242426; }
       @media (prefers-color-scheme: dark) {
         :root:not([data-theme="light"]) .t0,
         :root:not([data-theme="light"]) .t1,
         :root:not([data-theme="light"]) .t2,
-        :root:not([data-theme="light"]) .t4 {
-          background: #27272a;
-          color: #e4e4e7;
+        :root:not([data-theme="light"]) .t3,
+        :root:not([data-theme="light"]) .t4,
+        :root:not([data-theme="light"]) .t5 {
+          background: #29292c;
+          color: #d4d4d8;
         }
-        :root:not([data-theme="light"]) .t3 {
-          background: #e4e4e7;
-          color: #18181b;
-        }
+        :root:not([data-theme="light"]) .t1,
+        :root:not([data-theme="light"]) .t4 { background: #303033; }
+        :root:not([data-theme="light"]) .t2,
+        :root:not([data-theme="light"]) .t5 { background: #242426; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .av { transition: none; }
       }
       /* composer */
       .composer {
