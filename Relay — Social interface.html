@@ -24855,7 +24855,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function syncInboxConversationPreview(conversationId, lastMessage, updatedAt) {
         const conversation = conversations.find((item) => item.id === conversationId);
-        if (!conversation) return;
+        if (!conversation) return false;
         conversation.lastMessage = lastMessage;
         if (updatedAt) conversation.updatedAt = updatedAt;
         conversations.sort((first, second) => new Date(second.updatedAt).getTime() - new Date(first.updatedAt).getTime());
@@ -24864,6 +24864,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           filterConversations();
           writeViewCache("messages", $("#conversationList").innerHTML);
         }
+        return true;
       }
       function replaceMessageRow(message, inboxPreview = null) {
         const previous = messagesById.get(message.id);
@@ -25112,11 +25113,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             || "Relay user";
           toast(`New message from ${actor}`);
         }
-        const conversation = conversations.find((item) => item.id === event.conversationId);
         if (Object.prototype.hasOwnProperty.call(event, "lastMessage")) {
-          if (conversation) {
-            syncInboxConversationPreview(event.conversationId, event.lastMessage, event.updatedAt || conversation.updatedAt);
-          } else {
+          const conversation = conversations.find((item) => item.id === event.conversationId);
+          const synced = syncInboxConversationPreview(
+            event.conversationId,
+            event.lastMessage,
+            event.updatedAt || conversation?.updatedAt,
+          );
+          if (!synced) {
             renderConversations().catch((error) =>
               console.error("Could not restore the inbox after a reaction update.", error),
             );
