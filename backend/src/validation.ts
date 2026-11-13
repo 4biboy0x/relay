@@ -100,6 +100,7 @@ export const updatePostSchema = z.object({
 });
 
 export const profileSchema = z.object({
+  handle: z.string().trim().toLowerCase().regex(/^[a-z0-9_]{3,30}$/).optional(),
   displayName: z.string().trim().min(1).max(60).optional(),
   bio: z.string().trim().max(280).optional(),
   avatarUrl: mediaUrlSchema.nullable().optional(),
