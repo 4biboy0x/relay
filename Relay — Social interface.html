@@ -6868,8 +6868,7 @@
       .message-reaction-host > .message-reaction-list { inset-block-end: -10px; }
       .reply-stack {
         display: flex;
-        width: min(70%, 720px);
-        min-width: 120px;
+        width: fit-content;
         max-width: 72%;
         flex-direction: column;
         gap: 4px;
@@ -6893,6 +6892,7 @@
         line-height: 16px;
         text-align: left;
         direction: ltr;
+        white-space: nowrap;
       }
       button.reply-header { cursor: pointer; }
       button.reply-header:hover { color: var(--text-2); }
@@ -7035,36 +7035,6 @@
         pointer-events: none;
         transition: opacity 120ms ease;
       }
-      .message-bubble:not(.mine) > .message-tools,
-      .message-image-item:not(.mine) > .message-tools,
-      .message-row:not(.mine) > .message-attachment-group > .message-tools {
-        inset-inline-start: calc(100% + 6px);
-        inset-inline-end: auto;
-      }
-      .message-bubble.mine > .message-tools,
-      .message-image-item.mine > .message-tools,
-      .message-row.mine > .message-attachment-group > .message-tools {
-        inset-inline-end: calc(100% + 6px);
-        inset-inline-start: auto;
-      }
-      .message-bubble:hover > .message-tools,
-      .message-bubble:focus-within > .message-tools,
-      .message-bubble.tools-visible > .message-tools,
-      .message-bubble.has-message-popover > .message-tools,
-      .message-image-item:hover > .message-tools,
-      .message-image-item:focus-within > .message-tools,
-      .message-image-item.tools-visible > .message-tools,
-      .message-image-item.has-message-popover > .message-tools,
-      .message-attachment-group:hover > .message-tools,
-      .message-attachment-group:focus-within > .message-tools,
-      .message-attachment-group.tools-visible > .message-tools,
-      .message-attachment-group.has-message-popover > .message-tools,
-      .message-row.tools-visible:not(:has(.message-bubble.tools-visible, .message-image-item.tools-visible, .message-attachment-group.tools-visible)) > .message-tools,
-      .message-row.tools-visible:not(:has(.message-bubble.tools-visible, .message-image-item.tools-visible, .message-attachment-group.tools-visible)) > .message-attachment-group > .message-tools,
-      .message-row.tools-visible:not(:has(.message-bubble.tools-visible, .message-image-item.tools-visible, .message-attachment-group.tools-visible)) > .message-bubble > .message-tools,
-      .message-row:hover:not(:has(.message-bubble:hover, .message-image-item:hover, .message-attachment-group:hover)) > .message-tools,
-      .message-row:hover:not(:has(.message-bubble:hover, .message-image-item:hover, .message-attachment-group:hover)) > .message-bubble > .message-tools,
-      .message-row:hover:not(:has(.message-bubble:hover, .message-image-item:hover, .message-attachment-group:hover)) > .message-attachment-group > .message-tools,
       .message-row:hover > .message-main > .message-tools,
       .message-row:focus-within > .message-main > .message-tools,
       .message-row.tools-visible > .message-main > .message-tools,
@@ -23906,14 +23876,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 <button class="message-media-button" type="button" data-lightbox-image="${esc(imageUrl)}" data-lightbox-index="${index}" aria-label="Open shared ${isGif ? "GIF" : "image"}"><img class="message-media" src="${esc(imageUrl)}" width="${width || 1}" height="${height || 1}" alt="${isGif ? "Shared GIF" : "Shared image"}" loading="${mediaLoading}" decoding="async" /></button>
                 ${index === 3 && mediaItems.length > 4 ? `<span class="message-image-overflow">+${mediaItems.length - 4}</span>` : ""}
               </div>
-              ${hasMultipleImages || index !== visibleMediaItems.length - 1 ? "" : messageToolsMarkup({
-                messageId: message.id,
-                downloadUrl: imageUrl,
-                downloadLabel: isGif ? "GIF" : "image",
-                directDownload: true,
-                showMore: true,
-                canDelete: mine,
-              })}
             </div>`).join("")}</div>`
           : "";
         const waveform = validVoiceWaveform(message.waveform) ? message.waveform : Array(voiceWaveformBarCount).fill(0);
@@ -23927,18 +23889,19 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const stickerOnly = Boolean(sticker && !image && !audio && !text);
         const imageOnly = Boolean(image && !audio && !text && !sticker);
         const audioOnly = Boolean(audio && !image && !text && !sticker);
+        const firstImage = mediaItems[0];
         const actions = messageToolsMarkup({
           messageId: message.id,
           copyText: text ? body : "",
-          downloadUrl: audioUrl,
-          downloadLabel: "voice message",
+          downloadUrl: audioUrl || (firstImage && !hasMultipleImages ? firstImage.imageUrl : ""),
+          downloadLabel: audioUrl ? "voice message" : firstImage?.isGif ? "GIF" : "image",
           downloadInMenu: Boolean(audioUrl),
-          directDownload: false,
-          showMore: mine || Boolean(text && image) || (!image && !audio) || Boolean(audioUrl),
+          directDownload: Boolean(firstImage && !audioUrl && !hasMultipleImages),
+          showMore: Boolean(image) || mine || (!image && !audio) || Boolean(audioUrl),
           canEdit: mine && Boolean(text) && !image && !audio && !sticker,
           canDelete: mine,
         });
-        const bubbleActions = text ? actions : image ? "" : actions;
+        const bubbleActions = actions;
         const replyTo = message.replyTo || null;
         const hasReply = Boolean(message.replyToId || replyTo);
         const replyStack = hasReply
