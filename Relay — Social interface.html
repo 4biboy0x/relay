@@ -27880,6 +27880,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             mobileNavScrollTarget = scrollTarget;
             mobileNavLastScrollTop = currentTop;
             if (currentTop <= 10) setMobileNavHidden(false);
+            else if (currentTop > 24
+              && (activeView?.id === "v-profile" || activeView?.id === "v-thread")) {
+              setMobileNavHidden(true);
+            }
             return;
           }
           const delta = currentTop - mobileNavLastScrollTop;
