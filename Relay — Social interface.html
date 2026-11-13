@@ -9249,7 +9249,11 @@
         object-fit: cover;
         background: #08090b;
       }
-      .reel-video { z-index: 1; }
+      .reel-video {
+        z-index: 1;
+        transform: translateZ(0);
+        backface-visibility: hidden;
+      }
       .reel-poster { z-index: 0; }
       .reel-stage::after {
         position: absolute;
@@ -19758,13 +19762,47 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const safeSeconds = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
         return `${Math.floor(safeSeconds / 60)}:${String(safeSeconds % 60).padStart(2, "0")}`;
       }
+      function scheduleReelScrubSeek(progress, state) {
+        if (state.seekFrame || state.completed) return;
+        state.seekFrame = requestAnimationFrame(() => {
+          state.seekFrame = 0;
+          const video = state.video;
+          if (state.completed || video.seeking) return;
+          const targetTime = state.pendingTime;
+          if (!Number.isFinite(targetTime)) return;
+          if (Math.abs(video.currentTime - targetTime) > 0.04) {
+            try {
+              video.currentTime = targetTime;
+            } catch (error) {
+              console.warn("Unable to seek Reel video.", error);
+            }
+            return;
+          }
+          if (state.ending) completeReelScrub(progress, state);
+        });
+      }
+      function completeReelScrub(progress, state) {
+        if (state.completed || state.video.seeking
+          || Math.abs(state.video.currentTime - state.pendingTime) > 0.04) return;
+        state.completed = true;
+        if (state.seekFrame) cancelAnimationFrame(state.seekFrame);
+        state.video.removeEventListener("seeked", state.onSeeked);
+        reelLastTime.set(progress.dataset.reelProgress, state.video.currentTime);
+        reelScrubStates.delete(progress);
+        if (state.wasPlaying) void state.video.play().catch(() => {});
+      }
       function updateReelScrubPosition(progress, video, clientX) {
         const bounds = progress.getBoundingClientRect();
         if (!bounds.width || !Number.isFinite(video.duration) || video.duration <= 0) return;
         const ratio = Math.max(0, Math.min(1, (clientX - bounds.left) / bounds.width));
         const targetTime = ratio * video.duration;
-        video.currentTime = targetTime;
-        reelLastTime.set(progress.dataset.reelProgress, targetTime);
+        const state = reelScrubStates.get(progress);
+        if (state && state.video === video) {
+          state.pendingTime = targetTime;
+          scheduleReelScrubSeek(progress, state);
+        } else if (!video.seeking) {
+          video.currentTime = targetTime;
+        }
         const percent = ratio * 100;
         const current = formatReelTimestamp(targetTime);
         const total = formatReelTimestamp(video.duration);
@@ -19786,17 +19824,30 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
         event.preventDefault();
         event.stopPropagation();
-        const state = { pointerId: event.pointerId, video, wasPlaying: !video.paused && !video.ended };
+        const state = {
+          pointerId: event.pointerId,
+          video,
+          wasPlaying: !video.paused,
+          pendingTime: video.currentTime,
+          seekFrame: 0,
+          ending: false,
+          completed: false,
+          onSeeked: null,
+        };
+        state.onSeeked = () => {
+          if (!state.completed) scheduleReelScrubSeek(progress, state);
+        };
         reelScrubStates.set(progress, state);
+        video.addEventListener("seeked", state.onSeeked);
+        video.pause();
         progress.classList.add("is-scrubbing");
         try { progress.setPointerCapture(event.pointerId); } catch {}
-        if (state.wasPlaying) video.pause();
         updateReelScrubPosition(progress, video, event.clientX);
       }
       function handleReelScrubPointerMove(event) {
         const progress = event.target.closest("[data-reel-progress]");
         const state = progress && reelScrubStates.get(progress);
-        if (!state || state.pointerId !== event.pointerId) return;
+        if (!state || state.pointerId !== event.pointerId || state.ending) return;
         event.preventDefault();
         event.stopPropagation();
         updateReelScrubPosition(progress, state.video, event.clientX);
@@ -19804,17 +19855,16 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function finishReelScrub(event) {
         const progress = event.target.closest("[data-reel-progress]");
         const state = progress && reelScrubStates.get(progress);
-        if (!state || state.pointerId !== event.pointerId) return;
+        if (!state || state.pointerId !== event.pointerId || state.ending) return;
         event.preventDefault();
         event.stopPropagation();
         if (event.type === "pointerup") updateReelScrubPosition(progress, state.video, event.clientX);
-        reelLastTime.set(progress.dataset.reelProgress, state.video.currentTime);
-        reelScrubStates.delete(progress);
+        state.ending = true;
         progress.classList.remove("is-scrubbing");
         if (progress.hasPointerCapture?.(event.pointerId)) {
           try { progress.releasePointerCapture(event.pointerId); } catch {}
         }
-        if (state.wasPlaying) void state.video.play().catch(() => {});
+        scheduleReelScrubSeek(progress, state);
       }
       function handleReelFeedKeyDown(event) {
         const progress = event.target.closest("[data-reel-progress]");
