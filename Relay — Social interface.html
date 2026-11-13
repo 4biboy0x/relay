@@ -12454,17 +12454,21 @@
         }
       }
 
-      /* Compact the Reels controls only on short or very narrow viewports. */
+      /* Keep the short-screen Reels rail close to the standard layout, just tighter. */
       @media (max-height: 620px), (max-width: 360px) {
         .app.reels-active .reel-actions {
           right: 10px !important;
-          bottom: calc(var(--reel-nav-height, 0px) + 14px + env(safe-area-inset-bottom, 0px)) !important;
-          gap: 10px !important;
+          bottom: calc(var(--reel-nav-height, 0px) + 8px + env(safe-area-inset-bottom, 0px)) !important;
+          gap: 5px !important;
+        }
+        .app.reels-active .reel-action {
+          height: 44px !important;
+          min-height: 44px !important;
         }
         .app.reels-active .reel-action-icon {
           width: 36px !important;
-          height: 28px !important;
-          flex: 0 0 28px !important;
+          height: 30px !important;
+          flex: 0 0 30px !important;
         }
         .app.reels-active .reel-action-icon > svg {
           width: 20px !important;
