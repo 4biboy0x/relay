@@ -7001,6 +7001,82 @@
         border-radius: 12px;
         background: var(--surface-2);
       }
+      .reply-preview--combined {
+        display: flex;
+        width: min(100%, 280px);
+        min-width: 0;
+        max-width: 100%;
+        align-items: center;
+        gap: 9px;
+        padding: 0;
+        border: 0;
+        border-radius: 12px;
+        color: inherit;
+        background: transparent;
+        text-align: start;
+      }
+      .reply-preview-thumb {
+        position: relative;
+        display: block;
+        width: 48px;
+        height: 48px;
+        flex: 0 0 48px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--surface-2);
+      }
+      .reply-preview--media .reply-preview-thumb {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        border-radius: inherit;
+      }
+      .reply-preview-thumb img,
+      .reply-preview-thumb video {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .reply-preview-count {
+        position: absolute;
+        right: 3px;
+        bottom: 3px;
+        padding: 2px 5px;
+        border-radius: 999px;
+        color: #fff;
+        background: rgba(0, 0, 0, .72);
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 14px;
+      }
+      .reply-preview-snippet {
+        display: block;
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+        color: var(--text-2);
+        font-size: 13px;
+        line-height: 18px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        unicode-bidi: plaintext;
+      }
+      .reply-bar .reply-preview--combined { width: min(100%, 320px); }
+      .message-row.reply-target-highlight .message-bubble,
+      .message-row.reply-target-highlight .message-image-list {
+        animation: reply-target-pulse 1050ms ease-out;
+      }
+      @keyframes reply-target-pulse {
+        0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 42%, transparent); }
+        35% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 18%, transparent); }
+        100% { box-shadow: 0 0 0 0 transparent; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .message-row.reply-target-highlight .message-bubble,
+        .message-row.reply-target-highlight .message-image-list { animation: none; }
+      }
       .reply-preview--media picture,
       .reply-preview--media img,
       .reply-preview--media video {
@@ -23204,71 +23280,55 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (!message || message.deletedAt || message.isDeleted || message.deleted) {
           return `<span class="reply-preview reply-preview--deleted">Message deleted</span>`;
         }
-        const rawMediaUrl = message.mediaUrl
-          || (Array.isArray(message.attachments) ? message.attachments.find((url) => typeof url === "string" && url) : "")
-          || (Array.isArray(message.mediaUrls) ? message.mediaUrls.find((url) => typeof url === "string" && url) : "")
-          || (isGifMediaUrl(String(message.body || "").trim()) ? String(message.body).trim() : "");
-        const mediaUrl = rawMediaUrl ? mediaHref(rawMediaUrl) : "";
-        let mediaPath = "";
-        let mediaHost = "";
-        if (mediaUrl) {
-          try {
-            const parsedUrl = new URL(mediaUrl);
-            mediaPath = parsedUrl.pathname;
-            mediaHost = parsedUrl.hostname;
-          } catch (error) {
-            console.warn("Could not parse a reply preview media URL.", error);
-          }
-        }
-        const explicitType = ["text", "voice", "image", "gif", "video"].includes(message.type)
-          ? message.type
-          : "";
+        const storedAttachments = Array.isArray(message.attachments)
+          ? message.attachments.filter((url) => typeof url === "string" && url) : [];
+        const storedMediaUrls = Array.isArray(message.mediaUrls)
+          ? message.mediaUrls.filter((url) => typeof url === "string" && url) : [];
+        const rawMediaUrls = storedAttachments.length ? storedAttachments
+          : storedMediaUrls.length ? storedMediaUrls
+            : message.mediaUrl ? [message.mediaUrl]
+              : isGifMediaUrl(String(message.body || "").trim()) ? [String(message.body).trim()] : [];
+        const mediaUrls = rawMediaUrls.map((url) => mediaHref(url)).filter(Boolean);
+        const mediaUrl = mediaUrls[0] || "";
+        const rawText = String(message.text ?? message.body ?? "").trim();
+        const text = rawText && !isGifMediaUrl(rawText) ? rawText : "";
+        const explicitType = ["text", "voice", "image", "gif", "video"].includes(message.type) ? message.type : "";
+        const mediaPath = (() => { try { return mediaUrl ? new URL(mediaUrl).pathname : ""; } catch { return ""; } })();
+        const mediaHost = (() => { try { return mediaUrl ? new URL(mediaUrl).hostname : ""; } catch { return ""; } })();
         const isVideoUrl = /\.(mp4|webm|mov|m4v)$/i.test(mediaPath);
         const isGifVideo = isVideoUrl && /(giphy|tenor)/i.test(mediaHost);
-        const type = explicitType
-          || (message.audioUrl ? "voice"
-            : isGifMediaUrl(mediaUrl) || isGifVideo ? "gif"
-              : isVideoUrl ? "video"
-                : mediaUrl ? "image" : "text");
+        const type = explicitType || (message.audioUrl ? "voice"
+          : isGifMediaUrl(mediaUrl) || isGifVideo ? "gif"
+            : isVideoUrl ? "video" : mediaUrl ? "image" : "text");
         const target = jump && message.id ? ` data-message-jump="${esc(message.id)}"` : "";
         const quoteButton = (modifier, label, content) =>
           `<button type="button" class="reply-preview ${modifier}"${target} aria-label="${esc(label)}">${content}</button>`;
-
         if (type === "voice") {
           const icon = `<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><path d="M2 6v4M5 3v10M8 5v6M11 2v12M14 6v4"/></svg>`;
           return quoteButton("reply-preview--voice", "Voice message", `${icon}<span>Voice message</span>`);
         }
-        if (type === "text") {
-          const text = String(message.text ?? message.body ?? (message.stickerId ? "Sticker" : "")).trim();
-          return quoteButton("reply-preview--text", text || "Message", `<span dir="auto">${esc(text || "Message")}</span>`);
+        if (!mediaUrl) {
+          const snippet = text || (message.stickerId ? "Sticker" : "Message");
+          return quoteButton("reply-preview--text", snippet, `<span dir="auto">${esc(snippet)}</span>`);
         }
-        if (!mediaUrl) return `<span class="reply-preview reply-preview--deleted">Message deleted</span>`;
-
         const thumbnailUrl = message.thumbnailUrl ? mediaHref(message.thumbnailUrl) : "";
-        const gifVideo = type === "gif" && (isVideoUrl || isGifVideo);
         let mediaContent = "";
-        if (gifVideo || type === "video") {
-          const autoplay = gifVideo && !window.matchMedia("(prefers-reduced-motion: reduce)").matches ? " autoplay" : "";
+        if (type === "video" || (type === "gif" && (isVideoUrl || isGifVideo))) {
           const poster = thumbnailUrl ? ` poster="${esc(thumbnailUrl)}"` : "";
-          const motionClass = gifVideo && thumbnailUrl ? "reply-preview-media-motion" : "";
-          mediaContent = `<video class="${motionClass}" src="${esc(mediaUrl)}"${poster}${autoplay} loop muted playsinline preload="metadata"></video>${thumbnailUrl && gifVideo ? `<img class="reply-preview-media-static" src="${esc(thumbnailUrl)}" alt="" loading="lazy" decoding="async" />` : ""}${type === "video" ? `<span class="reply-preview-play" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>` : ""}`;
-        } else if (type === "gif") {
-          const staticSource = thumbnailUrl
-            ? `<source media="(prefers-reduced-motion: reduce)" srcset="${esc(thumbnailUrl)}" />`
-            : "";
-          const gifUrl = normalizeGiphyGifUrl(mediaUrl) || mediaUrl;
-          mediaContent = `<picture>${staticSource}<img src="${esc(gifUrl)}" alt="GIF preview" loading="lazy" decoding="async" /></picture>`;
+          mediaContent = `<video src="${esc(mediaUrl)}"${poster} muted playsinline preload="metadata"></video>`;
         } else {
-          mediaContent = `<img src="${esc(thumbnailUrl || mediaUrl)}" alt="${type === "video" ? "Video preview" : "Image preview"}" loading="lazy" decoding="async" />${type === "video" ? `<span class="reply-preview-play" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>` : ""}`;
+          const imageUrl = type === "gif" ? (normalizeGiphyGifUrl(mediaUrl) || mediaUrl) : (thumbnailUrl || mediaUrl);
+          mediaContent = `<img src="${esc(imageUrl)}" alt="" loading="lazy" decoding="async" />`;
         }
+        const extraCount = mediaUrls.length > 1 ? `<span class="reply-preview-count" aria-label="${mediaUrls.length - 1} more images">+${mediaUrls.length - 1}</span>` : "";
         const gifBadge = type === "gif" ? `<span class="reply-preview-gif-badge">GIF</span>` : "";
-        return quoteButton(
-          `reply-preview--media reply-preview--${type}${gifVideo ? " reply-preview-gif" : ""}`,
-          `${type === "gif" ? "GIF" : type === "video" ? "Video" : "Image"} message`,
-          `${mediaContent}${gifBadge}`,
-        );
+        const thumbnail = `<span class="reply-preview-thumb">${mediaContent}${extraCount}${gifBadge}</span>`;
+        const label = (type === "gif" ? "GIF" : type === "video" ? "Video" : "Image") + " message"
+          + (mediaUrls.length > 1 ? ", " + mediaUrls.length + " images" : "") + (text ? ": " + text : "");
+        if (text) return quoteButton("reply-preview--combined", label, `${thumbnail}<span class="reply-preview-snippet" dir="auto">${esc(text)}</span>`);
+        return quoteButton("reply-preview--media", label, thumbnail);
       }
-      function renderMessageReplyPreview() {
+            function renderMessageReplyPreview() {
         const preview = $("#messageReplyPreview");
         const target = selectedMessageReply;
         if (!target || target.conversationId !== activeConversation?.id) {
@@ -23302,29 +23362,26 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const conversationId = activeConversation?.id;
         if (!conversationId) return;
         const loadGeneration = activeConversationLoadGeneration;
-        let target = $$(".message-bubble", $("#chatLog")).find((bubble) => bubble.dataset.messageId === messageId);
+        let target = $(".message-bubble", $("#chatLog")).find((bubble) => bubble.dataset.messageId === messageId);
         if (!target && activeConversationCursor) {
           target = await loadConversationUntilMessage(conversationId, messageId, loadGeneration);
         }
         if (!target || loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversationId) return;
+        const row = target.closest(".message-row") || target;
         const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
-        target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
-        if (!reduceMotion) {
-          const log = $("#chatLog");
-          await new Promise((resolve) => {
-            let timer;
-            const finish = () => {
-              clearTimeout(timer);
-              log.removeEventListener("scrollend", finish);
-              resolve();
-            };
-            log.addEventListener("scrollend", finish, { once: true });
-            timer = setTimeout(finish, 700);
-          });
-        }
-        if (reduceMotion || loadGeneration !== activeConversationLoadGeneration
-          || activeConversation?.id !== conversationId || !target.isConnected) return;
-        triggerMessageSearchHighlight(target);
+        row.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+        triggerReplyTargetHighlight(row);
+      }
+      function triggerReplyTargetHighlight(row) {
+        if (!row) return;
+        clearTimeout(messageSearchHighlightTimers.get(row));
+        row.classList.remove("reply-target-highlight");
+        void row.offsetWidth;
+        row.classList.add("reply-target-highlight");
+        messageSearchHighlightTimers.set(row, setTimeout(() => {
+          row.classList.remove("reply-target-highlight");
+          messageSearchHighlightTimers.delete(row);
+        }, 1100));
       }
       function messageReactionsMarkup(message) {
         const reactions = Array.isArray(message.reactions) ? message.reactions : [];
