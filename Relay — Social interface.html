@@ -11392,6 +11392,7 @@
         display: flex;
         min-width: 0;
         min-height: 0;
+        height: 100vh;
         height: 100dvh;
         overflow: hidden;
         flex-direction: column;
@@ -11500,6 +11501,7 @@
       @media (max-width: 640px) {
         .app.messages-active > main,
         .app.thread-active > main {
+          height: calc(100vh - var(--mobile-nav-height, 60px));
           height: calc(100dvh - var(--mobile-nav-height, 60px));
           min-height: 0;
           padding-bottom: 0;
@@ -13202,6 +13204,8 @@
       @media (max-width: 767px) {
         .app.messages-active .chat-panel {
           position: relative;
+          height: 100%;
+          min-height: 0;
           overflow: hidden;
         }
         .app.messages-active .chat-scroll-area {
@@ -13213,12 +13217,12 @@
         .app.messages-active .chat-log {
           height: 100%;
           min-height: 0;
-          padding-bottom: 78px;
+          padding-bottom: calc(78px + var(--chat-keyboard-inset, 0px));
           box-sizing: border-box;
         }
         .app.messages-active .chat-compose {
           position: absolute;
-          bottom: 0;
+          bottom: var(--chat-keyboard-inset, 0px);
           left: 0;
           right: 0;
           z-index: 20;
@@ -23559,7 +23563,32 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         selectedMessageReply = { conversationId: message.conversationId, message };
         renderMessageReplyPreview();
         focusInput($("#messageInput"), { isTypingMainScreen: true, preventScroll: true });
+        requestAnimationFrame(syncMobileChatKeyboardViewport);
       }
+      function syncMobileChatKeyboardViewport() {
+        const mobile = window.matchMedia("(max-width: 767px)").matches;
+        const panel = $("#chatPanel") || $(".app.messages-active .chat-panel");
+        if (!panel) return;
+        if (!mobile) {
+          panel.style.removeProperty("--chat-keyboard-inset");
+          return;
+        }
+        const viewport = window.visualViewport;
+        const keyboardInset = viewport
+          ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
+          : 0;
+        panel.style.setProperty("--chat-keyboard-inset", `${keyboardInset}px`);
+      }
+      window.addEventListener("resize", syncMobileChatKeyboardViewport, { passive: true });
+      window.visualViewport?.addEventListener("resize", syncMobileChatKeyboardViewport, { passive: true });
+      window.visualViewport?.addEventListener("scroll", syncMobileChatKeyboardViewport, { passive: true });
+      $("#messageInput")?.addEventListener("focus", () => requestAnimationFrame(syncMobileChatKeyboardViewport));
+      $("#messageInput")?.addEventListener("blur", () => {
+        requestAnimationFrame(() => {
+          if (!$("#messageInput")?.matches(":focus")) syncMobileChatKeyboardViewport();
+        });
+      });
+      syncMobileChatKeyboardViewport();
       function clearMessageReplyTarget(conversationId = activeConversation?.id) {
         if (selectedMessageReply?.conversationId !== conversationId) return;
         selectedMessageReply = null;
