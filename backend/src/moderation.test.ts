@@ -9,7 +9,7 @@ test("blocks English and French profanity including common obfuscations", () => 
 });
 
 test("normalizes Arabic diacritics, tatweel and alef variants", () => {
-  for (const value of ["كُسْـم", "قحــــبة", "آلـقحبة"]) {
+  for (const value of ["كُسْـم", "قحــــبة", "إيري"]) {
     assert.equal(containsProfanity(value), true, value);
   }
 });
