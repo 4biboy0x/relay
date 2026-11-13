@@ -8,7 +8,7 @@ export const BANNED_WORDS = [
   "bullshit", "crap", "cunt", "damn", "dick", "dickhead", "dildo",
   "douche", "douchebag", "fag", "faggot", "fuck", "fucker", "fuckers",
   "fucking", "motherfucker", "motherfuckers", "nigger", "nigga", "piss",
-  "pissed", "prick", "pussy", "shit", "shitty", "slut", "twat",
+  "pissed", "prick", "pussy", "retard", "retarded", "shit", "shitty", "slut", "twat",
   "whore", "wanker", "jackass", "dumbass", " dipshit", "jackhole",
   // French (accents are removed during normalization)
   " putain", "merde", "connard", "connasse", "salope", "pute", "encule",
@@ -19,9 +19,8 @@ export const BANNED_WORDS = [
   "كس", "كسم", "كسي", "كسك", "قحبة", "قحاب", "شرموط", "شرموطة",
   "شراميط", "متناك", "متناكة", "منيوك", "منيوكة", "نيك", "ينك",
   "ناك", "طيز", "زب", "زبي", "زبر", "قواد", "ديوث", "خول",
-  "خنيث", "عرص", "عرصة", "كلب", "كلبة", "حمار", "بهيم",
-  "منحط", "وسخ", "وسخة", "حقير", "حقيرة", "سافل", "سافلة",
-  "ابن", "شرموطة", "معرص", "مأحون", "ممحون", "ايري", "اير",
+  "خنيث", "عرص", "عرصة", "وسخ", "وسخة", "حقير", "حقيرة", "سافل", "سافلة",
+  "معرص", "مأحون", "ممحون", "ايري", "اير",
   "يلعن", "لعنة", "خرا", "خراء", "زق", "تفو", "قذر", "قذرة",
   "منيك", "منيوك", "مخنث", "لوطي", "سكس", "كسختك", "كحبة",
 ] as const;
