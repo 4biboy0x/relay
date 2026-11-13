@@ -21785,7 +21785,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             const topicResult = await api("/topics");
             if (!isCurrentRequest()) return;
             await removeAppendSkeleton?.();
-            const html = `<section class="explore-topics"><h2>Topics</h2><div class="explore-topic-list">${topicResult.items.map((topic) => `<div class="explore-topic-row"><button class="explore-topic-name" type="button" data-topic-open="${esc(topic.slug)}">${esc(topic.name)}</button><button class="explore-topic-follow" type="button" data-topic-follow="${esc(topic.slug)}" data-following="${topic.following}" aria-label="${topic.following ? "Unfollow" : "Follow"} ${esc(topic.name)}" aria-pressed="${topic.following}">${topic.following ? "✓" : "+"}</button></div>`).join("")}</div></section>`;
+            const html = `<section class="explore-topics"><h2>Topics</h2><div class="explore-topic-list">${topicResult.items.map((topic) => `<div class="explore-topic-row"><button class="explore-topic-name" type="button" data-topic-open="${esc(topic.slug)}">${esc(topic.name)}</button><button class="explore-topic-follow" type="button" data-topic-follow="${esc(topic.slug)}" data-following="${topic.following}" aria-label="${topic.following ? "Unfollow" : "Follow"} ${esc(topic.name)}" aria-pressed="${topic.following}">${topic.following ? '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>' : "+"}</button></div>`).join("")}</div></section>`;
             await commitExploreContent(html || emptyState("No topics yet.", "Check back later."), html ? "success" : "empty", requestStatusKey, isCurrentRequest, !cached);
             exploreCursor = null;
           } else if (requestTab === "trending") {
@@ -27992,7 +27992,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             topicFollow.dataset.following = String(!following);
             topicFollow.setAttribute("aria-pressed", String(!following));
             topicFollow.setAttribute("aria-label", `${following ? "Follow" : "Unfollow"} ${topicFollow.closest(".explore-topic-row")?.querySelector(".explore-topic-name")?.textContent || "topic"}`);
-            topicFollow.textContent = following ? "+" : "✓";
+            topicFollow.innerHTML = following ? '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>' : "+";
           } catch (error) {
             toast(error.message || "Could not update topic.");
           }
