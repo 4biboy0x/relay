@@ -12453,6 +12453,42 @@
           flex: 1 1 0% !important;
         }
       }
+
+      /* Compact the Reels controls only on short or very narrow viewports. */
+      @media (max-height: 620px), (max-width: 360px) {
+        .app.reels-active .reel-actions {
+          right: 10px !important;
+          bottom: calc(var(--reel-nav-height, 0px) + 14px + env(safe-area-inset-bottom, 0px)) !important;
+          gap: 10px !important;
+        }
+        .app.reels-active .reel-action-icon {
+          width: 36px !important;
+          height: 28px !important;
+          flex: 0 0 28px !important;
+        }
+        .app.reels-active .reel-action-icon > svg {
+          width: 20px !important;
+          height: 20px !important;
+        }
+        .app.reels-active .reel-copy {
+          right: auto !important;
+          bottom: calc(var(--reel-nav-height, 0px) + 14px + env(safe-area-inset-bottom, 0px)) !important;
+          left: 12px !important;
+          max-width: calc(100% - 64px) !important;
+        }
+      }
+
+      /* The New message FAB must never win over the phone-only breakpoint
+         through the more-specific body:has(inbox) visibility rule. */
+      @media (min-width: 768px) {
+        .mobile-compose-fab,
+        .app.messages-active .mobile-compose-fab,
+        body:has(.app.messages-active .messages-layout:not(.has-conversation)) .mobile-compose-fab {
+          display: none !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
+        }
+      }
 </style>
   </head>
   <body>
