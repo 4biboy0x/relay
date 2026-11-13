@@ -15432,7 +15432,7 @@
         $("#composerTopicOptions").innerHTML = composerTopics.map((topic) =>
           `<button class="composer-topic-option" type="button" data-composer-topic="${esc(topic.slug)}" aria-pressed="${selected.has(topic.slug)}" ${selected.size >= 3 && !selected.has(topic.slug) ? "disabled" : ""}>${esc(topic.name)}</button>`
         ).join("");
-        $("#composerTopicsCounter").textContent = \`${selectedPostTopics.length}/3\`;
+        $("#composerTopicsCounter").textContent = `${selectedPostTopics.length}/3`;
         const selectedRow = $("#composerSelectedTopics");
         selectedRow.innerHTML = selectedPostTopics.map((slug) => {
           const topic = composerTopics.find((item) => item.slug === slug);
