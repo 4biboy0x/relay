@@ -28874,7 +28874,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           return;
         }
         if (e.target.closest("[data-topic-back]")) {
-          exploreTab = "trending";
+          exploreTab = "topics";
+          exploreSearchFilter = "Top";
+          $("#exploreSearch").value = "";
+          lastExploreSearch = "";
+          pendingExploreSearch = null;
           go("explore");
           return;
         }
