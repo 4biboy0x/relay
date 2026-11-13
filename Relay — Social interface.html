@@ -11108,7 +11108,7 @@
 
     
       /* Mobile Messages must show one pane at a time: inbox OR active chat. */
-      @media (max-width: 767px) {
+      @media (max-width: 859px) {
         .app.messages-active .messages-layout {
           display: block;
           height: 100%;
@@ -11162,7 +11162,7 @@
           display: inline-flex;
         }
       }
-      @media (min-width: 768px) {
+      @media (min-width: 860px) {
         .inbox-compose-button {
           display: inline-flex;
         }
@@ -11701,7 +11701,45 @@
           flex-basis: 380px;
         }
       }
-</style>
+
+      /* Tablet and compact-screen layout fixes. Keep the wide Home/Profile shell unchanged. */
+      @media (max-width: 1099px) {
+        .app > aside[aria-label="Suggestions"] {
+          display: none !important;
+        }
+      }
+      .app.messages-active > aside[aria-label="Suggestions"] {
+        display: none !important;
+      }
+      @media (min-width: 860px) and (max-width: 1199px) {
+        .app.messages-active .messages-layout {
+          grid-template-columns: 280px minmax(0, 1fr);
+        }
+        .app.messages-active .conversation-sidebar {
+          width: 280px;
+          flex: 0 0 280px;
+          flex-shrink: 0;
+        }
+      }
+      @media (min-width: 1200px) {
+        .app.messages-active .messages-layout {
+          grid-template-columns: 360px minmax(0, 1fr);
+        }
+        .app.messages-active .conversation-sidebar {
+          width: 360px;
+          flex: 0 0 360px;
+          flex-shrink: 0;
+        }
+      }
+      .app.messages-active .chat-compose-field {
+        min-width: 0;
+        flex: 1;
+      }
+      .app.messages-active #messageInput {
+        min-width: 0;
+        flex: 1;
+      }
+    </style>
   </head>
   <body>
     <div class="app-splash" id="appSplash" role="status" aria-label="Loading Relay">
