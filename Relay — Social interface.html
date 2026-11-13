@@ -10406,10 +10406,101 @@
       .app.reels-active .reel-stage-control.is-visible { opacity: .95; pointer-events: auto; }
       .app.reels-active .reel-stage-control svg { width: 18px; height: 18px; }
       .app.reels-active .reel-progress-track {
-        z-index: 8; bottom: var(--reel-nav-height, 0px) !important; height: 2px !important;
-        background: rgba(255,255,255,.34) !important;
+        z-index: 8;
+        position: absolute !important;
+        inset: auto 0 var(--reel-nav-height, 0px) !important;
+        height: 24px !important;
+        overflow: visible !important;
+        background: transparent !important;
+        cursor: pointer;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
       }
-      .app.reels-active .reel-progress-track > span { background: #fff !important; }
+      .app.reels-active .reel-progress-track::before {
+        content: "";
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        height: 2.5px;
+        background: rgba(255,255,255,.3);
+        transition: height 180ms cubic-bezier(.22, 1, .36, 1);
+        pointer-events: none;
+      }
+      .app.reels-active .reel-progress-fill {
+        position: absolute;
+        z-index: 1;
+        right: auto;
+        bottom: 0;
+        left: 0;
+        width: 0;
+        height: 2.5px;
+        background: #fff !important;
+        transition: height 180ms cubic-bezier(.22, 1, .36, 1);
+        pointer-events: none;
+      }
+      .app.reels-active .reel-progress-thumb {
+        position: absolute;
+        z-index: 3;
+        bottom: -4.5px;
+        left: 0;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #fff;
+        opacity: 0;
+        transform: translateX(-50%) scale(0);
+        transform-origin: center;
+        transition: transform 180ms cubic-bezier(.22, 1, .36, 1), opacity 120ms ease;
+        pointer-events: none;
+      }
+      .app.reels-active .reel-progress-time {
+        position: absolute;
+        z-index: 4;
+        bottom: 21px;
+        left: 0;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(0,0,0,.65);
+        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(8px);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.2;
+        white-space: nowrap;
+        opacity: 0;
+        transform: translate(-50%, 4px);
+        transition: opacity 140ms ease, transform 180ms cubic-bezier(.22, 1, .36, 1);
+        pointer-events: none;
+      }
+      .app.reels-active .reel-progress-track:hover::before,
+      .app.reels-active .reel-progress-track:focus-visible::before,
+      .app.reels-active .reel-progress-track.is-scrubbing::before {
+        height: 6px;
+      }
+      .app.reels-active .reel-progress-track:hover .reel-progress-fill,
+      .app.reels-active .reel-progress-track:focus-visible .reel-progress-fill,
+      .app.reels-active .reel-progress-track.is-scrubbing .reel-progress-fill {
+        height: 6px;
+      }
+      .app.reels-active .reel-progress-track:hover .reel-progress-thumb,
+      .app.reels-active .reel-progress-track:focus-visible .reel-progress-thumb,
+      .app.reels-active .reel-progress-track.is-scrubbing .reel-progress-thumb {
+        opacity: 1;
+        transform: translateX(-50%) scale(1);
+      }
+      .app.reels-active .reel-progress-track.is-scrubbing .reel-progress-time {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .app.reels-active .reel-progress-track::before,
+        .app.reels-active .reel-progress-fill,
+        .app.reels-active .reel-progress-thumb,
+        .app.reels-active .reel-progress-time { transition: none !important; }
+      }
       .app.reels-active .reel-play-overlay {
         width: 56px; height: 56px; background: rgba(0,0,0,.3);
         -webkit-backdrop-filter: none; backdrop-filter: none;
@@ -14238,6 +14329,7 @@
       let reelViewSending = new Set();
       const reelWatchMs = new Map();
       const reelLastTime = new Map();
+      const reelScrubStates = new WeakMap();
       const reelResumeWindowMs = 5 * 60_000;
       const reelLastGlobalKey = () => `relay_last_global_reel:${currentUser?.id || "anonymous"}`;
       function readLastGlobalReel() {
@@ -16915,7 +17007,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               ${caption ? `<p class="reel-caption is-clamped" data-reel-caption="${esc(reel.id)}">${esc(caption)}${caption.length > 40 ? ` <button type="button" class="reel-caption-more" data-reel-caption-more="${esc(reel.id)}">more</button>` : ""}</p>` : ""}
               <span class="sr">${formatReelCount(reel.counts?.views)} views</span>
             </div>
-            <div class="reel-progress-track" data-reel-progress="${esc(reel.id)}" role="progressbar" aria-label="Reel playback progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0"><span></span></div>
+            <div class="reel-progress-track" data-reel-progress="${esc(reel.id)}" role="slider" aria-label="Reel playback progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0:00" tabindex="0"><span class="reel-progress-fill"></span><span class="reel-progress-thumb" aria-hidden="true"></span><span class="reel-progress-time" aria-hidden="true">0:00 / 0:00</span></div>
           </div>
           <div class="reel-actions" aria-label="Reel actions">
             ${reelActionMarkup(reel, "like")}
@@ -17609,7 +17701,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (progress && Number.isFinite(video.duration) && video.duration > 0) {
           const value = Math.min(100, Math.round(video.currentTime / video.duration * 100));
           progress.setAttribute("aria-valuenow", String(value));
-          progress.firstElementChild.style.width = `${value}%`;
+          progress.setAttribute("aria-valuetext", `${formatReelTimestamp(video.currentTime)} / ${formatReelTimestamp(video.duration)}`);
+          progress.querySelector(".reel-progress-fill").style.width = `${value}%`;
+          progress.querySelector(".reel-progress-thumb").style.left = `${value}%`;
+          if (!reelScrubStates.has(progress)) {
+            progress.querySelector(".reel-progress-time").textContent = `${formatReelTimestamp(video.currentTime)} / ${formatReelTimestamp(video.duration)}`;
+          }
         }
         const previous = reelLastTime.get(reel.id);
         if (previous !== undefined) {
@@ -19642,6 +19739,75 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           reelLastTouchTap.set(stage, { time: now, x: event.clientX, y: event.clientY });
         }
       }
+      function formatReelTimestamp(seconds) {
+        const safeSeconds = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
+        return `${Math.floor(safeSeconds / 60)}:${String(safeSeconds % 60).padStart(2, "0")}`;
+      }
+      function updateReelScrubPosition(progress, video, clientX) {
+        const bounds = progress.getBoundingClientRect();
+        if (!bounds.width || !Number.isFinite(video.duration) || video.duration <= 0) return;
+        const ratio = Math.max(0, Math.min(1, (clientX - bounds.left) / bounds.width));
+        video.currentTime = ratio * video.duration;
+        const percent = ratio * 100;
+        const current = formatReelTimestamp(video.currentTime);
+        const total = formatReelTimestamp(video.duration);
+        progress.setAttribute("aria-valuenow", String(Math.round(percent)));
+        progress.setAttribute("aria-valuetext", `${current} / ${total}`);
+        progress.querySelector(".reel-progress-fill").style.width = `${percent}%`;
+        progress.querySelector(".reel-progress-thumb").style.left = `${percent}%`;
+        progress.querySelector(".reel-progress-time").textContent = `${current} / ${total}`;
+      }
+      function handleReelScrubPointerDown(event) {
+        const progress = event.target.closest("[data-reel-progress]");
+        if (!progress || (event.pointerType === "mouse" && event.button !== 0)) return;
+        const reelId = progress.dataset.reelProgress;
+        const stage = $(`[data-reel-stage="${CSS.escape(reelId)}"]`, $("#reelFeed"));
+        const video = stage?.querySelector(".reel-video");
+        if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const state = { pointerId: event.pointerId, video, wasPlaying: !video.paused && !video.ended };
+        reelScrubStates.set(progress, state);
+        progress.classList.add("is-scrubbing");
+        try { progress.setPointerCapture(event.pointerId); } catch {}
+        if (state.wasPlaying) video.pause();
+        updateReelScrubPosition(progress, video, event.clientX);
+      }
+      function handleReelScrubPointerMove(event) {
+        const progress = event.target.closest("[data-reel-progress]");
+        const state = progress && reelScrubStates.get(progress);
+        if (!state || state.pointerId !== event.pointerId) return;
+        event.preventDefault();
+        event.stopPropagation();
+        updateReelScrubPosition(progress, state.video, event.clientX);
+      }
+      function finishReelScrub(event) {
+        const progress = event.target.closest("[data-reel-progress]");
+        const state = progress && reelScrubStates.get(progress);
+        if (!state || state.pointerId !== event.pointerId) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.type === "pointerup") updateReelScrubPosition(progress, state.video, event.clientX);
+        reelScrubStates.delete(progress);
+        progress.classList.remove("is-scrubbing");
+        if (progress.hasPointerCapture?.(event.pointerId)) {
+          try { progress.releasePointerCapture(event.pointerId); } catch {}
+        }
+        if (state.wasPlaying) void state.video.play().catch(() => {});
+      }
+      function handleReelFeedKeyDown(event) {
+        const progress = event.target.closest("[data-reel-progress]");
+        if (!progress || !["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+        const reelId = progress.dataset.reelProgress;
+        const stage = $(`[data-reel-stage="${CSS.escape(reelId)}"]`, $("#reelFeed"));
+        const video = stage?.querySelector(".reel-video");
+        if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + (event.key === "ArrowRight" ? 4 : -4)));
+        const bounds = progress.getBoundingClientRect();
+        updateReelScrubPosition(progress, video, bounds.left + bounds.width * (video.currentTime / video.duration));
+      }
       function handleReelFeedClick(event) {
         const create = event.target.closest("[data-reel-create]");
         if (create) {
@@ -19694,16 +19860,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             openReelComments(action.dataset.reelId, action);
           } else if (action.dataset.reelAction === "share") void shareReel(action.dataset.reelId, action);
           else toggleReelRelation(action);
-          return;
-        }
-        const progress = event.target.closest("[data-reel-progress]");
-        if (progress) {
-          const reelId = progress.dataset.reelProgress;
-          const stage = $(`[data-reel-stage="${CSS.escape(reelId)}"]`, $("#reelFeed"));
-          const video = stage?.querySelector(".reel-video");
-          if (!video || !Number.isFinite(video.duration) || !video.duration) return;
-          const bounds = progress.getBoundingClientRect();
-          video.currentTime = Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width)) * video.duration;
           return;
         }
         const stage = event.target.closest("[data-reel-stage]");
@@ -19876,6 +20032,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             event.stopImmediatePropagation();
           }, true);
         });
+        $("#reelFeed").addEventListener("pointerdown", handleReelScrubPointerDown);
+        $("#reelFeed").addEventListener("pointermove", handleReelScrubPointerMove);
+        $("#reelFeed").addEventListener("pointerup", finishReelScrub);
+        $("#reelFeed").addEventListener("pointercancel", finishReelScrub);
+        $("#reelFeed").addEventListener("keydown", handleReelFeedKeyDown);
         $("#reelFeed").addEventListener("click", handleReelFeedClick);
         $("#reelFeed").addEventListener("dblclick", handleReelFeedDoubleClick);
         $("#reelFeed").addEventListener("pointerup", handleReelFeedPointerUp);
