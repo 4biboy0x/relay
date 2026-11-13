@@ -6950,7 +6950,7 @@
       }
       .reply-preview--text {
         width: fit-content;
-        min-width: max-content;
+        min-width: 0;
         max-width: min(240px, 72vw);
         white-space: nowrap;
         overflow: hidden;
@@ -23988,9 +23988,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const rows = [...container.children].filter((element) => element.matches(".message-row"));
         if (rows.length < 2) return;
         const sorted = rows.map((row, index) => ({ row, index, timestamp: messageRowTimestamp(row) }))
-          .sort((a, b) => a.timestamp === null || b.timestamp === null
-            ? a.index - b.index
-            : a.timestamp - b.timestamp || a.index - b.index)
+          .sort((a, b) => (a.timestamp ?? Number.POSITIVE_INFINITY) - (b.timestamp ?? Number.POSITIVE_INFINITY)
+            || a.index - b.index)
           .map(({ row }) => row);
         const marker = document.createComment("message-order");
         container.insertBefore(marker, rows[0]);
