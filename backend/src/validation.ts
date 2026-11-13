@@ -87,6 +87,7 @@ export const postSchema = z.object({
   mediaAlt: z.string().transform(strippedControlCharacters).transform((value) => value.slice(0, 1000)).optional(),
   location: z.string().trim().min(1).max(80).optional(),
   replyToId: z.string().cuid().optional(),
+  topics: z.array(z.string().regex(/^[a-z0-9-]{2,40}$/)).max(3).optional(),
 });
 
 export const updatePostSchema = z.object({
@@ -95,6 +96,7 @@ export const updatePostSchema = z.object({
   mediaCrop: mediaCropSchema.nullable().optional(),
   mediaAlt: z.string().transform(strippedControlCharacters).transform((value) => value.slice(0, 1000)).nullable().optional(),
   location: z.string().trim().min(1).max(80).nullable().optional(),
+  topics: z.array(z.string().regex(/^[a-z0-9-]{2,40}$/)).max(3).optional(),
 });
 
 export const profileSchema = z.object({
