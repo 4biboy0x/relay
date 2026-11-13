@@ -17,7 +17,7 @@ test("blocks common English and French profanity including obfuscations", () => 
 test("normalizes Arabic diacritics, tatweel and alef variants", () => {
   for (const value of [
     "كُسْـم", "قحــــبة", "إيري", "شرمــــوطة", "منيوووك",
-    "طيزز", "عرص", "خول",
+    "طيززز", "عرص", "خول",
   ]) {
     assert.equal(containsProfanity(value), true, value);
   }
