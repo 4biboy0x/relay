@@ -14214,6 +14214,18 @@
       </section>
     </div>
 
+    <div class="composer-topics-modal" id="composerTopicsModal" hidden>
+      <section class="composer-topics-card" role="dialog" aria-modal="true" aria-labelledby="composerTopicsTitle">
+        <header class="composer-topics-header">
+          <h2 class="composer-topics-title" id="composerTopicsTitle">Topics</h2>
+          <span class="composer-topics-counter" id="composerTopicsCounter">0/3</span>
+          <button class="composer-topics-done" id="composerTopicsDone" type="button">Done</button>
+        </header>
+        <div class="composer-topics-body">
+          <div class="composer-topic-options" id="composerTopicOptions" role="group" aria-label="Topics"></div>
+        </div>
+      </section>
+    </div>
     <script>
       const isTouchDevice = () => window.matchMedia("(hover: none) and (pointer: coarse)").matches;
       const origShowModal = HTMLDialogElement.prototype.showModal;
@@ -30173,17 +30185,5 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (initialLegalTab) openLegal(initialLegalTab, null, true);
       });
     </script>
-    <div class="composer-topics-modal" id="composerTopicsModal" hidden>
-      <section class="composer-topics-card" role="dialog" aria-modal="true" aria-labelledby="composerTopicsTitle">
-        <header class="composer-topics-header">
-          <h2 class="composer-topics-title" id="composerTopicsTitle">Topics</h2>
-          <span class="composer-topics-counter" id="composerTopicsCounter">0/3</span>
-          <button class="composer-topics-done" id="composerTopicsDone" type="button">Done</button>
-        </header>
-        <div class="composer-topics-body">
-          <div class="composer-topic-options" id="composerTopicOptions" role="group" aria-label="Topics"></div>
-        </div>
-      </section>
-    </div>
   </body>
 </html>
