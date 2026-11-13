@@ -25082,6 +25082,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           .sort(([, a], [, b]) => (a.displayName || a.handle).localeCompare(b.displayName || b.handle))
           .map(() => `<div class="typing-line" role="status" aria-label="Message is being typed"><span class="typing-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>`)
           .join("");
+        // Keep the live typing indicator after the message stream, above the floating composer.
+        status.remove();
+        $("#chatLog").append(status);
       }
       const autocompleteMenu = $("#autocompleteMenu");
       const globalSearchDropdown = $("#globalSearchDropdown");
