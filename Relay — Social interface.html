@@ -23702,7 +23702,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           downloadLabel: "voice message",
           downloadInMenu: Boolean(audioUrl),
           directDownload: false,
-          showMore: mine || Boolean(text && image) || (!image && !audio),
+          showMore: mine || Boolean(text && image) || (!image && !audio) || Boolean(audioUrl),
           canEdit: mine && Boolean(text) && !image && !audio && !sticker,
           canDelete: mine,
         });
