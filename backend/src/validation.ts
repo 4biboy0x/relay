@@ -135,7 +135,7 @@ export const messageSchema = z.object({
     width: z.number().int().min(1).max(10000),
     height: z.number().int().min(1).max(10000),
   })).max(4).optional(),
-  audioUrl: z.string().startsWith("/uploads/").max(2048).nullable().optional(),
+  audioUrl: mediaUrlSchema.nullable().optional(),
   waveform: z.array(z.number().int().min(0).max(100)).min(40).max(64).optional(),
   stickerId: z.string().trim().regex(/^[a-z0-9_-]{1,64}$/).nullable().optional(),
   replyToId: z.string().cuid().nullable().optional(),
