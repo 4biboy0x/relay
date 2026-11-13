@@ -6757,7 +6757,8 @@
       .message-main {
         display: flex;
         min-width: 0;
-        width: 100%;
+        position: relative;
+        width: fit-content;
         max-width: 100%;
         flex: 0 1 auto;
         flex-direction: column;
@@ -6779,10 +6780,10 @@
         max-width: 100%;
       }
       @media (max-width: 767px) {
-        .message-bubble.text-message { max-width: 72%; }
-        .message-row > .message-tools { display: none !important; }
+        .message-bubble.text-message { max-width: min(72cqw, 420px); }
+        .message-main > .message-tools { display: none !important; }
       }
-      .message-row > .message-tools {
+      .message-main > .message-tools {
         position: absolute;
         top: 50%;
         left: calc(100% + 8px);
@@ -6790,13 +6791,13 @@
         flex: none;
         margin: 0;
       }
-      .message-row.mine > .message-tools {
+      .message-row.mine > .message-main > .message-tools {
         left: auto;
         right: calc(100% + 8px);
       }
       .message-bubble.text-message {
         width: fit-content;
-        max-width: min(420px, 100%);
+        max-width: min(72cqw, 420px);
       }
       .message-row:empty { display: none; }
       .message-row.is-preparing-layout {
@@ -7064,9 +7065,9 @@
       .message-row:hover:not(:has(.message-bubble:hover, .message-image-item:hover, .message-attachment-group:hover)) > .message-tools,
       .message-row:hover:not(:has(.message-bubble:hover, .message-image-item:hover, .message-attachment-group:hover)) > .message-bubble > .message-tools,
       .message-row:hover:not(:has(.message-bubble:hover, .message-image-item:hover, .message-attachment-group:hover)) > .message-attachment-group > .message-tools,
-      .message-row:hover > .message-tools,
-      .message-row:focus-within > .message-tools,
-      .message-row.tools-visible > .message-tools,
+      .message-row:hover > .message-main > .message-tools,
+      .message-row:focus-within > .message-main > .message-tools,
+      .message-row.tools-visible > .message-main > .message-tools,
       .message-tools:focus-within {
         opacity: 1;
         pointer-events: auto;
@@ -7178,7 +7179,7 @@
       .message-bottom-sheet-actions button.is-destructive { color: var(--like); }
       @media (min-width: 768px) {
         .message-bottom-sheet-backdrop { display: none !important; }
-        .message-bubble.text-message { max-width: min(420px, 100%); }
+        .message-bubble.text-message { max-width: min(72cqw, 420px); }
       }
       .message-action-menu {
         position: fixed;
@@ -23952,7 +23953,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const rowActions = hasMultipleImages && !audio && !sticker
           ? messageGroupToolsMarkup({ messageId: message.id, copyText: text ? body : "", canDelete: mine })
           : bubbleActions;
-        return `<div class="message-row${mine ? " mine" : ""}${reactions ? " has-reactions" : ""}" data-message-row data-conversation-id="${esc(message.conversationId)}" data-sender-id="${esc(message.senderId || "")}" data-reply-to-id="${esc(message.replyToId || replyTo?.id || "")}"><div class="message-main">${replyStack}${messageContent}</div>${rowActions}</div>`;
+        return `<div class="message-row${mine ? " mine" : ""}${reactions ? " has-reactions" : ""}" data-message-row data-conversation-id="${esc(message.conversationId)}" data-sender-id="${esc(message.senderId || "")}" data-reply-to-id="${esc(message.replyToId || replyTo?.id || "")}"><div class="message-main">${replyStack}${messageContent}${rowActions}</div></div>`;
       }
       function updateMessageRowSpacing(container = $("#chatLog")) {
         const rows = [...container.children].filter((element) => element.matches(".message-row"));
