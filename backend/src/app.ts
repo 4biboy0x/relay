@@ -450,6 +450,7 @@ const postInclude = (viewerId: string) => ({
   _count: { select: { replies: true } },
   interactions: { where: { userId: viewerId }, select: { type: true } },
   hashtags: { include: { hashtag: { select: { tag: true } } } },
+  topics: { include: { topic: { select: { slug: true, name: true } } } },
 });
 
 type PostRecord = Prisma.PostGetPayload<{ include: ReturnType<typeof postInclude> }>;
@@ -489,6 +490,7 @@ const postResponse = (post: PostRecord, counts: InteractionCounts = { likes: 0, 
       }
     : null,
   hashtags: post.hashtags.map(({ hashtag }: { hashtag: { tag: string } }) => hashtag.tag),
+  topics: post.topics.map(({ topic }: { topic: { slug: string; name: string } }) => topic),
   createdAt: post.createdAt,
   updatedAt: post.updatedAt,
   author: post.author,
@@ -502,6 +504,20 @@ const postResponse = (post: PostRecord, counts: InteractionCounts = { likes: 0, 
     reposted: post.interactions.some((i: { type: InteractionType }) => i.type === "REPOST"),
   },
 });
+
+const topicDefinitions = [{"slug":"programming","name":"Programming","re":"(?:^|[^\\p{L}\\p{N}_])(code|coding|programming|python|javascript|typescript|java|html|css|react|node|software|برمجة|بايثون)(?:$|[^\\p{L}\\p{N}_])"},{"slug":"cybersecurity","name":"Cybersecurity","re":"(?:^|[^\\p{L}\\p{N}_])(cybersecurity|security|hacking|ethical hacking|malware|phishing|pentest|vulnerability|exploit|أمن سيبراني|اختراق|حماية)(?:$|[^\\p{L}\\p{N}_])"},{"slug":"technology","name":"Technology","re":"(?:^|[^\\p{L}\\p{N}_])(technology|tech|ai|artificial intelligence|machine learning|computer|smartphone|تقنية|ذكاء اصطناعي)(?:$|[^\\p{L}\\p{N}_])"},{"slug":"education","name":"Education","re":"(?:^|[^\\p{L}\\p{N}_])(education|learning|school|university|course|study|teaching|تعليم|دراسة|جامعة)(?:$|[^\\p{L}\\p{N}_])"},{"slug":"science","name":"Science","re":"(?:^|[^\\p{L}\\p{N}_])(science|physics|chemistry|biology|space|research|علم|فيزياء|كيمياء)(?:$|[^\\p{L}\\p{N}_])"},{"slug":"gaming","name":"Gaming","re":"(?:^|[^\\p{L}\\p{N}_])(game|gaming|gamer|playstation|xbox|steam|minecraft|لعبة|ألعاب)(?:$|[^\\p{L}\\p{N}_])"},{"slug":"sports","name":"Sports","re":"(?:^|[^\\p{L}\\p{N}_])(sport|football|soccer|basketball|tennis|fitness|رياضة|كرة قدم)(?:$|[^\\p{L}\\p{N}_])"},{"slug":"business","name":"Business","re":"(?:^|[^\\p{L}\\p{N}_])(business|startup|marketing|finance|investment|entrepreneur|تجارة|أعمال|استثمار)(?:$|[^\\p{L}\\p{N}_])"},{"slug":"entertainment","name":"Entertainment","re":"(?:^|[^\\p{L}\\p{N}_])(movie|film|music|series|anime|celebrity|فيلم|موسيقى|أنمي)(?:$|[^\\p{L}\\p{N}_])"},{"slug":"lifestyle","name":"Lifestyle","re":"(?:^|[^\\p{L}\\p{N}_])(lifestyle|health|food|travel|fashion|design|تصميم|سفر|طبخ)(?:$|[^\\p{L}\\p{N}_])"}] as const;
+const topicSlugSet = new Set<string>(topicDefinitions.map(({ slug }) => slug));
+const classifyPostTopics = (body: string): string[] => {
+  const normalized = body.normalize("NFKC").toLowerCase();
+  return topicDefinitions.filter(({ re }) => new RegExp(re, "iu").test(normalized)).slice(0, 2).map(({ slug }) => slug);
+};
+
+const syncPostTopics = async (tx: Prisma.TransactionClient, postId: string, body: string, selectedTopics?: string[]): Promise<void> => {
+  const slugs = selectedTopics ?? classifyPostTopics(body);
+  if (slugs.some((slug) => !topicSlugSet.has(slug))) throw new HttpError(400, "Choose a valid topic");
+  await tx.postTopic.deleteMany({ where: { postId } });
+  if (slugs.length) await tx.postTopic.createMany({ data: [...new Set(slugs)].map((topicId) => ({ postId, topicId })) });
+};
 
 const extractHashtags = (body: string): string[] =>
   [...new Set(Array.from(body.matchAll(/#([\p{L}\p{N}_]{1,100})/gu), (match) => match[1].toLowerCase()))];
@@ -1414,6 +1430,35 @@ api.delete("/users/:userId/follow", authRequired, asyncRoute(async (req, res) =>
   res.status(204).end();
 }));
 
+api.get("/topics", authRequired, asyncRoute(async (req, res) => {
+  const topics = await prisma.topic.findMany({ orderBy: { name: "asc" }, include: { _count: { select: { posts: true, followers: true } }, followers: { where: { userId: req.userId! }, select: { userId: true } } } });
+  res.json({ items: topics.map(({ _count, followers, ...topic }) => ({ ...topic, postCount: _count.posts, followerCount: _count.followers, following: followers.length > 0 })) });
+}));
+
+api.put("/topics/:slug/follow", authRequired, verifiedEmailRequired, asyncRoute(async (req, res) => {
+  const slug = z.string().regex(/^[a-z0-9-]{2,40}$/).parse(req.params.slug);
+  const topic = await prisma.topic.findUnique({ where: { slug }, select: { id: true } });
+  if (!topic) throw new HttpError(404, "Topic not found");
+  await prisma.userTopic.upsert({ where: { userId_topicId: { userId: req.userId!, topicId: topic.id } }, create: { userId: req.userId!, topicId: topic.id }, update: {} });
+  res.status(204).end();
+}));
+
+api.delete("/topics/:slug/follow", authRequired, asyncRoute(async (req, res) => {
+  const slug = z.string().regex(/^[a-z0-9-]{2,40}$/).parse(req.params.slug);
+  const topic = await prisma.topic.findUnique({ where: { slug }, select: { id: true } });
+  if (!topic) throw new HttpError(404, "Topic not found");
+  await prisma.userTopic.deleteMany({ where: { userId: req.userId!, topicId: topic.id } });
+  res.status(204).end();
+}));
+
+api.get("/topics/:slug/posts", authRequired, asyncRoute(async (req, res) => {
+  const slug = z.string().regex(/^[a-z0-9-]{2,40}$/).parse(req.params.slug);
+  const page = pageSchema.parse(req.query);
+  const topic = await prisma.topic.findUnique({ where: { slug }, select: { id: true } });
+  if (!topic) throw new HttpError(404, "Topic not found");
+  res.json(await listPosts(req.userId!, page, { replyToId: null, topics: { some: { topicId: topic.id } } }));
+}));
+
 api.get("/feed", authRequired, asyncRoute(async (req, res) => {
   const page = pageSchema.parse(req.query);
   const feed = z.enum(["for-you", "following"]).default("for-you").parse(req.query.feed);
@@ -1532,16 +1577,18 @@ api.post("/posts", authRequired, verifiedEmailRequired, asyncRoute(async (req, r
     if (!parent) throw new HttpError(404, "Reply target not found");
     replyRecipientId = parent.authorId;
   }
+  const { topics: selectedTopics, ...postInput } = input;
   const { post, mentionNotifications } = await prisma.$transaction(async (tx) => {
     const created = await tx.post.create({
       data: {
-        ...input,
+        ...postInput,
         mediaCrop: input.mediaCrop === null ? Prisma.DbNull : input.mediaCrop ?? undefined,
         authorId: req.userId!,
       },
       include: postInclude(req.userId!),
     });
     await syncHashtags(tx, created.id, input.body);
+    if (!input.replyToId) await syncPostTopics(tx, created.id, input.body, selectedTopics);
     if (input.replyToId) {
       const parentUpdated = await tx.post.updateMany({
         where: { id: input.replyToId, deletedAt: null },
@@ -1578,19 +1625,21 @@ api.patch("/posts/:postId", authRequired, asyncRoute(async (req, res) => {
   const input = updatePostSchema.parse(req.body);
   const existing = await prisma.post.findFirst({
     where: { id: postId, deletedAt: null },
-    select: { authorId: true },
+    select: { authorId: true, replyToId: true },
   });
   if (!existing) throw new HttpError(404, "Post not found");
   if (existing.authorId !== req.userId) throw new HttpError(403, "You can only edit your own posts");
+  const { topics: selectedTopics, ...postInput } = input;
   const { post, mentionNotifications } = await prisma.$transaction(async (tx) => {
     await tx.post.update({
       where: { id: postId },
       data: {
-        ...input,
+        ...postInput,
         mediaCrop: input.mediaCrop === null ? Prisma.DbNull : input.mediaCrop ?? undefined,
       },
     });
     await syncHashtags(tx, postId, input.body);
+    if (!existing.replyToId) await syncPostTopics(tx, postId, input.body, selectedTopics);
     const post = await tx.post.findUniqueOrThrow({
       where: { id: postId },
       include: postInclude(req.userId!),
