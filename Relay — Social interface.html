@@ -24065,15 +24065,38 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function receiveMessageDeleted(event) {
         if (!event?.messageId || !event?.conversationId) return;
-        if (editingMessageState?.messageId === event.messageId) cancelMessageEditing();
-        messagesById.delete(event.messageId);
-        if (selectedMessageReply?.message.id === event.messageId) clearMessageReplyTarget();
-        if (activeConversation?.id === event.conversationId
-          && $("#chatLog").dataset.conversationId === event.conversationId) {
-          $$(".message-row", $("#chatLog"))
-            .find((row) => row.querySelector(".message-bubble")?.dataset.messageId === event.messageId)
+        const deletedId = String(event.messageId);
+        if (editingMessageState?.messageId === deletedId) cancelMessageEditing();
+        messagesById.delete(deletedId);
+        if (selectedMessageReply?.message.id === deletedId) clearMessageReplyTarget();
+        const isActiveConversation = activeConversation?.id === event.conversationId
+          && $("#chatLog").dataset.conversationId === event.conversationId;
+        const affectedReplies = [];
+        messagesById.forEach((message, id) => {
+          const replyId = message.replyToId || message.replyTo?.id;
+          if (message.conversationId !== event.conversationId || String(replyId || "") !== deletedId) return;
+          const updated = { ...message, replyTo: null, replyToId: null };
+          messagesById.set(id, updated);
+          affectedReplies.push(updated);
+        });
+        if (isActiveConversation) {
+          const chatLog = $("#chatLog");
+          $(".message-row", chatLog)
+            .find((row) => row.querySelector(".message-bubble")?.dataset.messageId === deletedId)
             ?.remove();
-          updateMessageRowSpacing($("#chatLog"));
+          affectedReplies.forEach((message) => {
+            const row = $(".message-row", chatLog)
+              .find((item) => item.querySelector(".message-bubble")?.dataset.messageId === message.id
+                || item.querySelector("[data-message-id]")?.dataset.messageId === message.id);
+            if (!row) return;
+            const template = document.createElement("template");
+            template.innerHTML = messageMarkup(message, { eager: false }).trim();
+            const replacement = template.content.firstElementChild;
+            if (replacement) row.replaceWith(replacement);
+          });
+          updateMessageRowSpacing(chatLog);
+          bindVoiceMessages(chatLog);
+          bindMessageMediaScroll(chatLog);
           restoreEmptyMessagesState();
         }
         refreshMessageBadge();
