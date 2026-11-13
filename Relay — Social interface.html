@@ -11671,6 +11671,36 @@
           border-inline-color: rgba(255, 255, 255, 0.08);
         }
       }
+      /* Desktop Messages layout: give the inbox and chat bubbles more room. */
+      @media (min-width: 1024px) {
+        .app.messages-active .messages-layout {
+          grid-template-columns: 360px minmax(0, 1fr);
+        }
+        .app.messages-active .conversation-sidebar {
+          width: 360px;
+          flex: 0 0 360px;
+          flex-shrink: 0;
+        }
+        .app.messages-active .message-row > .message-bubble {
+          max-width: min(58%, 720px);
+        }
+        .app.messages-active .message-row > .message-attachment-group {
+          width: 100%;
+          max-width: 100%;
+        }
+        .app.messages-active .message-attachment-group > .message-bubble {
+          max-width: min(58%, 720px);
+        }
+      }
+      @media (min-width: 1440px) {
+        .app.messages-active .messages-layout {
+          grid-template-columns: 380px minmax(0, 1fr);
+        }
+        .app.messages-active .conversation-sidebar {
+          width: 380px;
+          flex-basis: 380px;
+        }
+      }
 </style>
   </head>
   <body>
