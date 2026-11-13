@@ -17713,6 +17713,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             progress.querySelector(".reel-progress-time").textContent = `${formatReelTimestamp(video.currentTime)} / ${formatReelTimestamp(video.duration)}`;
           }
         }
+        if (progress && reelScrubStates.has(progress)) {
+          reelLastTime.set(reel.id, video.currentTime);
+          return;
+        }
         const previous = reelLastTime.get(reel.id);
         if (previous !== undefined) {
           let delta = video.currentTime - previous;
@@ -19754,6 +19758,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const ratio = Math.max(0, Math.min(1, (clientX - bounds.left) / bounds.width));
         const targetTime = ratio * video.duration;
         video.currentTime = targetTime;
+        reelLastTime.set(progress.dataset.reelProgress, targetTime);
         const percent = ratio * 100;
         const current = formatReelTimestamp(targetTime);
         const total = formatReelTimestamp(video.duration);
@@ -19797,6 +19802,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         event.preventDefault();
         event.stopPropagation();
         if (event.type === "pointerup") updateReelScrubPosition(progress, state.video, event.clientX);
+        reelLastTime.set(progress.dataset.reelProgress, state.video.currentTime);
         reelScrubStates.delete(progress);
         progress.classList.remove("is-scrubbing");
         if (progress.hasPointerCapture?.(event.pointerId)) {
