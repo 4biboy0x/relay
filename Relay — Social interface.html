@@ -21794,7 +21794,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               return;
             }
             await removeAppendSkeleton?.();
-            const html = `<section class="explore-trending"><div class="explore-group"><h2>Trending</h2></div>${trending.items.slice(0, 10).map((item) => `<button class="explore-trending-row" type="button" data-search-tag="${esc(item.tag)}"><strong>${esc(item.tag)}</strong><small>${fmt(item.postCount)} posts · ${fmt(item.uniqueUsers)} people</small></button>`).join("")}</section>`;
+            const html = `<section class="explore-trending">${trending.items.slice(0, 10).map((item) => `<button class="explore-trending-row" type="button" data-search-tag="${esc(item.tag)}"><strong>${esc(item.tag)}</strong><small>${fmt(item.postCount)} posts · ${fmt(item.uniqueUsers)} people</small></button>`).join("")}</section>`;
             if (append) $("#exp").innerHTML += html;
             else await commitExploreContent(
               html || emptyState("Nothing to explore yet.", "Try another tab or check back later."),
