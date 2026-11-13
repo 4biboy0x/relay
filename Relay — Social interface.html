@@ -13373,6 +13373,24 @@
           display: none !important;
         }
       }
+
+
+      /* Active mobile DM: remove every trace of the hidden bottom-nav offset. */
+      @media (max-width: 767px) {
+        .app.mobile-chat-nav-hidden.messages-active > main {
+          height: 100vh;
+          height: 100dvh;
+          min-height: 100dvh;
+          padding-bottom: 0 !important;
+          margin-bottom: 0 !important;
+        }
+        .app.mobile-chat-nav-hidden.messages-active .chat-compose {
+          bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+        }
+        .app.mobile-chat-nav-hidden.messages-active .chat-compose:has(#messageInput:focus) {
+          bottom: 8px;
+        }
+      }
 </style>
   </head>
   <body>
