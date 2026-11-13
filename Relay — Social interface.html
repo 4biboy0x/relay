@@ -23117,10 +23117,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             const mimeType = declaredType.split(";")[0].trim();
             const blob = new Blob(voiceChunks, { type: mimeType });
             voiceRecorder = null;
-            voiceRecordingFinalizing = false;
             const wasCanceled = voiceRecordingCanceled;
             voiceRecordingCanceled = false;
             if (wasCanceled || !blob.size) {
+              voiceRecordingFinalizing = false;
               syncMessageComposer();
               if (!wasCanceled && !blob.size) toast("Recording is empty. Try again.");
               return;
@@ -23143,6 +23143,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               if (sent?.id) cacheVoiceWaveform(sent.id, waveform);
             } catch (error) {
               toast(error.message || "Could not send this voice message.");
+            } finally {
+              voiceRecordingFinalizing = false;
             }
           });
           recorder.start();
