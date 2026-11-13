@@ -12144,6 +12144,33 @@
         }
       }
 
+
+      /* Keep the desktop account menu above the Messages inbox without clipping. */
+      @media (min-width: 1200px) {
+        .app > .nav {
+          position: sticky;
+          top: 0;
+          z-index: 50;
+          overflow: visible;
+        }
+        .app.messages-active > .nav #accountMenu {
+          position: fixed;
+          z-index: 100;
+          min-width: 220px;
+          width: max-content !important;
+          max-width: calc(100vw - 16px);
+          background: #fff;
+          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+        }
+        :root[data-theme="dark"] .app.messages-active > .nav #accountMenu {
+          background: #18181b;
+        }
+      }
+      @media (min-width: 1200px) and (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) .app.messages-active > .nav #accountMenu {
+          background: #18181b;
+        }
+      }
 </style>
   </head>
   <body>
