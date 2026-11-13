@@ -6914,6 +6914,65 @@
         margin-left: 4px;
         text-align: left;
       }
+      /* Keep the complete reply group aligned to the side of the reply itself. */
+      .message-row.mine > .message-main:has(> .reply-stack) {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        align-self: flex-end;
+        text-align: right;
+        margin-left: auto;
+        margin-right: 0;
+      }
+      .message-row:not(.mine) > .message-main:has(> .reply-stack) {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        align-self: flex-start;
+        text-align: left;
+        margin-right: auto;
+        margin-left: 0;
+      }
+      .message-row.mine > .message-main > .reply-stack {
+        align-self: flex-end;
+        align-items: flex-end;
+        margin-left: auto;
+        margin-right: 0;
+        text-align: right;
+      }
+      .message-row:not(.mine) > .message-main > .reply-stack {
+        align-self: flex-start;
+        align-items: flex-start;
+        margin-right: auto;
+        margin-left: 0;
+        text-align: left;
+      }
+      .message-row.mine > .message-main > .reply-stack .reply-header {
+        align-self: flex-end;
+        margin-left: auto;
+        margin-right: 0;
+        text-align: right;
+      }
+      .message-row:not(.mine) > .message-main > .reply-stack .reply-header {
+        align-self: flex-start;
+        margin-right: auto;
+        margin-left: 0;
+        text-align: left;
+      }
+      .message-row.mine > .message-main > .reply-stack .reply-preview {
+        align-self: flex-end;
+        margin-left: auto;
+        margin-right: 0;
+      }
+      .message-row:not(.mine) > .message-main > .reply-stack .reply-preview {
+        align-self: flex-start;
+        margin-right: auto;
+        margin-left: 0;
+      }
+      .reply-preview--text[aria-label="Message unavailable"] {
+        color: var(--text-muted);
+        font-style: italic;
+      }
       .reply-header {
         display: inline-flex;
         min-width: 0;
@@ -7965,6 +8024,13 @@
       }
       @media (prefers-reduced-motion: reduce) {
         .chat-compose-pill, .message-empty-actions, .message-send-text { transition: none; }
+      }
+      @media (max-width: 767px) {
+        .chat-scroll-to-bottom {
+          bottom: calc(76px + env(safe-area-inset-bottom));
+          right: 14px;
+          z-index: 25;
+        }
       }
       /* Mobile DM composer: floating iOS-style glass */
       @media (max-width: 767px) {
