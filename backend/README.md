@@ -75,6 +75,9 @@ All endpoints except registration and login require `Authorization: Bearer <acce
 | PUT, DELETE | `/api/users/:userId/follow` | Follow or unfollow (safe to retry) |
 | GET | `/api/feed?feed=for-you\|following&limit=20&cursor=...` | Cursor-paginated global or following feed |
 | GET | `/api/trending` | Top hashtag topics from the past 24 hours |
+| GET | `/api/topics` | Curated topics and the viewer follow state |
+| PUT, DELETE | `/api/topics/:slug/follow` | Follow or unfollow a topic |
+| GET | `/api/topics/:slug/posts?limit=20&cursor=...` | Cursor-paginated posts for a topic |
 | GET | `/api/search?q=...&limit=10&cursor=...` | Search post text, handles, display names, and hashtags |
 | POST | `/api/posts` | Create a post or reply (`location` is an optional user-entered label, up to 80 characters) |
 | GET, PATCH, DELETE | `/api/posts/:postId` | Read, edit, or soft-delete a post; PATCH can update or clear `location` |
@@ -116,7 +119,7 @@ All endpoints except registration and login require `Authorization: Bearer <acce
 | PATCH, DELETE | `/api/reels/:id` | Edit or remove your own Reel |
 | GET | `/api/users/:handle/reels` | List a profile's published Reels |
 
-Post creation accepts `{ "body": "...", "mediaUrl": "/uploads/<filename>", "location": "Brooklyn, NY", "replyToId": "..." }`; optional fields may be omitted. Replies are stored by `replyToId`, counted atomically on their parent, and appear in profile Replies—not as standalone feed, Explore, search, or profile Posts entries. Reply cards include a safe parent preview and use a distinct presentation. Hashtags in the post body are normalized and linked transactionally. Valid `@handles` in posts and replies create persistent mention notifications for matching users, and mention handles link to their public profile. Thread reply counters increment with the reply write and decrement when an authored reply is soft-deleted. The feed uses an explainable newest-first order; the `following` tab limits candidates to followed accounts plus the viewer. Pagination uses descending `(createdAt, id)` keysets, not offsets. Feed pages return `items` and `nextCursor`; pass the cursor unchanged to fetch the next page.
+Post creation accepts `{ "body": "...", "mediaUrl": "/uploads/<filename>", "location": "Brooklyn, NY", "replyToId": "..." }`; optional fields may be omitted. Replies are stored by `replyToId`, counted atomically on their parent, and appear in profile Replies—not as standalone feed, Explore, search, or profile Posts entries. Reply cards include a safe parent preview and use a distinct presentation. Root posts are automatically assigned up to two topics from their text. Authors can override the selection with up to three topic slugs when creating or editing a post. Existing root posts are classified once by a keyword-based migration. Topics can be followed independently of hashtags. Hashtags in the post body are normalized and linked transactionally. Valid `@handles` in posts and replies create persistent mention notifications for matching users, and mention handles link to their public profile. Thread reply counters increment with the reply write and decrement when an authored reply is soft-deleted. The feed uses an explainable newest-first order; the `following` tab limits candidates to followed accounts plus the viewer. Pagination uses descending `(createdAt, id)` keysets, not offsets. Feed pages return `items` and `nextCursor`; pass the cursor unchanged to fetch the next page.
 
 Post and reply cards record a view after at least 50% visibility for 1.5 seconds. The client reuses a session UUID and deduplicates recorded post IDs in `sessionStorage`; the API's unique `(userId, postId, sessionId)` constraint makes retries idempotent. Apply the `20261031170000_post_views` migration before deploying the endpoint.
 
@@ -134,6 +137,7 @@ Events sent to authenticated clients include `notification:new`, `profile:update
 - `Post`: authored content, optional media URL, reply parent, atomic reply and view counts, timestamps, and soft-delete timestamp.
 - `post_views`: one idempotent view record per authenticated account or daily anonymous fingerprint; existing post view counts are preserved by migration.
 - `Hashtag` / `PostHashtag`: normalized hashtag catalog and relational post links.
+- `Topic` / `PostTopic` / `UserTopic`: curated topic catalog, post classification, and topic follows.
 - `Interaction`: unique user/post/type rows for likes and reposts.
 - `Follow`: unique directed follower/followed relationship.
 - `Notification`: actor, recipient, optional post, type (including mentions), and read timestamp.
