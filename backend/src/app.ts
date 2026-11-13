@@ -1495,7 +1495,7 @@ const listForYouPosts = async (viewerId: string, page: z.infer<typeof pageSchema
     where: { id: { in: pageRows.map((row) => row.id) }, deletedAt: null },
     include: postInclude(viewerId),
   }) : [];
-  const byId = new Map(records.map((record) => [record.id, record]));
+  const byId = new Map<string, PostRecord>(records.map((record) => [record.id, record] as const));
   const ordered = pageRows.map((row) => byId.get(row.id)).filter((record): record is PostRecord => Boolean(record));
   const interactions = await interactionCounts(ordered.map((record) => record.id));
   const last = pageRows.at(-1);
