@@ -12360,6 +12360,99 @@
         }
       }
 
+
+      /* Messages tablet/medium widths: remove the unused Suggestions grid track. */
+      @media (min-width: 768px) {
+        .app.messages-active .mobile-compose-fab {
+          display: none !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
+        }
+      }
+      @media (min-width: 768px) and (max-width: 1100px) {
+        .app.messages-active {
+          display: grid !important;
+          grid-template-columns: 72px minmax(0, 1fr) !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          min-width: 0 !important;
+          margin-inline: 0 !important;
+        }
+        .app.messages-active > .nav {
+          width: 72px !important;
+          min-width: 72px !important;
+          max-width: 72px !important;
+        }
+      }
+      @media (min-width: 1101px) and (max-width: 1199px) {
+        .app.messages-active {
+          display: grid !important;
+          grid-template-columns: clamp(232px, 16vw, 260px) minmax(0, 1fr) !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          min-width: 0 !important;
+          margin-inline: 0 !important;
+        }
+      }
+      @media (min-width: 768px) and (max-width: 1199px) {
+        .app.messages-active > main {
+          grid-column: 2 !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          min-width: 0 !important;
+          margin: 0 !important;
+          justify-self: stretch !important;
+        }
+        .app.messages-active #v-messages,
+        .app.messages-active .messages-layout {
+          width: 100% !important;
+          max-width: 100% !important;
+          min-width: 0 !important;
+        }
+        .app.messages-active .messages-layout {
+          min-height: 0 !important;
+        }
+      }
+      @media (min-width: 768px) and (max-width: 799px) {
+        .app.messages-active .messages-layout {
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) !important;
+        }
+        .app.messages-active .conversation-sidebar {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          flex: 1 1 100% !important;
+        }
+      }
+      @media (min-width: 800px) and (max-width: 1023px) {
+        .app.messages-active .conversation-sidebar {
+          width: 260px !important;
+          min-width: 260px !important;
+          max-width: 260px !important;
+          flex: 0 0 260px !important;
+        }
+        .app.messages-active .chat-panel {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: none !important;
+          flex: 1 1 0% !important;
+        }
+      }
+      @media (min-width: 1024px) and (max-width: 1199px) {
+        .app.messages-active .conversation-sidebar {
+          width: 320px !important;
+          min-width: 320px !important;
+          max-width: 320px !important;
+          flex: 0 0 320px !important;
+        }
+        .app.messages-active .chat-panel {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: none !important;
+          flex: 1 1 0% !important;
+        }
+      }
 </style>
   </head>
   <body>
