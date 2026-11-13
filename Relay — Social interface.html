@@ -8259,22 +8259,26 @@
         background: var(--surface-2);
         box-shadow: inset 3px 0 var(--accent);
       }
-      .explore-topic {
-        display: inline-flex;
-        min-height: 30px;
-        align-items: center;
-        margin: 0 6px 6px 0;
-        padding: 4px 9px;
-        border: 1px solid var(--border);
-        border-radius: 20px;
-        color: var(--accent);
-        font-size: 13px;
-      }
-      .explore-topic:hover { background: var(--accent-soft); }
       .explore-topics { padding: 14px 20px; border-bottom: 1px solid var(--border); }
       .explore-topics h2 { margin: 0 0 10px; color: var(--text-2); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
-      .explore-topic-list { display: flex; flex-wrap: wrap; gap: 7px; }
-      .explore-topic[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+      .explore-topic-list { display: flex; flex-wrap: wrap; gap: 8px; }
+      .explore-topic-row { display: inline-flex; max-width: 100%; align-items: center; gap: 6px; padding: 3px; border: 1px solid var(--border); border-radius: 999px; }
+      .explore-topic-name { min-width: 0; padding: 4px 5px 4px 9px; color: var(--text); font-size: 13px; text-align: start; }
+      .explore-topic-name:hover { color: var(--accent); }
+      .explore-topic-follow { min-width: 0; height: 28px; padding-inline: 10px; font-size: 12px; }
+      .composer-topic-picker { position: relative; margin-top: 8px; }
+      .composer-topic-toggle { display: inline-flex; min-height: 28px; align-items: center; gap: 6px; padding: 3px 9px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-2); font-size: 12px; }
+      .composer-topic-toggle:hover, .composer-topic-toggle[aria-expanded="true"] { background: var(--surface-2); color: var(--text); }
+      .composer-topic-count { color: var(--accent); font-weight: 600; }
+      .composer-topic-options { display: flex; flex-wrap: wrap; gap: 7px; padding-top: 8px; }
+      .composer-topic-option { min-height: 29px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-2); font-size: 12px; }
+      .composer-topic-option[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+      .composer-topic-option:disabled { opacity: .4; cursor: not-allowed; }
+      .topic-view-heading { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+      .topic-view-heading h2 { margin: 0; font-size: 18px; font-weight: 650; }
+      .topic-view-heading p { margin: 2px 0 0; color: var(--text-2); font-size: 12px; }
+      .topic-view-back { display: grid; width: 34px; height: 34px; flex: none; place-items: center; border-radius: 50%; }
+      .topic-view-back:hover { background: var(--surface-2); }
       #v-explore .top { height: 56px; }
       #v-explore .top h1 { padding-top: 0; padding-bottom: 0; line-height: 56px; }
       .explore-search-wrap {
@@ -13117,6 +13121,12 @@
                 </button>
               </div>
               <button class="media-preview-alt-action" id="addMediaDescription" type="button" hidden>Add description</button>
+              <div class="composer-topic-picker" id="composerTopicPicker">
+                <button class="composer-topic-toggle" id="toggleComposerTopics" type="button" aria-expanded="false" aria-controls="composerTopicOptions">
+                  Topics <span class="composer-topic-count" id="composerTopicCount" hidden></span>
+                </button>
+                <div class="composer-topic-options" id="composerTopicOptions" role="group" aria-label="Choose up to three topics" hidden></div>
+              </div>
               <div class="c-bar">
                 <button class="icon-btn" id="attachImage" aria-label="Attach image" aria-pressed="false">
                   <svg class="i" aria-hidden="true"><use href="#image" /></svg>
@@ -14399,6 +14409,9 @@
       let currentPostPlaceholder = "";
       let editingPostId = null;
       let editingPostOriginal = null;
+      let selectedPostTopics = [];
+      let composerTopics = [];
+      let composerTopicsLoaded = false;
       let replyComposerTargetId = null;
       let replyComposerMediaUrl = "";
       let replyComposerLocation = "";
@@ -15381,6 +15394,29 @@
             status.hidden = false;
           }
         }, 250);
+      }
+      function renderComposerTopicOptions() {
+        const selected = new Set(selectedPostTopics);
+        $("#composerTopicOptions").innerHTML = composerTopics.map((topic) =>
+          `<button class="composer-topic-option" type="button" data-composer-topic="${esc(topic.slug)}" aria-pressed="${selected.has(topic.slug)}" ${selected.size >= 3 && !selected.has(topic.slug) ? "disabled" : ""}>${esc(topic.name)}</button>`
+        ).join("");
+        const count = $("#composerTopicCount");
+        count.hidden = selected.size === 0;
+        count.textContent = String(selected.size);
+        $("#toggleComposerTopics").setAttribute("aria-expanded", String(!$("#composerTopicOptions").hidden));
+      }
+      async function loadComposerTopics() {
+        if (!composerTopicsLoaded) {
+          const result = await api("/topics");
+          composerTopics = result.items;
+          composerTopicsLoaded = true;
+        }
+        renderComposerTopicOptions();
+      }
+      function setComposerTopics(topics) {
+        selectedPostTopics = [...new Set((topics || []).map((topic) => typeof topic === "string" ? topic : topic.slug).filter(Boolean))].slice(0, 3);
+        renderComposerTopicOptions();
+        updatePostButton();
       }
       function updatePostButton() {
         const remaining = 280 - $("#ct").value.length;
@@ -16783,7 +16819,7 @@
       const post = (p, searchTerm = "") => {
         const mine = currentUser && p.author.id === currentUser.id;
         const postMenu = mine
-          ? `<div class="post-menu-wrap"><button class="icon-btn more" type="button" data-post-menu-toggle aria-label="Post options" aria-haspopup="menu" aria-expanded="false">${ic("dots")}</button><div class="post-menu" role="menu" hidden><button type="button" role="menuitem" data-post-edit data-post-id="${esc(p.id)}" data-post-body="${esc(p.x)}" data-post-media="${esc(p.m || "")}" data-post-crop="${esc(JSON.stringify(postMediaCropFor(p) || null))}" data-post-alt="${esc(postMediaAltFor(p))}" data-post-location="${esc(p.location || "")}">Edit</button><button type="button" role="menuitem" data-post-delete>Delete</button></div></div>`
+          ? `<div class="post-menu-wrap"><button class="icon-btn more" type="button" data-post-menu-toggle aria-label="Post options" aria-haspopup="menu" aria-expanded="false">${ic("dots")}</button><div class="post-menu" role="menu" hidden><button type="button" role="menuitem" data-post-edit data-post-id="${esc(p.id)}" data-post-body="${esc(p.x)}" data-post-media="${esc(p.m || "")}" data-post-crop="${esc(JSON.stringify(postMediaCropFor(p) || null))}" data-post-alt="${esc(postMediaAltFor(p))}" data-post-location="${esc(p.location || "")}" data-post-topics="${esc(JSON.stringify(p.topics || []))}">Edit</button><button type="button" role="menuitem" data-post-delete>Delete</button></div></div>`
           : "";
         const postHeadMarkup = `<div class="p-head"><div class="p-head-text"><b>${profileLink(p.author, p.n)}</b><span class="m"><span class="post-handle">@${esc(p.u)}</span><span class="post-time"> · ${p.t}</span></span></div>${postMenu}</div>`;
         if (p.replyToId) {
@@ -21712,13 +21748,29 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             if (requestFilter !== "People") joinVisiblePostRooms();
             return;
           }
-          if (requestTab === "trending") {
+          if (requestTab.startsWith("topic:")) {
+            const slug = requestTab.slice(6);
+            const result = await api(`/topics/${encodeURIComponent(slug)}/posts?${query}`);
+            if (!isCurrentRequest()) return;
+            let heading = "";
+            if (!append) {
+              const topicResult = await api("/topics");
+              const topic = topicResult.items.find((item) => item.slug === slug);
+              if (!topic) throw new Error("Topic not found.");
+              heading = `<section class="topic-view-heading"><button class="topic-view-back" type="button" data-topic-back aria-label="Back to Explore">${ic("arrow-left")}</button><div><h2>${esc(topic.name)}</h2><p>${fmt(topic.postCount)} posts</p></div></section>`;
+            }
+            const postsHtml = explorePostCards(result.items.map((item) => post(normalizePost(item))).join(""));
+            const content = postsHtml || (!append ? emptyState("No posts yet.", "Check back later.") : "");
+            if (append) $("#exp").insertAdjacentHTML("beforeend", content);
+            else await commitExploreContent(heading + content, postsHtml ? "success" : "empty", requestStatusKey, isCurrentRequest, !cached);
+            exploreCursor = result.nextCursor;
+          } else if (requestTab === "trending") {
             const [trending, topicResult] = await Promise.all([api("/trending"), api("/topics")]);
             if (!isCurrentRequest()) {
               return;
             }
             await removeAppendSkeleton?.();
-            const topicHtml = `<section class="explore-topics"><h2>Topics</h2><div class="explore-topic-list">${topicResult.items.map((topic) => `<button class="explore-topic" type="button" data-topic-follow="${esc(topic.slug)}" data-following="${topic.following}" aria-pressed="${topic.following}">${esc(topic.name)} · ${topic.following ? "Following" : "Follow"}</button>`).join("")}</div></section>`;
+            const topicHtml = `<section class="explore-topics"><h2>Topics</h2><div class="explore-topic-list">${topicResult.items.map((topic) => `<div class="explore-topic-row"><button class="explore-topic-name" type="button" data-topic-open="${esc(topic.slug)}">${esc(topic.name)} · ${fmt(topic.postCount)}</button><button class="follow-button btn-line explore-topic-follow" type="button" data-topic-follow="${esc(topic.slug)}" data-following="${topic.following}" aria-pressed="${topic.following}">${topic.following ? "Following" : "Follow"}</button></div>`).join("")}</div></section>`;
             const html = topicHtml + `<section class="explore-trending"><div class="explore-group"><h2>Trending</h2></div>${trending.items.slice(0, 10).map((item) => `<button class="explore-trending-row" type="button" data-search-tag="${esc(item.tag)}"><strong>${esc(item.tag)}</strong><small>${fmt(item.postCount)} posts · ${fmt(item.uniqueUsers)} people</small></button>`).join("")}</section>`;
             if (append) $("#exp").innerHTML += html;
             else await commitExploreContent(
@@ -26487,12 +26539,15 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           body: $("#ct").value,
           mediaUrl: composerMediaUrl,
           location: composerLocation,
+          topics: [...selectedPostTopics],
         };
         editingPostId = data.postId;
+        setComposerTopics(data.topics || []);
         editingPostOriginal = {
           body: data.body || "",
           mediaUrl: data.mediaUrl || "",
           location: getCompactLocationLabel(data.location || ""),
+          topics: [...selectedPostTopics].sort(),
         };
         postEditorReturnFocus = { element: data.returnFocus || document.activeElement, postId: data.postId };
         $("#ct").value = data.body || "";
@@ -26537,6 +26592,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (draft?.mediaUrl) setComposerMedia(draft.mediaUrl);
         clearComposerLocation();
         if (draft?.location) setComposerLocation(draft.location);
+        setComposerTopics(draft?.topics || []);
         updatePostButton();
         const returnFocusTarget = postEditorReturnFocus?.element?.isConnected
           ? postEditorReturnFocus.element
@@ -26550,7 +26606,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         return Boolean(editingPostOriginal
           && ($("#ct").value !== editingPostOriginal.body
             || composerMediaUrl !== editingPostOriginal.mediaUrl
-            || composerLocation !== editingPostOriginal.location));
+            || composerLocation !== editingPostOriginal.location
+            || JSON.stringify([...selectedPostTopics].sort()) !== JSON.stringify(editingPostOriginal.topics || [])));
       }
       function requestPostEditorClose() {
         if (!postEditorHasChanges()) {
@@ -27882,6 +27939,27 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           clearComposerMedia();
           return;
         }
+        const topicOpen = e.target.closest("[data-topic-open]");
+        if (topicOpen) {
+          exploreTab = `topic:${topicOpen.dataset.topicOpen}`;
+          exploreSearchFilter = "Top";
+          $("#exploreSearch").value = "";
+          lastExploreSearch = "";
+          go("explore");
+          return;
+        }
+        if (e.target.closest("[data-topic-back]")) {
+          exploreTab = "trending";
+          go("explore");
+          return;
+        }
+        const composerTopic = e.target.closest("[data-composer-topic]");
+        if (composerTopic) {
+          const slug = composerTopic.dataset.composerTopic;
+          if (selectedPostTopics.includes(slug)) setComposerTopics(selectedPostTopics.filter((item) => item !== slug));
+          else if (selectedPostTopics.length < 3) setComposerTopics([...selectedPostTopics, slug]);
+          return;
+        }
         const topicFollow = e.target.closest("[data-topic-follow]");
         if (topicFollow) {
           const slug = topicFollow.dataset.topicFollow;
@@ -27890,8 +27968,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             await api(`/topics/${encodeURIComponent(slug)}/follow`, { method: following ? "DELETE" : "PUT" });
             topicFollow.dataset.following = String(!following);
             topicFollow.setAttribute("aria-pressed", String(!following));
-            const name = topicFollow.textContent.split(" · ")[0];
-            topicFollow.textContent = `${name} · ${following ? "Follow" : "Following"}`;
+            topicFollow.textContent = following ? "Follow" : "Following";
           } catch (error) {
             toast(error.message || "Could not update topic.");
           }
@@ -28011,6 +28088,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             mediaCrop: editPost.dataset.postCrop === "null" ? null : editPost.dataset.postCrop,
             mediaAlt: editPost.dataset.postAlt,
             location: editPost.dataset.postLocation,
+            topics: JSON.parse(editPost.dataset.postTopics || "[]"),
             returnFocus: editPost.closest(".post-menu-wrap")?.querySelector("[data-post-menu-toggle]"),
           });
           return;
@@ -29489,6 +29567,21 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           $("#messageForm").requestSubmit();
         }
       });
+      $("#toggleComposerTopics").addEventListener("click", async () => {
+        const options = $("#composerTopicOptions");
+        const opening = options.hidden;
+        options.hidden = !opening;
+        $("#toggleComposerTopics").setAttribute("aria-expanded", String(opening));
+        if (opening) {
+          try {
+            await loadComposerTopics();
+          } catch (error) {
+            options.hidden = true;
+            $("#toggleComposerTopics").setAttribute("aria-expanded", "false");
+            toast(error.message || "Could not load topics.");
+          }
+        }
+      });
       pb.addEventListener("click", async () => {
         if (!requireAuth()) return;
         pb.disabled = true;
@@ -29502,6 +29595,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               method: "PATCH",
               body: JSON.stringify({
                 body,
+                topics: selectedPostTopics.length ? selectedPostTopics : undefined,
                 mediaUrl: composerMediaUrl || null,
                 mediaCrop: composerMediaUrl ? composerMediaCrop : null,
                 mediaAlt: composerMediaUrl ? composerMediaAlt : null,
@@ -29538,13 +29632,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         try {
           if (composerUploadPromise) await composerUploadPromise;
           if (composerPreviewUrl && !composerMediaUrl) throw new Error("Wait for the image upload to finish.");
-          const postBody = { body };
+          const postBody = { body, topics: selectedPostTopics.length ? selectedPostTopics : undefined };
           if (composerMediaUrl) postBody.mediaUrl = composerMediaUrl;
           if (composerMediaUrl && composerMediaCrop) postBody.mediaCrop = composerMediaCrop;
           if (composerMediaUrl && composerMediaAlt) postBody.mediaAlt = composerMediaAlt;
           if (composerLocation) postBody.location = composerLocation;
           const result = await api("/posts", { method: "POST", body: JSON.stringify(postBody) });
           ct.value = "";
+          setComposerTopics([]);
           clearComposerMedia();
           clearComposerLocation();
           closeComposerPopover($("#emojiPicker"), $("#emojiToggle"));
