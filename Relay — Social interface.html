@@ -11620,6 +11620,57 @@
           visibility: hidden !important;
         }
       }
+
+      /* Relay wide desktop shell: Home and Profile only. */
+      @media (min-width: 1280px) {
+        .app:not(.messages-active):not(.thread-active) {
+          grid-template-columns:
+            minmax(232px, 252px)
+            minmax(0, 600px)
+            minmax(280px, 310px);
+          column-gap: clamp(20px, 1.8vw, 24px);
+          width: 100%;
+          max-width: 1265px;
+          margin-inline: auto;
+          padding-inline: 16px;
+          justify-content: center;
+        }
+        .app:not(.messages-active):not(.thread-active) > main {
+          width: 100%;
+          max-width: 600px;
+          min-width: 0;
+          justify-self: center;
+          border-inline: 1px solid #F3F4F6;
+        }
+        .app:not(.messages-active):not(.thread-active) > aside[aria-label="Suggestions"] {
+          width: 100%;
+          min-width: 0;
+          max-width: 310px;
+        }
+        .app:not(.messages-active):not(.thread-active) > aside[aria-label="Suggestions"] > section.card:first-of-type {
+          height: auto;
+          min-height: unset;
+        }
+        .app:not(.messages-active):not(.thread-active) #wf .follow-button {
+          padding: 5px 14px;
+          font-size: 12px;
+        }
+        .app:not(.messages-active):not(.thread-active) #v-profile,
+        .app:not(.messages-active):not(.thread-active) #profileBody {
+          width: 100%;
+          max-width: 600px;
+        }
+      }
+      @media (min-width: 1280px) and (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) .app:not(.messages-active):not(.thread-active) > main {
+          border-inline-color: rgba(255, 255, 255, 0.08);
+        }
+      }
+      @media (min-width: 1280px) {
+        :root[data-theme="dark"] .app:not(.messages-active):not(.thread-active) > main {
+          border-inline-color: rgba(255, 255, 255, 0.08);
+        }
+      }
 </style>
   </head>
   <body>
