@@ -23372,7 +23372,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const conversationId = activeConversation?.id;
         if (!conversationId) return;
         const loadGeneration = activeConversationLoadGeneration;
-        let target = $(".message-bubble", $("#chatLog")).find((bubble) => bubble.dataset.messageId === messageId);
+        let target = $$(".message-bubble", $("#chatLog")).find((bubble) => bubble.dataset.messageId === messageId);
         if (!target && activeConversationCursor) {
           target = await loadConversationUntilMessage(conversationId, messageId, loadGeneration);
         }
