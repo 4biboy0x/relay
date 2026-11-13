@@ -21536,6 +21536,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           id: `draft-${userId}`,
           members: [currentUser, profile],
         };
+        if (window.matchMedia("(max-width: 767px)").matches) {
+          $(".app")?.classList.add("mobile-chat-nav-hidden");
+        }
         draftConversationRecipientId = userId;
         $("#messagesLayout").classList.add("has-conversation");
         $("#chatName").textContent = profile.displayName || profile.handle || "Conversation";
