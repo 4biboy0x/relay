@@ -26040,6 +26040,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           sessionStorage.setItem("relay_active_conversation", conversation.id);
         } catch {}
         $("#messagesLayout").classList.add("has-conversation");
+        if (window.matchMedia("(max-width: 767px)").matches) $(".app")?.classList.add("mobile-chat-nav-hidden");
         const route = `#/messages?conversation=${encodeURIComponent(conversation.id)}`;
         if (updateRoute || location.hash !== route) location.hash = route;
         return loadConversation(conversation, targetMessageId);
@@ -26085,6 +26086,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         conversationSelectionGeneration += 1;
         activeConversationLoadGeneration += 1;
         activeConversation = null;
+        $(".app")?.classList.remove("mobile-chat-nav-hidden");
         selectedMessageReply = null;
         messagesById.clear();
         renderMessageReplyPreview();
