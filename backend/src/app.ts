@@ -2538,6 +2538,12 @@ api.post("/conversations/:conversationId/messages", authRequired, verifiedEmailR
       });
       conversationId = conversation.id;
     }
+    // A sender may have hidden this direct conversation from their own inbox.
+    // Restore their membership before checking access so a new draft can reuse it.
+    await tx.conversationMember.updateMany({
+      where: { conversationId, userId: req.userId!, deletedAt: { not: null } },
+      data: { deletedAt: null },
+    });
     members = await tx.conversationMember.findMany({
       where: { conversationId },
       select: { userId: true, deletedAt: true },
