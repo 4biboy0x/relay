@@ -6775,7 +6775,7 @@
         margin-right: 0;
       }
       .message-main:has(> .reply-stack) {
-        width: min(100%, 420px);
+        width: max-content;
         max-width: 420px;
       }
       .message-row > .message-main > .message-bubble,
@@ -6786,7 +6786,7 @@
       @media (max-width: 767px) {
         .message-bubble.text-message { max-width: min(72cqw, 420px); }
         .message-main:has(> .reply-stack) {
-          width: 72%;
+          width: max-content;
           max-width: 72%;
         }
         .message-main > .message-tools { display: none !important; }
@@ -6876,7 +6876,7 @@
       .message-reaction-host > .message-reaction-list { inset-block-end: -10px; }
       .reply-stack {
         display: flex;
-        width: fit-content;
+        width: max-content;
         max-width: 100%;
         flex-direction: column;
         gap: 4px;
@@ -6948,6 +6948,14 @@
         font-size: 13px;
         line-height: 18px;
       }
+      .reply-preview--text {
+        width: fit-content;
+        min-width: 0;
+        max-width: min(240px, 72vw);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
       .reply-preview--text span {
         display: block;
         min-width: 0;
@@ -6960,6 +6968,15 @@
       .message-row:not(.mine) .reply-preview--media { border-radius: 12px 12px 12px 3px; }
       .message-row.mine .reply-preview--media { border-radius: 12px 12px 3px 12px; }
       .reply-bar .reply-preview--media { border-radius: 12px; }
+      .reply-preview--voice {
+        height: 36px;
+        min-height: 36px;
+        padding: 0 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+      }
       .reply-preview--voice .i {
         width: 15px;
         height: 15px;
@@ -7862,8 +7879,8 @@
         background: transparent;
       }
       .message-bubble.audio-message {
-        width: var(--msg-media-w);
-        max-width: 65%;
+        width: min(230px, 60%);
+        max-width: 60%;
         min-width: 0;
         padding: 0;
         color: var(--text);
@@ -8114,7 +8131,7 @@
         }
       }
       @media (max-width: 640px) {
-        .message-bubble.audio-message { width: var(--msg-media-w); max-width: 65%; }
+        .message-bubble.audio-message { width: min(230px, 60%); max-width: 60%; }
         .relay-voice { width: 100%; max-width: 100%; }
       }
 
@@ -23312,7 +23329,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const count = total > 1 ? `<span class="message-reaction-total">${total}</span>` : "";
         return `<div class="message-reaction-list" role="group" aria-label="Message reactions">${emojiButtons}${count}</div>`;
       }
-      async function sendMessageAttachment(payload, conversationId = activeConversation?.id) {
+      async function sendMessageAttachment(payload, conversationId = activeConversation?.id, clientSentAt = Date.now()) {
         if (!conversationId) return;
         const replyToId = selectedMessageReply?.conversationId === conversationId
           ? selectedMessageReply.message.id
@@ -23325,7 +23342,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           throw new Error("The message was returned for a different conversation.");
         }
         if (replyToId) clearMessageReplyTarget(conversationId);
+        message.clientSentAt = clientSentAt;
         receiveMessage(message);
+        setMessageRowTimestamp(message.id, clientSentAt);
         return message;
       }
       function updateVoiceRecordingTimer() {
@@ -23461,8 +23480,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             const form = new FormData();
             form.append("file", blob, `voice.${extension}`);
             try {
+              const clientSentAt = Date.now();
               const uploaded = await api("/uploads/audio", { method: "POST", body: form });
-              const sent = await sendMessageAttachment({ audioUrl: uploaded.uploadPath || uploaded.url, waveform }, conversationId);
+              const sent = await sendMessageAttachment({ audioUrl: uploaded.uploadPath || uploaded.url, waveform }, conversationId, clientSentAt);
               if (sent?.id) cacheVoiceWaveform(sent.id, waveform);
             } catch (error) {
               toast(error.message || "Could not send this voice message.");
@@ -23926,7 +23946,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const rowActions = hasMultipleImages && !audio && !sticker
           ? messageGroupToolsMarkup({ messageId: message.id, copyText: text ? body : "", canDelete: mine })
           : bubbleActions;
-        return `<div class="message-row${mine ? " mine" : ""}${reactions ? " has-reactions" : ""}" data-message-row data-conversation-id="${esc(message.conversationId)}" data-sender-id="${esc(message.senderId || "")}" data-reply-to-id="${esc(message.replyToId || replyTo?.id || "")}"><div class="message-main">${replyStack}${messageContent}${rowActions}</div></div>`;
+        return `<div class="message-row${mine ? " mine" : ""}${reactions ? " has-reactions" : ""}" data-message-row data-message-timestamp="${esc(message.clientSentAt || message.createdAt || "")}" data-conversation-id="${esc(message.conversationId)}" data-sender-id="${esc(message.senderId || "")}" data-reply-to-id="${esc(message.replyToId || replyTo?.id || "")}"><div class="message-main">${replyStack}${messageContent}${rowActions}</div></div>`;
       }
       function updateMessageRowSpacing(container = $("#chatLog")) {
         const rows = [...container.children].filter((element) => element.matches(".message-row"));
@@ -23957,6 +23977,35 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (groupClass) bubble.classList.add(groupClass);
         });
       }
+      function messageRowTimestamp(row) {
+        const value = String(row?.dataset.messageTimestamp || "").trim();
+        if (!value) return null;
+        const numeric = Number(value);
+        const timestamp = Number.isFinite(numeric) && numeric > 0 ? numeric : Date.parse(value);
+        return Number.isFinite(timestamp) ? timestamp : null;
+      }
+      function sortMessageRowsChronologically(container = $("#chatLog")) {
+        const rows = [...container.children].filter((element) => element.matches(".message-row"));
+        if (rows.length < 2) return;
+        const sorted = rows.map((row, index) => ({ row, index, timestamp: messageRowTimestamp(row) }))
+          .sort((a, b) => (a.timestamp ?? Number.POSITIVE_INFINITY) - (b.timestamp ?? Number.POSITIVE_INFINITY)
+            || a.index - b.index)
+          .map(({ row }) => row);
+        const marker = document.createComment("message-order");
+        container.insertBefore(marker, rows[0]);
+        const fragment = document.createDocumentFragment();
+        sorted.forEach((row) => fragment.append(row));
+        container.insertBefore(fragment, marker);
+        marker.remove();
+        updateMessageRowSpacing(container);
+      }
+      function setMessageRowTimestamp(messageId, timestamp) {
+        const bubble = $("[data-message-id=\"" + CSS.escape(String(messageId)) + "\"]");
+        const row = bubble?.closest(".message-row");
+        if (!row) return;
+        row.dataset.messageTimestamp = String(timestamp);
+        sortMessageRowsChronologically(row.parentElement);
+      }
       function insertPreparedMessageRow(markup, { before = null, append = false } = {}) {
         const template = document.createElement("template");
         template.innerHTML = markup.trim();
@@ -23967,6 +24016,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (before?.isConnected) before.before(row);
         else if (append) container.append(row);
         else container.append(row);
+        sortMessageRowsChronologically(container);
         updateMessageRowSpacing(container);
         row.classList.remove("is-preparing-layout");
         return row;
@@ -28789,6 +28839,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             id: pendingId,
             conversationId: sendConversationId,
             senderId: currentUser.id,
+            createdAt: new Date().toISOString(),
             body,
             ...(attachmentUrls.length ? {
               attachments: attachmentPreviewUrls,
