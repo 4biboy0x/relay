@@ -11966,7 +11966,57 @@
           transition: none !important;
         }
       }
-    </style>
+    
+      /* Keep the desktop shell centered in every view; collapse only the Messages rail. */
+      @media (min-width: 1280px) {
+        .app {
+          width: 100% !important;
+          max-width: 1265px !important;
+          margin-inline: auto !important;
+          box-sizing: border-box;
+        }
+        .app.messages-active {
+          grid-template-columns: 72px minmax(0, 1fr) minmax(0, 0px) !important;
+          width: 100% !important;
+          max-width: 1265px !important;
+          margin-inline: auto !important;
+          padding-inline: 16px !important;
+          column-gap: 16px !important;
+          justify-content: stretch !important;
+        }
+        .app.messages-active > .nav {
+          width: 72px !important;
+          min-width: 0 !important;
+          flex: 0 0 72px;
+        }
+        .app.messages-active > main {
+          width: 100% !important;
+          max-width: none !important;
+          min-width: 0 !important;
+          justify-self: stretch !important;
+        }
+        .app.messages-active #v-messages,
+        .app.messages-active .messages-layout {
+          width: 100% !important;
+          max-width: 100% !important;
+          min-width: 0 !important;
+        }
+        .app.messages-active .messages-layout {
+          display: flex !important;
+        }
+        .app.messages-active .conversation-sidebar {
+          width: 360px !important;
+          min-width: 360px !important;
+          max-width: 360px !important;
+          flex: 0 0 360px !important;
+        }
+        .app.messages-active .chat-panel {
+          width: auto !important;
+          min-width: 0 !important;
+          flex: 1 1 0% !important;
+        }
+      }
+</style>
   </head>
   <body>
     <div class="app-splash" id="appSplash" role="status" aria-label="Loading Relay">
