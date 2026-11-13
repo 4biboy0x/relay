@@ -12649,6 +12649,42 @@
           transition: none;
         }
       }
+
+      .app.reels-active .reel-pull-refresh {
+        position: absolute;
+        z-index: 30;
+        top: 12px;
+        left: 50%;
+        width: 34px;
+        height: 34px;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(255,255,255,.16);
+        border-radius: 999px;
+        background: rgba(20,20,20,.48);
+        color: #fff;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        opacity: 0;
+        pointer-events: none;
+        transform: translate(-50%, calc(-48px + var(--pull-distance, 0px)));
+        transition: transform 220ms cubic-bezier(.2,.8,.2,1), opacity 160ms ease;
+      }
+      .app.reels-active .reel-pull-refresh.is-pulling,
+      .app.reels-active .reel-pull-refresh.is-refreshing { opacity: 1; }
+      .app.reels-active .reel-pull-refresh-spinner {
+        width: 17px;
+        height: 17px;
+        border: 2px solid rgba(255,255,255,.28);
+        border-top-color: currentColor;
+        border-radius: 50%;
+        animation: reel-pull-spin .7s linear infinite;
+      }
+      @keyframes reel-pull-spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) {
+        .app.reels-active .reel-pull-refresh { transition: none; }
+        .app.reels-active .reel-pull-refresh-spinner { animation-duration: 1.5s; }
+      }
 </style>
   </head>
   <body>
@@ -14346,6 +14382,10 @@
       let joinedReelRoomId = "";
       let pendingReelNotification = null;
       let reelFeedObserver = null;
+      let reelRefreshInFlight = null;
+      let reelPullStartY = 0;
+      let reelPullDistance = 0;
+      let reelPullTracking = false;
       let reelActiveObserver = null;
       let reelFeedScrollTop = 0;
       let reelAwayState = null;
@@ -17435,6 +17475,37 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
         }
       }
+      async function refreshGlobalReels() {
+        if (!currentUser || reelRefreshInFlight || profileScopedReelHandle || /^#\\/reel\\//.test(location.hash)) return reelRefreshInFlight;
+        const feed = $("#reelFeed");
+        const activeSlide = activeReelId
+          ? $(`.reel-item[data-reel-id="${CSS.escape(activeReelId)}"]`, feed)
+          : null;
+        const previousTop = feed?.scrollTop || 0;
+        reelRefreshInFlight = (async () => {
+          try {
+            const page = await api(`/reels/feed?${new URLSearchParams({ limit: "8" })}`);
+            if (!Array.isArray(page.items) || !page.items.length) return;
+            const known = new Set(reelItems.map((reel) => reel.id));
+            const additions = page.items.filter((reel) => !known.has(reel.id));
+            if (!additions.length) return;
+            reelItems.unshift(...additions);
+            renderReelMarkup();
+            if (feed && activeSlide?.isConnected) {
+              feed.scrollTop = previousTop + additions.length * feed.clientHeight;
+            }
+            positionReelFeedSentinel();
+            observeReelItems();
+            syncActiveReelRoom();
+            writeReelCache();
+          } catch (error) {
+            console.warn("Unable to refresh Reels.", error);
+          } finally {
+            reelRefreshInFlight = null;
+          }
+        })();
+        return reelRefreshInFlight;
+      }
       function profileReelIndex(id) {
         return reelItems.findIndex((reel) => reel.id === id);
       }
@@ -17477,6 +17548,56 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         syncReelPlayback();
       }
       let reelManualPlayback = "";
+      function installReelFeedGestures() {
+        const feed = $("#reelFeed");
+        if (!feed || feed.dataset.refreshGestures === "true") return;
+        feed.dataset.refreshGestures = "true";
+        const indicator = document.createElement("div");
+        indicator.className = "reel-pull-refresh";
+        indicator.setAttribute("role", "status");
+        indicator.setAttribute("aria-live", "polite");
+        indicator.innerHTML = '<span class="reel-pull-refresh-spinner" aria-hidden="true"></span>';
+        feed.prepend(indicator);
+        const resetPull = () => {
+          reelPullTracking = false;
+          reelPullDistance = 0;
+          indicator.classList.remove("is-pulling", "is-refreshing");
+          indicator.style.setProperty("--pull-distance", "0px");
+        };
+        feed.addEventListener("touchstart", (event) => {
+          if (feed.scrollTop > 0 || event.touches.length !== 1 || reelLoading) return;
+          reelPullStartY = event.touches[0].clientY;
+          reelPullTracking = true;
+        }, { passive: true });
+        feed.addEventListener("touchmove", (event) => {
+          if (!reelPullTracking || event.touches.length !== 1 || feed.scrollTop > 0) return;
+          const delta = event.touches[0].clientY - reelPullStartY;
+          if (delta <= 0) return resetPull();
+          reelPullDistance = Math.min(112, delta * 0.48);
+          indicator.style.setProperty("--pull-distance", `${reelPullDistance}px`);
+          indicator.classList.toggle("is-pulling", reelPullDistance > 4);
+          if (reelPullDistance > 4) event.preventDefault();
+        }, { passive: false });
+        const finishPull = async () => {
+          if (!reelPullTracking) return;
+          const shouldRefresh = reelPullDistance >= 70 * 0.48;
+          if (!shouldRefresh) return resetPull();
+          reelPullTracking = false;
+          indicator.classList.remove("is-pulling");
+          indicator.classList.add("is-refreshing");
+          indicator.style.setProperty("--pull-distance", "54px");
+          await refreshGlobalReels();
+          resetPull();
+        };
+        feed.addEventListener("touchend", finishPull, { passive: true });
+        feed.addEventListener("touchcancel", resetPull, { passive: true });
+        feed.addEventListener("scroll", () => {
+          if (reelCursor && !reelLoading && reelItems.length) {
+            const remaining = feed.scrollHeight - feed.scrollTop - feed.clientHeight;
+            if (remaining <= feed.clientHeight * 2) void renderReels(true);
+          }
+        }, { passive: true });
+      }
       function observeReelItems() {
         reelFeedObserver?.disconnect();
         reelActiveObserver?.disconnect();
@@ -26656,6 +26777,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (!requireAuth()) return;
         const explicitReelId = deepLinkedReelId;
         const currentView = $("[data-v]:not([hidden])")?.id?.replace(/^v-/, "");
+        if (v === "reels" && currentView === "reels") {
+          const feed = $("#reelFeed");
+          feed?.scrollTo({ top: 0, behavior: "smooth" });
+          void refreshGlobalReels();
+          return;
+        }
         clearTimeout(emailVerificationNoticeShowTimer);
         emailVerificationNoticeShowTimer = null;
         if (currentView !== v) removeEmailVerificationNoticeImmediately();
@@ -26772,6 +26899,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 await renderFeed();
               }
               if (v === "reels") {
+                installReelFeedGestures();
                 if (reelResumeMode === "resume" && reelItems.some((reel) => reel.id === activeReelId)) {
                   requestAnimationFrame(() => {
                     $("#reelFeed").scrollTop = reelFeedScrollTop;
