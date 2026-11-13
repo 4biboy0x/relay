@@ -12619,15 +12619,15 @@
       /* Keep controls and app chrome from becoming accidental text selections. */
       .app.reels-active .reel-stage,
       .app.reels-active .reel-stage *,
-      .nav-item, .nav-rail, .nav-sidebar,
-      [role="tab"], .tabs, .post-actions,
+      .nav-item, .nav-rail, .nav-sidebar, .post,
+      nav, header, [role="tab"], .tabs, .post-actions,
       .reel-progress-track, .reel-actions, .reel-action,
       .reel-stage-control, .chat-heading, .page-header {
         user-select: none;
         -webkit-user-select: none;
       }
       /* Actual user content remains selectable and copyable. */
-      .reply-copy, .post-copy, .post-text, .post-content,
+      .reply-copy, .p-text, .post-copy, .post-text, .post-content,
       .reel-copy, .reel-caption, .comment-text, .comment-body,
       #profileBio, .message-bubble {
         user-select: text;
