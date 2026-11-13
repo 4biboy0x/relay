@@ -21757,9 +21757,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           ? `<span class="notification-media-preview notification-reel-preview" aria-label="Reel preview"><img src="${esc(item.reel.posterUrl)}" alt="" loading="lazy"><span class="notification-reel-play" aria-hidden="true">▶</span></span>`
           : isPostNotification && item.post?.mediaUrl
             ? `<span class="notification-media-preview notification-post-preview" aria-label="Post preview"><img src="${esc(item.post.mediaUrl)}" alt="" loading="lazy"></span>`
-            : isPostNotification && item.post
-              ? `<span class="notification-media-preview notification-post-preview notification-post-text-preview" aria-label="Text post preview">${esc(item.post.body || "")}</span>`
-              : "";
+            : "";
         const alreadyFollowing = !!(item.actor.following || item.actor.isFollowing || item.actor.viewerFollows);
         const followBack = item.type === "FOLLOW" && !alreadyFollowing
           ? `<button class="notification-follow-back" type="button" data-follow-back="${esc(item.actor.id)}" aria-label="Follow back"><span class="notification-follow-label">Follow back</span><svg class="notification-follow-icon i" aria-hidden="true"><use href="#user-plus"/></svg></button>` : "";
