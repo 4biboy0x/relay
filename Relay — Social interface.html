@@ -3830,6 +3830,50 @@
       .notification-row:has(.notification-actions) {
         grid-template-columns: 40px minmax(0, 1fr) auto;
       }
+      .notification-row:has(.notification-media-preview) {
+        grid-template-columns: 40px minmax(0, 1fr) auto;
+      }
+      .notification-media-preview {
+        position: relative;
+        display: block;
+        flex: 0 0 auto;
+        margin-inline-start: auto;
+        overflow: hidden;
+        border-radius: 8px;
+        background: var(--surface-2);
+      }
+      .notification-reel-preview { width: 34px; height: 54px; }
+      .notification-post-preview { width: 44px; height: 44px; }
+      .notification-media-preview img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .notification-reel-play {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: rgba(255,255,255,.94);
+        font-size: 10px;
+        line-height: 1;
+        text-shadow: 0 1px 3px rgba(0,0,0,.65);
+        pointer-events: none;
+      }
+      .notification-post-text-preview {
+        box-sizing: border-box;
+        width: 44px;
+        height: 44px;
+        padding: 4px;
+        overflow: hidden;
+        color: var(--text-2);
+        background: var(--surface-2);
+        font-size: 9px;
+        line-height: 1.2;
+        overflow-wrap: anywhere;
+      }
       .notification-row:hover { background: var(--hover, var(--surface-2)); }
       .notification-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
       .notification-row.unread { background: var(--accent-soft); }
@@ -21705,11 +21749,22 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const previewText = item.type === "REPLY" ? item.reply?.body || item.post?.body : item.post?.body;
         const preview = ["LIKE", "REPOST", "REPLY"].includes(item.type) && previewText
           ? `<span class="notification-excerpt">${esc(previewText)}</span>` : "";
+        const isReelNotification = ["REEL_LIKE", "REEL_COMMENT", "REEL_REPOST"].includes(item.type)
+          || (item.type === "MENTION" && !!item.reelId);
+        const isPostNotification = ["LIKE", "REPOST", "REPLY"].includes(item.type)
+          || (item.type === "MENTION" && !item.reelId);
+        const mediaPreview = isReelNotification && item.reel?.posterUrl
+          ? `<span class="notification-media-preview notification-reel-preview" aria-label="Reel preview"><img src="${esc(item.reel.posterUrl)}" alt="" loading="lazy"><span class="notification-reel-play" aria-hidden="true">▶</span></span>`
+          : isPostNotification && item.post?.mediaUrl
+            ? `<span class="notification-media-preview notification-post-preview" aria-label="Post preview"><img src="${esc(item.post.mediaUrl)}" alt="" loading="lazy"></span>`
+            : isPostNotification && item.post
+              ? `<span class="notification-media-preview notification-post-preview notification-post-text-preview" aria-label="Text post preview">${esc(item.post.body || "")}</span>`
+              : "";
         const alreadyFollowing = !!(item.actor.following || item.actor.isFollowing || item.actor.viewerFollows);
         const followBack = item.type === "FOLLOW" && !alreadyFollowing
           ? `<button class="notification-follow-back" type="button" data-follow-back="${esc(item.actor.id)}" aria-label="Follow back"><span class="notification-follow-label">Follow back</span><svg class="notification-follow-icon i" aria-hidden="true"><use href="#user-plus"/></svg></button>` : "";
         const rightSide = followBack ? `<div class="notification-actions">${followBack}</div>` : "";
-        return `<div class="notification-row${item.readAt ? "" : " unread"}" role="button" tabindex="0" data-notification-ids="${esc((item.ids || [item.id]).join(","))}" data-notification-post="${esc(item.post?.id || "")}" data-notification-reel="${esc(item.reelId || "")}" data-notification-comment="${esc(item.reelCommentId || "")}" data-notification-actor="${esc(item.actor.id)}">${avatar}<div class="notification-content">${actorLabel}${notificationTime}${preview}</div>${rightSide}${item.readAt ? "" : '<span class="notification-unread-dot" aria-label="Unread"></span>'}</div>`;
+        return `<div class="notification-row${item.readAt ? "" : " unread"}" role="button" tabindex="0" data-notification-ids="${esc((item.ids || [item.id]).join(","))}" data-notification-post="${esc(item.post?.id || "")}" data-notification-reel="${esc(item.reelId || "")}" data-notification-comment="${esc(item.reelCommentId || "")}" data-notification-actor="${esc(item.actor.id)}">${avatar}<div class="notification-content">${actorLabel}${notificationTime}${preview}</div>${rightSide}${mediaPreview}${item.readAt ? "" : '<span class="notification-unread-dot" aria-label="Unread"></span>'}</div>`;
       };
       const notificationGroupKey = (item) => `${item.type}:${item.post?.id || item.reelId || item.actor?.id || item.id}`;
       const groupedNotifications = (items) => {

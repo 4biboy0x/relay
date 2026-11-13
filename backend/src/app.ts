@@ -26,7 +26,7 @@ import { prisma } from "./db";
 import { getNeonRealtime } from "./neon-realtime";
 import { asyncRoute, errorHandler, HttpError } from "./http";
 import { getReelStorageOrigins } from "./reel-storage";
-import { reelProfileRouter, reelsRouter } from "./reels";
+import { getReelPosterUrl, reelProfileRouter, reelsRouter } from "./reels";
 import { emitToAuthenticated, emitToConversation, emitToPost, emitToUser } from "./realtime";
 import { audioUpload, createUploadReadUrl, getUploadStorageOrigins, imageUpload, saveAudio, saveImage, uploadDirectory } from "./uploads";
 import { createViewerKey, viewRateLimiter, viewRequestGuard } from "./view-tracking";
@@ -131,6 +131,18 @@ async function withNotificationFollowState<T extends { actor: { id: string } }>(
     ...notification,
     actor: { ...notification.actor, viewerFollows: followedIds.has(notification.actor.id) },
   }));
+}
+
+type NotificationPreviewRecord = {
+  post: { id: string; body: string; mediaUrl?: string | null } | null;
+  reel: { id: string; posterKey: string | null } | null;
+};
+
+async function withNotificationPreviews<T extends NotificationPreviewRecord>(notifications: T[]) {
+  return Promise.all(notifications.map(async ({ reel, ...notification }) => ({
+    ...notification,
+    reel: reel ? { id: reel.id, posterUrl: await getReelPosterUrl(reel.id, reel.posterKey) } : null,
+  })));
 }
 const dummyPasswordHash = bcrypt.hash("relay-invalid-login", 12);
 const refreshCookie = "relay_refresh";
@@ -420,7 +432,7 @@ const notify = async (
   if (recipientId === actorId) return;
   const notification = await prisma.notification.create({
     data: { recipientId, actorId, type, postId },
-    include: { actor: { select: publicUser }, post: { select: { id: true, body: true } } },
+    include: { actor: { select: publicUser }, post: { select: { id: true, body: true, mediaUrl: true } } },
   });
   emitToUser(recipientId, "notification:new", notification);
 };
@@ -552,7 +564,7 @@ const createMentionNotifications = async (
       type: NotificationType.MENTION,
       recipientId: { in: newRecipientIds },
     },
-    include: { actor: { select: publicUser }, post: { select: { id: true, body: true } } },
+    include: { actor: { select: publicUser }, post: { select: { id: true, body: true, mediaUrl: true } } },
   });
 };
 
@@ -2898,7 +2910,7 @@ api.get("/notifications", authRequired, asyncRoute(async (req, res) => {
         ? { OR: [{ createdAt: { lt: new Date(cursor.createdAt) } }, { createdAt: new Date(cursor.createdAt), id: { lt: cursor.id } }] }
         : {}),
     },
-    include: { actor: { select: publicUser }, post: { select: { id: true, body: true } } },
+    include: { actor: { select: publicUser }, post: { select: { id: true, body: true, mediaUrl: true } }, reel: { select: { id: true, posterKey: true } } },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: page.limit + 1,
   });
@@ -2906,7 +2918,7 @@ api.get("/notifications", authRequired, asyncRoute(async (req, res) => {
   const items = records.slice(0, page.limit);
   const last = items.at(-1);
   res.json({
-    items: await withNotificationFollowState(req.userId!, items),
+    items: await withNotificationPreviews(await withNotificationFollowState(req.userId!, items)),
     unreadCount: await prisma.notification.count({ where: { recipientId: req.userId!, readAt: null } }),
     nextCursor: hasMore && last ? encodeCursor(last.createdAt, last.id) : null,
   });
@@ -2943,11 +2955,11 @@ api.get("/notifications/stream", authRequired, asyncRoute(async (req, res) => {
             { createdAt: cursor.createdAt, id: { gt: cursor.id } },
           ],
         },
-        include: { actor: { select: publicUser }, post: { select: { id: true, body: true } } },
+        include: { actor: { select: publicUser }, post: { select: { id: true, body: true, mediaUrl: true } }, reel: { select: { id: true, posterKey: true } } },
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
         take: 100,
       });
-      for (const notification of await withNotificationFollowState(req.userId!, fresh)) {
+      for (const notification of await withNotificationPreviews(await withNotificationFollowState(req.userId!, fresh))) {
         if (res.destroyed) return;
         res.write(`id: ${notification.id}\nevent: notification\ndata: ${JSON.stringify(notification)}\n\n`);
         cursor = { id: notification.id, createdAt: notification.createdAt };
