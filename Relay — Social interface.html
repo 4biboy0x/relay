@@ -25395,11 +25395,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (profileLongPressTriggered) event.preventDefault();
         });
         document.addEventListener("click", (event) => {
-          if (!profileLongPressTriggered || !event.target.closest("#navProfile")) return;
+          if (!profileLongPressTriggered) return;
+          profileLongPressTriggered = false;
+          if (!event.target.closest("#navProfile")) return;
           event.preventDefault();
           event.stopPropagation();
           event.stopImmediatePropagation();
-          profileLongPressTriggered = false;
         }, true);
       }
       async function switchAccount() {
