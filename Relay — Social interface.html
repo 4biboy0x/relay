@@ -8317,7 +8317,7 @@
       .explore-tabs:not(.explore-filter-tabs) {
         position: relative;
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         --explore-indicator-position: 0%;
       }
       .explore-tabs:not(.explore-filter-tabs)::after {
@@ -8328,13 +8328,27 @@
         height: 2px;
         background: linear-gradient(var(--accent), var(--accent)) no-repeat;
         background-position: var(--explore-indicator-position, 0%) bottom;
-        background-size: 33.333% 100%;
+        background-size: 25% 100%;
         content: "";
         transition: background-position 180ms ease;
         pointer-events: none;
       }
       .explore-tabs:not(.explore-filter-tabs) > .tab {
         min-width: 0;
+        padding-right: clamp(4px, 1.5vw, 12px);
+        padding-left: clamp(4px, 1.5vw, 12px);
+        font-size: clamp(12px, 3.4vw, 14px);
+        white-space: nowrap;
+      }
+      @media (max-width: 380px) {
+        .explore-tabs:not(.explore-filter-tabs) {
+          padding-right: 8px;
+          padding-left: 8px;
+        }
+        .explore-tabs:not(.explore-filter-tabs)::after {
+          right: 8px;
+          left: 8px;
+        }
       }
       .explore-tabs:not(.explore-filter-tabs) > .tab[aria-selected="true"]::after {
         display: none;
@@ -13174,6 +13188,7 @@
           <nav class="tabs explore-tabs" id="exploreTabs" role="tablist" aria-label="Explore">
             <button class="tab" type="button" role="tab" data-explore-tab="trending" aria-selected="true">Trending</button>
             <button class="tab" type="button" role="tab" data-explore-tab="people" aria-selected="false">People</button>
+            <button class="tab" type="button" role="tab" data-explore-tab="topics" aria-selected="false">Topics</button>
             <button class="tab" type="button" role="tab" data-explore-tab="latest" aria-selected="false">Latest</button>
           </nav>
           <div id="exploreSearchFilters" hidden></div>
@@ -21535,7 +21550,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         );
         const index = tabs.findIndex((button) => button.dataset.exploreTab === tab);
         if (index >= 0) {
-          $("#exploreTabs").style.setProperty("--explore-indicator-position", `${index * 50}%`);
+          $("#exploreTabs").style.setProperty("--explore-indicator-position", `${index * (100 / Math.max(tabs.length - 1, 1))}%`);
         }
       }
       function renderExploreSearchTabs(searchText = $("#exploreSearch").value.trim()) {
@@ -21766,14 +21781,20 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             if (append) $("#exp").insertAdjacentHTML("beforeend", content);
             else await commitExploreContent(heading + content, postsHtml ? "success" : "empty", requestStatusKey, isCurrentRequest, !cached);
             exploreCursor = result.nextCursor;
+          } else if (requestTab === "topics") {
+            const topicResult = await api("/topics");
+            if (!isCurrentRequest()) return;
+            await removeAppendSkeleton?.();
+            const html = `<section class="explore-topics"><h2>Topics</h2><div class="explore-topic-list">${topicResult.items.map((topic) => `<div class="explore-topic-row"><button class="explore-topic-name" type="button" data-topic-open="${esc(topic.slug)}">${esc(topic.name)}</button><button class="explore-topic-follow" type="button" data-topic-follow="${esc(topic.slug)}" data-following="${topic.following}" aria-label="${topic.following ? "Unfollow" : "Follow"} ${esc(topic.name)}" aria-pressed="${topic.following}">${topic.following ? "✓" : "+"}</button></div>`).join("")}</div></section>`;
+            await commitExploreContent(html || emptyState("No topics yet.", "Check back later."), html ? "success" : "empty", requestStatusKey, isCurrentRequest, !cached);
+            exploreCursor = null;
           } else if (requestTab === "trending") {
-            const [trending, topicResult] = await Promise.all([api("/trending"), api("/topics")]);
+            const trending = await api("/trending");
             if (!isCurrentRequest()) {
               return;
             }
             await removeAppendSkeleton?.();
-            const topicHtml = `<section class="explore-topics"><h2>Topics</h2><div class="explore-topic-list">${topicResult.items.map((topic) => `<div class="explore-topic-row"><button class="explore-topic-name" type="button" data-topic-open="${esc(topic.slug)}">${esc(topic.name)}</button><button class="explore-topic-follow" type="button" data-topic-follow="${esc(topic.slug)}" data-following="${topic.following}" aria-label="${topic.following ? "Unfollow" : "Follow"} ${esc(topic.name)}" aria-pressed="${topic.following}">${topic.following ? "✓" : "+"}</button></div>`).join("")}</div></section>`;
-            const html = topicHtml + `<section class="explore-trending"><div class="explore-group"><h2>Trending</h2></div>${trending.items.slice(0, 10).map((item) => `<button class="explore-trending-row" type="button" data-search-tag="${esc(item.tag)}"><strong>${esc(item.tag)}</strong><small>${fmt(item.postCount)} posts · ${fmt(item.uniqueUsers)} people</small></button>`).join("")}</section>`;
+            const html = `<section class="explore-trending"><div class="explore-group"><h2>Trending</h2></div>${trending.items.slice(0, 10).map((item) => `<button class="explore-trending-row" type="button" data-search-tag="${esc(item.tag)}"><strong>${esc(item.tag)}</strong><small>${fmt(item.postCount)} posts · ${fmt(item.uniqueUsers)} people</small></button>`).join("")}</section>`;
             if (append) $("#exp").innerHTML += html;
             else await commitExploreContent(
               html || emptyState("Nothing to explore yet.", "Try another tab or check back later."),
