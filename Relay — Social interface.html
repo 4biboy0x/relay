@@ -8573,6 +8573,35 @@
       .explore-topic-follow { display: inline-grid; width: 24px; min-width: 24px; height: 24px; place-items: center; padding: 0; border: 0; border-radius: 50%; color: var(--text-2); font-size: 19px; line-height: 1; }
       .explore-topic-follow:hover { background: var(--surface-2); color: var(--text); }
       .explore-topic-follow[aria-pressed="true"] { color: var(--accent); font-size: 15px; }
+      .explore-topic-follow svg { display: block; }
+      .explore-topic-follow.is-following svg path {
+        stroke-dasharray: 22;
+        stroke-dashoffset: 22;
+        animation: topic-check-draw 220ms cubic-bezier(.2,.8,.2,1) 35ms forwards;
+      }
+      .explore-topic-follow.is-following svg {
+        transform-origin: center;
+        animation: topic-check-pop 220ms cubic-bezier(.2,.8,.2,1) both;
+      }
+      .explore-topic-follow.is-unfollowing svg {
+        transform-origin: center;
+        animation: topic-check-out 150ms ease-in forwards;
+      }
+      @keyframes topic-check-draw { to { stroke-dashoffset: 0; } }
+      @keyframes topic-check-pop {
+        0% { opacity: 0; transform: scale(.55); }
+        65% { opacity: 1; transform: scale(1.12); }
+        100% { opacity: 1; transform: scale(1); }
+      }
+      @keyframes topic-check-out {
+        to { opacity: 0; transform: scale(.65); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .explore-topic-follow.is-following svg,
+        .explore-topic-follow.is-following svg path,
+        .explore-topic-follow.is-unfollowing svg { animation: none; }
+        .explore-topic-follow.is-following svg path { stroke-dasharray: none; stroke-dashoffset: 0; }
+      }
       .composer-topic-options { display: flex; flex-wrap: wrap; gap: 8px; padding: 16px; }
       .composer-selected-topics { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
       .composer-topics-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,.38); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
@@ -28943,16 +28972,43 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         const topicFollow = e.target.closest("[data-topic-follow]");
         if (topicFollow) {
+          if (topicFollow.dataset.pending === "true") return;
           const slug = topicFollow.dataset.topicFollow;
           const following = topicFollow.dataset.following === "true";
+          const nextFollowing = !following;
+          const topicName = topicFollow.closest(".explore-topic-row")?.querySelector(".explore-topic-name")?.textContent || "topic";
+          const checkIcon = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>';
+          topicFollow.dataset.pending = "true";
+          topicFollow.disabled = true;
+          topicFollow.dataset.following = String(nextFollowing);
+          topicFollow.setAttribute("aria-pressed", String(nextFollowing));
+          topicFollow.setAttribute("aria-label", `${nextFollowing ? "Unfollow" : "Follow"} ${topicName}`);
+          topicFollow.classList.remove("is-following", "is-unfollowing");
+          if (nextFollowing) {
+            topicFollow.innerHTML = checkIcon;
+            topicFollow.classList.add("is-following");
+          } else {
+            topicFollow.classList.add("is-unfollowing");
+            const exitDelay = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? 0 : 150;
+            window.setTimeout(() => {
+              if (topicFollow.isConnected && topicFollow.dataset.following === "false") {
+                topicFollow.innerHTML = "+";
+                topicFollow.classList.remove("is-unfollowing");
+              }
+            }, exitDelay);
+          }
           try {
-            await api(`/topics/${encodeURIComponent(slug)}/follow`, { method: following ? "DELETE" : "PUT" });
-            topicFollow.dataset.following = String(!following);
-            topicFollow.setAttribute("aria-pressed", String(!following));
-            topicFollow.setAttribute("aria-label", `${following ? "Follow" : "Unfollow"} ${topicFollow.closest(".explore-topic-row")?.querySelector(".explore-topic-name")?.textContent || "topic"}`);
-            topicFollow.innerHTML = following ? '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>' : "+";
+            await api(`/topics/${encodeURIComponent(slug)}/follow`, { method: nextFollowing ? "PUT" : "DELETE" });
           } catch (error) {
+            topicFollow.dataset.following = String(following);
+            topicFollow.setAttribute("aria-pressed", String(following));
+            topicFollow.setAttribute("aria-label", `${following ? "Unfollow" : "Follow"} ${topicName}`);
+            topicFollow.innerHTML = following ? checkIcon : "+";
+            topicFollow.classList.remove("is-following", "is-unfollowing");
             toast(error.message || "Could not update topic.");
+          } finally {
+            topicFollow.dataset.pending = "false";
+            topicFollow.disabled = false;
           }
           return;
         }
