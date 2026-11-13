@@ -82,10 +82,18 @@ const summarizeMessageReactions = (reactions: Array<{ emoji: string; userId: str
 const serializeMessage = <T extends { reactions: Array<{ emoji: string; userId: string }> }>(
   message: T,
   viewerId: string,
-) => ({
-  ...message,
-  reactions: summarizeMessageReactions(message.reactions, viewerId),
-});
+  historyCutoffAt: Date | null = null,
+) => {
+  const replyTo = (message as T & { replyTo?: { id: string; createdAt: Date; body: string; sender: unknown } | null }).replyTo;
+  const hiddenReplyTarget = Boolean(historyCutoffAt && replyTo && replyTo.createdAt <= historyCutoffAt);
+  return {
+    ...message,
+    ...(hiddenReplyTarget ? {
+      replyTo: { id: replyTo!.id, body: "Message sent before you cleared this chat", sender: replyTo!.sender },
+    } : {}),
+    reactions: summarizeMessageReactions(message.reactions, viewerId),
+  };
+};
 
 type ReactionTargetType = "text" | "voice" | "image" | "gif" | "video" | "file";
 
@@ -2141,7 +2149,11 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
     items: rows.map((row) => {
       const cutoff = row.historyCutoffAt;
       const preview = row.conversation.messages[0] ?? null;
-      const lastMessage = preview && (!cutoff || preview.createdAt > cutoff) ? preview : null;
+      const storedPreview = row.conversation.lastMessage as { createdAt?: string } | null;
+      const storedPreviewAt = storedPreview?.createdAt ? new Date(storedPreview.createdAt) : null;
+      const lastMessage = storedPreview && (!cutoff || (storedPreviewAt && storedPreviewAt > cutoff))
+        ? storedPreview
+        : preview && (!cutoff || preview.createdAt > cutoff) ? preview : null;
       return {
       id: row.conversationId,
       updatedAt: row.conversation.updatedAt,
@@ -2502,7 +2514,7 @@ api.get("/conversations/:conversationId/messages", authRequired, asyncRoute(asyn
   const items = records.slice(0, page.limit).reverse();
   const oldest = items[0];
   res.json({
-    items: items.map((message) => serializeMessage(message, req.userId!)),
+    items: items.map((message) => serializeMessage(message, req.userId!, member.historyCutoffAt)),
     nextCursor: hasMore && oldest ? encodeCursor(oldest.createdAt, oldest.id) : null,
   });
 }));
@@ -2594,22 +2606,23 @@ api.post("/conversations/:conversationId/messages", authRequired, verifiedEmailR
     });
     return created;
   });
-  const response = serializeMessage(message, req.userId!);
-  const conversationId = response.conversationId;
+  const conversationId = message.conversationId;
   const members = await prisma.conversationMember.findMany({
     where: { conversationId },
-    select: { userId: true },
+    select: { userId: true, historyCutoffAt: true },
   });
-  const realtimeResponse = await normalizeMediaResponse(response, "", req.userId);
+  let response: ReturnType<typeof serializeMessage> | undefined;
   for (const member of members) {
-    // Every participant receives the inbox event through their private user room.
-    // A sender creating a conversation from "draft" has not joined its conversation room yet.
+    // Reply previews are personalized so an old quoted message cannot leak.
+    const memberResponse = serializeMessage(message, member.userId, member.historyCutoffAt);
+    if (member.userId === req.userId) response = memberResponse;
+    const realtimeResponse = await normalizeMediaResponse(memberResponse, "", member.userId);
     emitToUser(member.userId, "message:new", realtimeResponse);
     if (member.userId !== req.userId) {
       emitToUser(member.userId, "messages:unread-increment", { conversationId });
     }
   }
-  res.status(201).json(response);
+  res.status(201).json(response ?? serializeMessage(message, req.userId!));
 }));
 
 const messageEditSchema = z.object({
@@ -2620,9 +2633,14 @@ api.patch("/messages/:messageId", authRequired, messageLimiter, asyncRoute(async
   const messageId = z.string().cuid().parse(req.params.messageId);
   const { body } = messageEditSchema.parse(req.body);
   const result = await prisma.$transaction(async (tx) => {
+    const viewerMembership = await tx.conversationMember.findFirst({
+      where: { userId: req.userId!, deletedAt: null, conversation: { messages: { some: { id: messageId } } } },
+      select: { historyCutoffAt: true },
+    });
     const updated = await tx.message.updateMany({
       where: {
         id: messageId,
+        ...(viewerMembership?.historyCutoffAt ? { createdAt: { gt: viewerMembership.historyCutoffAt } } : {}),
         senderId: req.userId!,
         conversation: { members: { some: { userId: req.userId!, deletedAt: null } } },
         mediaUrl: null,
@@ -2702,7 +2720,11 @@ api.patch("/messages/:messageId", authRequired, messageLimiter, asyncRoute(async
   let members: Array<{ userId: string }> = [];
   try {
     members = await prisma.conversationMember.findMany({
-      where: { conversationId: result.message.conversationId, deletedAt: null },
+      where: {
+        conversationId: result.message.conversationId,
+        deletedAt: null,
+        OR: [{ historyCutoffAt: null }, { historyCutoffAt: { lt: result.message.createdAt } }],
+      },
       select: { userId: true },
     });
   } catch (error) {
@@ -2822,8 +2844,16 @@ const updateMessageReaction = async (req: express.Request, res: express.Response
     await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
       SELECT "id" FROM "Message" WHERE "id" = ${messageId} FOR UPDATE
     `);
+    const viewerMembership = await tx.conversationMember.findFirst({
+      where: { userId: req.userId!, deletedAt: null, conversation: { messages: { some: { id: messageId } } } },
+      select: { historyCutoffAt: true },
+    });
     const message = await tx.message.findFirst({
-      where: { id: messageId, conversation: { members: { some: { userId: req.userId!, deletedAt: null } } } },
+      where: {
+        id: messageId,
+        ...(viewerMembership?.historyCutoffAt ? { createdAt: { gt: viewerMembership.historyCutoffAt } } : {}),
+        conversation: { members: { some: { userId: req.userId!, deletedAt: null } } },
+      },
     });
     if (!message) throw new HttpError(404, "Message not found");
     const [existingReactions, previousActivities] = await Promise.all([
@@ -2849,7 +2879,12 @@ const updateMessageReaction = async (req: express.Request, res: express.Response
       })).count > 0;
     }
     const members = await tx.conversationMember.findMany({
-      where: { conversationId: message.conversationId, userId: { not: req.userId! }, deletedAt: null },
+      where: {
+        conversationId: message.conversationId,
+        userId: { not: req.userId! },
+        deletedAt: null,
+        OR: [{ historyCutoffAt: null }, { historyCutoffAt: { lt: message.createdAt } }],
+      },
       select: { userId: true, lastReadAt: true },
     });
     const now = new Date();
