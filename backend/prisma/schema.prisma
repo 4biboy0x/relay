@@ -41,6 +41,7 @@ model User {
   reelCommentLikes ReelCommentLike[]
   reelReports   ReelReport[]
   posts         Post[]
+  topicFollows  UserTopic[]
   refreshTokens RefreshToken[]
   conversations ConversationMember[]
   sentMessages  Message[]
@@ -82,6 +83,7 @@ model Post {
   replyTo       Post?          @relation("PostReplies", fields: [replyToId], references: [id], onDelete: Cascade)
   replies       Post[]         @relation("PostReplies")
   hashtags      PostHashtag[]
+  topics        PostTopic[]
   views         Int            @default(0) @map("view_count")
 
   @@index([createdAt(sort: Desc), id(sort: Desc)])
@@ -351,6 +353,39 @@ model PostHashtag {
 
   @@id([postId, hashtagId])
   @@index([hashtagId, createdAt(sort: Desc)])
+}
+
+model Topic {
+  id        String      @id
+  slug      String      @unique @db.VarChar(40)
+  name      String      @db.VarChar(60)
+  createdAt DateTime    @default(now())
+  posts     PostTopic[]
+  followers UserTopic[]
+
+  @@index([name])
+}
+
+model PostTopic {
+  postId    String
+  topicId   String
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  topic     Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@id([postId, topicId])
+  @@index([topicId, createdAt(sort: Desc)])
+}
+
+model UserTopic {
+  userId    String
+  topicId   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic     Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@id([userId, topicId])
+  @@index([topicId, createdAt(sort: Desc)])
 }
 
 model Conversation {
