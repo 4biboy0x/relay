@@ -7064,9 +7064,17 @@
         unicode-bidi: plaintext;
       }
       .reply-bar .reply-preview--combined { width: min(100%, 320px); }
+      .message-row.reply-target-highlight {
+        animation: reply-target-shake 560ms cubic-bezier(.36, .07, .19, .97) both;
+      }
       .message-row.reply-target-highlight .message-bubble,
       .message-row.reply-target-highlight .message-image-list {
         animation: reply-target-pulse 1050ms ease-out;
+      }
+      @keyframes reply-target-shake {
+        0%, 100% { translate: 0 0; }
+        16%, 48%, 80% { translate: -4px 0; }
+        32%, 64%, 92% { translate: 4px 0; }
       }
       @keyframes reply-target-pulse {
         0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 42%, transparent); }
@@ -7074,6 +7082,7 @@
         100% { box-shadow: 0 0 0 0 transparent; }
       }
       @media (prefers-reduced-motion: reduce) {
+        .message-row.reply-target-highlight,
         .message-row.reply-target-highlight .message-bubble,
         .message-row.reply-target-highlight .message-image-list { animation: none; }
       }
@@ -14800,6 +14809,7 @@
         messageObserver: null,
       };
       const messageSearchHighlightTimers = new WeakMap();
+      const replyNavigationTimers = new WeakMap();
       let pendingConversationRestoreId = "";
       let pendingMessageNavigation = null;
       let pendingMessageDraft = null;
@@ -23368,9 +23378,39 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         if (!target || loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversationId) return;
         const row = target.closest(".message-row") || target;
+        const chatLog = $("#chatLog");
         const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const previousNavigation = replyNavigationTimers.get(row);
+        if (previousNavigation) {
+          clearTimeout(previousNavigation.timer);
+          previousNavigation.scroller?.removeEventListener("scrollend", previousNavigation.onScrollEnd);
+        }
+        const before = row.getBoundingClientRect();
+        const viewport = chatLog.getBoundingClientRect();
+        const distance = Math.abs((before.top + before.height / 2) - (viewport.top + chatLog.clientHeight / 2));
         row.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
-        triggerReplyTargetHighlight(row);
+        if (reduceMotion || distance < 8) {
+          triggerReplyTargetHighlight(row);
+          return;
+        }
+        let settled = false;
+        const finishNavigation = () => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(navigation.timer);
+          chatLog.removeEventListener("scrollend", navigation.onScrollEnd);
+          replyNavigationTimers.delete(row);
+          if (loadGeneration === activeConversationLoadGeneration && activeConversation?.id === conversationId) {
+            triggerReplyTargetHighlight(row);
+          }
+        };
+        const navigation = {
+          scroller: chatLog,
+          onScrollEnd: finishNavigation,
+          timer: setTimeout(finishNavigation, Math.min(1100, Math.max(260, distance * 0.42 + 180))),
+        };
+        replyNavigationTimers.set(row, navigation);
+        chatLog.addEventListener("scrollend", finishNavigation, { once: true });
       }
       function triggerReplyTargetHighlight(row) {
         if (!row) return;
