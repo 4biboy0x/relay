@@ -22533,6 +22533,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#messageGifButton").disabled = !canAttach || editing || messageSubmissionPending || messageAttachments.length >= 4;
         $$(".message-attachment-remove", $("#messageAttachmentGrid"))
           .forEach((button) => { button.disabled = messageSubmissionPending; });
+        sendButton.classList.toggle("is-hidden", !canSend || $("#messageComposePill").classList.contains("is-recording"));
         sendButton.disabled = !canSend || !attachmentsReady || messageSubmissionPending;
         sendButton.setAttribute("aria-label", editing ? "Save edited message" : "Send message");
         input.setAttribute("aria-label", editing ? "Edit message" : "Write a message");
