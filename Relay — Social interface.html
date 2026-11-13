@@ -13202,6 +13202,12 @@
 
       /* Mobile/tablet DM: let the message stream pass beneath the floating glass composer. */
       @media (max-width: 767px) {
+        .app.mobile-chat-nav-hidden .nav {
+          display: none !important;
+        }
+        .app.mobile-chat-nav-hidden.messages-active main {
+          padding-bottom: 0 !important;
+        }
         .app.messages-active .chat-panel {
           position: relative;
           height: 100%;
@@ -23562,7 +23568,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         closeMessageReactionPicker();
         selectedMessageReply = { conversationId: message.conversationId, message };
         renderMessageReplyPreview();
-        focusInput($("#messageInput"), { isTypingMainScreen: true, preventScroll: true });
+        const mobileTouchReply = window.matchMedia("(max-width: 767px)").matches && isTouchDevice();
+        if (!mobileTouchReply) {
+          focusInput($("#messageInput"), { isTypingMainScreen: true, preventScroll: true });
+        }
         requestAnimationFrame(syncMobileChatKeyboardViewport);
       }
       function syncMobileChatKeyboardViewport() {
@@ -23574,10 +23583,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           return;
         }
         const viewport = window.visualViewport;
-        // The mobile chat panel already follows the resized visual viewport.
-        // Keep the composer anchored to its 8px inset without applying keyboard offset twice.
-        const keyboardInset = 0;
-        panel.style.setProperty("--chat-keyboard-inset", `${keyboardInset}px`);
+        // The panel follows the resized visual viewport; avoid a second keyboard offset.
+        panel.style.setProperty("--chat-keyboard-inset", "0px");
+        const keyboardOpen = Boolean(viewport && window.innerHeight - viewport.height > 120);
+        const app = $(".app");
+        app?.classList.toggle("mobile-chat-nav-hidden", Boolean(activeConversation) || keyboardOpen);
       }
       window.addEventListener("resize", syncMobileChatKeyboardViewport, { passive: true });
       window.visualViewport?.addEventListener("resize", syncMobileChatKeyboardViewport, { passive: true });
