@@ -210,7 +210,20 @@ const ensureVisibleReel = async (reelId: string): Promise<{
 
 const notificationInclude = {
   actor: { select: { id: true, handle: true, displayName: true, avatarUrl: true } },
+  reel: { select: { id: true, posterKey: true } },
 } as const;
+
+const notificationWithReelPreview = async <T extends { reel: { id: string; posterKey: string | null } | null }>(
+  notification: T,
+) => ({
+  ...notification,
+  reel: notification.reel
+    ? { id: notification.reel.id, posterUrl: await mediaUrl(notification.reel.id, notification.reel.posterKey, "poster") }
+    : null,
+});
+
+export const getReelPosterUrl = (reelId: string, posterKey: string | null): Promise<string | null> =>
+  mediaUrl(reelId, posterKey, "poster");
 
 router.get("/feed", authOptional, asyncRoute(async (req, res) => {
   const { cursor: rawCursor, limit, afterId } = feedQuerySchema.parse(req.query);
@@ -641,7 +654,7 @@ const setRelation = async (
     });
   }
   if (result.notification) {
-    emitToUser(result.notification.recipientId, "notification:new", result.notification);
+    emitToUser(result.notification.recipientId, "notification:new", await notificationWithReelPreview(result.notification));
   }
   res.json(result.response);
 };
@@ -988,7 +1001,7 @@ router.post("/:id/comments", authRequired, verifiedEmailRequired, writeLimiter, 
     parentReplyCount: result.parentReplyCount,
     counts: result.counts,
   });
-  if (result.notification) emitToUser(result.notification.recipientId, "notification:new", result.notification);
+  if (result.notification) emitToUser(result.notification.recipientId, "notification:new", await notificationWithReelPreview(result.notification));
   res.status(201).json({ ...result.comment, parentReplyCount: result.parentReplyCount, counts: result.counts });
 }));
 
