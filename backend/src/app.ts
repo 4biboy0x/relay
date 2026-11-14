@@ -1274,50 +1274,91 @@ api.get("/users/directory", authRequired, searchLimiter, asyncRoute(async (req, 
   });
 }));
 
-api.get("/places/search", authRequired, placesLimiter, asyncRoute(async (req, res) => {
-  const query = z.string().trim().min(2).max(100).parse(req.query.q);
-  const url = new URL("https://nominatim.openstreetmap.org/search");
-  url.search = new URLSearchParams({
-    q: query,
-    format: "jsonv2",
-    addressdetails: "1",
-    limit: "6",
-    "accept-language": "en",
-  }).toString();
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      headers: {
-        Accept: "application/json",
-        "User-Agent": "Relay/1.0 place search (https://github.com/relay-social)",
-      },
-      signal: AbortSignal.timeout(5000),
-    });
-  } catch {
-    throw new HttpError(502, "Place search is temporarily unavailable");
+type PlaceSearchItem = {
+  id: string;
+  label: string;
+  shortLabel: string;
+  latitude: string | null;
+  longitude: string | null;
+};
+const placeSearchCache = new Map<string, { items: PlaceSearchItem[]; expiresAt: number }>();
+const placeSearchInFlight = new Map<string, Promise<PlaceSearchItem[]>>();
+const placeSearchCacheTtlMs = 10 * 60 * 1000;
+const placeSearchCacheMaxEntries = 200;
+
+const loadPlaceSearch = async (query: string): Promise<PlaceSearchItem[]> => {
+  const cacheKey = query.toLocaleLowerCase("en").replace(/\s+/g, " ").trim();
+  const cached = placeSearchCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    placeSearchCache.delete(cacheKey);
+    placeSearchCache.set(cacheKey, cached);
+    return cached.items;
   }
-  if (!response.ok) throw new HttpError(502, "Place search is temporarily unavailable");
-  const results = await response.json() as Array<{
-    place_id?: number;
-    display_name?: string;
-    lat?: string;
-    lon?: string;
-    address?: { city?: string; town?: string; village?: string; municipality?: string; country?: string };
-  }>;
-  res.json({
-    items: results
+  if (cached) placeSearchCache.delete(cacheKey);
+  const pending = placeSearchInFlight.get(cacheKey);
+  if (pending) return pending;
+
+  const request = (async () => {
+    const url = new URL("https://nominatim.openstreetmap.org/search");
+    url.search = new URLSearchParams({
+      q: query,
+      format: "jsonv2",
+      addressdetails: "1",
+      limit: "6",
+      "accept-language": "en",
+    }).toString();
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        headers: {
+          Accept: "application/json",
+          "User-Agent": "Relay/1.0 place search (https://github.com/relay-social)",
+        },
+        signal: AbortSignal.timeout(5000),
+      });
+    } catch {
+      throw new HttpError(502, "Place search is temporarily unavailable");
+    }
+    if (!response.ok) throw new HttpError(502, "Place search is temporarily unavailable");
+    const results = await response.json() as Array<{
+      place_id?: number;
+      display_name?: string;
+      lat?: string;
+      lon?: string;
+      address?: { city?: string; town?: string; village?: string; municipality?: string; country?: string };
+    }>;
+    const items = results
       .filter((place) => place.display_name)
       .map((place) => ({
         id: String(place.place_id ?? place.display_name),
-        label: place.display_name,
+        label: place.display_name!,
         shortLabel: [
           place.address?.city || place.address?.town || place.address?.village || place.address?.municipality,
           place.address?.country,
-        ].filter(Boolean).join(", ") || place.display_name,
+        ].filter(Boolean).join(", ") || place.display_name!,
         latitude: place.lat ?? null,
         longitude: place.lon ?? null,
-      })),
-  });
+      }));
+
+    placeSearchCache.set(cacheKey, { items, expiresAt: Date.now() + placeSearchCacheTtlMs });
+    while (placeSearchCache.size > placeSearchCacheMaxEntries) {
+      const oldestKey = placeSearchCache.keys().next().value;
+      if (oldestKey === undefined) break;
+      placeSearchCache.delete(oldestKey);
+    }
+    return items;
+  })();
+  placeSearchInFlight.set(cacheKey, request);
+  try {
+    return await request;
+  } finally {
+    placeSearchInFlight.delete(cacheKey);
+  }
+};
+
+api.get("/places/search", authRequired, placesLimiter, asyncRoute(async (req, res) => {
+  const query = z.string().trim().min(2).max(100).parse(req.query.q);
+  res.json({ items: await loadPlaceSearch(query) });
 }));
 
 api.get("/users/:id/profile", authRequired, asyncRoute(async (req, res) => {
