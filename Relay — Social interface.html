@@ -23742,7 +23742,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $$(".message-attachment-remove", $("#messageAttachmentGrid"))
           .forEach((button) => { button.disabled = messageSubmissionPending; });
         sendButton.classList.toggle("is-hidden", !canSend || $("#messageComposePill").classList.contains("is-recording"));
-        sendButton.disabled = !canSend || !attachmentsReady || messageSubmissionPending;
+        const canSaveEdit = !editing || input.value.trim() !== String(editingMessageState?.originalBody || "").trim();
+        sendButton.disabled = editing
+          ? !canSaveEdit || messageSubmissionPending
+          : !canSend || !attachmentsReady || messageSubmissionPending;
         sendButton.setAttribute("aria-label", editing ? "Save edited message" : "Send message");
         input.setAttribute("aria-label", editing ? "Edit message" : "Write a message");
         input.placeholder = editing ? "Edit message..." : "Message...";
@@ -25040,6 +25043,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           || $("#messageForm").dataset.conversationId !== state.conversationId) return;
         if (!body) {
           toast("Message cannot be empty.");
+          return;
+        }
+        if (body === String(state.originalBody || "").trim()) {
+          cancelMessageEditing();
           return;
         }
         const submit = $("#sendMessage");
