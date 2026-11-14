@@ -21482,12 +21482,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const followedPeople = people.filter((person) => person.viewerFollows && person.id !== currentUser?.id);
         const recentIds = new Set(recentPeople.map((person) => person.id));
         const groups = [
+          ...(currentUser ? [{ label: "Your account", people: [{ ...currentUser, selfRecipient: true }] }] : []),
           { label: "Recent conversations", people: [...new Map(recentPeople.map((person) => [person.id, person])).values()] },
           { label: "People you follow", people: followedPeople.filter((person) => !recentIds.has(person.id)) },
         ].filter((group) => group.people.length);
         results.innerHTML = groups.map(({ label, people: entries }) =>
           `<div role="group" aria-label="${label}"><div class="recipient-hint">${label}</div>${entries.map((person) =>
-            `<button class="recipient-option" type="button" role="option" aria-selected="false" data-recipient-id="${esc(person.id)}">${avatarMarkup(person, "sm")}<span class="user-search-copy"><b>${esc(person.displayName)}</b><small>@${esc(person.handle)}</small></span></button>`,
+            `<button class="recipient-option" type="button" role="option" aria-selected="false" data-recipient-id="${esc(person.id)}">${avatarMarkup(person, "sm")}<span class="user-search-copy"><b>${esc(person.displayName || person.handle || "You")}</b><small>${person.selfRecipient ? "You · Message yourself" : `@${esc(person.handle)}`}</small></span></button>`,
           ).join("")}</div>`,
         ).join("");
         empty.hidden = groups.length > 0;
@@ -21519,12 +21520,17 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (generation !== recipientSearchGeneration) return;
           people = [...new Map([...result.items, ...people].map((person) => [person.id, person])).values()];
           const matches = result.items.filter((person) => person.id !== currentUser?.id);
-          results.innerHTML = matches.map((person) =>
+          const selfMatches = currentUser && [currentUser.displayName, currentUser.handle]
+            .some((value) => String(value || "").toLowerCase().includes(query.toLowerCase()));
+          const selfOption = selfMatches
+            ? `<div role="group" aria-label="Your account"><div class="recipient-hint">Your account</div><button class="recipient-option" type="button" role="option" aria-selected="false" data-recipient-id="${esc(currentUser.id)}">${avatarMarkup(currentUser, "sm")}<span class="user-search-copy"><b>${esc(currentUser.displayName || currentUser.handle || "You")}</b><small>You · Message yourself</small></span></button></div>`
+            : "";
+          results.innerHTML = selfOption + matches.map((person) =>
             `<button class="recipient-option" type="button" role="option" aria-selected="false" data-recipient-id="${esc(person.id)}">${avatarMarkup(person, "sm")}<span class="user-search-copy"><b>${esc(person.displayName)}</b><small>@${esc(person.handle)}</small></span></button>`,
           ).join("");
-          $("#recipientEmpty").hidden = matches.length > 0;
-          $("#recipientEmpty").textContent = matches.length ? "" : "No people found";
-          $("#recipientSearch").setAttribute("aria-expanded", String(matches.length > 0));
+          $("#recipientEmpty").hidden = Boolean(selfOption) || matches.length > 0;
+          $("#recipientEmpty").textContent = selfOption || matches.length ? "" : "No people found";
+          $("#recipientSearch").setAttribute("aria-expanded", String(Boolean(selfOption) || matches.length > 0));
         } catch (error) {
           await finishSkeleton();
           if (generation !== recipientSearchGeneration || controller.signal.aborted) return;
@@ -21563,9 +21569,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (!userId || !requireAuth()) return;
         closeNewMessageDialog();
         try {
-          const existing = conversations.find((conversation) =>
-            conversation.members?.some((member) => member.id === userId)
-          );
+          const isSelfRecipient = userId === currentUser?.id;
+          const existing = conversations.find((conversation) => isSelfRecipient
+            ? conversation.members?.length === 1 && conversation.members[0].id === currentUser.id
+            : conversation.members?.some((member) => member.id === userId));
           if (existing) {
             await renderConversations();
             await openConversation(existing);
@@ -21579,20 +21586,23 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       async function startConversationDraft(userId, recipient) {
         if (!userId || !requireAuth()) return;
-        const existing = conversations.find((conversation) =>
-          conversation.members?.some((member) => member.id === userId)
-        );
+        const isSelfRecipient = userId === currentUser?.id;
+        const existing = conversations.find((conversation) => isSelfRecipient
+          ? conversation.members?.length === 1 && conversation.members[0].id === currentUser.id
+          : conversation.members?.some((member) => member.id === userId));
         if (existing) {
           go("messages");
           await openConversation(existing);
           scrollMessageListToBottom(false);
           return;
         }
-        const profile = recipient || people.find((person) => person.id === userId) || {
-          id: userId,
-          displayName: "User",
-          handle: "",
-        };
+        const profile = userId === currentUser?.id
+          ? currentUser
+          : recipient || people.find((person) => person.id === userId) || {
+              id: userId,
+              displayName: "User",
+              handle: "",
+            };
         pendingMessageDraft = { userId, profile };
         go("messages", false);
         location.hash = "#/messages";
@@ -21600,7 +21610,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function applyMessageDraft(userId, profile) {
         activeConversation = {
           id: `draft-${userId}`,
-          members: [currentUser, profile],
+          members: userId === currentUser?.id ? [currentUser] : [currentUser, profile],
         };
         if (window.matchMedia("(max-width: 767px)").matches) {
           $(".app")?.classList.add("mobile-chat-nav-hidden");
