@@ -31,7 +31,7 @@ const passwordSchema = z
   });
 
 export const registerSchema = z.object({
-  handle: z.string().trim().toLowerCase().regex(/^[a-z0-9_]{3,30}$/),
+  handle: z.string().trim().toLowerCase().regex(/^(?=.*[a-z])[a-z0-9_]{3,30}$/),
   email: z.string().trim().toLowerCase().email().max(254),
   password: passwordSchema,
   displayName: z.string().trim().min(1).max(60),
@@ -100,7 +100,7 @@ export const updatePostSchema = z.object({
 });
 
 export const profileSchema = z.object({
-  handle: z.string().trim().toLowerCase().regex(/^[a-z0-9_]{3,30}$/).optional(),
+  handle: z.string().trim().toLowerCase().regex(/^(?=.*[a-z])[a-z0-9_]{3,30}$/).optional(),
   displayName: z.string().trim().min(1).max(60).optional(),
   bio: z.string().trim().max(280).optional(),
   avatarUrl: mediaUrlSchema.nullable().optional(),

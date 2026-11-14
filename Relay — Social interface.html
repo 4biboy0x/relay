@@ -29761,8 +29761,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           } else if (new TextEncoder().encode(password).length > 72) {
             validationError = "Password must not exceed 72 UTF-8 bytes.";
             invalidField = $("#authPassword");
-          } else if (registering && !/^[a-z0-9_]{3,30}$/.test(handle)) {
-            validationError = "Username must be 3–30 letters, numbers, or underscores.";
+          } else if (registering && !/^(?=.*[a-z])[a-z0-9_]{3,30}$/.test(handle)) {
+            validationError = "Username must be 3–30 characters and include at least one letter (a–z), numbers, or underscores.";
             invalidField = $("#authHandle");
           } else if (registering && !displayName) {
             validationError = "Enter a display name.";
