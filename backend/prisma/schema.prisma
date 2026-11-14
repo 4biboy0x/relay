@@ -464,6 +464,9 @@ model Message {
   @@index([senderId, createdAt(sort: Desc)])
   @@index([replyToId])
   @@index([body(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([mediaUrl], map: "Message_mediaUrl_idx")
+  @@index([audioUrl], map: "Message_audioUrl_idx")
+  @@index([attachments(ops: raw("jsonb_path_ops"))], type: Gin, map: "Message_attachments_gin_idx")
 }
 
 model MessageReaction {
