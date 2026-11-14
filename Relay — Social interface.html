@@ -25068,7 +25068,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             const replacement = template.content.firstElementChild;
             if (replacement) row.replaceWith(replacement);
           });
-          updateMessageRowSpacing(chatLog);
+          sortMessageRowsChronologically(chatLog);
           bindVoiceMessages(chatLog);
           bindMessageMediaScroll(chatLog);
           restoreEmptyMessagesState();
@@ -26584,8 +26584,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             eager: index >= conversationMessages.length - 15,
           })).join("")
             || emptyState("No messages found.", "Send a message to start the conversation.", true)}<div class="typing-status" id="typingStatus" aria-live="polite"></div>`;
-          updateMessageRowSpacing($("#chatLog"));
-          animateChatMessages($$("#chatLog .message-bubble"));
+          sortMessageRowsChronologically($("#chatLog"));
+          animateChatMessages($("#chatLog .message-bubble"));
           bindVoiceMessages($("#chatLog"));
           bindMessageMediaScroll($("#chatLog"));
           scrollMessageListToBottom(false);
@@ -26639,7 +26639,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               const anchor = log.querySelector(".message-bubble");
               const anchorTop = anchor?.getBoundingClientRect().top ?? null;
               log.insertAdjacentHTML("afterbegin", unseen.map((message) => messageMarkup(message, { eager: false })).join(""));
-              updateMessageRowSpacing(log);
+              sortMessageRowsChronologically(log);
               if (anchor && anchorTop !== null) log.scrollTop += anchor.getBoundingClientRect().top - anchorTop;
               bindVoiceMessages(log);
               bindMessageMediaScroll(log);
@@ -26724,7 +26724,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (unseen.length) {
             const anchorTopBeforeInsert = anchor?.getBoundingClientRect().top ?? null;
             log.insertAdjacentHTML("afterbegin", unseen.map((message) => messageMarkup(message, { eager: false })).join(""));
-            updateMessageRowSpacing(log);
+            sortMessageRowsChronologically(log);
             if (anchor && anchorTopBeforeInsert !== null) {
               anchorShift = anchor.getBoundingClientRect().top - anchorTopBeforeInsert;
             }
