@@ -3226,10 +3226,10 @@ api.get("/notifications/stream", authRequired, asyncRoute(async (req, res) => {
       } else {
         // Socket.IO is the primary realtime channel; back off while this fallback is idle.
         pollDelayMs = pollDelayMs < 5000 ? 5000 : 8000;
-        if (!res.destroyed) res.write(": keep-alive\n\n");
+        if (!res.writableEnded && !res.destroyed) res.write(": keep-alive\n\n");
       }
     } catch (error) {
-      if (res.destroyed) return;
+      if (res.writableEnded || res.destroyed) return;
       console.error("Notification stream poll failed", error);
       pollDelayMs = 5000;
       res.write("event: error\ndata: {\"error\":\"Notification stream temporarily unavailable\"}\n\n");
