@@ -2057,46 +2057,6 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
   // the inbox is opened. Existing empty self conversations stay hidden below.
   const selfDirectKey = `${req.userId}:${req.userId}`;
 
-  // Repair missing membership rows for direct conversations. The directKey is
-  // created from the two authenticated participant IDs, so it is a safe source
-  // for restoring memberships when older/partially written data is incomplete.
-  try {
-    const repairCandidates = await prisma.conversation.findMany({
-      where: {
-        OR: [
-          { directKey: { startsWith: `${req.userId}:` } },
-          { directKey: { endsWith: `:${req.userId}` } },
-        ],
-      },
-      select: { id: true, directKey: true },
-    });
-    const memberships = repairCandidates.flatMap((conversation) => {
-      const participantIds = conversation.directKey.split(":");
-      if (participantIds.length !== 2 || !participantIds.includes(req.userId!)) return [];
-      return participantIds.map((userId) => ({ conversationId: conversation.id, userId }));
-    });
-    if (memberships.length) {
-      const existingUsers = await prisma.user.findMany({
-        where: { id: { in: [...new Set(memberships.map((membership) => membership.userId))] } },
-        select: { id: true },
-      });
-      const validUserIds = new Set(existingUsers.map((user) => user.id));
-      const validMemberships = memberships.filter((membership) => validUserIds.has(membership.userId));
-      if (validMemberships.length) {
-        const repaired = await prisma.conversationMember.createMany({
-          data: validMemberships,
-          skipDuplicates: true,
-        });
-        if (repaired.count) {
-          console.warn(`Restored ${repaired.count} missing direct-conversation memberships for inbox user ${req.userId}.`);
-        }
-      }
-    }
-  } catch (error) {
-    // Keep the inbox readable even if the self-healing pass cannot run.
-    console.error("Could not repair direct-conversation memberships before loading inbox.", error);
-  }
-
   const rows = await prisma.conversationMember.findMany({
     where: { userId: req.userId!, deletedAt: null },
     include: {
