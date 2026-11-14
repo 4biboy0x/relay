@@ -15850,7 +15850,9 @@
         accessToken = "";
         if (currentUser?.id) setEmailVerificationNoticeShown(currentUser.id, false);
         currentUser = null;
-        clearViewCaches();\n        conversationMessageCache.clear();\n        conversationMessageCacheVersions.clear();
+        clearViewCaches();
+        conversationMessageCache.clear();
+        conversationMessageCacheVersions.clear();
         inboxPreferences = { pinned: [], muted: {} };
         clearTimeout(emailVerificationNoticeShowTimer);
         emailVerificationNoticeShowTimer = null;
@@ -25000,7 +25002,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }, 100);
         conversationReadSyncTimers.set(conversationId, { timer, refreshBadge: shouldRefreshBadge });
       }
-      function receiveMessage(message) {\n        invalidateConversationMessageCache(message?.conversationId);
+      function receiveMessage(message) {
+        invalidateConversationMessageCache(message?.conversationId);
         if (reconcileMatchingPendingMessage(message)) {
           if (!receivedMessageIds.has(message.id)) receivedMessageIds.add(message.id);
           if (!syncInboxConversationPreview(message.conversationId, message, message.createdAt)) {
@@ -25083,12 +25086,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           renderConversations().catch((error) => console.error("Could not restore the updated inbox preview.", error));
         }
       }
-      function receiveMessageUpdated(message) {\n        invalidateConversationMessageCache(message?.conversationId);
+      function receiveMessageUpdated(message) {
+        invalidateConversationMessageCache(message?.conversationId);
         if (!message?.id || !message?.conversationId) return;
         const { inboxPreview, ...updatedMessage } = message;
         replaceMessageRow(updatedMessage, inboxPreview);
       }
-      function receiveMessageDeleted(event) {\n        invalidateConversationMessageCache(event?.conversationId);
+      function receiveMessageDeleted(event) {
+        invalidateConversationMessageCache(event?.conversationId);
         if (!event?.messageId || !event?.conversationId) return;
         const deletedId = String(event.messageId);
         if (editingMessageState?.messageId === deletedId) cancelMessageEditing();
@@ -25297,7 +25302,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           messageReactionRequests.delete(messageId);
         }
       }
-      function receiveMessageReaction(event) {\n        invalidateConversationMessageCache(event?.conversationId);
+      function receiveMessageReaction(event) {
+        invalidateConversationMessageCache(event?.conversationId);
         if (!event?.messageId || !event?.conversationId || !Array.isArray(event.reactions)) return;
         const actorId = event.actorId || event.userId;
         const isViewingConversation = activeConversation?.id === event.conversationId
@@ -26650,7 +26656,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         try {
           const result = await api(`/conversations/${conversation.id}/messages?limit=40`);
           if (loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversation.id) return;
-          await finishChatSkeleton;
+          await finishChatSkeleton();
           if (loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversation.id) return;
           const conversationMessages = result.items.filter((message) => message.conversationId === conversation.id);
           const freshIds = new Set(conversationMessages.map((message) => message.id));
@@ -26705,7 +26711,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
         } catch (error) {
           if (loadGeneration === activeConversationLoadGeneration) {
-            await finishChatSkeleton;
+            await finishChatSkeleton();
             if (loadGeneration === activeConversationLoadGeneration && !cachedResult) renderError(chatLog, error);
             else if (loadGeneration === activeConversationLoadGeneration) {
               console.warn("Could not refresh cached conversation messages.", error);
