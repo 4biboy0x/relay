@@ -3184,6 +3184,8 @@ api.get("/notifications/stream", authRequired, asyncRoute(async (req, res) => {
     : null;
   let cursor = resumeFrom ?? { id: "", createdAt: new Date() };
   let polling = false;
+  let pollDelayMs = 3000;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   res.status(200).set({
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache, no-transform",
@@ -3193,7 +3195,11 @@ api.get("/notifications/stream", authRequired, asyncRoute(async (req, res) => {
   res.flushHeaders();
   res.write("retry: 5000\n\n");
 
-  const timer = setInterval(async () => {
+  const schedulePoll = (delay = pollDelayMs): void => {
+    if (res.writableEnded || res.destroyed) return;
+    timer = setTimeout(() => void pollNotifications(), delay);
+  };
+  const pollNotifications = async (): Promise<void> => {
     if (polling || res.writableEnded || res.destroyed) return;
     polling = true;
     try {
@@ -3214,16 +3220,28 @@ api.get("/notifications/stream", authRequired, asyncRoute(async (req, res) => {
         res.write(`id: ${notification.id}\nevent: notification\ndata: ${JSON.stringify(notification)}\n\n`);
         cursor = { id: notification.id, createdAt: notification.createdAt };
       }
-      if (!fresh.length && !res.destroyed) res.write(": keep-alive\n\n");
+      if (fresh.length) {
+        // Return to the fastest fallback cadence as soon as new activity arrives.
+        pollDelayMs = 3000;
+      } else {
+        // Socket.IO is the primary realtime channel; back off while this fallback is idle.
+        pollDelayMs = pollDelayMs < 5000 ? 5000 : 8000;
+        if (!res.writableEnded && !res.destroyed) res.write(": keep-alive\n\n");
+      }
     } catch (error) {
-      if (res.destroyed) return;
+      if (res.writableEnded || res.destroyed) return;
       console.error("Notification stream poll failed", error);
+      pollDelayMs = 5000;
       res.write("event: error\ndata: {\"error\":\"Notification stream temporarily unavailable\"}\n\n");
     } finally {
       polling = false;
+      schedulePoll();
     }
-  }, 3000);
-  res.on("close", () => clearInterval(timer));
+  };
+  schedulePoll(3000);
+  res.on("close", () => {
+    if (timer) clearTimeout(timer);
+  });
 }));
 
 api.patch("/notifications/read", authRequired, asyncRoute(async (req, res) => {
