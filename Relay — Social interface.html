@@ -15311,7 +15311,7 @@
       }
       function writeConversationMessageCache(conversationId, result, expectedVersion) {
         const key = conversationMessageCacheKey(conversationId);
-        if (!key || conversationMessageCacheVersions.get(key) !== expectedVersion) return;
+        if (!key || (conversationMessageCacheVersions.get(key) || 0) !== expectedVersion) return;
         conversationMessageCache.delete(key);
         conversationMessageCache.set(key, { result, cachedAt: Date.now() });
         while (conversationMessageCache.size > conversationMessageCacheMaxEntries) {
@@ -26704,6 +26704,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             if (target) await revealSearchedMessage(target, loadGeneration);
             else if (!searchLoadFailed) toast("Could not find that matching message in the conversation.");
           }
+          // Opening a conversation marks its messages and reactions as read on the server.
+          // If the inbox already knows this conversation has zero unread items, refreshing
+          // the entire inbox cannot change its unread count and only adds an avoidable request.
           const knownUnreadCount = Number(conversation.unreadCount);
           const inboxReadStateNeedsRefresh = !Number.isFinite(knownUnreadCount) || knownUnreadCount > 0;
           if (!conversationSearchState.query && inboxReadStateNeedsRefresh) {
