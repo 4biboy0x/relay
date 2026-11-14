@@ -23047,8 +23047,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                   setUnreadBadge(badge, getUnreadBadgeCount(badge) - 1, "notifications");
                 } else {
                   if (shouldShowNotificationAlert(item)) {
-              toast(`${item.actor.displayName} ${notificationActions[item.type]}`);
-            }
+                    toast(`${item.actor.displayName} ${notificationActions[item.type]}`);
+                  }
                 }
               }
             }
@@ -23104,7 +23104,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (!viewing) {
           setUnreadBadge(badge, getUnreadBadgeCount(badge) + 1, "notifications");
           const conversationId = item.conversationId || item.data?.conversationId;
-          if (!(String(item.type || "").toUpperCase() === "MESSAGE" && isConversationMuted(conversationId))) {
+          if (!(String(item.type || "").toUpperCase() === "MESSAGE" && isConversationMuted(conversationId))
+            && shouldShowNotificationAlert(item)) {
             toast(`${item.actor.displayName} ${notificationActions[item.type]}`);
           }
           return;
