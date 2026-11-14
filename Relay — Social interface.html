@@ -15283,6 +15283,41 @@
       let selectedConversationId = "";
       const conversationDrafts = new Map();
       const messagesById = new Map();
+      const conversationMessageCache = new Map();
+      const conversationMessageCacheVersions = new Map();
+      const conversationMessageCacheTtlMs = 20_000;
+      const conversationMessageCacheMaxEntries = 12;
+      function conversationMessageCacheKey(conversationId) {
+        return currentUser?.id && conversationId
+          ? `${currentUser.id}:${conversationId}`
+          : "";
+      }
+      function invalidateConversationMessageCache(conversationId) {
+        const key = conversationMessageCacheKey(conversationId);
+        if (!key) return;
+        conversationMessageCache.delete(key);
+        conversationMessageCacheVersions.set(key, (conversationMessageCacheVersions.get(key) || 0) + 1);
+      }
+      function readConversationMessageCache(conversationId) {
+        const key = conversationMessageCacheKey(conversationId);
+        const entry = key ? conversationMessageCache.get(key) : null;
+        if (!entry || Date.now() - entry.cachedAt > conversationMessageCacheTtlMs) {
+          if (key) conversationMessageCache.delete(key);
+          return null;
+        }
+        conversationMessageCache.delete(key);
+        conversationMessageCache.set(key, entry);
+        return entry.result;
+      }
+      function writeConversationMessageCache(conversationId, result, expectedVersion) {
+        const key = conversationMessageCacheKey(conversationId);
+        if (!key || conversationMessageCacheVersions.get(key) !== expectedVersion) return;
+        conversationMessageCache.delete(key);
+        conversationMessageCache.set(key, { result, cachedAt: Date.now() });
+        while (conversationMessageCache.size > conversationMessageCacheMaxEntries) {
+          conversationMessageCache.delete(conversationMessageCache.keys().next().value);
+        }
+      }
       let selectedMessageReply = null;
       let editingMessageState = null;
       const messageReactionEmojis = ["❤️", "😂", "😮", "😢", "👍", "🙏", "🔥", "🎉"];
@@ -15815,7 +15850,7 @@
         accessToken = "";
         if (currentUser?.id) setEmailVerificationNoticeShown(currentUser.id, false);
         currentUser = null;
-        clearViewCaches();
+        clearViewCaches();\n        conversationMessageCache.clear();\n        conversationMessageCacheVersions.clear();
         inboxPreferences = { pinned: [], muted: {} };
         clearTimeout(emailVerificationNoticeShowTimer);
         emailVerificationNoticeShowTimer = null;
@@ -24965,7 +25000,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }, 100);
         conversationReadSyncTimers.set(conversationId, { timer, refreshBadge: shouldRefreshBadge });
       }
-      function receiveMessage(message) {
+      function receiveMessage(message) {\n        invalidateConversationMessageCache(message?.conversationId);
         if (reconcileMatchingPendingMessage(message)) {
           if (!receivedMessageIds.has(message.id)) receivedMessageIds.add(message.id);
           if (!syncInboxConversationPreview(message.conversationId, message, message.createdAt)) {
@@ -25048,12 +25083,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           renderConversations().catch((error) => console.error("Could not restore the updated inbox preview.", error));
         }
       }
-      function receiveMessageUpdated(message) {
+      function receiveMessageUpdated(message) {\n        invalidateConversationMessageCache(message?.conversationId);
         if (!message?.id || !message?.conversationId) return;
         const { inboxPreview, ...updatedMessage } = message;
         replaceMessageRow(updatedMessage, inboxPreview);
       }
-      function receiveMessageDeleted(event) {
+      function receiveMessageDeleted(event) {\n        invalidateConversationMessageCache(event?.conversationId);
         if (!event?.messageId || !event?.conversationId) return;
         const deletedId = String(event.messageId);
         if (editingMessageState?.messageId === deletedId) cancelMessageEditing();
@@ -25262,7 +25297,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           messageReactionRequests.delete(messageId);
         }
       }
-      function receiveMessageReaction(event) {
+      function receiveMessageReaction(event) {\n        invalidateConversationMessageCache(event?.conversationId);
         if (!event?.messageId || !event?.conversationId || !Array.isArray(event.reactions)) return;
         const actorId = event.actorId || event.userId;
         const isViewingConversation = activeConversation?.id === event.conversationId
@@ -26587,29 +26622,63 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#messageInput").value = conversationDrafts.get(conversation.id) || "";
         syncMessageComposer();
         cancelDelayedPlaceholder(chatLog);
-        chatLog.replaceChildren();
-        const finishChatSkeleton = showDelayedSkeleton(chatLog, "message", { count: 4, label: "messages" });
+        const cachedResult = targetMessageId ? null : readConversationMessageCache(conversation.id);
+        if (cachedResult) {
+          const cachedMessages = cachedResult.items.filter((message) => message.conversationId === conversation.id);
+          cachedMessages.forEach((message) => receivedMessageIds.add(message.id));
+          chatLog.innerHTML = `${cachedMessages.map((message, index) => messageMarkup(message, {
+            eager: index >= cachedMessages.length - 15,
+          })).join("")
+            || emptyState("No messages found.", "Send a message to start the conversation.", true)}<div class="typing-status" id="typingStatus" aria-live="polite"></div>`;
+          sortMessageRowsChronologically(chatLog);
+          bindVoiceMessages(chatLog);
+          bindMessageMediaScroll(chatLog);
+          activeConversationCursor = cachedResult.nextCursor;
+          scrollMessageListToBottom(false);
+        } else {
+          chatLog.replaceChildren();
+        }
+        const finishChatSkeleton = cachedResult
+          ? Promise.resolve()
+          : showDelayedSkeleton(chatLog, "message", { count: 4, label: "messages" });
         $("#messageInput").disabled = false;
         ["#messageImageButton", "#messageGifButton", "#messageStickerButton", "#messageAudioButton"].forEach((selector) => $(selector).disabled = false);
         syncMessageComposer();
         if (socket?.connected) socket.emit("conversation:join", conversation.id);
+        const cacheKey = conversationMessageCacheKey(conversation.id);
+        const cacheVersion = cacheKey ? (conversationMessageCacheVersions.get(cacheKey) || 0) : 0;
         try {
           const result = await api(`/conversations/${conversation.id}/messages?limit=40`);
           if (loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversation.id) return;
-          await finishChatSkeleton();
+          await finishChatSkeleton;
           if (loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversation.id) return;
-          activeConversationCursor = result.nextCursor;
           const conversationMessages = result.items.filter((message) => message.conversationId === conversation.id);
-          conversationMessages.forEach((message) => receivedMessageIds.add(message.id));
-          $("#chatLog").innerHTML = `${conversationMessages.map((message, index) => messageMarkup(message, {
-            eager: index >= conversationMessages.length - 15,
+          const freshIds = new Set(conversationMessages.map((message) => message.id));
+          const liveExtras = cachedResult
+            ? [...messagesById.values()].filter((message) =>
+              message.conversationId === conversation.id
+              && !freshIds.has(message.id)
+              && chatLog.querySelector(`.message-bubble[data-message-id="${CSS.escape(message.id)}"]`)
+              && receivedMessageIds.has(message.id))
+            : [];
+          const mergedMessages = [...conversationMessages, ...liveExtras];
+          mergedMessages.forEach((message) => receivedMessageIds.add(message.id));
+          chatLog.innerHTML = `${mergedMessages.map((message, index) => messageMarkup(message, {
+            eager: index >= mergedMessages.length - 15,
           })).join("")
             || emptyState("No messages found.", "Send a message to start the conversation.", true)}<div class="typing-status" id="typingStatus" aria-live="polite"></div>`;
-          sortMessageRowsChronologically($("#chatLog"));
-          animateChatMessages($$("#chatLog .message-bubble"));
-          bindVoiceMessages($("#chatLog"));
-          bindMessageMediaScroll($("#chatLog"));
-          scrollMessageListToBottom(false);
+          sortMessageRowsChronologically(chatLog);
+          bindVoiceMessages(chatLog);
+          bindMessageMediaScroll(chatLog);
+          activeConversationCursor = result.nextCursor;
+          writeConversationMessageCache(conversation.id, {
+            ...result,
+            items: mergedMessages,
+          }, cacheVersion);
+          if (!cachedResult) {
+            animateChatMessages($$("#chatLog .message-bubble"));
+            scrollMessageListToBottom(false);
+          }
           if (targetMessageId) {
             await new Promise((resolve) => requestAnimationFrame(resolve));
             let target = null;
@@ -26626,9 +26695,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             if (target) await revealSearchedMessage(target, loadGeneration);
             else if (!searchLoadFailed) toast("Could not find that matching message in the conversation.");
           }
-          // Opening a conversation marks its messages and reactions as read on the server.
-          // If the inbox already knows this conversation has zero unread items, refreshing
-          // the entire inbox cannot change its unread count and only adds an avoidable request.
           const knownUnreadCount = Number(conversation.unreadCount);
           const inboxReadStateNeedsRefresh = !Number.isFinite(knownUnreadCount) || knownUnreadCount > 0;
           if (!conversationSearchState.query && inboxReadStateNeedsRefresh) {
@@ -26636,8 +26702,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
         } catch (error) {
           if (loadGeneration === activeConversationLoadGeneration) {
-            await finishChatSkeleton();
-            if (loadGeneration === activeConversationLoadGeneration) renderError($("#chatLog"), error);
+            await finishChatSkeleton;
+            if (loadGeneration === activeConversationLoadGeneration && !cachedResult) renderError(chatLog, error);
+            else if (loadGeneration === activeConversationLoadGeneration) {
+              console.warn("Could not refresh cached conversation messages.", error);
+            }
           }
         }
       }
