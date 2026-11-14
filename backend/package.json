@@ -20,7 +20,7 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:recover": "node scripts/recover-conversation-preferences-migration.mjs",
-    "db:audit-usernames": "tsx scripts/audit-usernames.ts"
+    "render:audit-usernames": "tsx scripts/audit-usernames.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1160.0",

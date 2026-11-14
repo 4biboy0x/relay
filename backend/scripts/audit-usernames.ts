@@ -6,7 +6,8 @@ const acceptedHandlePattern = /^(?=.*[a-z])[a-z0-9_]{3,30}$/;
 
 async function main() {
   if (!process.env.DATABASE_URL) {
-    throw new Error("DATABASE_URL is missing. Add it to backend/.env before running this local audit.");
+    console.warn("Username audit skipped: DATABASE_URL is not available during this deploy.");
+    return;
   }
 
   // Read-only audit: this script never creates or updates user records.
@@ -16,7 +17,7 @@ async function main() {
   });
 
   const reservedHandles = new Set(users.map((user) => user.handle.toLowerCase()));
-  const findings: Array<{ userId: string; currentHandle: string; suggestedHandle: string }> = [];
+  const findings: Array<{ currentHandle: string; suggestedHandle: string }> = [];
 
   for (const user of users) {
     const currentHandle = user.handle.toLowerCase();
@@ -34,7 +35,6 @@ async function main() {
 
     reservedHandles.add(suggestedHandle);
     findings.push({
-      userId: user.id,
       currentHandle: user.handle,
       suggestedHandle,
     });
@@ -52,16 +52,13 @@ async function main() {
     suggestedHandle,
   })));
 
-  // IDs are included in the local JSON report for a possible, separately approved migration.
-  console.log("\nDRY_RUN_REPORT_JSON");
-  console.log(JSON.stringify(findings, null, 2));
   console.log("\nNo database records were modified.");
 }
 
 main()
   .catch((error) => {
-    console.error("Username audit failed:", error);
-    process.exitCode = 1;
+    // This is an informational deploy audit; never block a healthy application deploy.
+    console.error("Username audit could not complete. Deployment will continue.");
   })
   .finally(async () => {
     await prisma.$disconnect();
