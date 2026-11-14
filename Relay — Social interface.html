@@ -26639,7 +26639,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           chatLog.replaceChildren();
         }
         const finishChatSkeleton = cachedResult
-          ? Promise.resolve()
+          ? async () => {}
           : showDelayedSkeleton(chatLog, "message", { count: 4, label: "messages" });
         $("#messageInput").disabled = false;
         ["#messageImageButton", "#messageGifButton", "#messageStickerButton", "#messageAudioButton"].forEach((selector) => $(selector).disabled = false);
@@ -26654,6 +26654,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (loadGeneration !== activeConversationLoadGeneration || activeConversation?.id !== conversation.id) return;
           const conversationMessages = result.items.filter((message) => message.conversationId === conversation.id);
           const freshIds = new Set(conversationMessages.map((message) => message.id));
+          const reconciledMessages = conversationMessages
+            .filter((message) => !(cachedResult && receivedMessageIds.has(message.id) && !messagesById.has(message.id)))
+            .map((message) => cachedResult ? (messagesById.get(message.id) || message) : message);
           const liveExtras = cachedResult
             ? [...messagesById.values()].filter((message) =>
               message.conversationId === conversation.id
@@ -26661,7 +26664,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               && chatLog.querySelector(`.message-bubble[data-message-id="${CSS.escape(message.id)}"]`)
               && receivedMessageIds.has(message.id))
             : [];
-          const mergedMessages = [...conversationMessages, ...liveExtras];
+          const mergedMessages = [...reconciledMessages, ...liveExtras];
           mergedMessages.forEach((message) => receivedMessageIds.add(message.id));
           chatLog.innerHTML = `${mergedMessages.map((message, index) => messageMarkup(message, {
             eager: index >= mergedMessages.length - 15,
