@@ -28119,7 +28119,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       let notificationAlertSettings = readNotificationAlertSettings();
       function renderNotificationAlertSettings() {
         notificationAlertSettings = readNotificationAlertSettings();
-        $("[data-notification-alert]").forEach((button) => {
+        $$("[data-notification-alert]").forEach((button) => {
           button.setAttribute("aria-checked", String(notificationAlertSettings[button.dataset.notificationAlert] !== false));
         });
       }
