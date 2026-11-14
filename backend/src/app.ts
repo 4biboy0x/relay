@@ -2279,7 +2279,7 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
             AND viewer."deletedAt" IS NULL
             AND (viewer."historyCutoffAt" IS NULL OR message."createdAt" > viewer."historyCutoffAt")
           WHERE ${Prisma.join(terms.map((term) => Prisma.sql`
-            message."body" ILIKE ${`%${term}%`} ESCAPE '\\\\'
+            message."body" ILIKE ${`%${term}%`} ESCAPE '\\'
           `), " AND ")}
           ${requestedConversationId
             ? Prisma.sql`AND message."conversationId" = ${requestedConversationId}`
@@ -2298,7 +2298,7 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
           AND viewer."deletedAt" IS NULL
           AND (viewer."historyCutoffAt" IS NULL OR message."createdAt" > viewer."historyCutoffAt")
         WHERE ${Prisma.join(terms.map((term) => Prisma.sql`
-          message."body" ILIKE ${`%${term}%`} ESCAPE '\\\\'
+          message."body" ILIKE ${`%${term}%`} ESCAPE '\\'
         `), " AND ")}
         ${requestedConversationId
           ? Prisma.sql`AND message."conversationId" = ${requestedConversationId}`
