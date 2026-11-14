@@ -24179,13 +24179,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         owner.classList.add("tools-visible");
       }
       let activeMessageBottomSheet = null;
-      function closeMessageBottomSheet() {
+      function closeMessageBottomSheet({ immediate = false } = {}) {
         if (!activeMessageBottomSheet) return;
         const { backdrop, owner } = activeMessageBottomSheet;
         backdrop.classList.remove("is-open");
         owner?.classList.remove("has-message-popover", "is-active-message", "tools-visible");
         if (activeTouchMessageRow === owner) activeTouchMessageRow = null;
-        setTimeout(() => backdrop.remove(), 180);
+        if (immediate) backdrop.remove();
+        else setTimeout(() => backdrop.remove(), 180);
         activeMessageBottomSheet = null;
       }
       function openMessageBottomSheet(owner, bubble, messageId) {
@@ -28596,7 +28597,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const messageId = menuAction.dataset.messageId || owner?.querySelector(".message-bubble")?.dataset.messageId;
           const copyText = menuAction.dataset.messageCopy;
           closeMessageActionMenus();
-          closeMessageBottomSheet();
+          closeMessageBottomSheet({ immediate: action === "edit" });
           try {
             if (action === "copy") {
               await copyMessageText(copyText || "");
