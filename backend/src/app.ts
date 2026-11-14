@@ -2050,17 +2050,9 @@ api.get("/search", authRequired, searchLimiter, asyncRoute(async (req, res) => {
 }));
 
 api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
-  // Ensure every account has a real, single-member self conversation. Keep a
-  // previously deleted membership hidden; sending a new self-message can reopen it.
+  // Self conversations are created when the first message is sent, not when
+  // the inbox is opened. Existing empty self conversations stay hidden below.
   const selfDirectKey = `${req.userId}:${req.userId}`;
-  await prisma.conversation.upsert({
-    where: { directKey: selfDirectKey },
-    create: {
-      directKey: selfDirectKey,
-      members: { create: [{ userId: req.userId! }] },
-    },
-    update: {},
-  });
 
   // Repair missing membership rows for direct conversations. The directKey is
   // created from the two authenticated participant IDs, so it is a safe source
@@ -2118,7 +2110,12 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
     },
     orderBy: { conversation: { updatedAt: "desc" } },
   });
-  const conversationIds = rows.map((row) => row.conversationId);
+  const inboxRows = rows.filter((row) => {
+    if (row.conversation.directKey !== selfDirectKey) return true;
+    const latestMessage = row.conversation.messages[0];
+    return Boolean(latestMessage && (!row.historyCutoffAt || latestMessage.createdAt > row.historyCutoffAt));
+  });
+  const conversationIds = inboxRows.map((row) => row.conversationId);
   // Inbox membership is the source of truth. Optional preferences and unread
   // metadata must never make the entire conversation list disappear.
   let preferences: Array<{
@@ -2162,7 +2159,7 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
   }
   const unread = new Map(unreadRows.map((row) => [row.conversationId, row.unreadCount]));
   res.json({
-    items: rows.map((row) => {
+    items: inboxRows.map((row) => {
       const cutoff = row.historyCutoffAt;
       const preview = row.conversation.messages[0] ?? null;
       const storedPreview = row.conversation.lastMessage as { createdAt?: string; kind?: string; messageCreatedAt?: string } | null;
