@@ -1287,7 +1287,7 @@ const placeSearchCacheTtlMs = 10 * 60 * 1000;
 const placeSearchCacheMaxEntries = 200;
 
 const loadPlaceSearch = async (query: string): Promise<PlaceSearchItem[]> => {
-  const cacheKey = query.toLocaleLowerCase("en").replace(/\\s+/g, " ").trim();
+  const cacheKey = query.toLocaleLowerCase("en").replace(/\s+/g, " ").trim();
   const cached = placeSearchCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
     placeSearchCache.delete(cacheKey);
