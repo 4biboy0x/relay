@@ -2555,41 +2555,43 @@ api.get("/conversations/:conversationId/messages", authRequired, asyncRoute(asyn
   });
   if (!member) throw new HttpError(404, "Conversation not found");
   const cursor = decodeCursor(page.cursor);
-  const records = await prisma.message.findMany({
-    where: {
-      conversationId,
-      ...(member.historyCutoffAt ? { createdAt: { gt: member.historyCutoffAt } } : {}),
-      ...(cursor ? {
-        OR: [
-          { createdAt: { lt: new Date(cursor.createdAt) } },
-          { createdAt: new Date(cursor.createdAt), id: { lt: cursor.id } },
-        ],
-      } : {}),
-    },
-    include: {
-      sender: { select: publicUser },
-      replyTo: {
-        select: {
-          id: true,
-          senderId: true,
-          createdAt: true,
-          body: true,
-          attachments: true,
-          mediaUrl: true,
-          audioUrl: true,
-          stickerId: true,
-          sender: { select: publicUser },
-        },
+  const [records] = await Promise.all([
+    prisma.message.findMany({
+      where: {
+        conversationId,
+        ...(member.historyCutoffAt ? { createdAt: { gt: member.historyCutoffAt } } : {}),
+        ...(cursor ? {
+          OR: [
+            { createdAt: { lt: new Date(cursor.createdAt) } },
+            { createdAt: new Date(cursor.createdAt), id: { lt: cursor.id } },
+          ],
+        } : {}),
       },
-      reactions: { select: { emoji: true, userId: true } },
-    },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    take: page.limit + 1,
-  });
-  await prisma.conversationMember.update({
-    where: memberKey,
-    data: { lastReadAt: new Date(), unreadReactionCount: 0 },
-  });
+      include: {
+        sender: { select: publicUser },
+        replyTo: {
+          select: {
+            id: true,
+            senderId: true,
+            createdAt: true,
+            body: true,
+            attachments: true,
+            mediaUrl: true,
+            audioUrl: true,
+            stickerId: true,
+            sender: { select: publicUser },
+          },
+        },
+        reactions: { select: { emoji: true, userId: true } },
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: page.limit + 1,
+    }),
+    prisma.conversationMember.update({
+      where: memberKey,
+      data: { lastReadAt: new Date(), unreadReactionCount: 0 },
+    }),
+  ]);
   const hasMore = records.length > page.limit;
   const items = records.slice(0, page.limit).reverse();
   const oldest = items[0];
