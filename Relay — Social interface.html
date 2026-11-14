@@ -26368,7 +26368,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             Object.keys(inboxPreferences.muted).forEach((id) => { if (!availableConversationIds.has(id)) delete inboxPreferences.muted[id]; });
             saveInboxPreferences();
             conversationsLoaded = true;
-            const activeSearchQuery = $("#conversationSearch").value.trim().replace(/\\s+/g, " ");
+            const activeSearchQuery = $("#conversationSearch").value.trim().replace(/\s+/g, " ");
             if (activeSearchQuery && conversationSearchState.query === activeSearchQuery) {
               // Returning from a conversation must restore the existing search view,
               // not briefly render the full inbox and restart both search requests.
