@@ -14262,6 +14262,30 @@
                 </div>
               </div>
             </section>
+            <section class="settings-card" aria-labelledby="notificationAlertsTitle">
+              <div class="settings-card-heading">
+                <h2 id="notificationAlertsTitle">In-app alerts</h2>
+                <p>Choose which activity appears as a pop-up. All notifications remain in your inbox. Saved on this device.</p>
+              </div>
+              <div class="reel-setting-list">
+                <div class="reel-setting-row">
+                  <span><strong>New followers</strong><small>When someone follows you.</small></span>
+                  <button class="cookie-switch" type="button" role="switch" data-notification-alert="follows" aria-label="Alerts for new followers" aria-checked="true"></button>
+                </div>
+                <div class="reel-setting-row">
+                  <span><strong>Post activity</strong><small>Likes, reposts, replies and mentions.</small></span>
+                  <button class="cookie-switch" type="button" role="switch" data-notification-alert="posts" aria-label="Alerts for post activity" aria-checked="true"></button>
+                </div>
+                <div class="reel-setting-row">
+                  <span><strong>Reel activity</strong><small>Likes, comments and reposts.</small></span>
+                  <button class="cookie-switch" type="button" role="switch" data-notification-alert="reels" aria-label="Alerts for Reel activity" aria-checked="true"></button>
+                </div>
+                <div class="reel-setting-row">
+                  <span><strong>Messages</strong><small>New message alerts.</small></span>
+                  <button class="cookie-switch" type="button" role="switch" data-notification-alert="messages" aria-label="Alerts for new messages" aria-checked="true"></button>
+                </div>
+              </div>
+            </section>
             <section class="settings-card" aria-labelledby="emailTitle">
               <div class="settings-card-heading">
                 <h2 id="emailTitle">Email address</h2>
@@ -15139,7 +15163,7 @@
         document.querySelector('meta[name="relay-api-base"]')?.content || "/api",
         window.location.href,
       ).href.replace(/\/$/, "");
-      const IMAGE_SERVICE_WORKER_VERSION = 1; // Change this value to disable the worker and clear its caches.
+      const IMAGE_SERVICE_WORKER_VERSION = 2; // Bump to refresh the worker's image and offline shell caches.
       const imageServiceWorkerCachePrefix = "relay-images-";
       if (document.querySelector('meta[name="relay-production"]')?.content === "true"
         && "serviceWorker" in navigator) {
@@ -21526,6 +21550,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
           const settingsToggle = event.target.closest("[data-reel-setting]");
           if (settingsToggle) toggleReelSetting(settingsToggle);
+          const notificationAlertToggle = event.target.closest("[data-notification-alert]");
+          if (notificationAlertToggle) toggleNotificationAlert(notificationAlertToggle);
         });
         [
           $("#reelCreateDialog"),
@@ -23020,7 +23046,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                   await api("/notifications/read", { method: "PATCH", body: JSON.stringify({ ids: [item.id] }) });
                   setUnreadBadge(badge, getUnreadBadgeCount(badge) - 1, "notifications");
                 } else {
-                  toast(`${item.actor.displayName} ${notificationActions[item.type]}`);
+                  if (shouldShowNotificationAlert(item)) {
+              toast(`${item.actor.displayName} ${notificationActions[item.type]}`);
+            }
                 }
               }
             }
@@ -28068,6 +28096,55 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (email && document.activeElement !== email) email.value = currentUser.email || "";
         syncSettingsEmail();
         renderReelSettings();
+        renderNotificationAlertSettings();
+      }
+      const notificationAlertDefaults = Object.freeze({
+        follows: true, posts: true, reels: true, messages: true,
+      });
+      function notificationAlertStorageKey() {
+        return currentUser?.id ? `relay_notification_alerts:${currentUser.id}` : "";
+      }
+      function readNotificationAlertSettings() {
+        const key = notificationAlertStorageKey();
+        if (!key) return { ...notificationAlertDefaults };
+        try {
+          const saved = JSON.parse(localStorage.getItem(key) || "null");
+          return Object.fromEntries(Object.keys(notificationAlertDefaults).map((name) => [
+            name, typeof saved?.[name] === "boolean" ? saved[name] : true,
+          ]));
+        } catch {
+          return { ...notificationAlertDefaults };
+        }
+      }
+      let notificationAlertSettings = readNotificationAlertSettings();
+      function renderNotificationAlertSettings() {
+        notificationAlertSettings = readNotificationAlertSettings();
+        $("[data-notification-alert]").forEach((button) => {
+          button.setAttribute("aria-checked", String(notificationAlertSettings[button.dataset.notificationAlert] !== false));
+        });
+      }
+      function toggleNotificationAlert(button) {
+        const key = button.dataset.notificationAlert;
+        if (!Object.prototype.hasOwnProperty.call(notificationAlertDefaults, key)) return;
+        notificationAlertSettings = readNotificationAlertSettings();
+        notificationAlertSettings[key] = !notificationAlertSettings[key];
+        const storageKey = notificationAlertStorageKey();
+        if (!storageKey) return;
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(notificationAlertSettings));
+          renderNotificationAlertSettings();
+        } catch (error) {
+          console.warn("Unable to save in-app alert preferences.", error);
+          toast("Could not save your alert preferences.");
+        }
+      }
+      function shouldShowNotificationAlert(item) {
+        const type = String(item?.type || "").toUpperCase();
+        const category = type === "FOLLOW" ? "follows"
+          : type.startsWith("REEL_") ? "reels"
+          : ["LIKE", "REPOST", "REPLY", "MENTION"].includes(type) ? "posts"
+          : type === "MESSAGE" ? "messages" : "";
+        return !category || readNotificationAlertSettings()[category] !== false;
       }
       function renderReelSettings() {
         $$("[data-reel-setting]").forEach((button) => {

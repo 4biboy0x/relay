@@ -1,8 +1,16 @@
-const CACHE_NAME = "relay-images-v1";
+const CACHE_NAME = "relay-images-v2";
+const SHELL_CACHE_NAME = "relay-shell-v1";
 const MAX_CACHE_ENTRIES = 300;
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(self.skipWaiting());
+  event.waitUntil((async () => {
+    const cache = await caches.open(SHELL_CACHE_NAME);
+    await Promise.allSettled([
+      cache.add(new Request("/", { cache: "reload" })),
+      cache.add(new Request("/offline.html", { cache: "reload" })),
+    ]);
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener("activate", (event) => {
@@ -17,9 +25,38 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const request = event.request;
-  if (request.method !== "GET"
-    || request.destination !== "image"
-    || request.headers.has("Range")) return;
+  if (request.method !== "GET") return;
+
+  if (request.mode === "navigate") {
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(request);
+        if (response.ok && new URL(request.url).origin === self.location.origin) {
+          const cache = await caches.open(SHELL_CACHE_NAME);
+          const requestPath = new URL(request.url).pathname;
+          if (requestPath === "/" || requestPath.endsWith(".html")) {
+            await cache.put(requestPath === "/" ? "/" : request, response.clone());
+          }
+        }
+        return response;
+      } catch {
+        const cache = await caches.open(SHELL_CACHE_NAME);
+        const cachedRequest = await cache.match(request);
+        if (cachedRequest) return cachedRequest;
+        const appShell = await cache.match("/");
+        if (appShell) return appShell;
+        const offlinePage = await cache.match("/offline.html");
+        if (offlinePage) return offlinePage;
+        return new Response("You’re offline. Reconnect and try again.", {
+          status: 503,
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        });
+      }
+    })());
+    return;
+  }
+
+  if (request.destination !== "image" || request.headers.has("Range")) return;
 
   const requestUrl = new URL(request.url);
   const isSameOriginUpload = requestUrl.origin === self.location.origin
