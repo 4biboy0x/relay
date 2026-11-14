@@ -26585,7 +26585,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           })).join("")
             || emptyState("No messages found.", "Send a message to start the conversation.", true)}<div class="typing-status" id="typingStatus" aria-live="polite"></div>`;
           sortMessageRowsChronologically($("#chatLog"));
-          animateChatMessages($("#chatLog .message-bubble"));
+          animateChatMessages($$("#chatLog .message-bubble"));
           bindVoiceMessages($("#chatLog"));
           bindMessageMediaScroll($("#chatLog"));
           scrollMessageListToBottom(false);
