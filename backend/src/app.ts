@@ -1944,8 +1944,8 @@ api.get("/search", authRequired, searchLimiter, asyncRoute(async (req, res) => {
       LEFT JOIN "Follow" AS f ON f."followedId" = u."id"
       WHERE u."id" <> ${req.userId!}
         AND (
-          u."handle" ILIKE ${searchPattern} ESCAPE E'\\'
-          OR u."displayName" ILIKE ${searchPattern} ESCAPE E'\\'
+          u."handle" ILIKE ${searchPattern} ESCAPE E'\\\\'
+          OR u."displayName" ILIKE ${searchPattern} ESCAPE E'\\\\'
         )
       GROUP BY u."id"
       ${cursorFilter}
@@ -2011,13 +2011,13 @@ api.get("/search", authRequired, searchLimiter, asyncRoute(async (req, res) => {
       WHERE p."deletedAt" IS NULL
         AND p."replyToId" IS NULL
         AND (
-          p."body" ILIKE ${searchPattern} ESCAPE E'\\'
+          p."body" ILIKE ${searchPattern} ESCAPE E'\\\\'
           OR EXISTS (
             SELECT 1
             FROM "PostHashtag" AS ph
             JOIN "Hashtag" AS h ON h."id" = ph."hashtagId"
             WHERE ph."postId" = p."id"
-              AND h."tag" ILIKE ${tagSearchPattern} ESCAPE E'\\'
+              AND h."tag" ILIKE ${tagSearchPattern} ESCAPE E'\\\\'
           )
         )
       GROUP BY p."id"
