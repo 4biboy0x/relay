@@ -2775,7 +2775,7 @@ api.patch("/messages/:messageId", authRequired, messageLimiter, asyncRoute(async
         : null,
     };
   });
-  if (result.unchanged) {
+  if ("unchanged" in result && result.unchanged) {
     res.json(serializeMessage(result.message, req.userId!));
     return;
   }
