@@ -25735,11 +25735,21 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             : new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" }).format(date);
         return { label, title: date.toLocaleString() };
       }
+      function getConversationDisplayUser(item) {
+        const members = Array.isArray(item?.members) ? item.members : [];
+        const otherMember = members.find((member) => member?.id && member.id !== currentUser?.id);
+        if (otherMember) return otherMember;
+        // A self-conversation has no peer after excluding the signed-in user.
+        // Do not depend on an exact member count: duplicate/partial member arrays
+        // can otherwise make search results fall back to the generic "Relay user".
+        if (currentUser?.id && members.some((member) => member?.id === currentUser.id)) {
+          return currentUser;
+        }
+        return null;
+      }
       function conversationSearchText(item) {
-        const isSelfConversation = item.members.length === 1 && item.members[0].id === currentUser?.id;
-        const otherMembers = isSelfConversation
-          ? [currentUser]
-          : item.members.filter((member) => member.id !== currentUser?.id);
+        const displayUser = getConversationDisplayUser(item);
+        const otherMembers = displayUser ? [displayUser] : [];
         return `${otherMembers.map((member) => `${member.displayName || ""} ${member.handle || ""}`).join(" ")} ${item.lastMessage?.body || ""}`
           .normalize("NFKC")
           .toLowerCase();
@@ -25979,8 +25989,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             .map((row) => [row.dataset.conversationRow, row.getBoundingClientRect().top]))
           : null;
         const markup = renderItems.map((item, index) => {
-          const other = item.members.find((member) => member.id !== currentUser?.id)
-            || (item.members.length === 1 && item.members[0].id === currentUser?.id ? currentUser : null);
+          const other = getConversationDisplayUser(item);
           const current = searchMode !== "messages" && (item.id === selectedConversationId
             || (!selectedConversationId && item.id === activeConversation?.id));
           const search = `${conversationSearchText(item)} ${normalizedQuery}`;
@@ -26031,7 +26040,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             <button class="conversation-item${searchQuery ? " is-search-result" : ""}${searchMode === "messages" ? " message-search-result" : ""}${unreadCount ? " has-unread" : ""}" type="button" style="--conversation-index:${index}" data-conversation="${esc(item.id)}" data-search="${esc(search)}" data-search-mode="${esc(searchMode)}" data-search-message-id="${esc(searchMessageId)}" data-search-message-candidate="${searchMessageCandidate}" aria-current="${current}"${searchQuery ? ` aria-selected="${current}"` : ""}>
               ${presenceAvatarMarkup(other, "sm")}
               <span class="grow">
-                <span class="conversation-item-heading"><b>${esc(other?.displayName || "Relay user")}</b>${muted ? '<span class="conversation-state-icon" title="Muted" aria-label="Muted"><svg class="i" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4M4 4l16 16"/></svg></span>' : ""}${messageTime}</span>
+                <span class="conversation-item-heading"><b>${esc(other?.displayName || other?.handle || "Relay user")}</b>${muted ? '<span class="conversation-state-icon" title="Muted" aria-label="Muted"><svg class="i" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4M4 4l16 16"/></svg></span>' : ""}${messageTime}</span>
                 <small>${preview}</small>
               </span>
             </button>
@@ -26089,9 +26098,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const renderedRows = append ? rows.slice(-items.length) : rows;
         renderedRows.forEach((row, index) => {
           const item = items[index];
-          const other = item.members.find((member) => member.id !== currentUser?.id);
+          const other = getConversationDisplayUser(item);
           const name = row.querySelector(".conversation-item-heading b");
-          if (searchQuery && name) appendConversationMatch(name, other?.displayName || "Relay user", searchQuery);
+          if (searchQuery && name) appendConversationMatch(name, other?.displayName || other?.handle || "Relay user", searchQuery);
           const preview = row.querySelector(".conversation-preview-text");
           if (searchQuery && preview) appendConversationMatch(preview, preview.textContent, searchQuery);
         });
