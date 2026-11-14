@@ -1,9 +1,14 @@
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 const acceptedHandlePattern = /^(?=.*[a-z])[a-z0-9_]{3,30}$/;
 
 async function main() {
+  if (!process.env.DATABASE_URL) {
+    throw new Error("DATABASE_URL is missing. Add it to backend/.env before running this local audit.");
+  }
+
   // Read-only audit: this script never creates or updates user records.
   const users = await prisma.user.findMany({
     select: { id: true, handle: true },
@@ -47,8 +52,7 @@ async function main() {
     suggestedHandle,
   })));
 
-  // IDs are included in the JSON report so any later, separately approved
-  // migration can map suggestions to accounts without relying on usernames.
+  // IDs are included in the local JSON report for a possible, separately approved migration.
   console.log("\nDRY_RUN_REPORT_JSON");
   console.log(JSON.stringify(findings, null, 2));
   console.log("\nNo database records were modified.");
