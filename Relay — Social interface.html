@@ -3334,6 +3334,20 @@
       .empty-state-compact .i { width: 18px; height: 18px; }
       .empty-state-compact strong { font-size: 13px; }
       .empty-state-compact span { font-size: 12px; }
+      .relay-offline-notice {
+        position: fixed; z-index: 12000; top: max(10px, env(safe-area-inset-top)); left: 50%;
+        display: flex; width: max-content; max-width: calc(100vw - 24px); align-items: center; gap: 8px;
+        padding: 9px 13px; border: 1px solid var(--border); border-radius: 10px;
+        color: var(--text); background: var(--surface); box-shadow: var(--shadow); font-size: 13px;
+        opacity: 0; pointer-events: none; transform: translate(-50%, -8px);
+        transition: opacity 180ms ease, transform 180ms ease;
+      }
+      .relay-offline-notice.is-visible { opacity: 1; transform: translate(-50%, 0); }
+      .relay-offline-notice::before {
+        width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--text-3); content: "";
+      }
+      .relay-offline-notice.is-online::before { background: var(--ok); }
+      @media (prefers-reduced-motion: reduce) { .relay-offline-notice { transition: none; } }
       .post-live-in {
         animation: post-live-in 220ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
       }
@@ -7303,14 +7317,16 @@
         justify-content: center;
         background: rgba(0,0,0,.45);
         opacity: 0;
-        transition: opacity 180ms ease;
+        transition: opacity 200ms cubic-bezier(.2,.7,.2,1);
+        overscroll-behavior: contain;
       }
       .message-bottom-sheet-backdrop.is-open { opacity: 1; }
       .message-bottom-sheet {
         position: relative;
         width: 100%;
         max-width: 560px;
-        max-height: min(72dvh, 520px);
+        max-height: min(78dvh, 560px);
+        overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
         padding: 10px 16px calc(18px + env(safe-area-inset-bottom));
         border: 1px solid var(--border);
         border-bottom: 0;
@@ -7318,8 +7334,9 @@
         color: var(--text);
         background: var(--surface);
         box-shadow: 0 -12px 40px rgba(0,0,0,.18);
-        transform: translateY(24px);
-        transition: transform 180ms ease;
+        transform: translateY(18px);
+        transition: transform 220ms cubic-bezier(.2,.75,.25,1);
+        will-change: transform;
       }
       .message-bottom-sheet-backdrop.is-open .message-bottom-sheet { transform: translateY(0); }
       .message-bottom-sheet-handle {
@@ -7365,7 +7382,12 @@
         text-align: start;
       }
       .message-bottom-sheet-actions .i { width: 20px; height: 20px; }
+      .message-bottom-sheet-actions button:hover { background: var(--surface-2); }
+      .message-bottom-sheet-actions button:active { background: var(--hover); }
       .message-bottom-sheet-actions button.is-destructive { color: var(--like); }
+      @media (prefers-reduced-motion: reduce) {
+        .message-bottom-sheet-backdrop, .message-bottom-sheet { transition: none; }
+      }
       @media (min-width: 768px) {
         .message-bottom-sheet-backdrop { display: none !important; }
         .message-bubble.text-message { max-width: min(72cqw, 420px); }
@@ -10672,7 +10694,8 @@
           touch-action: none;
           flex: 0 0 auto;
           padding: 8px 16px 12px;
-          border-bottom: 1px solid #F3F4F6;
+          border-bottom: 1px solid var(--border);
+          background: var(--surface);
           touch-action: pan-y;
         }
         .reel-comments-dialog .reel-dialog-header h2 { font-size: 16px; }
@@ -10686,10 +10709,10 @@
           place-items: center;
           border: 0;
           border-radius: 50%;
-          background: #F3F4F6;
-          color: #52525B;
+          background: var(--surface-2);
+          color: var(--text-2);
         }
-        .reel-comments-dialog .reel-dialog-header .icon-btn:hover { background: #E5E7EB; }
+        .reel-comments-dialog .reel-dialog-header .icon-btn:hover { background: var(--hover); }
         .reel-comments-dialog .reel-comment-list {
           min-height: 0;
           max-height: none;
@@ -10706,8 +10729,8 @@
           flex: 0 0 auto;
           gap: 0;
           padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
-          border-top: 1px solid #F3F4F6;
-          background: var(--bg);
+          border-top: 1px solid var(--border);
+          background: var(--surface);
         }
         .reel-comments-dialog .reel-comment-form input {
           width: 100%;
@@ -10731,12 +10754,12 @@
           place-items: center;
           border: 0;
           border-radius: 50%;
-          background: #D1D5DB;
-          color: #fff;
+          background: var(--text-3);
+          color: var(--surface);
           cursor: not-allowed;
           transition: background-color 180ms ease, color 180ms ease, opacity 180ms ease;
         }
-        .reel-comments-dialog .reel-comment-form .btn.is-ready { background: #2563EB; cursor: pointer; }
+        .reel-comments-dialog .reel-comment-form .btn.is-ready { background: var(--accent); cursor: pointer; }
         .reel-comments-dialog .reel-comment-form .btn span { display: none; }
         .reel-comments-dialog .reel-comment-form .btn .i { display: block; width: 20px; height: 20px; }
         .reel-comments-dialog .reel-comment-form .btn:disabled { opacity: .45; }
@@ -15778,7 +15801,9 @@
             credentials: "include",
           });
         } catch {
-          throw new Error("Relay API is unreachable. Start the backend and try again.");
+          throw new Error(navigator.onLine
+            ? "Can’t reach Relay right now. Try again shortly."
+            : "You’re offline. Check your connection and try again.");
         }
         if (response.status === 401 && retry && path !== "/auth/login" && path !== "/auth/register" && path !== "/auth/refresh") {
           const renewed = await refreshSession();
@@ -15803,7 +15828,13 @@
           let responseData = null;
           try {
             responseData = await response.json();
-            if (response.status !== 429) message = responseData.error || responseData.message || message;
+            const serverMessage = responseData.error || responseData.message;
+            const looksTechnical = typeof serverMessage === "string"
+              && /(prisma|sql|database|constraint|stack|internal server|ECONN[A-Z]*|TypeError|ReferenceError| at .+:\d+)/i.test(serverMessage);
+            if (response.status < 500 && response.status !== 429
+              && typeof serverMessage === "string" && serverMessage.trim() && !looksTechnical) {
+              message = serverMessage;
+            }
           } catch {}
           const error = new Error(message);
           error.status = response.status;
@@ -31519,6 +31550,50 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       $("#analyticsCookies").addEventListener("click", (event) => {
         const control = event.currentTarget;
         control.setAttribute("aria-checked", String(control.getAttribute("aria-checked") !== "true"));
+      });
+      // Keep connection feedback quiet; only show it when the browser reports a change.
+      const offlineNotice = document.createElement("div");
+      offlineNotice.className = "relay-offline-notice";
+      offlineNotice.setAttribute("role", "status");
+      offlineNotice.setAttribute("aria-live", "polite");
+      offlineNotice.textContent = "You’re offline. Some content may be unavailable.";
+      document.body.append(offlineNotice);
+      let offlineNoticeTimer = null;
+      const syncNetworkNotice = () => {
+        clearTimeout(offlineNoticeTimer);
+        if (!navigator.onLine) {
+          offlineNotice.textContent = "You’re offline. Some content may be unavailable.";
+          offlineNotice.classList.remove("is-online");
+          offlineNotice.classList.add("is-visible");
+          return;
+        }
+        if (!offlineNotice.classList.contains("is-visible")) return;
+        offlineNotice.textContent = "Back online";
+        offlineNotice.classList.add("is-online");
+        offlineNoticeTimer = setTimeout(() => offlineNotice.classList.remove("is-visible"), 1800);
+      };
+      window.addEventListener("offline", syncNetworkNotice);
+      window.addEventListener("online", syncNetworkNotice);
+      if (!navigator.onLine) syncNetworkNotice();
+
+      // Keyboard access: Ctrl/Cmd + K opens Explore search; / focuses it.
+      document.addEventListener("keydown", (event) => {
+        if (event.defaultPrevented || event.altKey || event.shiftKey) return;
+        const target = event.target;
+        const typing = target instanceof Element
+          && (target.matches("input, textarea, select, [contenteditable=true]")
+            || target.closest("[contenteditable=true]"));
+        const shortcutSearch = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k";
+        const slashSearch = !event.metaKey && !event.ctrlKey && event.key === "/" && !typing;
+        if (!shortcutSearch && !slashSearch) return;
+        if (typing && !shortcutSearch) return;
+        event.preventDefault();
+        if ($("#v-explore").hidden) go("explore");
+        requestAnimationFrame(() => {
+          const search = $("#exploreSearch");
+          search?.focus({ preventScroll: true });
+          search?.select();
+        });
       });
       initializeReels();
       initializeLegalContents();
