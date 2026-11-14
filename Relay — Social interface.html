@@ -7928,8 +7928,25 @@
       .message-send-text:not(:disabled):hover,
       .message-send-text:not(:disabled):focus-visible { background: var(--surface-2); }
       .message-send-text.is-editing {
+        box-sizing: border-box;
+        width: 36px;
+        min-width: 36px;
+        height: 36px;
+        flex: 0 0 36px;
+        aspect-ratio: 1;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border-radius: 50%;
         color: #fff;
         background: var(--accent);
+      }
+      .message-send-text.is-editing svg {
+        width: 18px;
+        height: 18px;
+        margin: 0;
+        justify-self: center;
+        align-self: center;
       }
       .message-send-text.is-editing:not(:disabled):hover,
       .message-send-text.is-editing:not(:disabled):focus-visible { background: var(--accent-h); }
