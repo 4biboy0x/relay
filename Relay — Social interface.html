@@ -13506,6 +13506,17 @@
           bottom: 72px;
         }
       }
+
+      /* While editing, keep the jump button clear of the Edit message row and Cancel control. */
+      @media (max-width: 767px) {
+        .app.messages-active:has(#messageEditLabel:not([hidden])) .chat-scroll-to-bottom {
+          opacity: 0;
+          transform: translateY(8px) scale(.88);
+          visibility: hidden;
+          pointer-events: none;
+          transition-delay: 0s;
+        }
+      }
       @media (min-width: 768px) and (max-width: 1100px) {
         .app.messages-active .chat-scroll-to-bottom {
           bottom: 88px;
