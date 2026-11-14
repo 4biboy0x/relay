@@ -2226,7 +2226,8 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
       FROM "ConversationMember" AS peer
       JOIN "User" AS participant ON participant."id" = peer."userId"
       WHERE peer."conversationId" = conversation."id"
-        AND peer."userId" <> ${req.userId!}
+        AND (peer."userId" <> ${req.userId!}
+          OR conversation."directKey" = ${`${req.userId!}:${req.userId!}`})
         AND (
           participant."displayName" ILIKE ${`%${term}%`} ESCAPE '\\'
           OR participant."handle" ILIKE ${`%${term}%`} ESCAPE '\\'
@@ -2599,7 +2600,7 @@ api.post("/conversations/:conversationId/messages", authRequired, verifiedEmailR
         update: {},
       });
       // Existing direct conversations may predate a missing-membership repair.
-      // Recreate both participant rows before validating access or writing.
+      // Recreate the required member rows before validating access or writing.
       await tx.conversationMember.createMany({
         data: [req.userId!, recipientId].map((userId) => ({
           conversationId: conversation.id,
