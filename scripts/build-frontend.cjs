@@ -58,6 +58,8 @@ const result = spawnSync(process.execPath, [viteCli, "build", "--config", "vite.
 if (result.status === 0) {
   fs.writeFileSync(outputHtml, html);
   fs.copyFileSync(path.join(root, "realtime-demo.html"), outputDemoHtml);
+  fs.copyFileSync(path.join(root, "404.html"), path.join(root, "dist", "404.html"));
+  fs.copyFileSync(path.join(root, "offline.html"), path.join(root, "dist", "offline.html"));
   fs.copyFileSync(path.join(root, "sw.js"), path.join(root, "dist", "sw.js"));
   fs.cpSync(path.join(root, "assets"), path.join(root, "dist", "assets"), { recursive: true });
   fs.rmSync(path.join(root, "dist", ".vite-src"), { recursive: true, force: true });
