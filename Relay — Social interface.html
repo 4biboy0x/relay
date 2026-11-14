@@ -23718,7 +23718,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function syncMessageComposer() {
         const input = $("#messageInput");
         const sendButton = $("#sendMessage");
-        const editing = editingMessageState?.conversationId === activeConversation?.id;
+        const editing = Boolean(editingMessageState
+          && String(editingMessageState.conversationId || "") === String(activeConversation?.id || ""));
         input.style.height = "24px";
         input.style.height = `${Math.min(120, Math.max(24, input.scrollHeight))}px`;
         $("#messageComposePill").classList.toggle("is-growing", input.scrollHeight > 24);
@@ -25024,6 +25025,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           $("#messageInput").value = state.previousDraft;
           conversationDrafts.set(state.conversationId, state.previousDraft);
         }
+        $("#messageEditLabel").hidden = true;
         syncMessageComposer();
         if (focus && sameConversation && sameComposer) {
           focusInput($("#messageInput"), { isTypingMainScreen: true, preventScroll: true });
@@ -29993,7 +29995,21 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         if (e.target.matches("[data-profile-upload]")) selectProfileImage(e.target);
       });
-      $("#messageEditCancel").addEventListener("click", () => cancelMessageEditing());
+      document.addEventListener("pointerdown", (event) => {
+        const cancelButton = event.target.closest?.("#messageEditCancel");
+        if (!cancelButton) return;
+        event.preventDefault();
+        event.stopPropagation();
+        cancelMessageEditing();
+      }, true);
+      document.addEventListener("click", (event) => {
+        if (event.detail !== 0) return;
+        const cancelButton = event.target.closest?.("#messageEditCancel");
+        if (!cancelButton) return;
+        event.preventDefault();
+        event.stopPropagation();
+        cancelMessageEditing();
+      }, true);
       $("#messageForm").addEventListener("paste", (event) => {
         const items = Array.from(event.clipboardData?.items || [])
           .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
