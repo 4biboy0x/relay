@@ -7548,6 +7548,26 @@
       }
       .message-edit-label[hidden] { display: none; }
       .message-edit-label .i { width: 13px; height: 13px; }
+      .message-edit-cancel {
+        width: 28px;
+        height: 28px;
+        flex: 0 0 28px;
+        display: grid;
+        place-items: center;
+        margin: -6px 0 -2px auto;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        color: var(--text-2);
+        background: transparent;
+        cursor: pointer;
+        transition: color 120ms ease, background 120ms ease, transform 80ms ease;
+      }
+      .message-edit-cancel:hover,
+      .message-edit-cancel:focus-visible { color: var(--text); background: var(--surface-2); }
+      .message-edit-cancel:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+      .message-edit-cancel:active { transform: scale(.92); }
+      .message-edit-cancel svg { width: 16px; height: 16px; display: block; }
       .messages-layout:not(.has-conversation) .chat-compose {
         max-height: 0;
         margin-bottom: 0;
@@ -14068,7 +14088,7 @@
               </div>
               <form class="chat-compose" id="messageForm">
                 <input id="messageImageInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden />
-                <div class="message-edit-label" id="messageEditLabel" hidden><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5 4 4M4 20l4.2-.8L19 8.4a2.1 2.1 0 0 0-3-3L5.2 16.2 4 20Z"/></svg><span>Edit message</span></div>
+                <div class="message-edit-label" id="messageEditLabel" hidden><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5 4 4M4 20l4.2-.8L19 8.4a2.1 2.1 0 0 0-3-3L5.2 16.2 4 20Z"/></svg><span>Edit message</span><button class="message-edit-cancel" id="messageEditCancel" type="button" aria-label="Cancel editing" title="Cancel editing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12"/></svg></button></div>
                 <div class="message-reply-preview reply-bar" id="messageReplyPreview" hidden></div>
                 <p class="message-attachment-error" id="messageAttachmentError" role="alert" hidden></p>
                 <div class="chat-compose-pill" id="messageComposePill">
@@ -29970,6 +29990,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         if (e.target.matches("[data-profile-upload]")) selectProfileImage(e.target);
       });
+      $("#messageEditCancel").addEventListener("click", () => cancelMessageEditing());
       $("#messageForm").addEventListener("paste", (event) => {
         const items = Array.from(event.clipboardData?.items || [])
           .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
