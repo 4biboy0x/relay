@@ -7529,19 +7529,6 @@
           width: min(var(--msg-media-w), max(120px, calc(100cqw - 56px)));
         }
       }
-      .message-bubble.search-message-highlight {
-        animation: message-search-shake 420ms ease-in-out;
-      }
-      @keyframes message-search-shake {
-        0%, 100% { transform: translateX(0); }
-        25% { transform: translateX(-4px); }
-        75% { transform: translateX(4px); }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .message-bubble.search-message-highlight {
-          animation: none;
-        }
-      }
       .chat-compose {
         position: sticky;
         bottom: 0;
@@ -25679,29 +25666,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function normalizedConversationQuery(value) {
         return value.normalize("NFKC").trim().toLowerCase().split(/\s+/).filter(Boolean);
       }
-      function appendConversationMatch(target, text, query) {
-        target.textContent = "";
-        const terms = [...new Set(normalizedConversationQuery(query))]
-          .sort((left, right) => right.length - left.length);
-        if (!terms.length) {
-          target.append(document.createTextNode(text));
-          return;
-        }
-        const pattern = new RegExp(
-          `(${terms.map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`,
-          "giu",
-        );
-        let cursor = 0;
-        for (const match of text.matchAll(pattern)) {
-          const index = match.index ?? 0;
-          target.append(document.createTextNode(text.slice(cursor, index)));
-          const mark = document.createElement("mark");
-          mark.textContent = match[0];
-          target.append(mark);
-          cursor = index + match[0].length;
-        }
-        target.append(document.createTextNode(text.slice(cursor)));
-      }
       function conversationMessageSnippet(text, query) {
         const terms = [...new Set(normalizedConversationQuery(query))]
           .sort((left, right) => right.length - left.length);
@@ -26094,16 +26058,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             });
           }
         }
-        const rows = Array.from(resultList.querySelectorAll(".conversation-item"));
-        const renderedRows = append ? rows.slice(-items.length) : rows;
-        renderedRows.forEach((row, index) => {
-          const item = items[index];
-          const other = getConversationDisplayUser(item);
-          const name = row.querySelector(".conversation-item-heading b");
-          if (searchQuery && name) appendConversationMatch(name, other?.displayName || other?.handle || "Relay user", searchQuery);
-          const preview = row.querySelector(".conversation-preview-text");
-          if (searchQuery && preview) appendConversationMatch(preview, preview.textContent, searchQuery);
-        });
       }
       function updateMessageSearchSentinel() {
         const list = $("#messageSearchResults");
@@ -26813,17 +26767,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
         }
         if (loadGeneration !== activeConversationLoadGeneration || !target.isConnected) return;
-        triggerMessageSearchHighlight(target);
-      }
-      function triggerMessageSearchHighlight(target) {
-        clearTimeout(messageSearchHighlightTimers.get(target));
-        target.classList.remove("search-message-highlight");
-        void target.offsetWidth;
-        target.classList.add("search-message-highlight");
-        messageSearchHighlightTimers.set(target, setTimeout(() => {
-          target.classList.remove("search-message-highlight");
-          messageSearchHighlightTimers.delete(target);
-        }, 1500));
       }
       async function loadOlderMessages() {
         const log = $("#chatLog");
