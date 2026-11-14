@@ -25531,7 +25531,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         return { label, title: date.toLocaleString() };
       }
       function conversationSearchText(item) {
-        const otherMembers = item.members.filter((member) => member.id !== currentUser?.id);
+        const isSelfConversation = item.members.length === 1 && item.members[0].id === currentUser?.id;
+        const otherMembers = isSelfConversation
+          ? [currentUser]
+          : item.members.filter((member) => member.id !== currentUser?.id);
         return `${otherMembers.map((member) => `${member.displayName || ""} ${member.handle || ""}`).join(" ")} ${item.lastMessage?.body || ""}`
           .normalize("NFKC")
           .toLowerCase();
@@ -25757,6 +25760,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         const renderItems = resultList.id === "conversationList" && !searchQuery
           ? [...items].sort((first, second) => {
+              const firstSelf = first.members?.length === 1 && first.members[0].id === currentUser?.id;
+              const secondSelf = second.members?.length === 1 && second.members[0].id === currentUser?.id;
+              if (firstSelf !== secondSelf) return firstSelf ? -1 : 1;
               const firstPinned = Boolean(first.pinned);
               const secondPinned = Boolean(second.pinned);
               if (firstPinned !== secondPinned) return firstPinned ? -1 : 1;
@@ -25771,7 +25777,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             .map((row) => [row.dataset.conversationRow, row.getBoundingClientRect().top]))
           : null;
         const markup = renderItems.map((item, index) => {
-          const other = item.members.find((member) => member.id !== currentUser?.id);
+          const other = item.members.find((member) => member.id !== currentUser?.id)
+            || (item.members.length === 1 && item.members[0].id === currentUser?.id ? currentUser : null);
           const current = searchMode !== "messages" && (item.id === selectedConversationId
             || (!selectedConversationId && item.id === activeConversation?.id));
           const search = `${conversationSearchText(item)} ${normalizedQuery}`;
@@ -26391,7 +26398,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         clearTypingUsers();
         $("#messagesLayout").classList.add("has-conversation");
         const other = conversation.members?.find((member) => member.id !== currentUser?.id)
-          || conversations.find((item) => item.id === conversation.id)?.members.find((member) => member.id !== currentUser?.id);
+          || conversations.find((item) => item.id === conversation.id)?.members.find((member) => member.id !== currentUser?.id)
+          || (conversation.members?.length === 1 && conversation.members[0].id === currentUser?.id ? currentUser : null);
         $("#chatName").textContent = other?.displayName || "Conversation";
         $("#chatSubtitle").textContent = other?.handle ? `@${other.handle}` : "Private conversation";
         $("#chatSubtitle").hidden = !other?.handle;
@@ -26598,6 +26606,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function sendTyping(active) {
         if (!socket?.connected || !activeConversation
           || $("#messageForm").dataset.conversationId !== activeConversation.id) return;
+        if (activeConversation.members?.length === 1 && activeConversation.members[0].id === currentUser?.id) {
+          typingSent = false;
+          return;
+        }
         if (typingSent === active) return;
         typingSent = active;
         socket.emit(active ? "typing:start" : "typing:stop", { conversationId: activeConversation.id });

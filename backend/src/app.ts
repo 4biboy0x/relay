@@ -2050,6 +2050,18 @@ api.get("/search", authRequired, searchLimiter, asyncRoute(async (req, res) => {
 }));
 
 api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
+  // Ensure every account has a real, single-member self conversation. Keep a
+  // previously deleted membership hidden; sending a new self-message can reopen it.
+  const selfDirectKey = `${req.userId}:${req.userId}`;
+  await prisma.conversation.upsert({
+    where: { directKey: selfDirectKey },
+    create: {
+      directKey: selfDirectKey,
+      members: { create: [{ userId: req.userId! }] },
+    },
+    update: {},
+  });
+
   // Repair missing membership rows for direct conversations. The directKey is
   // created from the two authenticated participant IDs, so it is a safe source
   // for restoring memberships when older/partially written data is incomplete.
@@ -2214,7 +2226,8 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
       FROM "ConversationMember" AS peer
       JOIN "User" AS participant ON participant."id" = peer."userId"
       WHERE peer."conversationId" = conversation."id"
-        AND peer."userId" <> ${req.userId!}
+        AND (peer."userId" <> ${req.userId!}
+          OR conversation."directKey" = ${`${req.userId!}:${req.userId!}`})
         AND (
           participant."displayName" ILIKE ${`%${term}%`} ESCAPE '\\'
           OR participant."handle" ILIKE ${`%${term}%`} ESCAPE '\\'
@@ -2428,7 +2441,6 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
 
 api.post("/conversations", authRequired, verifiedEmailRequired, asyncRoute(async (req, res) => {
   const { userId: recipientId } = z.object({ userId: z.string().cuid() }).parse(req.body);
-  if (recipientId === req.userId) throw new HttpError(400, "You cannot message yourself");
   const recipient = await prisma.user.findUnique({ where: { id: recipientId }, select: { id: true } });
   if (!recipient) throw new HttpError(404, "User not found");
   const directKey = [req.userId!, recipientId].sort().join(":");
@@ -2436,7 +2448,9 @@ api.post("/conversations", authRequired, verifiedEmailRequired, asyncRoute(async
     where: { directKey },
     create: {
       directKey,
-      members: { create: [{ userId: req.userId! }, { userId: recipientId }] },
+      members: { create: recipientId === req.userId
+          ? [{ userId: req.userId! }]
+          : [{ userId: req.userId! }, { userId: recipientId }] },
     },
     update: {},
     include: { members: { include: { user: { select: publicUser } } } },
@@ -2572,7 +2586,6 @@ api.post("/conversations/:conversationId/messages", authRequired, verifiedEmailR
     let members;
     if (!conversationId) {
       if (!recipientId) throw new HttpError(400, "A recipient is required for a new conversation");
-      if (recipientId === req.userId) throw new HttpError(400, "You cannot message yourself");
       const recipient = await tx.user.findUnique({ where: { id: recipientId }, select: { id: true } });
       if (!recipient) throw new HttpError(404, "User not found");
       const directKey = [req.userId!, recipientId].sort().join(":");
@@ -2580,12 +2593,14 @@ api.post("/conversations/:conversationId/messages", authRequired, verifiedEmailR
         where: { directKey },
         create: {
           directKey,
-          members: { create: [{ userId: req.userId! }, { userId: recipientId }] },
+          members: { create: recipientId === req.userId
+            ? [{ userId: req.userId! }]
+            : [{ userId: req.userId! }, { userId: recipientId }] },
         },
         update: {},
       });
       // Existing direct conversations may predate a missing-membership repair.
-      // Recreate both participant rows before validating access or writing.
+      // Recreate the required member rows before validating access or writing.
       await tx.conversationMember.createMany({
         data: [req.userId!, recipientId].map((userId) => ({
           conversationId: conversation.id,
