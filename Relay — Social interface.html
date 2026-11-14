@@ -26614,7 +26614,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             if (target) await revealSearchedMessage(target, loadGeneration);
             else if (!searchLoadFailed) toast("Could not find that matching message in the conversation.");
           }
-          if (!conversationSearchState.query) await renderConversations();
+          // Opening a conversation marks its messages and reactions as read on the server.
+          // If the inbox already knows this conversation has zero unread items, refreshing
+          // the entire inbox cannot change its unread count and only adds an avoidable request.
+          const knownUnreadCount = Number(conversation.unreadCount);
+          const inboxReadStateNeedsRefresh = !Number.isFinite(knownUnreadCount) || knownUnreadCount > 0;
+          if (!conversationSearchState.query && inboxReadStateNeedsRefresh) {
+            await renderConversations();
+          }
         } catch (error) {
           if (loadGeneration === activeConversationLoadGeneration) {
             await finishChatSkeleton();
