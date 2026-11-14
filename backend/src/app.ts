@@ -1907,6 +1907,9 @@ api.get("/search", authRequired, searchLimiter, asyncRoute(async (req, res) => {
   }
   const cursor = decodeCursor(page.cursor);
   const normalizedTag = q.toLowerCase();
+  const escapeLikePattern = (value: string) => value.replace(/[\\%_]/g, (character) => `\\${character}`);
+  const searchPattern = `%${escapeLikePattern(q)}%`;
+  const tagSearchPattern = `%${escapeLikePattern(normalizedTag)}%`;
   if (mode === "hashtags") {
     const hashtags = await prisma.hashtag.findMany({
       where: { tag: { contains: normalizedTag, mode: "insensitive" } },
@@ -1941,8 +1944,8 @@ api.get("/search", authRequired, searchLimiter, asyncRoute(async (req, res) => {
       LEFT JOIN "Follow" AS f ON f."followedId" = u."id"
       WHERE u."id" <> ${req.userId!}
         AND (
-          POSITION(LOWER(${q}) IN LOWER(u."handle")) > 0
-          OR POSITION(LOWER(${q}) IN LOWER(u."displayName")) > 0
+          u."handle" ILIKE ${searchPattern} ESCAPE E'\\\\'
+          OR u."displayName" ILIKE ${searchPattern} ESCAPE E'\\\\'
         )
       GROUP BY u."id"
       ${cursorFilter}
@@ -2008,13 +2011,13 @@ api.get("/search", authRequired, searchLimiter, asyncRoute(async (req, res) => {
       WHERE p."deletedAt" IS NULL
         AND p."replyToId" IS NULL
         AND (
-          POSITION(LOWER(${q}) IN LOWER(p."body")) > 0
+          p."body" ILIKE ${searchPattern} ESCAPE E'\\\\'
           OR EXISTS (
             SELECT 1
             FROM "PostHashtag" AS ph
             JOIN "Hashtag" AS h ON h."id" = ph."hashtagId"
             WHERE ph."postId" = p."id"
-              AND POSITION(LOWER(${normalizedTag}) IN LOWER(h."tag")) > 0
+              AND h."tag" ILIKE ${tagSearchPattern} ESCAPE E'\\\\'
           )
         )
       GROUP BY p."id"

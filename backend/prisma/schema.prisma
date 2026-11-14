@@ -51,6 +51,8 @@ model User {
   conversationPreferences ConversationPreference[]
 
   @@index([createdAt])
+  @@index([handle(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_handle_trgm_idx")
+  @@index([displayName(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_displayName_trgm_idx")
 }
 
 model RealtimeDemo {
@@ -89,6 +91,7 @@ model Post {
   @@index([createdAt(sort: Desc), id(sort: Desc)])
   @@index([authorId, createdAt(sort: Desc), id(sort: Desc)])
   @@index([replyToId, createdAt(sort: Desc)])
+  @@index([body(ops: raw("gin_trgm_ops"))], type: Gin, map: "Post_body_trgm_idx")
 }
 
 model PostView {
@@ -342,6 +345,7 @@ model Hashtag {
   posts     PostHashtag[]
 
   @@index([tag])
+  @@index([tag(ops: raw("gin_trgm_ops"))], type: Gin, map: "Hashtag_tag_trgm_idx")
 }
 
 model PostHashtag {
