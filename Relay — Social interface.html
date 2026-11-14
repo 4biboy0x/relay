@@ -25018,12 +25018,15 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const state = editingMessageState;
         if (!state) return;
         editingMessageState = null;
-        if (restoreDraft && activeConversation?.id === state.conversationId
-          && $("#messageForm").dataset.conversationId === state.conversationId) {
+        const sameConversation = String(activeConversation?.id || "") === String(state.conversationId || "");
+        const sameComposer = String($("#messageForm").dataset.conversationId || "") === String(state.conversationId || "");
+        if (restoreDraft && sameConversation && sameComposer) {
           $("#messageInput").value = state.previousDraft;
           conversationDrafts.set(state.conversationId, state.previousDraft);
-          syncMessageComposer();
-          if (focus) focusInput($("#messageInput"), { isTypingMainScreen: true, preventScroll: true });
+        }
+        syncMessageComposer();
+        if (focus && sameConversation && sameComposer) {
+          focusInput($("#messageInput"), { isTypingMainScreen: true, preventScroll: true });
         }
       }
       async function saveMessageEdit(body) {
