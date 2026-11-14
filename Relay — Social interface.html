@@ -25770,9 +25770,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         const renderItems = resultList.id === "conversationList" && !searchQuery
           ? [...items].sort((first, second) => {
-              const firstSelf = first.members?.length === 1 && first.members[0].id === currentUser?.id;
-              const secondSelf = second.members?.length === 1 && second.members[0].id === currentUser?.id;
-              if (firstSelf !== secondSelf) return firstSelf ? -1 : 1;
               const firstPinned = Boolean(first.pinned);
               const secondPinned = Boolean(second.pinned);
               if (firstPinned !== secondPinned) return firstPinned ? -1 : 1;
