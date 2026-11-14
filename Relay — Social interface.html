@@ -15815,6 +15815,7 @@
         accessToken = "";
         if (currentUser?.id) setEmailVerificationNoticeShown(currentUser.id, false);
         currentUser = null;
+        clearViewCaches();
         inboxPreferences = { pinned: [], muted: {} };
         clearTimeout(emailVerificationNoticeShowTimer);
         emailVerificationNoticeShowTimer = null;
@@ -17207,7 +17208,7 @@
         element.innerHTML = `<div class="relay-load-error"><span>Couldn't load. Try again</span>${retry ? `<button class="ghost-btn" type="button" data-retry="${retry}">Try again</button>` : ""}</div>`;
       };
       const viewMemoryCache = new Map();
-      const cacheKey = (view) => `relay_view_cache:${view}`;
+      const cacheKey = (view) => `relay_view_cache:${currentUser?.id || "public"}:${view}`;
       const readViewCache = (view) => {
         if (viewMemoryCache.has(view)) return viewMemoryCache.get(view);
         try {
@@ -27233,6 +27234,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (!result.user || !result.accessToken) {
             throw new Error("This verification flow is not available yet. Please try again.");
           }
+          clearViewCaches();
           setAccessToken(result.accessToken);
           currentUser = result.user;
           inboxPreferences = readInboxPreferences();
@@ -29956,6 +29958,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               }
               return;
             }
+            clearViewCaches();
             setAccessToken(result.accessToken);
             currentUser = result.user;
             inboxPreferences = readInboxPreferences();
