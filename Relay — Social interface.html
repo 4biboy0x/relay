@@ -24953,18 +24953,18 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function receiveMessage(message) {
         if (reconcileMatchingPendingMessage(message)) {
           if (!receivedMessageIds.has(message.id)) receivedMessageIds.add(message.id);
-          syncInboxConversationPreview(message.conversationId, message, message.createdAt);
+          if (!syncInboxConversationPreview(message.conversationId, message, message.createdAt)) {
+            renderConversations().catch((error) => console.error("Could not restore a newly active conversation.", error));
+          }
           scrollMessageListToBottom(false);
-          refreshMessageBadge();
           return;
         }
         removePendingMessageRow("", message);
         if (receivedMessageIds.has(message.id)) return;
         receivedMessageIds.add(message.id);
-        if (!conversations.some((item) => item.id === message.conversationId)) {
+        if (!syncInboxConversationPreview(message.conversationId, message, message.createdAt)) {
           renderConversations().catch((error) => console.error("Could not restore a newly active conversation.", error));
         }
-        syncInboxConversationPreview(message.conversationId, message, message.createdAt);
         const chatLog = $("#chatLog");
         if (chatLog.querySelector(`[data-message-id="${CSS.escape(message.id)}"]`)) return;
         if (activeConversation?.id === message.conversationId
@@ -24988,7 +24988,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         } else if (message.senderId !== currentUser?.id && !isConversationMuted(message.conversationId)) {
           toast(`New message from ${message.sender.displayName}`);
         }
-        refreshMessageBadge();
       }
       function syncInboxConversationPreview(conversationId, lastMessage, updatedAt) {
         const conversation = conversations.find((item) => item.id === conversationId);
@@ -25008,10 +25007,11 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const updated = { ...previous, ...message };
         messagesById.set(updated.id, updated);
         const conversation = conversations.find((item) => item.id === updated.conversationId);
+        let inboxPreviewUpdated = false;
         if (inboxPreview) {
-          syncInboxConversationPreview(updated.conversationId, inboxPreview.lastMessage, inboxPreview.updatedAt);
+          inboxPreviewUpdated = syncInboxConversationPreview(updated.conversationId, inboxPreview.lastMessage, inboxPreview.updatedAt);
         } else if (conversation?.lastMessage?.id === updated.id) {
-          syncInboxConversationPreview(updated.conversationId, updated, conversation.updatedAt);
+          inboxPreviewUpdated = syncInboxConversationPreview(updated.conversationId, updated, conversation.updatedAt);
         }
         if (selectedMessageReply?.message.id === updated.id) {
           selectedMessageReply = { ...selectedMessageReply, message: updated };
@@ -25030,7 +25030,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             bindMessageMediaScroll($("#chatLog"));
           }
         }
-        renderConversations().catch((error) => console.error("Could not refresh conversations after a message update", error));
+        if (inboxPreview && !inboxPreviewUpdated) {
+          renderConversations().catch((error) => console.error("Could not restore the updated inbox preview.", error));
+        }
       }
       function receiveMessageUpdated(message) {
         if (!message?.id || !message?.conversationId) return;
@@ -26325,13 +26327,18 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         });
         return conversationRefreshPromise;
       }
-      async function refreshMessageBadge() {
+      let messageBadgeRefreshTimer = null;
+      function refreshMessageBadge() {
         if (!currentUser) return;
-        try {
-          await renderConversations();
-        } catch (error) {
-          console.error("Could not refresh message badge", error);
-        }
+        window.clearTimeout(messageBadgeRefreshTimer);
+        messageBadgeRefreshTimer = window.setTimeout(async () => {
+          if (!currentUser) return;
+          try {
+            await renderConversations();
+          } catch (error) {
+            console.error("Could not refresh message badge", error);
+          }
+        }, 150);
       }
       async function refreshActiveConversationMessages() {
         const conversationId = activeConversation?.id;
