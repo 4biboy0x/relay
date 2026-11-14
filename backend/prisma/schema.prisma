@@ -51,6 +51,7 @@ model User {
   conversationPreferences ConversationPreference[]
 
   @@index([createdAt])
+  @@index([isOnline, lastSeen], map: "User_isOnline_lastSeen_idx")
   @@index([handle(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_handle_trgm_idx")
   @@index([displayName(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_displayName_trgm_idx")
 }
