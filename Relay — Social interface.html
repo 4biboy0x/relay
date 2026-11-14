@@ -25531,7 +25531,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         return { label, title: date.toLocaleString() };
       }
       function conversationSearchText(item) {
-        const otherMembers = item.members.filter((member) => member.id !== currentUser?.id);
+        const isSelfConversation = item.members.length === 1 && item.members[0].id === currentUser?.id;
+        const otherMembers = isSelfConversation
+          ? [currentUser]
+          : item.members.filter((member) => member.id !== currentUser?.id);
         return `${otherMembers.map((member) => `${member.displayName || ""} ${member.handle || ""}`).join(" ")} ${item.lastMessage?.body || ""}`
           .normalize("NFKC")
           .toLowerCase();
