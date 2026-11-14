@@ -2663,16 +2663,22 @@ api.post("/conversations/:conversationId/messages", authRequired, verifiedEmailR
     select: { userId: true, historyCutoffAt: true },
   });
   let response = serializeMessage(message, req.userId!);
-  for (const member of members) {
-    // Reply previews are personalized so an old quoted message cannot leak.
-    const memberResponse = serializeMessage(message, member.userId, member.historyCutoffAt);
-    if (member.userId === req.userId) response = memberResponse;
-    const realtimeResponse = await normalizeMediaResponse(memberResponse, "", member.userId);
-    emitToUser(member.userId, "message:new", realtimeResponse);
-    if (member.userId !== req.userId) {
-      emitToUser(member.userId, "messages:unread-increment", { conversationId });
+  await Promise.all(members.map(async (member) => {
+    try {
+      // Reply previews are personalized so an old quoted message cannot leak.
+      const memberResponse = serializeMessage(message, member.userId, member.historyCutoffAt);
+      if (member.userId === req.userId) response = memberResponse;
+      const realtimeResponse = await normalizeMediaResponse(memberResponse, "", member.userId);
+      emitToUser(member.userId, "message:new", realtimeResponse);
+      if (member.userId !== req.userId) {
+        emitToUser(member.userId, "messages:unread-increment", { conversationId });
+      }
+    } catch (error) {
+      // The message is already persisted; a realtime delivery failure must not
+      // turn a successful send into an HTTP error for the sender.
+      console.error(`Could not broadcast new message ${message.id} to user ${member.userId}`, error);
     }
-  }
+  }));
   res.status(201).json(response ?? serializeMessage(message, req.userId!));
 }));
 
