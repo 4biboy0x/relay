@@ -21488,7 +21488,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         ].filter((group) => group.people.length);
         results.innerHTML = groups.map(({ label, people: entries }) =>
           `<div role="group" aria-label="${label}"><div class="recipient-hint">${label}</div>${entries.map((person) =>
-            `<button class="recipient-option" type="button" role="option" aria-selected="false" data-recipient-id="${esc(person.id)}">${avatarMarkup(person, "sm")}<span class="user-search-copy"><b>${esc(person.displayName || person.handle || "You")}</b><small>${person.selfRecipient ? "You · Message yourself" : `@${esc(person.handle)}`}</small></span></button>`,
+            `<button class="recipient-option" type="button" role="option" aria-selected="false" data-recipient-id="${esc(person.id)}">${avatarMarkup(person, "sm")}<span class="user-search-copy"><b>${esc(person.displayName || person.handle || "You")}</b><small>@${esc(person.handle)}</small></span></button>`,
           ).join("")}</div>`,
         ).join("");
         empty.hidden = groups.length > 0;
@@ -21523,7 +21523,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const selfMatches = currentUser && [currentUser.displayName, currentUser.handle]
             .some((value) => String(value || "").toLowerCase().includes(query.toLowerCase()));
           const selfOption = selfMatches
-            ? `<div role="group" aria-label="Your account"><div class="recipient-hint">Your account</div><button class="recipient-option" type="button" role="option" aria-selected="false" data-recipient-id="${esc(currentUser.id)}">${avatarMarkup(currentUser, "sm")}<span class="user-search-copy"><b>${esc(currentUser.displayName || currentUser.handle || "You")}</b><small>You · Message yourself</small></span></button></div>`
+            ? `<div role="group" aria-label="Your account"><div class="recipient-hint">Your account</div><button class="recipient-option" type="button" role="option" aria-selected="false" data-recipient-id="${esc(currentUser.id)}">${avatarMarkup(currentUser, "sm")}<span class="user-search-copy"><b>${esc(currentUser.displayName || currentUser.handle || "You")}</b><small>@${esc(currentUser.handle)}</small></span></button></div>`
             : "";
           results.innerHTML = selfOption + matches.map((person) =>
             `<button class="recipient-option" type="button" role="option" aria-selected="false" data-recipient-id="${esc(person.id)}">${avatarMarkup(person, "sm")}<span class="user-search-copy"><b>${esc(person.displayName)}</b><small>@${esc(person.handle)}</small></span></button>`,
