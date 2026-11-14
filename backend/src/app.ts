@@ -2550,7 +2550,19 @@ api.get("/conversations/:conversationId/messages", authRequired, asyncRoute(asyn
     },
     include: {
       sender: { select: publicUser },
-      replyTo: { include: { sender: { select: publicUser } } },
+      replyTo: {
+        select: {
+          id: true,
+          senderId: true,
+          createdAt: true,
+          body: true,
+          attachments: true,
+          mediaUrl: true,
+          audioUrl: true,
+          stickerId: true,
+          sender: { select: publicUser },
+        },
+      },
       reactions: { select: { emoji: true, userId: true } },
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -2647,7 +2659,19 @@ api.post("/conversations/:conversationId/messages", authRequired, verifiedEmailR
       data: { conversationId, senderId: req.userId!, ...messageData },
       include: {
         sender: { select: publicUser },
-        replyTo: { include: { sender: { select: publicUser } } },
+        replyTo: {
+          select: {
+            id: true,
+            senderId: true,
+            createdAt: true,
+            body: true,
+            attachments: true,
+            mediaUrl: true,
+            audioUrl: true,
+            stickerId: true,
+            sender: { select: publicUser },
+          },
+        },
         reactions: { select: { emoji: true, userId: true } },
       },
     });
@@ -2712,7 +2736,19 @@ api.patch("/messages/:messageId", authRequired, messageLimiter, asyncRoute(async
         where: editableWhere,
         include: {
           sender: { select: publicUser },
-          replyTo: { include: { sender: { select: publicUser } } },
+          replyTo: {
+            select: {
+              id: true,
+              senderId: true,
+              createdAt: true,
+              body: true,
+              attachments: true,
+              mediaUrl: true,
+              audioUrl: true,
+              stickerId: true,
+              sender: { select: publicUser },
+            },
+          },
           reactions: { select: { emoji: true, userId: true } },
         },
       });
@@ -2725,7 +2761,19 @@ api.patch("/messages/:messageId", authRequired, messageLimiter, asyncRoute(async
       where: { id: messageId },
       include: {
         sender: { select: publicUser },
-        replyTo: { include: { sender: { select: publicUser } } },
+        replyTo: {
+          select: {
+            id: true,
+            senderId: true,
+            createdAt: true,
+            body: true,
+            attachments: true,
+            mediaUrl: true,
+            audioUrl: true,
+            stickerId: true,
+            sender: { select: publicUser },
+          },
+        },
         reactions: { select: { emoji: true, userId: true } },
       },
     });
