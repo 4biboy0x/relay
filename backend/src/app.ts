@@ -2383,12 +2383,37 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
     return;
   }
   const matchedMessageIds = matchingMessages.map(({ id }) => id);
-  const matchedMessages = matchedMessageIds.length
-    ? await prisma.message.findMany({
-        where: { id: { in: matchedMessageIds } },
-        include: { sender: { select: publicUser } },
-      })
-    : [];
+  const [matchedMessages, rows, unreadRows] = await Promise.all([
+    matchedMessageIds.length
+      ? prisma.message.findMany({
+          where: { id: { in: matchedMessageIds } },
+          include: { sender: { select: publicUser } },
+        })
+      : Promise.resolve([]),
+    prisma.conversation.findMany({
+      where: { id: { in: conversationIds } },
+      include: {
+        members: { include: { user: { select: publicUser } } },
+        messages: {
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: 1,
+          include: { sender: { select: publicUser } },
+        },
+      },
+    }),
+    prisma.$queryRaw<Array<{ conversationId: string; unreadCount: number }>>(Prisma.sql`
+      SELECT member."conversationId", COUNT(DISTINCT message."senderId")::int AS "unreadCount"
+      FROM "ConversationMember" AS member
+      LEFT JOIN "Message" AS message
+        ON message."conversationId" = member."conversationId"
+        AND message."senderId" <> member."userId"
+        AND (member."lastReadAt" IS NULL OR message."createdAt" > member."lastReadAt")
+      WHERE member."userId" = ${req.userId!}
+        AND member."deletedAt" IS NULL
+        AND member."conversationId" IN (${Prisma.join(conversationIds)})
+      GROUP BY member."conversationId"
+    `),
+  ]);
   const matchedMessagesById = new Map(matchedMessages.map((message) => [message.id, message]));
   const matchedMessageByConversation = new Map(
     matchingMessages.map(({ id, conversationId }) => [
@@ -2396,29 +2421,6 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
       matchedMessagesById.get(id) ?? null,
     ]),
   );
-  const rows = await prisma.conversation.findMany({
-    where: { id: { in: conversationIds } },
-    include: {
-      members: { include: { user: { select: publicUser } } },
-      messages: {
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        take: 1,
-        include: { sender: { select: publicUser } },
-      },
-    },
-  });
-  const unreadRows = await prisma.$queryRaw<Array<{ conversationId: string; unreadCount: number }>>(Prisma.sql`
-    SELECT member."conversationId", COUNT(DISTINCT message."senderId")::int AS "unreadCount"
-    FROM "ConversationMember" AS member
-    LEFT JOIN "Message" AS message
-      ON message."conversationId" = member."conversationId"
-      AND message."senderId" <> member."userId"
-      AND (member."lastReadAt" IS NULL OR message."createdAt" > member."lastReadAt")
-    WHERE member."userId" = ${req.userId!}
-      AND member."deletedAt" IS NULL
-      AND member."conversationId" IN (${Prisma.join(conversationIds)})
-    GROUP BY member."conversationId"
-  `);
   const unread = new Map(unreadRows.map((row) => [row.conversationId, row.unreadCount]));
   const rowsById = new Map(rows.map((row) => [row.id, row]));
   const serializeConversation = (id: string, matchedMessageId?: string) => {
