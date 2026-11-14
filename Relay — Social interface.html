@@ -26606,6 +26606,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function sendTyping(active) {
         if (!socket?.connected || !activeConversation
           || $("#messageForm").dataset.conversationId !== activeConversation.id) return;
+        if (activeConversation.members?.length === 1 && activeConversation.members[0].id === currentUser?.id) {
+          typingSent = false;
+          return;
+        }
         if (typingSent === active) return;
         typingSent = active;
         socket.emit(active ? "typing:start" : "typing:stop", { conversationId: activeConversation.id });
