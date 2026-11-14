@@ -145,20 +145,20 @@ export const createUploadReadUrl = async (
         { attachments: { array_contains: [storedPath] } },
       ],
     },
-    select: { conversationId: true },
-  });
-  if (privateMessage) {
-    if (!viewerId) return "/uploads/unauthorized";
-    const membership = await prisma.conversationMember.findUnique({
-      where: {
-        conversationId_userId: {
-          conversationId: privateMessage.conversationId,
-          userId: viewerId,
+    select: {
+      conversation: {
+        select: {
+          members: {
+            where: { userId: viewerId ?? "" },
+            select: { userId: true },
+            take: 1,
+          },
         },
       },
-      select: { userId: true },
-    });
-    if (!membership) return "/uploads/unauthorized";
+    },
+  });
+  if (privateMessage && (!viewerId || privateMessage.conversation.members.length === 0)) {
+    return "/uploads/unauthorized";
   }
   if (!objectStorage) {
     if (typeof suppliedToken === "string") {
