@@ -21488,7 +21488,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         ].filter((group) => group.people.length);
         results.innerHTML = groups.map(({ label, people: entries }) =>
           `<div role="group" aria-label="${label}"><div class="recipient-hint">${label}</div>${entries.map((person) =>
-            `<button class="recipient-option" type="button" role="option" aria-selected="false" data-recipient-id="${esc(person.id)}">${avatarMarkup(person, "sm")}<span class="user-search-copy"><b>${esc(person.displayName || person.handle || "You")}</b><small>${person.selfRecipient ? "You · Message yourself" : `@${esc(person.handle)}`}</small></span></button>`,
+            `<button class="recipient-option" type="button" role="option" aria-selected="false" data-recipient-id="${esc(person.id)}">${avatarMarkup(person, "sm")}<span class="user-search-copy"><b>${esc(person.displayName || person.handle || "You")}</b><small>${person.selfRecipient ? `@${esc(person.handle)}` : `@${esc(person.handle)}`}</small></span></button>`,
           ).join("")}</div>`,
         ).join("");
         empty.hidden = groups.length > 0;
