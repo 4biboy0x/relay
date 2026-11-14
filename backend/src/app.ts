@@ -2266,11 +2266,31 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
         `), " AND ")}
     )
   `;
-  const messageCountRows = searchMode === "messages" && !cursor
-    ? await prisma.$queryRaw<Array<{ count: number }>>(Prisma.sql`
-      SELECT COUNT(*)::int AS "count"
-      FROM (
-        SELECT message."id"
+  const [messageCountRows, searchedMessages] = await Promise.all([
+    searchMode === "messages" && !cursor
+      ? prisma.$queryRaw<Array<{ count: number }>>(Prisma.sql`
+        SELECT COUNT(*)::int AS "count"
+        FROM (
+          SELECT message."id"
+          FROM "Message" AS message
+          JOIN "ConversationMember" AS viewer
+            ON viewer."conversationId" = message."conversationId"
+            AND viewer."userId" = ${req.userId!}
+            AND viewer."deletedAt" IS NULL
+            AND (viewer."historyCutoffAt" IS NULL OR message."createdAt" > viewer."historyCutoffAt")
+          WHERE ${Prisma.join(terms.map((term) => Prisma.sql`
+            message."body" ILIKE ${`%${term}%`} ESCAPE '\\'
+          `), " AND ")}
+          ${requestedConversationId
+            ? Prisma.sql`AND message."conversationId" = ${requestedConversationId}`
+            : Prisma.empty}
+          LIMIT 100
+        ) AS counted_messages
+      `)
+      : Promise.resolve([]),
+    searchMode === "messages"
+      ? prisma.$queryRaw<Array<{ id: string; conversationId: string; createdAt: Date }>>(Prisma.sql`
+        SELECT message."id", message."conversationId", message."createdAt"
         FROM "Message" AS message
         JOIN "ConversationMember" AS viewer
           ON viewer."conversationId" = message."conversationId"
@@ -2283,34 +2303,16 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
         ${requestedConversationId
           ? Prisma.sql`AND message."conversationId" = ${requestedConversationId}`
           : Prisma.empty}
-        LIMIT 100
-      ) AS counted_messages
-    `)
-    : [];
+        ${cursor
+          ? Prisma.sql`AND (message."createdAt", message."id") < (${new Date(cursor.createdAt)}, ${cursor.id})`
+          : Prisma.empty}
+        ORDER BY message."createdAt" DESC, message."id" DESC
+        LIMIT ${limit + 1}
+      `)
+      : Promise.resolve([]),
+  ]);
   const messageCount = messageCountRows[0]?.count ?? 0;
   const messageCountCapped = messageCount >= 100;
-  const searchedMessages = searchMode === "messages"
-    ? await prisma.$queryRaw<Array<{ id: string; conversationId: string; createdAt: Date }>>(Prisma.sql`
-      SELECT message."id", message."conversationId", message."createdAt"
-      FROM "Message" AS message
-      JOIN "ConversationMember" AS viewer
-        ON viewer."conversationId" = message."conversationId"
-        AND viewer."userId" = ${req.userId!}
-          AND viewer."deletedAt" IS NULL
-          AND (viewer."historyCutoffAt" IS NULL OR message."createdAt" > viewer."historyCutoffAt")
-      WHERE ${Prisma.join(terms.map((term) => Prisma.sql`
-        message."body" ILIKE ${`%${term}%`} ESCAPE '\\'
-      `), " AND ")}
-      ${requestedConversationId
-        ? Prisma.sql`AND message."conversationId" = ${requestedConversationId}`
-        : Prisma.empty}
-      ${cursor
-        ? Prisma.sql`AND (message."createdAt", message."id") < (${new Date(cursor.createdAt)}, ${cursor.id})`
-        : Prisma.empty}
-      ORDER BY message."createdAt" DESC, message."id" DESC
-      LIMIT ${limit + 1}
-    `)
-    : [];
   const messageHasNextPage = searchMode === "messages" && searchedMessages.length > limit;
   const matchingMessagePage = messageHasNextPage ? searchedMessages.slice(0, limit) : searchedMessages;
   const termConditions = searchMode === "messages"
@@ -2381,12 +2383,37 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
     return;
   }
   const matchedMessageIds = matchingMessages.map(({ id }) => id);
-  const matchedMessages = matchedMessageIds.length
-    ? await prisma.message.findMany({
-        where: { id: { in: matchedMessageIds } },
-        include: { sender: { select: publicUser } },
-      })
-    : [];
+  const [matchedMessages, rows, unreadRows] = await Promise.all([
+    matchedMessageIds.length
+      ? prisma.message.findMany({
+          where: { id: { in: matchedMessageIds } },
+          include: { sender: { select: publicUser } },
+        })
+      : Promise.resolve([]),
+    prisma.conversation.findMany({
+      where: { id: { in: conversationIds } },
+      include: {
+        members: { include: { user: { select: publicUser } } },
+        messages: {
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: 1,
+          include: { sender: { select: publicUser } },
+        },
+      },
+    }),
+    prisma.$queryRaw<Array<{ conversationId: string; unreadCount: number }>>(Prisma.sql`
+      SELECT member."conversationId", COUNT(DISTINCT message."senderId")::int AS "unreadCount"
+      FROM "ConversationMember" AS member
+      LEFT JOIN "Message" AS message
+        ON message."conversationId" = member."conversationId"
+        AND message."senderId" <> member."userId"
+        AND (member."lastReadAt" IS NULL OR message."createdAt" > member."lastReadAt")
+      WHERE member."userId" = ${req.userId!}
+        AND member."deletedAt" IS NULL
+        AND member."conversationId" IN (${Prisma.join(conversationIds)})
+      GROUP BY member."conversationId"
+    `),
+  ]);
   const matchedMessagesById = new Map(matchedMessages.map((message) => [message.id, message]));
   const matchedMessageByConversation = new Map(
     matchingMessages.map(({ id, conversationId }) => [
@@ -2394,29 +2421,6 @@ api.get("/conversations/search", authRequired, searchLimiter, asyncRoute(async (
       matchedMessagesById.get(id) ?? null,
     ]),
   );
-  const rows = await prisma.conversation.findMany({
-    where: { id: { in: conversationIds } },
-    include: {
-      members: { include: { user: { select: publicUser } } },
-      messages: {
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        take: 1,
-        include: { sender: { select: publicUser } },
-      },
-    },
-  });
-  const unreadRows = await prisma.$queryRaw<Array<{ conversationId: string; unreadCount: number }>>(Prisma.sql`
-    SELECT member."conversationId", COUNT(DISTINCT message."senderId")::int AS "unreadCount"
-    FROM "ConversationMember" AS member
-    LEFT JOIN "Message" AS message
-      ON message."conversationId" = member."conversationId"
-      AND message."senderId" <> member."userId"
-      AND (member."lastReadAt" IS NULL OR message."createdAt" > member."lastReadAt")
-    WHERE member."userId" = ${req.userId!}
-      AND member."deletedAt" IS NULL
-      AND member."conversationId" IN (${Prisma.join(conversationIds)})
-    GROUP BY member."conversationId"
-  `);
   const unread = new Map(unreadRows.map((row) => [row.conversationId, row.unreadCount]));
   const rowsById = new Map(rows.map((row) => [row.id, row]));
   const serializeConversation = (id: string, matchedMessageId?: string) => {
