@@ -25010,7 +25010,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           || message.mediaUrl || message.audioUrl || message.stickerId) return;
         clearMessageReplyTarget();
         const input = $("#messageInput");
-        const previousDraft = input.value;
+        const sameConversationEdit = editingMessageState
+          && String(editingMessageState.conversationId || "") === String(message.conversationId || "");
+        // Switching directly between messages must keep the draft from before
+        // the first edit, not treat the previous message body as a user draft.
+        const previousDraft = sameConversationEdit
+          ? editingMessageState.previousDraft
+          : input.value;
         if (activeConversation) conversationDrafts.set(activeConversation.id, previousDraft);
         editingMessageState = {
           messageId,
