@@ -53,9 +53,9 @@ async function main() {
   })));
 
   // IDs are included in the local JSON report for a possible, separately approved migration.
-  console.log("\\nDRY_RUN_REPORT_JSON");
+  console.log("\nDRY_RUN_REPORT_JSON");
   console.log(JSON.stringify(findings, null, 2));
-  console.log("\\nNo database records were modified.");
+  console.log("\nNo database records were modified.");
 }
 
 main()
