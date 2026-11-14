@@ -24950,6 +24950,21 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         reconcilePendingMessageRow(bubble.dataset.messageId, message, message.conversationId);
         return true;
       }
+      const conversationReadSyncTimers = new Map();
+      function scheduleConversationReadSync(conversationId, refreshBadge = false) {
+        const existing = conversationReadSyncTimers.get(conversationId);
+        if (existing) clearTimeout(existing.timer);
+        const shouldRefreshBadge = Boolean(existing?.refreshBadge || refreshBadge);
+        const timer = setTimeout(() => {
+          conversationReadSyncTimers.delete(conversationId);
+          api(`/conversations/${encodeURIComponent(conversationId)}/messages?limit=1`)
+            .then(() => {
+              if (shouldRefreshBadge) refreshMessageBadge();
+            })
+            .catch((error) => console.error("Could not update conversation read state", error));
+        }, 100);
+        conversationReadSyncTimers.set(conversationId, { timer, refreshBadge: shouldRefreshBadge });
+      }
       function receiveMessage(message) {
         if (reconcileMatchingPendingMessage(message)) {
           if (!receivedMessageIds.has(message.id)) receivedMessageIds.add(message.id);
@@ -24982,8 +24997,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           bindMessageMediaScroll(chatLog);
           scrollMessageListToBottom(shouldFollow);
           if (message.senderId !== currentUser?.id) {
-            api(`/conversations/${message.conversationId}/messages?limit=1`).catch((error) =>
-              console.error("Could not update message read state", error));
+            scheduleConversationReadSync(message.conversationId);
           }
         } else if (message.senderId !== currentUser?.id && !isConversationMuted(message.conversationId)) {
           toast(`New message from ${message.sender.displayName}`);
@@ -25279,9 +25293,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
         }
         if (event.active && actorId !== currentUser?.id && isViewingConversation) {
-          api(`/conversations/${encodeURIComponent(event.conversationId)}/messages?limit=1`)
-            .then(() => refreshMessageBadge())
-            .catch((error) => console.error("Could not update reaction read state", error));
+          scheduleConversationReadSync(event.conversationId, true);
         }
       }
       function receiveTyping(event) {
