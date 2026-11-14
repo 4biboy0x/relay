@@ -26368,10 +26368,28 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             Object.keys(inboxPreferences.muted).forEach((id) => { if (!availableConversationIds.has(id)) delete inboxPreferences.muted[id]; });
             saveInboxPreferences();
             conversationsLoaded = true;
-            renderConversationItems(conversations);
-            writeViewCache("messages", $("#conversationList").innerHTML);
-            if ($("#conversationSearch").value.trim()) searchConversations();
-            else filterConversations();
+            const activeSearchQuery = $("#conversationSearch").value.trim().replace(/\\s+/g, " ");
+            if (activeSearchQuery && conversationSearchState.query === activeSearchQuery) {
+              // Returning from a conversation must restore the existing search view,
+              // not briefly render the full inbox and restart both search requests.
+              const latestById = new Map(conversations.map((item) => [item.id, item]));
+              conversationSearchState.results.conversations = conversationSearchState.results.conversations
+                .map((item) => latestById.has(item.id) ? { ...item, ...latestById.get(item.id) } : item);
+              renderConversationItems(conversationSearchState.results.conversations, activeSearchQuery, "conversations");
+              $("#conversationSearchTabs").hidden = false;
+              const messageCount = Number(conversationSearchState.messageCount) || 0;
+              $("#messageSearchTab").textContent = messageCount > 0
+                ? `Messages (${conversationSearchState.messageCountCapped ? "99+" : fmt(messageCount)})`
+                : "Messages";
+              setConversationSearchMode(conversationSearchState.tab);
+              writeViewCache("messages", $("#conversationList").innerHTML);
+            } else if (activeSearchQuery) {
+              searchConversations();
+            } else {
+              renderConversationItems(conversations);
+              writeViewCache("messages", $("#conversationList").innerHTML);
+              filterConversations();
+            }
             syncPresenceSubscriptions();
             const unread = conversations.reduce((total, item) => total + item.unreadCount, 0);
             setUnreadBadge($("#mbadge"), unread, "messages");
