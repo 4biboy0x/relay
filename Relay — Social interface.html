@@ -24976,7 +24976,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         };
         input.value = editingMessageState.originalBody;
         syncMessageComposer();
-        focusInput(input, { isTypingMainScreen: true, preventScroll: true });
       }
       function cancelMessageEditing({ restoreDraft = true, focus = false } = {}) {
         const state = editingMessageState;
