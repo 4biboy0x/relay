@@ -2174,6 +2174,7 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
       }),
     ]);
   }
+  const preferenceByConversation = new Map(preferences.map((preference) => [preference.conversationId, preference]));
   const unread = new Map(unreadRows.map((row) => [row.conversationId, row.unreadCount]));
   res.json({
     items: inboxRows.map((row) => {
