@@ -14237,51 +14237,48 @@
             </section>
             <section class="settings-card" aria-labelledby="settingsCookieTitle">
               <div class="settings-card-heading">
-                <h2 id="settingsCookieTitle">Privacy</h2>
-                <p>Review your cookie preferences.</p>
+                <h2 id="settingsCookieTitle">Cookies</h2>
               </div>
               <button class="btn btn-line" type="button" data-open-cookie-settings>Cookie settings</button>
             </section>
             <section class="settings-card" aria-labelledby="reelPlaybackTitle">
               <div class="settings-card-heading">
-                <h2 id="reelPlaybackTitle">Reels playback</h2>
-                <p>Playback preferences are saved on this device.</p>
+                <h2 id="reelPlaybackTitle">Reels</h2>
               </div>
               <div class="reel-setting-list">
                 <div class="reel-setting-row">
-                  <span><strong>Autoplay</strong><small>Play the focused Reel automatically.</small></span>
+                  <span><strong>Autoplay</strong></span>
                   <button class="cookie-switch" type="button" role="switch" data-reel-setting="autoplay" aria-label="Autoplay Reels" aria-checked="true"></button>
                 </div>
                 <div class="reel-setting-row">
-                  <span><strong>Start muted</strong><small>Keep new Reels quiet until you turn sound on.</small></span>
+                  <span><strong>Start muted</strong></span>
                   <button class="cookie-switch" type="button" role="switch" data-reel-setting="startMuted" aria-label="Start Reels muted" aria-checked="true"></button>
                 </div>
                 <div class="reel-setting-row">
-                  <span><strong>Reduce data</strong><small>Use posters instead of preloading video when possible.</small></span>
+                  <span><strong>Reduce data</strong></span>
                   <button class="cookie-switch" type="button" role="switch" data-reel-setting="reduceData" aria-label="Reduce data used by Reels" aria-checked="false"></button>
                 </div>
               </div>
             </section>
             <section class="settings-card" aria-labelledby="notificationAlertsTitle">
               <div class="settings-card-heading">
-                <h2 id="notificationAlertsTitle">In-app alerts</h2>
-                <p>Choose which activity appears as a pop-up. All notifications remain in your inbox. Saved on this device.</p>
+                <h2 id="notificationAlertsTitle">Notifications</h2>
               </div>
               <div class="reel-setting-list">
                 <div class="reel-setting-row">
-                  <span><strong>New followers</strong><small>When someone follows you.</small></span>
+                  <span><strong>New followers</strong></span>
                   <button class="cookie-switch" type="button" role="switch" data-notification-alert="follows" aria-label="Alerts for new followers" aria-checked="true"></button>
                 </div>
                 <div class="reel-setting-row">
-                  <span><strong>Post activity</strong><small>Likes, reposts, replies and mentions.</small></span>
+                  <span><strong>Post activity</strong></span>
                   <button class="cookie-switch" type="button" role="switch" data-notification-alert="posts" aria-label="Alerts for post activity" aria-checked="true"></button>
                 </div>
                 <div class="reel-setting-row">
-                  <span><strong>Reel activity</strong><small>Likes, comments and reposts.</small></span>
+                  <span><strong>Reel activity</strong></span>
                   <button class="cookie-switch" type="button" role="switch" data-notification-alert="reels" aria-label="Alerts for Reel activity" aria-checked="true"></button>
                 </div>
                 <div class="reel-setting-row">
-                  <span><strong>Messages</strong><small>New message alerts.</small></span>
+                  <span><strong>Messages</strong></span>
                   <button class="cookie-switch" type="button" role="switch" data-notification-alert="messages" aria-label="Alerts for new messages" aria-checked="true"></button>
                 </div>
               </div>
@@ -14585,27 +14582,26 @@
     </dialog>
     <dialog class="cookie-settings-dialog" id="cookieSettingsDialog" role="dialog" aria-modal="true" aria-labelledby="cookieSettingsTitle" tabindex="-1">
       <header class="cookie-settings-heading">
-        <h2 id="cookieSettingsTitle">Cookie preferences</h2>
+        <h2 id="cookieSettingsTitle">Cookies</h2>
         <button class="cookie-settings-close" type="button" data-close-cookie-settings aria-label="Close cookie preferences">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>
         </button>
       </header>
       <div class="cookie-settings-body">
-        <p>Choose which optional storage Relay may use. Your choice is saved on this device.</p>
         <div class="cookie-preference">
-          <span class="cookie-preference-copy"><strong>Essential session</strong><small>Required for secure sign-in and core account functions. Essential authentication storage is required.</small></span>
+          <span class="cookie-preference-copy"><strong>Essential</strong></span>
           <span class="cookie-essential-state">
             <small>Always on</small>
             <button class="cookie-switch" type="button" role="switch" aria-checked="true" aria-label="Essential session storage is always on" disabled></button>
           </span>
         </div>
         <div class="cookie-preference">
-          <span class="cookie-preference-copy"><strong>Optional analytics</strong><small>Not used in Relay today. Your choice is saved and applies if analytics are added.</small></span>
+          <span class="cookie-preference-copy"><strong>Analytics</strong></span>
           <button class="cookie-switch" id="analyticsCookies" type="button" role="switch" aria-checked="false" aria-label="Allow optional analytics"></button>
         </div>
         <div class="cookie-settings-actions">
           <button class="btn btn-line" type="button" data-cookie-choice="essential">Essential only</button>
-          <button class="btn btn-primary" type="button" id="saveCookiePreferences">Save preferences</button>
+          <button class="btn btn-primary" type="button" id="saveCookiePreferences">Save</button>
         </div>
       </div>
     </dialog>
