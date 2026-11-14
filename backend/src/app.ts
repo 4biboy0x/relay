@@ -2684,19 +2684,33 @@ api.patch("/messages/:messageId", authRequired, messageLimiter, asyncRoute(async
       where: { userId: req.userId!, deletedAt: null, conversation: { messages: { some: { id: messageId } } } },
       select: { historyCutoffAt: true },
     });
+    const editableWhere = {
+      id: messageId,
+      ...(viewerMembership?.historyCutoffAt ? { createdAt: { gt: viewerMembership.historyCutoffAt } } : {}),
+      senderId: req.userId!,
+      conversation: { members: { some: { userId: req.userId!, deletedAt: null } } },
+      mediaUrl: null,
+      audioUrl: null,
+      stickerId: null,
+    };
     const updated = await tx.message.updateMany({
-      where: {
-        id: messageId,
-        ...(viewerMembership?.historyCutoffAt ? { createdAt: { gt: viewerMembership.historyCutoffAt } } : {}),
-        senderId: req.userId!,
-        conversation: { members: { some: { userId: req.userId!, deletedAt: null } } },
-        mediaUrl: null,
-        audioUrl: null,
-        stickerId: null,
-      },
+      where: { ...editableWhere, body: { not: body } },
       data: { body },
     });
-    if (!updated.count) throw new HttpError(404, "Message not found or cannot be edited");
+    if (!updated.count) {
+      const unchangedMessage = await tx.message.findFirst({
+        where: editableWhere,
+        include: {
+          sender: { select: publicUser },
+          replyTo: { include: { sender: { select: publicUser } } },
+          reactions: { select: { emoji: true, userId: true } },
+        },
+      });
+      if (unchangedMessage?.body === body) {
+        return { message: unchangedMessage, inboxPreview: null, unchanged: true as const };
+      }
+      throw new HttpError(404, "Message not found or cannot be edited");
+    }
     const message = await tx.message.findUniqueOrThrow({
       where: { id: messageId },
       include: {
@@ -2761,6 +2775,10 @@ api.patch("/messages/:messageId", authRequired, messageLimiter, asyncRoute(async
         : null,
     };
   });
+  if (result.unchanged) {
+    res.json(serializeMessage(result.message, req.userId!));
+    return;
+  }
   const serializeUpdate = (viewerId: string, historyCutoffAt: Date | null = null) => {
     const message = serializeMessage(result.message, viewerId, historyCutoffAt);
     return {
