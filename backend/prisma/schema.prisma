@@ -420,6 +420,7 @@ model ConversationMember {
 
   @@id([conversationId, userId])
   @@index([userId, lastReadAt])
+  @@index([userId, deletedAt, conversationId], map: "ConversationMember_inbox_lookup_idx")
 }
 
 model ConversationPreference {
