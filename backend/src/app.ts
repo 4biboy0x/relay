@@ -2143,21 +2143,19 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
     muted: boolean;
     mutedUntil: Date | null;
   }> = [];
-  if (conversationIds.length) {
-    try {
-      preferences = await prisma.conversationPreference.findMany({
-        where: { userId: req.userId!, conversationId: { in: conversationIds } },
-        orderBy: [{ pinnedAt: "asc" }, { createdAt: "asc" }],
-      });
-    } catch (error) {
-      console.error("Could not load inbox conversation preferences; returning conversations with defaults.", error);
-    }
-  }
-  const preferenceByConversation = new Map(preferences.map((preference) => [preference.conversationId, preference]));
   let unreadRows: Array<{ conversationId: string; unreadCount: number }> = [];
   if (conversationIds.length) {
-    try {
-      unreadRows = await prisma.$queryRaw<Array<{ conversationId: string; unreadCount: number }>>(Prisma.sql`
+    // These reads are independent once the active inbox IDs are known. Run
+    // them together so inbox latency is not the sum of both database round trips.
+    [preferences, unreadRows] = await Promise.all([
+      prisma.conversationPreference.findMany({
+        where: { userId: req.userId!, conversationId: { in: conversationIds } },
+        orderBy: [{ pinnedAt: "asc" }, { createdAt: "asc" }],
+      }).catch((error) => {
+        console.error("Could not load inbox conversation preferences; returning conversations with defaults.", error);
+        return [];
+      }),
+      prisma.$queryRaw<Array<{ conversationId: string; unreadCount: number }>>(Prisma.sql`
         SELECT member."conversationId",
           COUNT(DISTINCT message."senderId")::int + member."unreadReactionCount" AS "unreadCount"
         FROM "ConversationMember" AS member
@@ -2170,11 +2168,13 @@ api.get("/conversations", authRequired, asyncRoute(async (req, res) => {
           AND member."deletedAt" IS NULL
           AND member."conversationId" IN (${Prisma.join(conversationIds)})
         GROUP BY member."conversationId", member."unreadReactionCount"
-      `);
-    } catch (error) {
-      console.error("Could not calculate inbox unread counts; returning conversations with zero unread count.", error);
-    }
+      `).catch((error) => {
+        console.error("Could not calculate inbox unread counts; returning conversations with zero unread count.", error);
+        return [];
+      }),
+    ]);
   }
+  const preferenceByConversation = new Map(preferences.map((preference) => [preference.conversationId, preference]));
   const unread = new Map(unreadRows.map((row) => [row.conversationId, row.unreadCount]));
   res.json({
     items: inboxRows.map((row) => {
