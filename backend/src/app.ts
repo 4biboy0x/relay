@@ -316,19 +316,33 @@ const mediaUrlFields = new Set([
   "url",
   "videoUrl",
 ]);
-const normalizeMediaResponse = async (value: unknown, field = "", viewerId?: string): Promise<unknown> => {
+type MediaUrlSigningCache = Map<string, Promise<string>>;
+
+const normalizeMediaResponse = async (
+  value: unknown,
+  field = "",
+  viewerId?: string,
+  signingCache: MediaUrlSigningCache = new Map(),
+): Promise<unknown> => {
   if (typeof value === "string" && mediaUrlFields.has(field) && /^\/uploads\//i.test(value)) {
     try {
-      return await createUploadReadUrl(value, viewerId);
+      let signingPromise = signingCache.get(value);
+      if (!signingPromise) {
+        signingPromise = createUploadReadUrl(value, viewerId);
+        signingCache.set(value, signingPromise);
+      }
+      return await signingPromise;
     } catch (error) {
       console.error("Could not sign media URL for API response.", error);
       return value;
     }
   }
-  if (Array.isArray(value)) return Promise.all(value.map((item) => normalizeMediaResponse(item, field, viewerId)));
+  if (Array.isArray(value)) {
+    return Promise.all(value.map((item) => normalizeMediaResponse(item, field, viewerId, signingCache)));
+  }
   if (!value || typeof value !== "object" || Object.getPrototypeOf(value) !== Object.prototype) return value;
   const entries = await Promise.all(Object.entries(value).map(async ([key, nested]) =>
-    [key, await normalizeMediaResponse(nested, key, viewerId)] as const));
+    [key, await normalizeMediaResponse(nested, key, viewerId, signingCache)] as const));
   return Object.fromEntries(entries);
 };
 app.use((req, res, next) => {
@@ -336,7 +350,7 @@ app.use((req, res, next) => {
   Object.defineProperty(res, "json", {
     configurable: true,
     value: (body: unknown) => {
-      void normalizeMediaResponse(body, "", req.userId).then(sendJson).catch(next);
+      void normalizeMediaResponse(body, "", req.userId, new Map()).then(sendJson).catch(next);
       return res;
     },
   });
