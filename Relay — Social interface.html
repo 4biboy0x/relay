@@ -6763,6 +6763,21 @@
         padding: 11px 16px;
         border-radius: 22px;
       }
+      .message-date-separator {
+        display: flex;
+        width: 100%;
+        flex: none;
+        justify-content: center;
+        padding: 7px 0 3px;
+        color: var(--text-3);
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.4;
+        letter-spacing: .01em;
+        text-align: center;
+        pointer-events: none;
+        user-select: none;
+      }
       .message-row {
         position: relative;
         display: flex;
@@ -24643,19 +24658,58 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const timestamp = Number.isFinite(numeric) && numeric > 0 ? numeric : Date.parse(value);
         return Number.isFinite(timestamp) ? timestamp : null;
       }
+      function messageDateKey(timestamp) {
+        const date = new Date(timestamp);
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      }
+      function messageDateLabel(timestamp, today = new Date()) {
+        const date = new Date(timestamp);
+        const todayKey = messageDateKey(today.getTime());
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const dateKey = messageDateKey(timestamp);
+        if (dateKey === todayKey) return "Today";
+        if (dateKey === messageDateKey(yesterday.getTime())) return "Yesterday";
+        return new Intl.DateTimeFormat("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        }).format(date);
+      }
+      function updateMessageDateSeparators(container, rows) {
+        let previousDateKey = "";
+        const today = new Date();
+        rows.forEach((row) => {
+          const timestamp = messageRowTimestamp(row);
+          if (timestamp === null) return;
+          const dateKey = messageDateKey(timestamp);
+          if (dateKey === previousDateKey) return;
+          const separator = document.createElement("div");
+          separator.className = "message-date-separator";
+          separator.dataset.messageDateSeparator = dateKey;
+          separator.textContent = messageDateLabel(timestamp, today);
+          separator.setAttribute("aria-label", separator.textContent);
+          row.before(separator);
+          previousDateKey = dateKey;
+        });
+      }
       function sortMessageRowsChronologically(container = $("#chatLog")) {
+        container.querySelectorAll(":scope > .message-date-separator").forEach((separator) => separator.remove());
         const rows = [...container.children].filter((element) => element.matches(".message-row"));
-        if (rows.length < 2) return;
-        const sorted = rows.map((row, index) => ({ row, index, timestamp: messageRowTimestamp(row) }))
-          .sort((a, b) => (a.timestamp ?? Number.POSITIVE_INFINITY) - (b.timestamp ?? Number.POSITIVE_INFINITY)
-            || a.index - b.index)
-          .map(({ row }) => row);
-        const marker = document.createComment("message-order");
-        container.insertBefore(marker, rows[0]);
-        const fragment = document.createDocumentFragment();
-        sorted.forEach((row) => fragment.append(row));
-        container.insertBefore(fragment, marker);
-        marker.remove();
+        if (rows.length > 1) {
+          const sorted = rows.map((row, index) => ({ row, index, timestamp: messageRowTimestamp(row) }))
+            .sort((a, b) => (a.timestamp ?? Number.POSITIVE_INFINITY) - (b.timestamp ?? Number.POSITIVE_INFINITY)
+              || a.index - b.index)
+            .map(({ row }) => row);
+          const marker = document.createComment("message-order");
+          container.insertBefore(marker, rows[0]);
+          const fragment = document.createDocumentFragment();
+          sorted.forEach((row) => fragment.append(row));
+          container.insertBefore(fragment, marker);
+          marker.remove();
+        }
+        const orderedRows = [...container.children].filter((element) => element.matches(".message-row"));
+        updateMessageDateSeparators(container, orderedRows);
         updateMessageRowSpacing(container);
       }
       function setMessageRowTimestamp(messageId, timestamp) {
