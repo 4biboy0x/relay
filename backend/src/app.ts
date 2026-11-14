@@ -2594,8 +2594,8 @@ api.post("/conversations/:conversationId/messages", authRequired, verifiedEmailR
         create: {
           directKey,
           members: { create: recipientId === req.userId
-          ? [{ userId: req.userId! }]
-          : [{ userId: req.userId! }, { userId: recipientId }] },
+            ? [{ userId: req.userId! }]
+            : [{ userId: req.userId! }, { userId: recipientId }] },
         },
         update: {},
       });
