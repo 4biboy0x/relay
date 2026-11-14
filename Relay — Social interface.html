@@ -10986,10 +10986,13 @@
         box-shadow: none !important;
       }
       .app.reels-active .reel-follow-button {
-        min-height: 28px !important; padding: 0 11px !important;
+        display: inline-flex !important; flex: 0 0 auto !important; align-items: center; justify-content: center;
+        width: max-content !important; min-width: 60px !important; min-height: 28px !important;
+        padding: 0 11px !important; box-sizing: border-box; white-space: nowrap !important;
         border: 1px solid rgba(255,255,255,.82) !important; border-radius: 6px !important;
         background: transparent !important; color: #fff !important;
-        font-size: 12px !important; font-weight: 650 !important; text-shadow: 0 1px 4px rgba(0,0,0,.3);
+        font-size: 12px !important; line-height: 1 !important; font-weight: 650 !important;
+        text-shadow: 0 1px 4px rgba(0,0,0,.3);
       }
       .app.reels-active .reel-follow-button[aria-pressed="true"] { border-color: rgba(255,255,255,.52) !important; }
       .app.reels-active .reel-caption {
