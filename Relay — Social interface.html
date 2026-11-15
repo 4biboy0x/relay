@@ -14540,6 +14540,7 @@
           max-height: 48px !important;
           margin: 12px 0 0 !important;
           padding: 0 !important;
+          gap: 0 !important;
           border: 0 !important;
           border-radius: 999px !important;
           background: transparent !important;
@@ -14589,12 +14590,23 @@
           transition: none !important;
         }
         .app > .nav #navPost > .l {
+          position: relative !important;
+          inset: auto !important;
+          display: block !important;
           grid-column: 2 !important;
           grid-row: 1 !important;
+          align-self: center !important;
+          justify-self: start !important;
+          min-width: 0 !important;
           width: max-content !important;
+          max-width: none !important;
           margin: 0 !important;
-          opacity: 1 !important;
+          padding-inline-start: 8px !important;
+          overflow: visible !important;
           white-space: nowrap !important;
+          opacity: 1 !important;
+          visibility: visible !important;
+          transform: none !important;
           transition: opacity 100ms linear !important;
         }
         .app.messages-active > .nav #navPost {
