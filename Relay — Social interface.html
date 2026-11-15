@@ -2031,6 +2031,58 @@
       body.has-open-policy-dialog { overflow: hidden; }
       .legal-dialog { max-width: 720px; max-height: min(86dvh, 820px); }
       .cookie-settings-dialog { max-width: 480px; }
+      /* Keep cookie preferences intentionally compact on desktop. */
+      #cookieSettingsDialog {
+        box-sizing: border-box;
+        width: min(420px, calc(100vw - 32px));
+        min-width: 0;
+        max-width: 420px;
+        max-height: min(360px, calc(100dvh - 32px));
+        margin: auto;
+        border-radius: 18px;
+        box-shadow: 0 20px 64px rgba(9, 9, 11, .2);
+      }
+      #cookieSettingsDialog .cookie-settings-heading {
+        padding: 14px 16px;
+      }
+      #cookieSettingsDialog .cookie-settings-heading h2 {
+        font-size: 16px;
+      }
+      #cookieSettingsDialog .cookie-settings-body {
+        flex: 0 1 auto;
+        padding: 6px 16px 16px;
+      }
+      #cookieSettingsDialog .cookie-preference {
+        padding: 12px 0;
+      }
+      #cookieSettingsDialog .cookie-preference-copy strong {
+        font-size: 14px;
+        font-weight: 600;
+      }
+      #cookieSettingsDialog .cookie-essential-state small {
+        font-size: 12px;
+      }
+      #cookieSettingsDialog .cookie-settings-actions {
+        margin-top: 14px;
+      }
+      #cookieSettingsDialog::backdrop {
+        background: rgba(9, 9, 11, .42);
+        backdrop-filter: blur(5px);
+      }
+      @media (max-width: 520px) {
+        #cookieSettingsDialog {
+          width: calc(100vw - 24px);
+          max-width: 420px;
+          max-height: calc(100dvh - 32px);
+          border-radius: 16px;
+        }
+        #cookieSettingsDialog .cookie-settings-heading {
+          padding: 12px 14px;
+        }
+        #cookieSettingsDialog .cookie-settings-body {
+          padding: 4px 14px 14px;
+        }
+      }
       .new-message-dialog {
         width: min(520px, calc(100vw - 32px));
         max-width: none;
