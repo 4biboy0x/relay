@@ -10828,9 +10828,57 @@
         .reel-comment-like svg { transition: none; }
         .reel-comment-like.is-like-pop svg { animation: none; }
       }
-      .reel-comment-form { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
-      .reel-comment-form input { min-width: 0; height: 40px; box-sizing: border-box; }
-      .reel-comment-form .btn { height: 40px; flex: none; align-self: center; }
+      .reel-comment-form {
+        position: relative;
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 0;
+        padding: 12px 16px;
+        border-top: 1px solid var(--border);
+        background: var(--surface);
+      }
+      .reel-comment-form input {
+        width: 100%;
+        min-width: 0;
+        height: 48px;
+        box-sizing: border-box;
+        padding: 0 54px 0 16px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--surface-2);
+        color: var(--text);
+        font: inherit;
+        font-size: 14px;
+        transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+      }
+      .reel-comment-form input:focus {
+        border-color: var(--accent);
+        background: var(--surface);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+      }
+      .reel-comment-form .btn {
+        position: absolute;
+        inset-inline-end: 24px;
+        top: 50%;
+        display: grid;
+        width: 34px;
+        height: 34px;
+        min-height: 34px;
+        padding: 0;
+        place-items: center;
+        border: 0;
+        border-radius: 10px;
+        background: transparent;
+        color: var(--text-3);
+        transform: translateY(-50%);
+        transition: background-color 160ms ease, color 160ms ease, opacity 160ms ease;
+      }
+      .reel-comment-form .btn.is-ready { background: var(--accent); color: #fff; cursor: pointer; }
+      .reel-comment-form .btn:disabled { opacity: .55; cursor: not-allowed; }
+      .reel-comment-form .btn span { display: none; }
+      .reel-comment-form .btn .i { display: block; width: 20px; height: 20px; }
+      .reel-comment-form .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       .reel-comments-drag-handle { display: none; }
       @keyframes reel-comments-sheet-in {
         from { transform: translateY(100%); }
@@ -10911,45 +10959,22 @@
         .reel-comments-dialog #reelCommentMore { flex: 0 0 auto; }
         .reel-comments-dialog .reel-reply-target { flex: 0 0 auto; padding: 8px 16px 0; }
         .reel-comments-dialog .reel-comment-form {
-          position: relative;
-          display: flex;
           flex: 0 0 auto;
-          gap: 0;
           padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
-          border-top: 1px solid var(--border);
-          background: var(--surface);
         }
         .reel-comments-dialog .reel-comment-form input {
-          width: 100%;
           height: 44px;
           min-height: 44px;
-          padding: 0 54px 0 16px;
-          border: 1px solid var(--border);
           border-radius: 999px;
-          background: var(--surface-2);
-          font-size: 14px;
+          padding-inline: 16px 54px;
         }
         .reel-comments-dialog .reel-comment-form .btn {
-          position: absolute;
-          top: 16px;
-          right: 20px;
-          display: grid;
+          inset-inline-end: 20px;
           width: 32px;
           height: 32px;
           min-height: 32px;
-          padding: 0;
-          place-items: center;
-          border: 0;
           border-radius: 50%;
-          background: var(--text-3);
-          color: var(--surface);
-          cursor: not-allowed;
-          transition: background-color 180ms ease, color 180ms ease, opacity 180ms ease;
         }
-        .reel-comments-dialog .reel-comment-form .btn.is-ready { background: var(--accent); cursor: pointer; }
-        .reel-comments-dialog .reel-comment-form .btn span { display: none; }
-        .reel-comments-dialog .reel-comment-form .btn .i { display: block; width: 20px; height: 20px; }
-        .reel-comments-dialog .reel-comment-form .btn:disabled { opacity: .45; }
       }
       @media (prefers-reduced-motion: reduce) {
         .reel-comments-dialog[open] { animation: none !important; }
