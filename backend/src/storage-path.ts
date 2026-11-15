@@ -25,7 +25,7 @@ export const resolveStoredUploadPath = (
     if (segments.length !== 2 || segments[0] !== bucket) return null;
     const filename = decodeURIComponent(segments[1]);
     if (!uploadFilenamePattern.test(filename)) return null;
-    return \`/uploads/\${filename}\`;
+    return "/uploads/" + filename;
   } catch {
     return null;
   }
