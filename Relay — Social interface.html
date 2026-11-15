@@ -14586,34 +14586,33 @@
         }
 
         .app > .nav .nav-foot {
-          display: flex !important;
-          flex-direction: column !important;
+          position: relative !important;
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) 32px !important;
           align-items: center !important;
-          justify-content: center !important;
           align-self: stretch !important;
           width: 100% !important;
           min-width: 0 !important;
           margin-top: auto !important;
           padding: 10px 0 0 !important;
-          gap: 6px !important;
+          gap: 8px !important;
           box-sizing: border-box !important;
         }
         .app > .nav .account-trigger {
           position: relative !important;
-          display: grid !important;
-          place-items: center !important;
-          flex: 0 0 40px !important;
-          align-self: center !important;
-          width: 40px !important;
-          min-width: 40px !important;
-          max-width: 40px !important;
-          height: 40px !important;
-          min-height: 40px !important;
-          max-height: 40px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: flex-start !important;
+          grid-column: 1 !important;
+          grid-row: 1 !important;
+          width: 100% !important;
+          min-width: 0 !important;
+          min-height: 48px !important;
           margin: 0 !important;
-          padding: 0 !important;
-          gap: 0 !important;
-          border-radius: 10px !important;
+          padding: 4px 6px !important;
+          gap: 10px !important;
+          border-radius: 9px !important;
+          text-align: start !important;
           box-sizing: border-box !important;
         }
         .app > .nav .account-trigger #navAvatar {
@@ -14621,6 +14620,7 @@
           inset: auto !important;
           display: grid !important;
           place-items: center !important;
+          flex: 0 0 34px !important;
           width: 34px !important;
           height: 34px !important;
           min-width: 34px !important;
@@ -14639,6 +14639,43 @@
         .app > .nav #theme {
           display: grid !important;
           place-items: center !important;
+          grid-column: 2 !important;
+          grid-row: 1 !important;
+          width: 32px !important;
+          height: 40px !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          border-radius: 10px !important;
+        }
+        .app.messages-active > .nav .nav-foot {
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 10px 0 0 !important;
+          gap: 6px !important;
+        }
+        .app.messages-active > .nav .account-trigger {
+          display: grid !important;
+          place-items: center !important;
+          flex: 0 0 40px !important;
+          width: 40px !important;
+          min-width: 40px !important;
+          max-width: 40px !important;
+          height: 40px !important;
+          min-height: 40px !important;
+          max-height: 40px !important;
+          padding: 0 !important;
+          gap: 0 !important;
+          border-radius: 10px !important;
+        }
+        .app.messages-active > .nav .account-trigger #navAvatar {
+          position: relative !important;
+          inset: auto !important;
+          margin: 0 !important;
+          transform: none !important;
+        }
+        .app.messages-active > .nav #theme {
           align-self: center !important;
           flex: 0 0 40px !important;
           width: 40px !important;
@@ -14648,7 +14685,6 @@
           min-height: 40px !important;
           max-height: 40px !important;
           margin: 0 !important;
-          padding: 0 !important;
           border-radius: 10px !important;
         }
 
