@@ -14150,7 +14150,7 @@
         }
       }
 
-      /* Authoritative desktop Messages rail motion: stable controls, no flex reflow. */
+      /* Desktop Messages rail motion: preserve native control geometry and hover targets. */
       @media (min-width: 1200px) {
         .app { transition: grid-template-columns 760ms cubic-bezier(.22,1,.36,1) !important; }
         .app.messages-active { grid-template-columns: 72px minmax(0,1fr) minmax(0,0px) !important; }
@@ -14158,58 +14158,82 @@
           width:100% !important; min-width:0 !important; max-width:100% !important;
           box-sizing:border-box !important; overflow:visible !important; transition:none !important;
         }
+
+        /* Keep each hover surface the same compact size as the navigation controls. */
         .app > .nav .nav-item {
-          position:relative !important; display:block !important; width:100% !important;
-          min-width:0 !important; height:44px !important; min-height:44px !important;
-          max-height:44px !important; flex:0 0 44px !important; box-sizing:border-box !important;
-          padding:0 !important; margin:0 !important; border-radius:9px;
-          transition:background-color 160ms ease,color 160ms ease !important;
+          position:relative !important; display:flex !important; align-items:center !important;
+          justify-content:flex-start !important; gap:13px !important;
+          width:100% !important; height:40px !important; min-height:40px !important;
+          max-height:40px !important; flex:0 0 40px !important;
+          box-sizing:border-box !important; padding:9px 12px !important; margin:0 !important;
+          border-radius:8px !important;
+          transition:color 140ms ease,background-color 140ms ease,
+            padding 760ms cubic-bezier(.22,1,.36,1),gap 760ms cubic-bezier(.22,1,.36,1) !important;
         }
         .app > .nav .nav-item > .i,
         .app > .nav .nav-item > .nav-icon {
-          position:absolute !important; left:12px !important; top:50% !important;
-          width:22px; height:22px; margin:0 !important;
-          transform:translate(0,-50%) !important;
-          transition:transform 760ms cubic-bezier(.22,1,.36,1) !important;
+          position:relative !important; inset:auto !important; flex:0 0 auto !important;
+          display:inline-flex !important; align-items:center !important; justify-content:center !important;
+          width:22px; height:22px; margin:0 !important; transform:scale(1) !important;
+          transition:transform 140ms cubic-bezier(.2,.7,.2,1) !important;
         }
-        .app > .nav .nav-item > .nav-icon { display:inline-flex !important; }
+        .app > .nav .nav-item:hover > .i,
+        .app > .nav .nav-item:hover > .nav-icon .i { transform:scale(1.05) !important; }
+        .app > .nav .nav-item:active > .i,
+        .app > .nav .nav-item:active > .nav-icon .i {
+          transform:scale(.92) !important; transition-duration:80ms !important;
+        }
         .app > .nav .nav-item > .l {
-          position:absolute !important; left:46px !important; top:50% !important;
-          display:block !important; width:max-content !important; max-width:160px !important;
-          overflow:hidden !important; white-space:nowrap !important; opacity:1 !important;
-          transform:translate(0,-50%) !important; pointer-events:auto;
-          transition:opacity 180ms ease,transform 220ms ease !important; will-change:opacity,transform;
+          position:relative !important; inset:auto !important; display:inline-block !important;
+          width:auto !important; max-width:160px !important; overflow:hidden !important;
+          white-space:nowrap !important; opacity:1 !important; transform:none !important;
+          pointer-events:auto !important;
+          transition:opacity 180ms ease,max-width 760ms cubic-bezier(.22,1,.36,1),
+            transform 220ms ease !important;
+        }
+        .app.messages-active > .nav .nav-item {
+          justify-content:center !important; gap:0 !important; padding:0 !important;
         }
         .app.messages-active > .nav .nav-item > .i,
-        .app.messages-active > .nav .nav-item > .nav-icon { transform:translate(12px,-50%) !important; }
+        .app.messages-active > .nav .nav-item > .nav-icon { transform:scale(1) !important; }
         .app.messages-active > .nav .nav-item > .l {
-          opacity:0 !important; transform:translate(-6px,-50%) !important; pointer-events:none !important;
+          max-width:0 !important; opacity:0 !important; transform:translateX(-6px) !important;
+          pointer-events:none !important;
         }
 
+        /* New Post stays a centered icon + label group while expanded. */
         .app > .nav #navPost {
-          position:relative !important; display:block !important; width:100% !important;
-          min-width:44px !important; max-width:100% !important; height:44px !important;
-          min-height:44px !important; max-height:44px !important; flex:0 0 44px !important;
-          align-self:center !important; box-sizing:border-box !important; margin:12px 0 0 !important;
-          padding:0 !important; border-radius:999px !important; overflow:hidden !important;
-          transition:width 760ms cubic-bezier(.22,1,.36,1),border-radius 520ms cubic-bezier(.22,1,.36,1) !important;
+          position:relative !important; display:flex !important; align-items:center !important;
+          justify-content:center !important; gap:13px !important;
+          width:100% !important; min-width:0 !important; max-width:100% !important;
+          height:44px !important; min-height:44px !important; max-height:44px !important;
+          flex:0 0 44px !important; align-self:stretch !important;
+          box-sizing:border-box !important; margin:12px 0 0 !important;
+          padding:0 16px !important; border-radius:999px !important; overflow:hidden !important;
+          transition:width 760ms cubic-bezier(.22,1,.36,1),min-width 760ms cubic-bezier(.22,1,.36,1),
+            padding 760ms cubic-bezier(.22,1,.36,1),gap 760ms cubic-bezier(.22,1,.36,1),
+            border-radius 520ms cubic-bezier(.22,1,.36,1) !important;
         }
         .app > .nav #navPost > svg.i {
-          position:absolute !important; left:12px !important; top:50% !important;
-          width:20px !important; height:20px !important; margin:0 !important;
-          transform:translate(0,-50%) !important;
-          transition:transform 760ms cubic-bezier(.22,1,.36,1) !important;
+          position:relative !important; inset:auto !important; display:block !important;
+          flex:0 0 20px !important; width:20px !important; height:20px !important;
+          margin:0 !important; transform:none !important;
         }
         .app > .nav #navPost > .l {
-          position:absolute !important; left:46px !important; top:50% !important;
-          width:max-content !important; max-width:120px !important; opacity:1 !important;
-          transform:translateY(-50%) !important;
-          transition:opacity 180ms ease,transform 220ms ease !important;
+          position:relative !important; inset:auto !important; display:inline-block !important;
+          width:auto !important; max-width:120px !important; overflow:hidden !important;
+          white-space:nowrap !important; opacity:1 !important; transform:none !important;
+          transition:opacity 180ms ease,max-width 760ms cubic-bezier(.22,1,.36,1),
+            transform 220ms ease !important;
         }
-        .app.messages-active > .nav #navPost { width:44px !important; border-radius:50% !important; }
-        .app.messages-active > .nav #navPost > svg.i { transform:translate(4px,-50%) !important; }
+        .app.messages-active > .nav #navPost {
+          width:44px !important; min-width:44px !important; max-width:44px !important;
+          align-self:center !important; justify-content:center !important; gap:0 !important;
+          padding:0 !important; border-radius:50% !important;
+        }
         .app.messages-active > .nav #navPost > .l {
-          opacity:0 !important; transform:translate(-6px,-50%) !important; pointer-events:none !important;
+          max-width:0 !important; opacity:0 !important; transform:translateX(-6px) !important;
+          pointer-events:none !important;
         }
         .app > .nav #navPost > .sr { position:absolute !important; }
 
@@ -14221,8 +14245,8 @@
         }
         .app > .nav .account-trigger {
           position:absolute !important; left:50% !important; top:10px !important;
-          display:flex !important; width:calc(100% - 48px) !important; min-width:44px !important;
-          max-width:calc(100% - 48px) !important; height:44px !important; min-height:44px !important;
+          display:flex !important; width:calc(100% - 24px) !important; min-width:44px !important;
+          max-width:calc(100% - 24px) !important; height:44px !important; min-height:44px !important;
           max-height:44px !important; box-sizing:border-box !important; padding:4px 6px !important;
           gap:10px !important; border-radius:9px !important; transform:translateX(-50%) !important;
           transition:width 760ms cubic-bezier(.22,1,.36,1),border-radius 520ms cubic-bezier(.22,1,.36,1) !important;
