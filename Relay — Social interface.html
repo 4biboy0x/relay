@@ -14451,8 +14451,8 @@
           visibility: visible !important;
           transform: none !important;
           pointer-events: auto !important;
-          /* Reveal labels as soon as the 190ms sidebar expansion finishes. */
-          transition: visibility 0s linear 190ms !important;
+          /* Show labels immediately when the sidebar starts expanding. */
+          transition: visibility 0s linear 0s !important;
         }
         .app.messages-active > .nav .nav-item > .l {
           opacity: 1 !important;
