@@ -13056,13 +13056,6 @@
         .app.messages-active > .nav #navPost .l {
           display: none;
         }
-        .app.messages-active > .nav #navPost > svg.i {
-          display: block;
-          width: 20px;
-          height: 20px;
-          flex: 0 0 20px;
-          margin: 0;
-        }
       }
 
 
@@ -14176,29 +14169,13 @@
           transition:opacity 180ms ease,max-width 760ms cubic-bezier(.22,1,.36,1),
             transform 220ms ease !important;
         }
-        /* Single source of truth for the collapsed New post control. */
-        .app.messages-active > .nav #navPost {
-          display: grid !important;
-          place-items: center !important;
-          grid-template-columns: 48px !important;
-          grid-template-rows: 48px !important;
-          width: 48px !important;
-          min-width: 48px !important;
-          max-width: 48px !important;
-          height: 48px !important;
-          min-height: 48px !important;
-          max-height: 48px !important;
-          aspect-ratio: 1 / 1 !important;
-          flex: none !important;
-          align-self: center !important;
-          padding: 0 !important;
-          gap: 0 !important;
-          border-radius: 50% !important;
-          box-sizing: border-box !important;
-        }
+
         .app.messages-active > .nav #navPost > .l {
-          max-width:0 !important; opacity:0 !important; transform:translateX(-6px) !important;
-          pointer-events:none !important;
+          display: none !important;
+          max-width: 0 !important;
+          opacity: 0 !important;
+          transform: none !important;
+          pointer-events: none !important;
         }
         .app > .nav #navPost > .sr { position:absolute !important; }
 
@@ -14476,7 +14453,7 @@
         .app > .nav .nav-item:focus-visible {
           outline: none !important;
           box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 32%, transparent) !important;
-          border-radius: 10px !important;
+          border-radius: 8px !important;
         }
         .app > .nav .nav-item:focus:not(:focus-visible) {
           outline: none !important;
@@ -14547,6 +14524,20 @@
           transform: none !important;
           transition: none !important;
         }
+        /* In the collapsed rail the button itself is the icon slot. */
+        .app.messages-active > .nav #navPost > svg.i {
+          position: static !important;
+          inset: auto !important;
+          width: auto !important;
+          height: 20px !important;
+          flex: none !important;
+          margin: 0 !important;
+          transform: none !important;
+          grid-column: 1 !important;
+          grid-row: 1 !important;
+          justify-self: center !important;
+          align-self: center !important;
+        }
         .app > .nav #navPost > .l {
           position: relative !important;
           inset: auto !important;
@@ -14579,6 +14570,29 @@
           overflow: hidden !important;
           clip: rect(0 0 0 0) !important;
           white-space: nowrap !important;
+        }
+
+        /* Collapsed state is a single 48px button track, not the expanded icon slot. */
+        /* Single source of truth for the collapsed New post control. */
+        .app.messages-active > .nav #navPost {
+          display: grid !important;
+          place-items: center !important;
+          grid-template-columns: minmax(0, 1fr) !important;
+          grid-template-rows: 48px !important;
+          width: 48px !important;
+          min-width: 48px !important;
+          max-width: 48px !important;
+          height: 48px !important;
+          min-height: 48px !important;
+          max-height: 48px !important;
+          aspect-ratio: 1 / 1 !important;
+          flex: none !important;
+          align-self: center !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          gap: 0 !important;
+          border-radius: 50% !important;
+          box-sizing: border-box !important;
         }
 
         .app > .nav .nav-foot {
@@ -29469,7 +29483,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         });
       }, { capture: true, passive: true });
 
-      function go(v, updateRoute = true, preserveProfile = false, restoreConversationId = "") {
+      function go(v, updateRoute = true, preserveProfile = false, restoreConversationId = "", focusNav = true) {
         if (!requireAuth()) return;
         const explicitReelId = deepLinkedReelId;
         const currentView = $("[data-v]:not([hidden])")?.id?.replace(/^v-/, "");
@@ -29625,7 +29639,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             : `#/${v}`;
           if (location.hash !== route) location.hash = route;
         }
-        if (v !== "reels") {
+        if (focusNav && v !== "reels") {
           requestAnimationFrame(() => {
             document.querySelector(".nav-item[aria-current='page']")?.focus({ preventScroll: true });
           });
@@ -30209,7 +30223,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             }
             return;
           }
-          go(targetView);
+          // The clicked nav button already owns focus; don't re-focus it programmatically.
+          go(targetView, true, false, "", false);
           return;
         }
         const exploreTabLink = e.target.closest("[data-explore-tab-link]");
