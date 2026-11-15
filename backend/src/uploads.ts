@@ -7,10 +7,13 @@ import multer from "multer";
 import type { RequestHandler } from "express";
 import { HttpError } from "./http";
 import { createSignedMediaUrl } from "./media-url";
+import { resolveStoredUploadPath } from "./storage-path";
 import { prisma } from "./db";
 
 export const uploadDirectory = path.resolve(process.cwd(), "uploads");
 export const objectStorageBucket = process.env.NEON_OBJECT_STORAGE_BUCKET || "assets";
+export const getStoredUploadPath = (value: string): string | null =>
+  resolveStoredUploadPath(value, objectStorageEndpoint, objectStorageBucket);
 const objectStorageEndpoint = process.env.AWS_ENDPOINT_URL_S3;
 const objectStorageEnabled = Boolean(
   objectStorageEndpoint && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY,
