@@ -6863,6 +6863,16 @@
         left: auto;
         right: calc(100% + 8px);
       }
+      /* Audio bubbles intentionally use a 60% / 230px width cap.
+         Anchor their action bar to that same visual edge, not the wider body. */
+      .message-body:has(> .message-bubble.audio-message) > .message-tools {
+        left: calc(min(60%, 230px) + 8px);
+        right: auto;
+      }
+      .message-row.mine > .message-main > .message-body:has(> .message-bubble.audio-message) > .message-tools {
+        left: auto;
+        right: calc(min(60%, 230px) + 8px);
+      }
       .message-bubble.text-message {
         width: fit-content;
         max-width: min(72cqw, 420px);
