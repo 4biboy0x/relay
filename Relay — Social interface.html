@@ -14396,164 +14396,7 @@
         }
       }
 
-      /* X-like desktop Messages rail: labels disappear immediately; controls never reflow. */
-      @media (min-width: 1200px) {
-        .app {
-          transition: grid-template-columns 760ms cubic-bezier(.22, 1, .36, 1) !important;
-        }
-        .app.messages-active {
-          grid-template-columns: 72px minmax(0, 1fr) minmax(0, 0px) !important;
-        }
-        .app > .nav {
-          min-width: 0 !important;
-          width: 100% !important;
-          max-width: 100% !important;
-          box-sizing: border-box !important;
-          transition: none !important;
-        }
-
-        /* Fixed-height hit areas prevent vertical squeezing or flex redistribution. */
-        .app > .nav .nav-item {
-          position: relative !important;
-          display: block !important;
-          width: 100% !important;
-          min-width: 0 !important;
-          height: 40px !important;
-          min-height: 40px !important;
-          max-height: 40px !important;
-          flex: 0 0 40px !important;
-          padding: 0 !important;
-          margin: 0 !important;
-          overflow: hidden !important;
-          box-sizing: border-box !important;
-          transition: color 140ms ease, background-color 140ms ease,
-            width 760ms cubic-bezier(.22, 1, .36, 1) !important;
-        }
-        .app > .nav .nav-item > .i,
-        .app > .nav .nav-item > .nav-icon {
-          position: absolute !important;
-          left: 12px !important;
-          top: 50% !important;
-          display: grid !important;
-          place-items: center !important;
-          width: 22px !important;
-          height: 22px !important;
-          margin: 0 !important;
-          flex: none !important;
-          transform: translateY(-50%) !important;
-          transition: left 760ms cubic-bezier(.22, 1, .36, 1) !important;
-        }
-        .app > .nav .nav-item > .l {
-          display: inline-block !important;
-          margin-left: 46px !important;
-          max-width: calc(100% - 54px) !important;
-          overflow: hidden !important;
-          white-space: nowrap !important;
-          opacity: 1 !important;
-          transform: none !important;
-          transition: none !important;
-        }
-        .app.messages-active > .nav .nav-item {
-          width: 44px !important;
-          min-width: 44px !important;
-          max-width: 44px !important;
-          justify-content: initial !important;
-          gap: 0 !important;
-        }
-        .app.messages-active > .nav .nav-item > .i,
-        .app.messages-active > .nav .nav-item > .nav-icon {
-          left: 50% !important;
-          transform: translate(-50%, -50%) !important;
-        }
-        .app.messages-active > .nav .nav-item > .l {
-          display: none !important;
-        }
-
-        /* New Post follows the same fixed icon / instant-label behavior. */
-        .app > .nav #navPost {
-          position: relative !important;
-          width: 100% !important;
-          min-width: 0 !important;
-          max-width: 100% !important;
-          height: 44px !important;
-          min-height: 44px !important;
-          max-height: 44px !important;
-          flex: 0 0 44px !important;
-          padding: 0 !important;
-          overflow: hidden !important;
-          transition: width 760ms cubic-bezier(.22, 1, .36, 1),
-            background-color 160ms ease, color 160ms ease !important;
-        }
-        .app > .nav #navPost > svg.i {
-          position: absolute !important;
-          left: 50% !important;
-          top: 50% !important;
-          display: block !important;
-          width: 20px !important;
-          height: 20px !important;
-          margin: 0 !important;
-          transform: translate(-50%, -50%) !important;
-          transition: none !important;
-        }
-        .app > .nav #navPost > .l {
-          display: inline-block !important;
-          margin-left: 28px !important;
-          white-space: nowrap !important;
-          transition: none !important;
-        }
-        .app.messages-active > .nav #navPost {
-          width: 44px !important;
-          min-width: 44px !important;
-          max-width: 44px !important;
-          align-self: center !important;
-          border-radius: 50% !important;
-        }
-        .app.messages-active > .nav #navPost > .l {
-          display: none !important;
-        }
-        .app > .nav #navPost > .sr { position: absolute !important; }
-
-        @media (prefers-reduced-motion: reduce) {
-          .app { transition: none !important; }
-          .app > .nav .nav-item,
-          .app > .nav .nav-item > .i,
-          .app > .nav .nav-item > .nav-icon,
-          .app > .nav #navPost {
-            transition: none !important;
-          }
-        }
-      }
-
-      /* Keep nav icons locked to their positioning transform on hover.
-         Hover only changes the hit-surface color; icons never jump or scale. */
-      @media (min-width: 1200px) {
-        .app > .nav .nav-item > .i,
-        .app > .nav .nav-item > .nav-icon,
-        .app > .nav .nav-item > .nav-icon .i {
-          transition: left 760ms cubic-bezier(.22, 1, .36, 1) !important;
-        }
-        .app > .nav .nav-item:hover > .i,
-        .app > .nav .nav-item:hover > .nav-icon,
-        .app > .nav .nav-item:active > .i,
-        .app > .nav .nav-item:active > .nav-icon {
-          transform: translateY(-50%) !important;
-        }
-        .app > .nav .nav-item:hover > .nav-icon .i,
-        .app > .nav .nav-item:active > .nav-icon .i {
-          transform: none !important;
-        }
-        .app.messages-active > .nav .nav-item:hover > .i,
-        .app.messages-active > .nav .nav-item:hover > .nav-icon,
-        .app.messages-active > .nav .nav-item:active > .i,
-        .app.messages-active > .nav .nav-item:active > .nav-icon {
-          transform: translate(-50%, -50%) !important;
-        }
-        .app > .nav .nav-item > .nav-icon .i {
-          transform: none !important;
-        }
-      }
-
-      /* Desktop Messages sidebar: fixed 48px icon rail with a single column-width motion. */
+      /* Desktop Messages sidebar: one 48px slot per item, with a shared 36px axis. */
       @media (min-width: 1200px) {
         .app {
           transition: grid-template-columns 190ms cubic-bezier(.2, 0, 0, 1) !important;
@@ -14561,196 +14404,255 @@
         .app.messages-active {
           grid-template-columns: 72px minmax(0, 1fr) minmax(0, 0px) !important;
         }
-
-        /* Keep the icon rail's inner width exactly 48px when collapsed. */
         .app > .nav {
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
           width: 100% !important;
           min-width: 0 !important;
           max-width: 100% !important;
           box-sizing: border-box !important;
           padding: 4px 12px 16px !important;
           overflow: hidden !important;
+          gap: 4px !important;
           transition: none !important;
         }
-        .app.messages-active > .nav {
-          padding: 4px 12px 16px !important;
-        }
 
-        /* Item backgrounds follow the column edge; the icon stays in its fixed slot. */
-        .app > .nav .nav-item {
-          position: relative !important;
-          display: block !important;
+        .app > .nav > .brand {
+          display: grid !important;
+          place-items: center !important;
+          align-self: stretch !important;
+          flex: 0 0 48px !important;
           width: 100% !important;
           min-width: 0 !important;
           height: 48px !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          overflow: hidden !important;
+        }
+        .app > .nav .wordmark-full,
+        .app > .nav .wordmark-mark {
+          grid-area: 1 / 1;
+          display: block !important;
+          width: 100% !important;
+          margin: 0 !important;
+          text-align: center !important;
+          white-space: nowrap !important;
+          transition: opacity 100ms linear !important;
+        }
+        .app > .nav .wordmark-mark { opacity: 0 !important; }
+        .app.messages-active > .nav .wordmark-full { opacity: 0 !important; }
+        .app.messages-active > .nav .wordmark-mark { opacity: 1 !important; }
+
+        .app > .nav .nav-item {
+          display: grid !important;
+          grid-template-columns: 48px minmax(0, 1fr) !important;
+          align-items: center !important;
+          justify-content: initial !important;
+          align-self: stretch !important;
+          flex: 0 0 48px !important;
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: none !important;
+          height: 48px !important;
           min-height: 48px !important;
           max-height: 48px !important;
-          flex: 0 0 48px !important;
           box-sizing: border-box !important;
           padding: 0 !important;
           margin: 0 !important;
+          gap: 0 !important;
           border-radius: 10px !important;
-          text-align: left !important;
+          overflow: visible !important;
+          text-align: start !important;
+          transition: none !important;
+        }
+        .app > .nav .nav-item > .nav-icon {
+          position: relative !important;
+          inset: auto !important;
+          display: grid !important;
+          place-items: center !important;
+          grid-column: 1 !important;
+          grid-row: 1 !important;
+          width: 48px !important;
+          min-width: 48px !important;
+          height: 48px !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          transform: none !important;
           overflow: visible !important;
           transition: none !important;
         }
-        .app > .nav .nav-item:hover,
-        .app > .nav .nav-item[aria-current="page"] {
-          transition: none !important;
-        }
-
-        /* A 48px slot is centered in the 48px collapsed content rail. */
-        .app > .nav .nav-item > .i,
-        .app > .nav .nav-item > .nav-icon {
-          position: absolute !important;
-          inset-inline-start: 0 !important;
-          top: 50% !important;
-          display: grid !important;
-          place-items: center !important;
-          width: 48px !important;
-          height: 48px !important;
+        .app > .nav .nav-item > .nav-icon > .i {
+          display: block !important;
+          position: static !important;
+          inset: auto !important;
+          width: 22px !important;
+          height: 22px !important;
           margin: 0 !important;
-          transform: translateY(-50%) !important;
-          transition: none !important;
-        }
-        .app > .nav .nav-item > .i {
-          width: 22px !important;
-          height: 22px !important;
-          display: block !important;
-          inset-inline-start: 13px !important;
-        }
-        .app > .nav .nav-item > .nav-icon .i {
-          display: block !important;
-          width: 22px !important;
-          height: 22px !important;
           transform: none !important;
           transition: none !important;
         }
-        .app > .nav .nav-item:hover > .i,
-        .app > .nav .nav-item:active > .i,
-        .app > .nav .nav-item:hover > .nav-icon,
-        .app > .nav .nav-item:active > .nav-icon {
-          transform: translateY(-50%) !important;
-        }
-        .app > .nav .nav-item:hover > .nav-icon .i,
-        .app > .nav .nav-item:active > .nav-icon .i {
-          transform: none !important;
-        }
-
-        /* Labels are out of flow and only fade; the nav itself clips them. */
         .app > .nav .nav-item > .l {
-          position: absolute !important;
-          inset-inline-start: 56px !important;
-          top: 50% !important;
+          position: relative !important;
+          inset: auto !important;
           display: block !important;
+          grid-column: 2 !important;
+          grid-row: 1 !important;
+          min-width: 0 !important;
           width: max-content !important;
           max-width: none !important;
           margin: 0 !important;
-          white-space: nowrap !important;
+          padding-inline-start: 8px !important;
           overflow: visible !important;
+          white-space: nowrap !important;
           opacity: 1 !important;
           visibility: visible !important;
-          transform: translateY(-50%) !important;
+          transform: none !important;
           pointer-events: auto !important;
           transition: opacity 100ms linear !important;
         }
         .app.messages-active > .nav .nav-item > .l {
           opacity: 0 !important;
-          visibility: visible !important;
           pointer-events: none !important;
         }
+        .app > .nav .nav-item:focus-visible {
+          outline: none !important;
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 32%, transparent) !important;
+          border-radius: 10px !important;
+        }
+        .app > .nav .nav-item:focus:not(:focus-visible) {
+          outline: none !important;
+          box-shadow: none !important;
+        }
 
-        /* New Post: fixed circle plus a separate clipped pill layer. */
         .app > .nav #navPost {
           position: relative !important;
-          display: block !important;
+          display: grid !important;
+          grid-template-columns: 48px minmax(0, 1fr) !important;
+          align-items: center !important;
+          align-self: stretch !important;
+          flex: 0 0 48px !important;
           width: 100% !important;
           min-width: 0 !important;
-          max-width: 100% !important;
+          max-width: none !important;
           height: 48px !important;
           min-height: 48px !important;
           max-height: 48px !important;
-          flex: 0 0 48px !important;
-          align-self: stretch !important;
-          box-sizing: border-box !important;
-          padding: 0 !important;
           margin: 12px 0 0 !important;
+          padding: 0 !important;
           border: 0 !important;
           border-radius: 999px !important;
-          background: transparent !important;
-          color: #fff !important;
-          text-align: left !important;
-          overflow: visible !important;
-          transition: none !important;
-          isolation: isolate !important;
-        }
-        .app > .nav #navPost::before,
-        .app > .nav #navPost::after {
-          content: "" !important;
-          position: absolute !important;
-          top: 0 !important;
-          bottom: 0 !important;
-          pointer-events: none !important;
           background: var(--accent) !important;
-          transition: opacity 100ms linear !important;
-          z-index: -1 !important;
-        }
-        .app > .nav #navPost::before {
-          inset-inline: 0 !important;
-          border-radius: 999px !important;
-          opacity: 1 !important;
-        }
-        .app > .nav #navPost::after {
-          inset-inline-start: 0 !important;
-          width: 48px !important;
-          height: 48px !important;
-          border-radius: 50% !important;
-          opacity: 0 !important;
+          color: #fff !important;
+          overflow: hidden !important;
+          isolation: isolate !important;
+          transition: none !important;
         }
         .app > .nav #navPost > svg.i {
-          position: absolute !important;
-          inset-inline-start: 14px !important;
-          top: 14px !important;
           display: block !important;
+          position: static !important;
+          grid-column: 1 !important;
+          grid-row: 1 !important;
           width: 20px !important;
           height: 20px !important;
-          margin: 0 !important;
+          margin: 0 auto !important;
           transform: none !important;
           transition: none !important;
-          z-index: 1 !important;
         }
         .app > .nav #navPost > .l {
-          position: absolute !important;
-          inset-inline-start: 56px !important;
-          top: 50% !important;
-          display: block !important;
+          grid-column: 2 !important;
+          grid-row: 1 !important;
           width: max-content !important;
-          max-width: none !important;
           margin: 0 !important;
+          opacity: 1 !important;
           white-space: nowrap !important;
-          overflow: visible !important;
-          opacity: 1 !important;
-          visibility: visible !important;
-          transform: translateY(-50%) !important;
           transition: opacity 100ms linear !important;
-          z-index: 1 !important;
         }
-        .app.messages-active > .nav #navPost::before {
+        .app.messages-active > .nav #navPost {
+          border-radius: 50% !important;
+        }
+        .app.messages-active > .nav #navPost > .l,
+        .app.messages-active > .nav #navPost > .sr {
           opacity: 0 !important;
-        }
-        .app.messages-active > .nav #navPost::after {
-          opacity: 1 !important;
-        }
-        .app.messages-active > .nav #navPost > .l {
-          opacity: 0 !important;
-          visibility: visible !important;
           pointer-events: none !important;
         }
-
-        /* Do not animate a second width on the content area. */
-        .app > main {
-          transition: none !important;
+        .app > .nav #navPost > .sr {
+          position: absolute !important;
+          width: 1px !important;
+          height: 1px !important;
+          overflow: hidden !important;
+          clip: rect(0 0 0 0) !important;
+          white-space: nowrap !important;
         }
+
+        .app > .nav .nav-foot {
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          justify-content: center !important;
+          align-self: stretch !important;
+          width: 100% !important;
+          min-width: 0 !important;
+          margin-top: auto !important;
+          padding: 10px 0 0 !important;
+          gap: 6px !important;
+          box-sizing: border-box !important;
+        }
+        .app > .nav .account-trigger {
+          position: relative !important;
+          display: grid !important;
+          place-items: center !important;
+          flex: 0 0 40px !important;
+          align-self: center !important;
+          width: 40px !important;
+          min-width: 40px !important;
+          max-width: 40px !important;
+          height: 40px !important;
+          min-height: 40px !important;
+          max-height: 40px !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          gap: 0 !important;
+          border-radius: 10px !important;
+          box-sizing: border-box !important;
+        }
+        .app > .nav .account-trigger #navAvatar {
+          position: relative !important;
+          inset: auto !important;
+          display: grid !important;
+          place-items: center !important;
+          width: 34px !important;
+          height: 34px !important;
+          min-width: 34px !important;
+          min-height: 34px !important;
+          margin: 0 !important;
+          transform: none !important;
+        }
+        .app > .nav .nav-foot .who {
+          min-width: 0 !important;
+          max-width: 100% !important;
+          overflow: hidden !important;
+          opacity: 1 !important;
+          transition: opacity 100ms linear !important;
+        }
+        .app.messages-active > .nav .nav-foot .who { opacity: 0 !important; }
+        .app > .nav #theme {
+          display: grid !important;
+          place-items: center !important;
+          align-self: center !important;
+          flex: 0 0 40px !important;
+          width: 40px !important;
+          min-width: 40px !important;
+          max-width: 40px !important;
+          height: 40px !important;
+          min-height: 40px !important;
+          max-height: 40px !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          border-radius: 10px !important;
+        }
+
+        .app > main { transition: none !important; }
         .app.messages-active > aside[aria-label="Suggestions"] {
           opacity: 0 !important;
           transform: none !important;
@@ -14758,184 +14660,26 @@
           pointer-events: none !important;
           transition: none !important;
         }
-
         @media (prefers-reduced-motion: reduce) {
           .app,
           .app > main,
           .app > .nav,
           .app > .nav .nav-item,
           .app > .nav .nav-item > .l,
+          .app > .nav .wordmark-full,
+          .app > .nav .wordmark-mark,
           .app > .nav #navPost,
-          .app > .nav #navPost::before,
-          .app > .nav #navPost::after,
-          .app > .nav #navPost > .l {
+          .app > .nav #navPost > .l,
+          .app > .nav .nav-foot .who {
             transition: none !important;
           }
-        }
-      }
-
-      /* Collapsed desktop rail: one shared horizontal center axis (72px track / 48px inner rail). */
-      @media (min-width: 1200px) {
-        .app.messages-active > .nav {
-          display: flex !important;
-          flex-direction: column !important;
-          align-items: center !important;
-          width: 100% !important;
-          min-width: 0 !important;
-          max-width: 100% !important;
-          box-sizing: border-box !important;
-          padding-inline: 12px !important;
-          overflow: hidden !important;
-          scrollbar-gutter: auto !important;
-        }
-
-        /* Brand, nav items, New Post and footer all occupy the same 48px rail. */
-        .app.messages-active > .nav > .brand {
-          display: flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          align-self: stretch !important;
-          width: 100% !important;
-          min-width: 0 !important;
-          box-sizing: border-box !important;
-          padding-inline: 0 !important;
-          margin-inline: 0 !important;
-          text-align: center !important;
-        }
-        .app.messages-active > .nav > .brand .wordmark {
-          display: inline-block !important;
-          width: 100% !important;
-          max-width: 100% !important;
-          margin: 0 !important;
-          text-align: center !important;
-          white-space: nowrap !important;
-        }
-
-        /* Keep the item surface column-sized during the transition; its 48px
-           collapsed width comes from the symmetric 12px nav padding. */
-        .app.messages-active > .nav .nav-item {
-          align-self: stretch !important;
-          width: 100% !important;
-          min-width: 0 !important;
-          box-sizing: border-box !important;
-          padding-inline: 0 !important;
-          margin-inline: 0 !important;
-          text-align: initial !important;
-        }
-        .app.messages-active > .nav .nav-item > .i {
-          inset-inline-start: 13px !important;
-          width: 22px !important;
-          height: 22px !important;
-          margin: 0 !important;
-        }
-        .app.messages-active > .nav .nav-item > .nav-icon {
-          inset-inline-start: 0 !important;
-          width: 48px !important;
-          height: 48px !important;
-          display: grid !important;
-          place-items: center !important;
-          margin: 0 !important;
-        }
-        .app.messages-active > .nav .nav-item > .nav-icon .i {
-          width: 22px !important;
-          height: 22px !important;
-          margin: 0 !important;
-          transform: none !important;
-        }
-
-        /* New Post's fixed 48px circular layer shares the icon-slot center. */
-        .app.messages-active > .nav #navPost {
-          align-self: stretch !important;
-          width: 100% !important;
-          min-width: 0 !important;
-          max-width: 100% !important;
-          height: 48px !important;
-          min-height: 48px !important;
-          max-height: 48px !important;
-          flex: 0 0 48px !important;
-          margin-inline: 0 !important;
-          padding-inline: 0 !important;
-        }
-        .app.messages-active > .nav #navPost::after {
-          inset-inline-start: 0 !important;
-          inset-inline-end: auto !important;
-          width: 48px !important;
-          height: 48px !important;
-          border-radius: 50% !important;
-        }
-        .app.messages-active > .nav #navPost > svg.i {
-          inset-inline-start: 14px !important;
-          inset-inline-end: auto !important;
-          top: 14px !important;
-          width: 20px !important;
-          height: 20px !important;
-        }
-
-        /* Footer children are centered on the same rail, not on separate grid columns. */
-        .app.messages-active > .nav .nav-foot {
-          display: flex !important;
-          flex-direction: column !important;
-          align-items: center !important;
-          justify-content: center !important;
-          align-self: stretch !important;
-          width: 100% !important;
-          min-width: 0 !important;
-          box-sizing: border-box !important;
-          padding-inline: 0 !important;
-          margin-inline: 0 !important;
-          gap: 6px !important;
-        }
-        .app.messages-active > .nav .account-trigger {
-          display: grid !important;
-          place-items: center !important;
-          align-self: center !important;
-          flex: 0 0 40px !important;
-          width: 40px !important;
-          min-width: 40px !important;
-          max-width: 40px !important;
-          height: 40px !important;
-          min-height: 40px !important;
-          max-height: 40px !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          border-radius: 50% !important;
-          box-sizing: border-box !important;
-        }
-        .app.messages-active > .nav .account-trigger #navAvatar {
-          position: absolute !important;
-          left: 50% !important;
-          top: 50% !important;
-          right: auto !important;
-          bottom: auto !important;
-          width: 34px !important;
-          height: 34px !important;
-          min-width: 34px !important;
-          min-height: 34px !important;
-          margin: 0 !important;
-          transform: translate(-50%, -50%) !important;
-        }
-        .app.messages-active > .nav #theme {
-          display: grid !important;
-          place-items: center !important;
-          align-self: center !important;
-          flex: 0 0 40px !important;
-          width: 40px !important;
-          min-width: 40px !important;
-          max-width: 40px !important;
-          height: 40px !important;
-          min-height: 40px !important;
-          max-height: 40px !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          border-radius: 50% !important;
-          box-sizing: border-box !important;
         }
       }
     </style>
   </head>
   <body>
     <div class="app-splash" id="appSplash" role="status" aria-label="Loading Relay">
-      <div class="brand" aria-label="Relay"><span class="wordmark">Relay</span></div>
+      <div class="brand" aria-label="Relay"><span class="wordmark wordmark-full">Relay</span><span class="wordmark wordmark-mark" aria-hidden="true">R</span></div>
       <span class="splash-spinner" aria-hidden="true"><i class="dot"></i><i class="dot"></i><i class="dot"></i></span>
     </div>
     <svg width="0" height="0" style="position: absolute" aria-hidden="true">
@@ -15108,15 +14852,15 @@
       <nav class="nav" aria-label="Primary">
         <div class="brand" aria-label="Relay"><span class="wordmark">Relay</span></div>
         <button class="nav-item" data-view="home" aria-current="page">
-          <svg class="i" aria-hidden="true"><use href="#home" /></svg
+          <span class="nav-icon"><svg class="i" aria-hidden="true"><use href="#home" /></svg></span>
           ><span class="l">Home</span>
         </button>
         <button class="nav-item" data-view="explore">
-          <svg class="i" aria-hidden="true"><use href="#search" /></svg
+          <span class="nav-icon"><svg class="i" aria-hidden="true"><use href="#search" /></svg></span>
           ><span class="l">Explore</span>
         </button>
         <button class="nav-item" data-view="reels">
-          <svg class="i reels-symbol" aria-hidden="true"><use href="#reels" /></svg
+          <span class="nav-icon"><svg class="i reels-symbol" aria-hidden="true"><use href="#reels" /></svg></span>
           ><span class="l">Reels</span>
         </button>
         <button class="nav-item" data-view="messages" aria-label="Messages, 0 unread">
@@ -15134,7 +14878,7 @@
           <span class="l">Notifications</span>
         </button>
         <button class="nav-item" data-view="profile">
-          <svg class="i" aria-hidden="true"><use href="#user" /></svg
+          <span class="nav-icon"><svg class="i" aria-hidden="true"><use href="#user" /></svg></span>
           ><span class="l">Profile</span>
         </button>
         <button class="btn btn-primary" id="navPost">
