@@ -7,6 +7,7 @@ import multer from "multer";
 import type { RequestHandler } from "express";
 import { HttpError } from "./http";
 import { createSignedMediaUrl } from "./media-url";
+import { resolveStoredUploadPath } from "./storage-path";
 import { prisma } from "./db";
 
 export const uploadDirectory = path.resolve(process.cwd(), "uploads");
@@ -15,6 +16,9 @@ const objectStorageEndpoint = process.env.AWS_ENDPOINT_URL_S3;
 const objectStorageEnabled = Boolean(
   objectStorageEndpoint && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY,
 );
+
+export const getStoredUploadPath = (value: string): string | null =>
+  resolveStoredUploadPath(value, objectStorageEndpoint, objectStorageBucket);
 const objectStorage = objectStorageEnabled
   ? new S3Client({
       endpoint: objectStorageEndpoint,
@@ -134,6 +138,7 @@ export const createUploadReadUrl = async (
   storedPath: string,
   viewerId?: string,
   suppliedToken?: unknown,
+  legacyStoredUrl?: string,
 ): Promise<string> => {
   const filename = /^\/uploads\/([0-9a-f-]+\.(?:jpg|jpeg|png|webp|gif|webm|ogg|m4a|mp3|wav|aac|flac|opus))$/i.exec(storedPath)?.[1];
   if (!filename) throw new Error("Invalid generated upload storage path");
@@ -143,6 +148,11 @@ export const createUploadReadUrl = async (
         { mediaUrl: storedPath },
         { audioUrl: storedPath },
         { attachments: { array_contains: [storedPath] } },
+        ...(legacyStoredUrl ? [
+          { mediaUrl: legacyStoredUrl },
+          { audioUrl: legacyStoredUrl },
+          { attachments: { array_contains: [legacyStoredUrl] } },
+        ] : []),
       ],
     },
     select: {
