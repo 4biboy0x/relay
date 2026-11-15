@@ -14660,6 +14660,31 @@
           pointer-events: auto !important;
           transition: opacity 100ms linear 270ms, visibility 0s linear 270ms !important;
         }
+        .app.messages-active > .nav .nav-item {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          align-self: stretch !important;
+          justify-content: flex-start !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          border-radius: 8px !important;
+        }
+        .app.messages-active > .nav .nav-item > .l {
+          width: max-content !important;
+          max-width: none !important;
+          margin: 0 !important;
+        }
+        .app.messages-active > .nav .nav-item:hover > .i,
+        .app.messages-active > .nav .nav-item:active > .i,
+        .app.messages-active > .nav .nav-item:hover > .nav-icon,
+        .app.messages-active > .nav .nav-item:active > .nav-icon {
+          transform: translateY(-50%) !important;
+        }
+        .app.messages-active > .nav .nav-item:hover > .nav-icon .i,
+        .app.messages-active > .nav .nav-item:active > .nav-icon .i {
+          transform: none !important;
+        }
         .app.messages-active > .nav .nav-item > .l {
           opacity: 0 !important;
           visibility: hidden !important;
@@ -14713,6 +14738,20 @@
           visibility: visible !important;
           transform: translateY(-50%) !important;
           transition: opacity 100ms linear 270ms, visibility 0s linear 270ms !important;
+        }
+        .app.messages-active > .nav #navPost {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          align-self: stretch !important;
+          justify-content: flex-start !important;
+          padding: 0 !important;
+          border-radius: 999px !important;
+        }
+        .app.messages-active > .nav #navPost > .l {
+          width: max-content !important;
+          max-width: none !important;
+          margin: 0 !important;
         }
         .app.messages-active > .nav #navPost > .l {
           opacity: 0 !important;
