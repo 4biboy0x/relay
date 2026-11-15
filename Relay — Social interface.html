@@ -6831,8 +6831,15 @@
         width: max-content;
         max-width: 420px;
       }
-      .message-row > .message-main > .message-bubble,
-      .message-row > .message-main > .message-attachment-group {
+      .message-body {
+        position: relative;
+        display: flow-root;
+        width: fit-content;
+        min-width: 0;
+        max-width: 100%;
+      }
+      .message-body > .message-bubble,
+      .message-body > .message-attachment-group {
         min-width: 0;
         max-width: 100%;
       }
@@ -6842,9 +6849,9 @@
           width: max-content;
           max-width: 72%;
         }
-        .message-main > .message-tools { display: none !important; }
+        .message-body > .message-tools { display: none !important; }
       }
-      .message-main > .message-tools {
+      .message-body > .message-tools {
         position: absolute;
         top: 50%;
         left: calc(100% + 8px);
@@ -6852,7 +6859,7 @@
         flex: none;
         margin: 0;
       }
-      .message-row.mine > .message-main > .message-tools {
+      .message-row.mine > .message-main > .message-body > .message-tools {
         left: auto;
         right: calc(100% + 8px);
       }
@@ -7272,9 +7279,9 @@
         pointer-events: none;
         transition: opacity 120ms ease;
       }
-      .message-row:hover > .message-main > .message-tools,
-      .message-row:focus-within > .message-main > .message-tools,
-      .message-row.tools-visible > .message-main > .message-tools,
+      .message-row:hover .message-main > .message-body > .message-tools,
+      .message-row:focus-within .message-main > .message-body > .message-tools,
+      .message-row.tools-visible .message-main > .message-body > .message-tools,
       .message-tools:focus-within {
         opacity: 1;
         pointer-events: auto;
@@ -24730,7 +24737,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const rowActions = hasMultipleImages && !audio && !sticker
           ? messageGroupToolsMarkup({ messageId: message.id, copyText: text ? body : "", canDelete: mine })
           : bubbleActions;
-        return `<div class="message-row${mine ? " mine" : ""}${reactions ? " has-reactions" : ""}" data-message-row data-message-timestamp="${esc(message.clientSentAt || message.createdAt || "")}" data-conversation-id="${esc(message.conversationId)}" data-sender-id="${esc(message.senderId || "")}" data-reply-to-id="${esc(message.replyToId || replyTo?.id || "")}"><div class="message-main">${replyStack}${messageContent}${rowActions}</div></div>`;
+        return `<div class="message-row${mine ? " mine" : ""}${reactions ? " has-reactions" : ""}" data-message-row data-message-timestamp="${esc(message.clientSentAt || message.createdAt || "")}" data-conversation-id="${esc(message.conversationId)}" data-sender-id="${esc(message.senderId || "")}" data-reply-to-id="${esc(message.replyToId || replyTo?.id || "")}"><div class="message-main">${replyStack}<div class="message-body">${messageContent}${rowActions}</div></div></div>`;
       }
       function updateMessageRowSpacing(container = $("#chatLog")) {
         const rows = [...container.children].filter((element) => element.matches(".message-row"));
