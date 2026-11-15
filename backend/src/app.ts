@@ -330,7 +330,7 @@ const normalizeMediaResponse = async (
       try {
         let signingPromise = signingCache.get(storedPath);
         if (!signingPromise) {
-          signingPromise = createUploadReadUrl(storedPath, viewerId);
+          signingPromise = createUploadReadUrl(storedPath, viewerId, undefined, value);
           signingCache.set(storedPath, signingPromise);
         }
         return await signingPromise;
