@@ -3,7 +3,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 // Media URLs are refreshed on demand. Never backdate a signature to a daily
 // window: a URL must receive its full lifetime from the moment it is created.
-const signedUrlLifetimeSeconds = 60 * 60;
+const signedUrlLifetimeSeconds = 48 * 60 * 60;
 const cacheSafetyMarginMs = 5 * 60 * 1000;
 const maxCachedMediaUrls = 5000;
 const signedMediaUrls = new Map<string, { url: string; validUntil: number }>();
@@ -37,7 +37,7 @@ export const createSignedMediaUrl = async (
     Key: key,
     ResponseContentDisposition: "inline",
     // Keep browser caching comfortably shorter than the signed URL lifetime.
-    ResponseCacheControl: "private, max-age=300",
+    ResponseCacheControl: "private, max-age=3600",
   }), {
     expiresIn: signedUrlLifetimeSeconds,
   });
