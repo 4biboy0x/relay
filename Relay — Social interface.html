@@ -14451,11 +14451,15 @@
           visibility: visible !important;
           transform: none !important;
           pointer-events: auto !important;
-          transition: opacity 100ms linear !important;
+          /* Keep labels completely hidden until the rail has finished expanding. */
+          transition: visibility 0s linear 480ms !important;
         }
         .app.messages-active > .nav .nav-item > .l {
-          opacity: 0 !important;
+          opacity: 1 !important;
+          visibility: hidden !important;
+          transform: none !important;
           pointer-events: none !important;
+          transition: visibility 0s linear 0s !important;
         }
         .app > .nav .nav-item:focus-visible {
           outline: none !important;
