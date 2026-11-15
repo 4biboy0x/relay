@@ -14552,6 +14552,164 @@
           transform: none !important;
         }
       }
+
+      /* Minimal Messages rail: fixed icon anchors, instant labels, one shell-width motion. */
+      @media (min-width: 1200px) {
+        .app {
+          transition: grid-template-columns 200ms ease-out !important;
+        }
+        .app.messages-active {
+          grid-template-columns: 72px minmax(0, 1fr) minmax(0, 0px) !important;
+        }
+        .app > .nav {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          transition: none !important;
+        }
+
+        .app > .nav .nav-item {
+          position: relative !important;
+          display: block !important;
+          width: 100% !important;
+          min-width: 0 !important;
+          height: 48px !important;
+          min-height: 48px !important;
+          max-height: 48px !important;
+          flex: 0 0 48px !important;
+          box-sizing: border-box !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          overflow: hidden !important;
+          text-align: left !important;
+          justify-content: flex-start !important;
+          gap: 0 !important;
+          transition: color 140ms ease, background-color 140ms ease !important;
+        }
+
+        /* The icon anchor never changes its x/y coordinates in either rail state. */
+        .app > .nav .nav-item > .i,
+        .app > .nav .nav-item > .nav-icon {
+          position: absolute !important;
+          left: 13px !important;
+          top: 50% !important;
+          display: grid !important;
+          place-items: center !important;
+          width: 22px !important;
+          height: 22px !important;
+          margin: 0 !important;
+          flex: none !important;
+          transform: translateY(-50%) !important;
+          transition: none !important;
+        }
+        .app > .nav .nav-item > .nav-icon .i {
+          width: 22px !important;
+          height: 22px !important;
+          transform: none !important;
+          transition: none !important;
+        }
+        .app > .nav .nav-item:hover > .i,
+        .app > .nav .nav-item:active > .i,
+        .app > .nav .nav-item:hover > .nav-icon,
+        .app > .nav .nav-item:active > .nav-icon {
+          transform: translateY(-50%) !important;
+        }
+        .app > .nav .nav-item:hover > .nav-icon .i,
+        .app > .nav .nav-item:active > .nav-icon .i {
+          transform: none !important;
+        }
+
+        .app > .nav .nav-item > .l {
+          display: inline-block !important;
+          width: auto !important;
+          max-width: calc(100% - 48px) !important;
+          margin: 0 0 0 46px !important;
+          overflow: hidden !important;
+          white-space: nowrap !important;
+          opacity: 1 !important;
+          transform: none !important;
+          pointer-events: auto !important;
+          transition: opacity 100ms linear, max-width 100ms linear !important;
+        }
+        .app.messages-active > .nav .nav-item {
+          width: 48px !important;
+          min-width: 48px !important;
+          max-width: 48px !important;
+          align-self: flex-start !important;
+          justify-content: flex-start !important;
+          padding: 0 !important;
+        }
+        .app.messages-active > .nav .nav-item > .l {
+          width: 0 !important;
+          max-width: 0 !important;
+          margin-left: 0 !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+        }
+
+        .app > .nav #navPost {
+          position: relative !important;
+          display: block !important;
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          height: 48px !important;
+          min-height: 48px !important;
+          max-height: 48px !important;
+          flex: 0 0 48px !important;
+          align-self: stretch !important;
+          box-sizing: border-box !important;
+          padding: 0 !important;
+          margin-top: 12px !important;
+          overflow: hidden !important;
+          text-align: left !important;
+          justify-content: flex-start !important;
+          transition: background-color 140ms ease, color 140ms ease !important;
+        }
+        .app > .nav #navPost > svg.i {
+          position: absolute !important;
+          left: 14px !important;
+          top: 50% !important;
+          width: 20px !important;
+          height: 20px !important;
+          margin: 0 !important;
+          transform: translateY(-50%) !important;
+          transition: none !important;
+        }
+        .app > .nav #navPost > .l {
+          display: inline-block !important;
+          max-width: calc(100% - 48px) !important;
+          margin-left: 44px !important;
+          overflow: hidden !important;
+          white-space: nowrap !important;
+          opacity: 1 !important;
+          transition: opacity 100ms linear, max-width 100ms linear !important;
+        }
+        .app.messages-active > .nav #navPost {
+          width: 48px !important;
+          min-width: 48px !important;
+          max-width: 48px !important;
+          align-self: flex-start !important;
+          border-radius: 50% !important;
+        }
+        .app.messages-active > .nav #navPost > .l {
+          width: 0 !important;
+          max-width: 0 !important;
+          margin-left: 0 !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .app,
+          .app > .nav .nav-item,
+          .app > .nav .nav-item > .l,
+          .app > .nav #navPost,
+          .app > .nav #navPost > .l {
+            transition: none !important;
+          }
+        }
+      }
     </style>
   </head>
   <body>
