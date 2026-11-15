@@ -14169,30 +14169,13 @@
           transition:opacity 180ms ease,max-width 760ms cubic-bezier(.22,1,.36,1),
             transform 220ms ease !important;
         }
-        /* Single source of truth for the collapsed New post control. */
-        .app.messages-active > .nav #navPost {
-          display: grid !important;
-          place-items: center !important;
-          grid-template-columns: minmax(0, 1fr) !important;
-          grid-template-rows: 48px !important;
-          width: 48px !important;
-          min-width: 48px !important;
-          max-width: 48px !important;
-          height: 48px !important;
-          min-height: 48px !important;
-          max-height: 48px !important;
-          aspect-ratio: 1 / 1 !important;
-          flex: none !important;
-          align-self: center !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          gap: 0 !important;
-          border-radius: 50% !important;
-          box-sizing: border-box !important;
-        }
+
         .app.messages-active > .nav #navPost > .l {
-          max-width:0 !important; opacity:0 !important; transform:translateX(-6px) !important;
-          pointer-events:none !important;
+          display: none !important;
+          max-width: 0 !important;
+          opacity: 0 !important;
+          transform: none !important;
+          pointer-events: none !important;
         }
         .app > .nav #navPost > .sr { position:absolute !important; }
 
@@ -14550,8 +14533,8 @@
           flex: none !important;
           margin: 0 !important;
           transform: none !important;
-          grid-column: auto !important;
-          grid-row: auto !important;
+          grid-column: 1 !important;
+          grid-row: 1 !important;
           justify-self: center !important;
           align-self: center !important;
         }
@@ -14587,6 +14570,29 @@
           overflow: hidden !important;
           clip: rect(0 0 0 0) !important;
           white-space: nowrap !important;
+        }
+
+        /* Collapsed state is a single 48px button track, not the expanded icon slot. */
+        /* Single source of truth for the collapsed New post control. */
+        .app.messages-active > .nav #navPost {
+          display: grid !important;
+          place-items: center !important;
+          grid-template-columns: minmax(0, 1fr) !important;
+          grid-template-rows: 48px !important;
+          width: 48px !important;
+          min-width: 48px !important;
+          max-width: 48px !important;
+          height: 48px !important;
+          min-height: 48px !important;
+          max-height: 48px !important;
+          aspect-ratio: 1 / 1 !important;
+          flex: none !important;
+          align-self: center !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          gap: 0 !important;
+          border-radius: 50% !important;
+          box-sizing: border-box !important;
         }
 
         .app > .nav .nav-foot {
