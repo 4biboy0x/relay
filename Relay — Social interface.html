@@ -14771,6 +14771,11 @@
           overflow: hidden !important;
           transition: none !important;
         }
+        .app.messages-active > .nav .brand {
+          justify-content: flex-start !important;
+          padding: 8px 12px 16px !important;
+          transition: none !important;
+        }
         .app > .nav .brand .wordmark {
           display: block !important;
           width: max-content !important;
@@ -14791,6 +14796,7 @@
 
         @media (prefers-reduced-motion: reduce) {
           .app,
+          .app > main,
           .app > .nav,
           .app > .nav .nav-item,
           .app > .nav .nav-item > .l,
