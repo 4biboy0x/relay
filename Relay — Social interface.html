@@ -14307,6 +14307,22 @@
           height:40px !important; min-height:40px !important;
         }
 
+        /* Keep the collapsed Account control visually consistent with nav hover targets.
+           The avatar itself retains its native 34px circular styling. */
+        .app.messages-active > .nav .account-trigger {
+          width:40px !important; min-width:40px !important; max-width:40px !important;
+          height:40px !important; min-height:40px !important; max-height:40px !important;
+          padding:0 !important; border-radius:12px !important;
+          display:grid !important; place-items:center !important;
+          box-sizing:border-box !important;
+        }
+        .app > .nav .account-trigger #navAvatar {
+          position:relative !important; inset:auto !important;
+          width:34px !important; height:34px !important;
+          flex:0 0 34px !important; margin:0 !important;
+          transform:none !important;
+        }
+
         .app > .nav > .brand { box-sizing:border-box !important; transition:none !important; }
         .app > .nav > .brand .wordmark { transition:opacity 180ms ease,color 180ms ease !important; }
 
