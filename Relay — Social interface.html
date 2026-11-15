@@ -12883,14 +12883,7 @@
           gap: 0;
           padding-inline: 0;
         }
-        .app.messages-active > .nav #navPost {
-          width: 44px;
-          min-width: 44px;
-          align-self: center;
-          justify-content: center;
-          padding-inline: 0;
-        }
-        .app.messages-active > .nav .nav-foot {
+.app.messages-active > .nav .nav-foot {
           grid-template-columns: minmax(0, 1fr);
           justify-items: center;
           gap: 8px;
@@ -13045,16 +13038,7 @@
             transform 220ms ease-out,
             max-width 220ms ease-out;
         }
-        .app.messages-active #navPost {
-          width: 44px;
-          min-width: 44px;
-          height: 44px;
-          border-radius: 50%;
-          padding: 0;
-          flex: 0 0 44px;
-          justify-content: center;
-        }
-      }
+}
       @media (min-width: 1200px) and (prefers-reduced-motion: reduce) {
         .app,
         .app > .nav,
@@ -13069,15 +13053,7 @@
 
       /* Center the collapsed New post icon precisely inside its circular button. */
       @media (min-width: 1200px) {
-        .app.messages-active > .nav #navPost {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0;
-          padding: 0 !important;
-          line-height: 0;
-        }
-        .app.messages-active > .nav #navPost .l {
+.app.messages-active > .nav #navPost .l {
           display: none;
         }
         .app.messages-active > .nav #navPost > svg.i {
@@ -13086,31 +13062,6 @@
           height: 20px;
           flex: 0 0 20px;
           margin: 0;
-        }
-      }
-
-
-      /* Keep the desktop New post button fixed at 44px tall in every view. */
-      @media (min-width: 1200px) {
-        .app > .nav #navPost {
-          width: 100%;
-          height: 44px;
-          min-height: 44px;
-          max-height: 44px;
-          flex: 0 0 44px;
-          align-self: flex-start;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          box-sizing: border-box;
-        }
-        .app.messages-active > .nav #navPost {
-          width: 44px;
-          height: 44px;
-          min-height: 44px;
-          max-height: 44px;
-          flex: 0 0 44px;
-          align-self: center;
         }
       }
 
@@ -14020,15 +13971,7 @@
             padding-inline 900ms cubic-bezier(.22, .78, .18, 1),
             border-radius 620ms cubic-bezier(.22, .78, .18, 1);
         }
-        .app.messages-active > .nav #navPost {
-          width: 44px;
-          min-width: 44px;
-          align-self: center;
-          justify-content: center;
-          padding-inline: 0;
-        }
-
-        .app > .nav .brand .wordmark,
+.app > .nav .brand .wordmark,
         .app > .nav .nav-item .l,
         .app > .nav #navPost .l,
         .app > .nav .nav-foot .who {
@@ -14233,12 +14176,27 @@
           transition:opacity 180ms ease,max-width 760ms cubic-bezier(.22,1,.36,1),
             transform 220ms ease !important;
         }
+        /* Single source of truth for the collapsed New post control. */
         .app.messages-active > .nav #navPost {
-          width:44px !important; min-width:44px !important; max-width:44px !important;
-          align-self:center !important; justify-content:center !important; gap:0 !important;
-          padding:0 !important; border-radius:50% !important;
+          display: grid !important;
+          place-items: center !important;
+          grid-template-columns: 48px !important;
+          grid-template-rows: 48px !important;
+          width: 48px !important;
+          min-width: 48px !important;
+          max-width: 48px !important;
+          height: 48px !important;
+          min-height: 48px !important;
+          max-height: 48px !important;
+          aspect-ratio: 1 / 1 !important;
+          flex: none !important;
+          align-self: center !important;
+          padding: 0 !important;
+          gap: 0 !important;
+          border-radius: 50% !important;
+          box-sizing: border-box !important;
         }
-        .app.messages-active > .nav #navPost > .l {
+.app.messages-active > .nav #navPost > .l {
           max-width:0 !important; opacity:0 !important; transform:translateX(-6px) !important;
           pointer-events:none !important;
         }
@@ -14609,10 +14567,7 @@
           transform: none !important;
           transition: opacity 100ms linear !important;
         }
-        .app.messages-active > .nav #navPost {
-          border-radius: 50% !important;
-        }
-        .app.messages-active > .nav #navPost > .l,
+.app.messages-active > .nav #navPost > .l,
         .app.messages-active > .nav #navPost > .sr {
           opacity: 0 !important;
           pointer-events: none !important;
