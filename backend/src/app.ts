@@ -29,7 +29,7 @@ import { getReelStorageOrigins } from "./reel-storage";
 import { getReelPosterUrl, reelProfileRouter, reelsRouter } from "./reels";
 import { containsProfanity } from "./moderation";
 import { emitToAuthenticated, emitToConversation, emitToPost, emitToUser } from "./realtime";
-import { audioUpload, createUploadReadUrl, getUploadStorageOrigins, imageUpload, saveAudio, saveImage, uploadDirectory } from "./uploads";
+import { audioUpload, createUploadReadUrl, getStoredUploadPath, getUploadStorageOrigins, imageUpload, saveAudio, saveImage, uploadDirectory } from "./uploads";
 import { createViewerKey, viewRateLimiter, viewRequestGuard } from "./view-tracking";
 import {
   loginSchema,
@@ -324,17 +324,20 @@ const normalizeMediaResponse = async (
   viewerId?: string,
   signingCache: MediaUrlSigningCache = new Map(),
 ): Promise<unknown> => {
-  if (typeof value === "string" && mediaUrlFields.has(field) && /^\/uploads\//i.test(value)) {
-    try {
-      let signingPromise = signingCache.get(value);
-      if (!signingPromise) {
-        signingPromise = createUploadReadUrl(value, viewerId);
-        signingCache.set(value, signingPromise);
+  if (typeof value === "string" && mediaUrlFields.has(field)) {
+    const storedPath = getStoredUploadPath(value);
+    if (storedPath) {
+      try {
+        let signingPromise = signingCache.get(storedPath);
+        if (!signingPromise) {
+          signingPromise = createUploadReadUrl(storedPath, viewerId);
+          signingCache.set(storedPath, signingPromise);
+        }
+        return await signingPromise;
+      } catch (error) {
+        console.error("Could not sign media URL for API response.", error);
+        return value;
       }
-      return await signingPromise;
-    } catch (error) {
-      console.error("Could not sign media URL for API response.", error);
-      return value;
     }
   }
   if (Array.isArray(value)) {
