@@ -1,7 +1,8 @@
 import { GetObjectCommand, type S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-const signingWindowMs = 24 * 60 * 60 * 1000;
+// Media URLs are refreshed on demand. Never backdate a signature to a daily
+// window: a URL must receive its full lifetime from the moment it is created.
 const signedUrlLifetimeSeconds = 48 * 60 * 60;
 const cacheSafetyMarginMs = 5 * 60 * 1000;
 const maxCachedMediaUrls = 5000;
@@ -15,14 +16,14 @@ export const createSignedMediaUrl = async (
   key: string,
 ): Promise<string> => {
   const now = Date.now();
-  const signingTime = Math.floor(now / signingWindowMs) * signingWindowMs;
   let clientId = storageClientIds.get(client);
   if (!clientId) {
     clientId = nextStorageClientId++;
     storageClientIds.set(client, clientId);
   }
-  const cacheKey = `${clientId}\0${bucket}\0${key}\0${signingTime}`;
-  const validUntil = signingTime + signedUrlLifetimeSeconds * 1000 - cacheSafetyMarginMs;
+
+  const cacheKey = `${clientId}\\0${bucket}\\0${key}`;
+  const validUntil = now + signedUrlLifetimeSeconds * 1000 - cacheSafetyMarginMs;
   const cached = signedMediaUrls.get(cacheKey);
   if (cached && now < cached.validUntil) {
     signedMediaUrls.delete(cacheKey);
@@ -35,11 +36,12 @@ export const createSignedMediaUrl = async (
     Bucket: bucket,
     Key: key,
     ResponseContentDisposition: "inline",
-    ResponseCacheControl: "private, max-age=86400",
+    // Keep browser caching comfortably shorter than the signed URL lifetime.
+    ResponseCacheControl: "private, max-age=3600",
   }), {
     expiresIn: signedUrlLifetimeSeconds,
-    signingDate: new Date(signingTime),
   });
+
   signedMediaUrls.set(cacheKey, { url, validUntil });
   if (signedMediaUrls.size > maxCachedMediaUrls) {
     const oldestKey = signedMediaUrls.keys().next().value;
