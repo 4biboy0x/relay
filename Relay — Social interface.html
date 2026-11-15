@@ -14451,8 +14451,8 @@
           visibility: visible !important;
           transform: none !important;
           pointer-events: auto !important;
-          /* Keep labels completely hidden until the rail has finished expanding. */
-          transition: visibility 0s linear 480ms !important;
+          /* Reveal labels as soon as the 190ms sidebar expansion finishes. */
+          transition: visibility 0s linear 190ms !important;
         }
         .app.messages-active > .nav .nav-item > .l {
           opacity: 1 !important;
