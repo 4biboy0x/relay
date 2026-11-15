@@ -14149,7 +14149,122 @@
           will-change: auto !important;
         }
       }
-</style>
+
+      /* Authoritative desktop Messages rail motion: stable controls, no flex reflow. */
+      @media (min-width: 1200px) {
+        .app { transition: grid-template-columns 760ms cubic-bezier(.22,1,.36,1) !important; }
+        .app.messages-active { grid-template-columns: 72px minmax(0,1fr) minmax(0,0px) !important; }
+        .app > .nav {
+          width:100% !important; min-width:0 !important; max-width:100% !important;
+          box-sizing:border-box !important; overflow:visible !important; transition:none !important;
+        }
+        .app > .nav .nav-item {
+          position:relative !important; display:block !important; width:100% !important;
+          min-width:0 !important; height:44px !important; min-height:44px !important;
+          max-height:44px !important; flex:0 0 44px !important; box-sizing:border-box !important;
+          padding:0 !important; margin:0 !important; border-radius:9px;
+          transition:background-color 160ms ease,color 160ms ease !important;
+        }
+        .app > .nav .nav-item > .i,
+        .app > .nav .nav-item > .nav-icon {
+          position:absolute !important; left:12px !important; top:50% !important;
+          width:22px; height:22px; margin:0 !important;
+          transform:translate(0,-50%) !important;
+          transition:transform 760ms cubic-bezier(.22,1,.36,1) !important;
+        }
+        .app > .nav .nav-item > .nav-icon { display:inline-flex !important; }
+        .app > .nav .nav-item > .l {
+          position:absolute !important; left:46px !important; top:50% !important;
+          display:block !important; width:max-content !important; max-width:160px !important;
+          overflow:hidden !important; white-space:nowrap !important; opacity:1 !important;
+          transform:translate(0,-50%) !important; pointer-events:auto;
+          transition:opacity 180ms ease,transform 220ms ease !important; will-change:opacity,transform;
+        }
+        .app.messages-active > .nav .nav-item > .i,
+        .app.messages-active > .nav .nav-item > .nav-icon { transform:translate(12px,-50%) !important; }
+        .app.messages-active > .nav .nav-item > .l {
+          opacity:0 !important; transform:translate(-6px,-50%) !important; pointer-events:none !important;
+        }
+
+        .app > .nav #navPost {
+          position:relative !important; display:block !important; width:100% !important;
+          min-width:44px !important; max-width:100% !important; height:44px !important;
+          min-height:44px !important; max-height:44px !important; flex:0 0 44px !important;
+          align-self:center !important; box-sizing:border-box !important; margin:12px 0 0 !important;
+          padding:0 !important; border-radius:999px !important; overflow:hidden !important;
+          transition:width 760ms cubic-bezier(.22,1,.36,1),border-radius 520ms cubic-bezier(.22,1,.36,1) !important;
+        }
+        .app > .nav #navPost > svg.i {
+          position:absolute !important; left:12px !important; top:50% !important;
+          width:20px !important; height:20px !important; margin:0 !important;
+          transform:translate(0,-50%) !important;
+          transition:transform 760ms cubic-bezier(.22,1,.36,1) !important;
+        }
+        .app > .nav #navPost > .l {
+          position:absolute !important; left:46px !important; top:50% !important;
+          width:max-content !important; max-width:120px !important; opacity:1 !important;
+          transform:translateY(-50%) !important;
+          transition:opacity 180ms ease,transform 220ms ease !important;
+        }
+        .app.messages-active > .nav #navPost { width:44px !important; border-radius:50% !important; }
+        .app.messages-active > .nav #navPost > svg.i { transform:translate(4px,-50%) !important; }
+        .app.messages-active > .nav #navPost > .l {
+          opacity:0 !important; transform:translate(-6px,-50%) !important; pointer-events:none !important;
+        }
+        .app > .nav #navPost > .sr { position:absolute !important; }
+
+        .app > .nav .nav-foot {
+          position:relative !important; display:block !important; width:100% !important;
+          height:100px !important; min-height:100px !important; flex:0 0 100px !important;
+          box-sizing:border-box !important; margin-top:auto !important; padding:10px 0 0 !important;
+          border-top:1px solid var(--border); transition:none !important;
+        }
+        .app > .nav .account-trigger {
+          position:absolute !important; left:50% !important; top:10px !important;
+          display:flex !important; width:calc(100% - 48px) !important; min-width:44px !important;
+          max-width:calc(100% - 48px) !important; height:44px !important; min-height:44px !important;
+          max-height:44px !important; box-sizing:border-box !important; padding:4px 6px !important;
+          gap:10px !important; border-radius:9px !important; transform:translateX(-50%) !important;
+          transition:width 760ms cubic-bezier(.22,1,.36,1),border-radius 520ms cubic-bezier(.22,1,.36,1) !important;
+        }
+        .app > .nav .account-trigger #navAvatar {
+          position:relative !important; left:auto !important; top:auto !important; inset:auto !important;
+          flex:0 0 32px !important; width:32px !important; height:32px !important;
+          margin:0 !important; transform:none !important;
+        }
+        .app > .nav .nav-foot .who {
+          display:block !important; min-width:0 !important; max-width:180px !important;
+          opacity:1 !important; overflow:hidden !important; white-space:nowrap !important;
+          transform:translateX(0) !important;
+          transition:opacity 180ms ease,transform 220ms ease !important;
+        }
+        .app > .nav #theme {
+          position:absolute !important; left:calc(100% - 40px) !important; top:12px !important;
+          display:grid !important; place-items:center !important; width:40px !important;
+          min-width:40px !important; max-width:40px !important; height:40px !important;
+          min-height:40px !important; max-height:40px !important; padding:0 !important;
+          border-radius:50% !important; box-sizing:border-box !important; transform:none !important;
+          transition:left 760ms cubic-bezier(.22,1,.36,1),top 760ms cubic-bezier(.22,1,.36,1) !important;
+        }
+        .app.messages-active > .nav .account-trigger {
+          width:44px !important; max-width:44px !important; padding:0 !important;
+          gap:0 !important; border-radius:50% !important;
+        }
+        .app.messages-active > .nav .nav-foot .who {
+          opacity:0 !important; transform:translateX(-6px) !important; pointer-events:none !important;
+        }
+        .app.messages-active > .nav #theme { left:16px !important; top:60px !important; }
+        .app > .nav > .brand { box-sizing:border-box !important; transition:none !important; }
+        .app > .nav > .brand .wordmark { transition:opacity 180ms ease,color 180ms ease !important; }
+
+        @media (prefers-reduced-motion:reduce) {
+          .app,.app > .nav,.app > .nav *, .app.messages-active > .nav #navAvatar {
+            transition:none !important; animation:none !important; will-change:auto !important;
+          }
+        }
+      }
+
+    </style>
   </head>
   <body>
     <div class="app-splash" id="appSplash" role="status" aria-label="Loading Relay">
