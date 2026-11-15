@@ -14523,6 +14523,37 @@
           }
         }
       }
+
+      /* Keep nav icons locked to their positioning transform on hover.
+         Hover only changes the hit-surface color; icons never jump or scale. */
+      @media (min-width: 1200px) {
+        .app > .nav .nav-item > .i,
+        .app > .nav .nav-item > .nav-icon,
+        .app > .nav .nav-item > .nav-icon .i {
+          transition: left 760ms cubic-bezier(.22, 1, .36, 1) !important;
+        }
+        .app > .nav .nav-item:hover > .i,
+        .app > .nav .nav-item:hover > .nav-icon,
+        .app > .nav .nav-item:hover > .nav-icon .i,
+        .app > .nav .nav-item:active > .i,
+        .app > .nav .nav-item:active > .nav-icon,
+        .app > .nav .nav-item:active > .nav-icon .i {
+          transform: none !important;
+        }
+        .app > .nav .nav-item > .i,
+        .app > .nav .nav-item > .nav-icon {
+          transform: translateY(-50%) !important;
+        }
+        .app.messages-active > .nav .nav-item:hover > .i,
+        .app.messages-active > .nav .nav-item:hover > .nav-icon,
+        .app.messages-active > .nav .nav-item:active > .i,
+        .app.messages-active > .nav .nav-item:active > .nav-icon {
+          transform: translate(-50%, -50%) !important;
+        }
+        .app > .nav .nav-item > .nav-icon .i {
+          transform: none !important;
+        }
+      }
     </style>
   </head>
   <body>
