@@ -14237,47 +14237,85 @@
         }
         .app > .nav #navPost > .sr { position:absolute !important; }
 
+        /* Account and theme share one stable footer grid in both rail states. */
         .app > .nav .nav-foot {
-          position:relative !important; display:block !important; width:100% !important;
-          height:100px !important; min-height:100px !important; flex:0 0 100px !important;
-          box-sizing:border-box !important; margin-top:auto !important; padding:10px 0 0 !important;
-          border-top:1px solid var(--border); transition:none !important;
+          position:relative !important; display:grid !important;
+          grid-template-columns:minmax(0,1fr) 40px !important;
+          grid-template-rows:44px !important; align-items:center !important;
+          justify-items:stretch !important; align-content:center !important;
+          gap:6px !important; width:100% !important; height:100px !important;
+          min-height:100px !important; flex:0 0 100px !important;
+          box-sizing:border-box !important; margin-top:auto !important;
+          padding:6px 12px 4px !important;
+          border-top:1px solid var(--border) !important;
+          transition:grid-template-columns 760ms cubic-bezier(.22,1,.36,1),
+            grid-template-rows 760ms cubic-bezier(.22,1,.36,1),
+            padding 760ms cubic-bezier(.22,1,.36,1),gap 760ms cubic-bezier(.22,1,.36,1) !important;
         }
         .app > .nav .account-trigger {
-          position:absolute !important; left:50% !important; top:10px !important;
-          display:flex !important; width:calc(100% - 24px) !important; min-width:44px !important;
-          max-width:calc(100% - 24px) !important; height:44px !important; min-height:44px !important;
-          max-height:44px !important; box-sizing:border-box !important; padding:4px 6px !important;
-          gap:10px !important; border-radius:9px !important; transform:translateX(-50%) !important;
-          transition:width 760ms cubic-bezier(.22,1,.36,1),border-radius 520ms cubic-bezier(.22,1,.36,1) !important;
+          position:relative !important; left:auto !important; top:auto !important; inset:auto !important;
+          grid-column:1 !important; grid-row:1 !important;
+          display:flex !important; align-items:center !important; justify-content:flex-start !important;
+          width:100% !important; min-width:0 !important; max-width:none !important;
+          height:44px !important; min-height:44px !important; max-height:44px !important;
+          box-sizing:border-box !important; padding:4px 6px !important; gap:10px !important;
+          margin:0 !important; border-radius:9px !important; transform:none !important;
+          transition:width 760ms cubic-bezier(.22,1,.36,1),
+            padding 760ms cubic-bezier(.22,1,.36,1),gap 760ms cubic-bezier(.22,1,.36,1),
+            border-radius 520ms cubic-bezier(.22,1,.36,1),
+            background-color 160ms ease,color 160ms ease !important;
         }
         .app > .nav .account-trigger #navAvatar {
           position:relative !important; left:auto !important; top:auto !important; inset:auto !important;
-          flex:0 0 32px !important; width:32px !important; height:32px !important;
+          display:block !important; flex:0 0 32px !important; width:32px !important; height:32px !important;
           margin:0 !important; transform:none !important;
+          transition:width 760ms cubic-bezier(.22,1,.36,1),height 760ms cubic-bezier(.22,1,.36,1) !important;
         }
         .app > .nav .nav-foot .who {
           display:block !important; min-width:0 !important; max-width:180px !important;
           opacity:1 !important; overflow:hidden !important; white-space:nowrap !important;
           transform:translateX(0) !important;
-          transition:opacity 180ms ease,transform 220ms ease !important;
+          transition:opacity 180ms ease,transform 220ms ease,max-width 760ms cubic-bezier(.22,1,.36,1) !important;
         }
         .app > .nav #theme {
-          position:absolute !important; left:calc(100% - 40px) !important; top:12px !important;
-          display:grid !important; place-items:center !important; width:40px !important;
-          min-width:40px !important; max-width:40px !important; height:40px !important;
-          min-height:40px !important; max-height:40px !important; padding:0 !important;
-          border-radius:50% !important; box-sizing:border-box !important; transform:none !important;
-          transition:left 760ms cubic-bezier(.22,1,.36,1),top 760ms cubic-bezier(.22,1,.36,1) !important;
+          position:relative !important; left:auto !important; top:auto !important; inset:auto !important;
+          grid-column:2 !important; grid-row:1 !important; justify-self:center !important; align-self:center !important;
+          display:grid !important; place-items:center !important;
+          width:40px !important; min-width:40px !important; max-width:40px !important;
+          height:40px !important; min-height:40px !important; max-height:40px !important;
+          padding:0 !important; margin:0 !important; flex:0 0 40px !important;
+          border-radius:50% !important; aspect-ratio:1 !important; box-sizing:border-box !important;
+          transform:none !important;
+          transition:background-color 160ms ease,color 160ms ease,transform 160ms ease !important;
+        }
+        .app > .nav #theme:hover { transform:scale(1.04) !important; }
+        .app > .nav #theme:active { transform:scale(.94) !important; }
+
+        .app.messages-active > .nav .nav-foot {
+          grid-template-columns:44px !important; grid-template-rows:44px 40px !important;
+          justify-items:center !important; justify-content:center !important;
+          align-content:center !important; gap:6px !important;
+          padding:6px 0 4px !important;
         }
         .app.messages-active > .nav .account-trigger {
-          width:44px !important; max-width:44px !important; padding:0 !important;
-          gap:0 !important; border-radius:50% !important;
+          grid-column:1 !important; grid-row:1 !important;
+          justify-content:center !important; width:44px !important; min-width:44px !important;
+          max-width:44px !important; padding:0 !important; gap:0 !important;
+          border-radius:50% !important;
+        }
+        .app.messages-active > .nav .account-trigger #navAvatar {
+          width:32px !important; height:32px !important; flex-basis:32px !important;
         }
         .app.messages-active > .nav .nav-foot .who {
-          opacity:0 !important; transform:translateX(-6px) !important; pointer-events:none !important;
+          max-width:0 !important; opacity:0 !important; transform:translateX(-6px) !important;
+          pointer-events:none !important;
         }
-        .app.messages-active > .nav #theme { left:16px !important; top:60px !important; }
+        .app.messages-active > .nav #theme {
+          grid-column:1 !important; grid-row:2 !important;
+          width:40px !important; min-width:40px !important;
+          height:40px !important; min-height:40px !important;
+        }
+
         .app > .nav > .brand { box-sizing:border-box !important; transition:none !important; }
         .app > .nav > .brand .wordmark { transition:opacity 180ms ease,color 180ms ease !important; }
 
