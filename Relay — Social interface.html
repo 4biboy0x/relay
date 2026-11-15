@@ -13941,6 +13941,79 @@
           transform: translate(-50%, -50%);
         }
       }
+
+      /* Unified, calm motion for the desktop Messages navigation collapse/expand. */
+      @media (min-width: 1200px) {
+        .app,
+        .app > .nav {
+          transition:
+            grid-template-columns 460ms cubic-bezier(.22, 1, .36, 1),
+            width 460ms cubic-bezier(.22, 1, .36, 1),
+            flex-basis 460ms cubic-bezier(.22, 1, .36, 1),
+            padding 460ms cubic-bezier(.22, 1, .36, 1);
+        }
+        .app > .nav .brand,
+        .app > .nav .nav-item,
+        .app > .nav #navPost,
+        .app > .nav .nav-foot,
+        .app > .nav .account-trigger,
+        .app > .nav #theme,
+        .app > .nav #navAvatar {
+          transition:
+            width 460ms cubic-bezier(.22, 1, .36, 1),
+            min-width 460ms cubic-bezier(.22, 1, .36, 1),
+            height 460ms cubic-bezier(.22, 1, .36, 1),
+            padding 460ms cubic-bezier(.22, 1, .36, 1),
+            margin 460ms cubic-bezier(.22, 1, .36, 1),
+            gap 360ms cubic-bezier(.22, 1, .36, 1),
+            border-radius 360ms cubic-bezier(.22, 1, .36, 1),
+            background-color 220ms ease,
+            transform 460ms cubic-bezier(.22, 1, .36, 1);
+        }
+        .app > .nav .brand .wordmark,
+        .app > .nav .nav-item .l,
+        .app > .nav #navPost .l,
+        .app > .nav .nav-foot .who {
+          transition:
+            opacity 180ms ease,
+            max-width 360ms cubic-bezier(.22, 1, .36, 1),
+            transform 360ms cubic-bezier(.22, 1, .36, 1);
+        }
+        .app.messages-active > .nav .account-trigger {
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0;
+        }
+        .app.messages-active > .nav .account-trigger #navAvatar {
+          position: relative !important;
+          inset: auto !important;
+          margin: 0 !important;
+          transform: none !important;
+          flex: 0 0 32px;
+        }
+        .app.messages-active > .nav .nav-foot {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+        }
+        .app.messages-active > .nav #theme {
+          display: grid;
+          place-items: center;
+          flex: 0 0 40px;
+        }
+      }
+      @media (min-width: 1200px) and (prefers-reduced-motion: reduce) {
+        .app,
+        .app > .nav,
+        .app > .nav *,
+        .app.messages-active > .nav #navAvatar {
+          transition: none !important;
+          animation: none !important;
+        }
+      }
 </style>
   </head>
   <body>
