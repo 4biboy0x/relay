@@ -14542,12 +14542,41 @@
           padding: 0 !important;
           border: 0 !important;
           border-radius: 999px !important;
-          background: var(--accent) !important;
+          background: transparent !important;
           color: #fff !important;
           overflow: hidden !important;
           isolation: isolate !important;
           transition: none !important;
         }
+        .app > .nav #navPost::before,
+        .app > .nav #navPost::after {
+          content: "" !important;
+          position: absolute !important;
+          top: 0 !important;
+          bottom: 0 !important;
+          pointer-events: none !important;
+          background: var(--accent) !important;
+          transition: opacity 100ms linear !important;
+          z-index: -1 !important;
+        }
+        .app > .nav #navPost::before {
+          inset-inline: 0 !important;
+          border-radius: 999px !important;
+          opacity: 1 !important;
+        }
+        .app > .nav #navPost::after {
+          inset-inline-start: 0 !important;
+          width: 48px !important;
+          height: 48px !important;
+          border-radius: 50% !important;
+          opacity: 0 !important;
+        }
+        .app > .nav #navPost:hover::before,
+        .app > .nav #navPost:hover::after {
+          background: var(--accent-h) !important;
+        }
+        .app.messages-active > .nav #navPost::before { opacity: 0 !important; }
+        .app.messages-active > .nav #navPost::after { opacity: 1 !important; }
         .app > .nav #navPost > svg.i {
           display: block !important;
           position: static !important;
