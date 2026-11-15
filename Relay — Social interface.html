@@ -14583,6 +14583,9 @@
           box-sizing: border-box !important;
           transition: none !important;
         }
+        .app.messages-active > .nav {
+          padding: 4px 12px 16px 14px !important;
+        }
 
         /* Buttons keep one fixed box and radius in both states. */
         .app > .nav .nav-item {
@@ -14763,9 +14766,15 @@
         /* Keep the wordmark from wrapping while the rail narrows. */
         .app > .nav .brand {
           min-width: 0 !important;
+          justify-content: flex-start !important;
+          padding: 8px 12px 16px !important;
           overflow: hidden !important;
+          transition: none !important;
         }
         .app > .nav .brand .wordmark {
+          display: block !important;
+          width: max-content !important;
+          max-width: none !important;
           white-space: nowrap !important;
           opacity: 1 !important;
           visibility: visible !important;
@@ -14773,6 +14782,8 @@
           transition: opacity 100ms linear 270ms, visibility 0s linear 270ms !important;
         }
         .app.messages-active > .nav .brand .wordmark {
+          width: max-content !important;
+          max-width: none !important;
           opacity: 0 !important;
           visibility: hidden !important;
           transition: opacity 100ms linear, visibility 0s linear 100ms !important;
