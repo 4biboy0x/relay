@@ -6330,11 +6330,15 @@
         width: 48px;
         height: 48px;
       }
-      .conversation-item:hover:not([aria-current="true"]) {
+      .conversation-row:hover {
         background: color-mix(in srgb, var(--text) 2.5%, var(--surface));
       }
-      .conversation-item[aria-current="true"] {
+      .conversation-row:has(> .conversation-item[aria-current="true"]) {
         background: color-mix(in srgb, var(--text) 6%, var(--surface));
+      }
+      .conversation-row > .conversation-item:hover,
+      .conversation-row > .conversation-item[aria-current="true"] {
+        background: transparent;
       }
       .conversation-item.is-search-result[aria-current="true"] {
         background: transparent;
