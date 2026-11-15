@@ -14553,41 +14553,30 @@
         }
       }
 
-      /* Desktop Messages rail: one grid-track motion; nav contents stay anchored. */
+      /* Desktop Messages sidebar: fixed 48px icon rail with a single column-width motion. */
       @media (min-width: 1200px) {
         .app {
-          transition: grid-template-columns 200ms cubic-bezier(.2, 0, 0, 1) !important;
+          transition: grid-template-columns 190ms cubic-bezier(.2, 0, 0, 1) !important;
         }
         .app.messages-active {
           grid-template-columns: 72px minmax(0, 1fr) minmax(0, 0px) !important;
-          padding-inline: clamp(16px, 2vw, 36px) !important;
-          column-gap: clamp(18px, 1.8vw, 28px) !important;
         }
 
-        /* Keep the main column and the disappearing suggestions track in sync with the shell. */
-        .app > main {
-          transition: width 200ms cubic-bezier(.2, 0, 0, 1) !important;
-        }
-        .app.messages-active > aside[aria-label="Suggestions"] {
-          opacity: 0 !important;
-          transform: none !important;
-          visibility: hidden !important;
-          pointer-events: none !important;
-          transition: none !important;
-        }
-
+        /* Keep the icon rail's inner width exactly 48px when collapsed. */
         .app > .nav {
           width: 100% !important;
           min-width: 0 !important;
           max-width: 100% !important;
           box-sizing: border-box !important;
+          padding: 4px 12px 16px !important;
+          overflow: hidden !important;
           transition: none !important;
         }
         .app.messages-active > .nav {
-          padding: 4px 12px 16px 14px !important;
+          padding: 4px 12px 16px !important;
         }
 
-        /* Buttons keep one fixed box and radius in both states. */
+        /* Item backgrounds follow the column edge; the icon stays in its fixed slot. */
         .app > .nav .nav-item {
           position: relative !important;
           display: block !important;
@@ -14600,30 +14589,35 @@
           box-sizing: border-box !important;
           padding: 0 !important;
           margin: 0 !important;
-          border-radius: 8px !important;
+          border-radius: 10px !important;
           text-align: left !important;
-          justify-content: flex-start !important;
-          gap: 0 !important;
+          overflow: visible !important;
+          transition: none !important;
+        }
+        .app > .nav .nav-item:hover,
+        .app > .nav .nav-item[aria-current="page"] {
           transition: none !important;
         }
 
-        /* Fixed icon slots: no scaling, translation, rotation, or transition. */
+        /* A 48px slot is centered in the 48px collapsed content rail. */
         .app > .nav .nav-item > .i,
         .app > .nav .nav-item > .nav-icon {
           position: absolute !important;
-          inset-inline-start: 13px !important;
+          inset-inline-start: 0 !important;
           top: 50% !important;
           display: grid !important;
           place-items: center !important;
-          width: 22px !important;
-          height: 22px !important;
+          width: 48px !important;
+          height: 48px !important;
           margin: 0 !important;
-          flex: none !important;
           transform: translateY(-50%) !important;
           transition: none !important;
         }
         .app > .nav .nav-item > .i {
+          width: 22px !important;
+          height: 22px !important;
           display: block !important;
+          inset-inline-start: 13px !important;
         }
         .app > .nav .nav-item > .nav-icon .i {
           display: block !important;
@@ -14635,21 +14629,18 @@
         .app > .nav .nav-item:hover > .i,
         .app > .nav .nav-item:active > .i,
         .app > .nav .nav-item:hover > .nav-icon,
-        .app > .nav .nav-item:active > .nav-icon,
-        .app > .nav .nav-item:hover > .nav-icon .i,
-        .app > .nav .nav-item:active > .nav-icon .i {
+        .app > .nav .nav-item:active > .nav-icon {
           transform: translateY(-50%) !important;
-          transition: none !important;
         }
         .app > .nav .nav-item:hover > .nav-icon .i,
         .app > .nav .nav-item:active > .nav-icon .i {
           transform: none !important;
         }
 
-        /* Labels stay out of layout flow: no wrapping, width animation, or icon push. */
+        /* Labels are out of flow and only fade; the nav itself clips them. */
         .app > .nav .nav-item > .l {
           position: absolute !important;
-          inset-inline-start: 46px !important;
+          inset-inline-start: 56px !important;
           top: 50% !important;
           display: block !important;
           width: max-content !important;
@@ -14661,75 +14652,75 @@
           visibility: visible !important;
           transform: translateY(-50%) !important;
           pointer-events: auto !important;
-          transition: opacity 100ms linear 270ms, visibility 0s linear 270ms !important;
-        }
-        .app.messages-active > .nav .nav-item {
-          width: 100% !important;
-          min-width: 0 !important;
-          max-width: 100% !important;
-          align-self: stretch !important;
-          justify-content: flex-start !important;
-          padding: 0 !important;
-          margin: 0 !important;
-          border-radius: 8px !important;
-        }
-        .app.messages-active > .nav .nav-item > .l {
-          width: max-content !important;
-          max-width: none !important;
-          margin: 0 !important;
-        }
-        .app.messages-active > .nav .nav-item:hover > .i,
-        .app.messages-active > .nav .nav-item:active > .i,
-        .app.messages-active > .nav .nav-item:hover > .nav-icon,
-        .app.messages-active > .nav .nav-item:active > .nav-icon {
-          transform: translateY(-50%) !important;
-        }
-        .app.messages-active > .nav .nav-item:hover > .nav-icon .i,
-        .app.messages-active > .nav .nav-item:active > .nav-icon .i {
-          transform: none !important;
+          transition: opacity 100ms linear !important;
         }
         .app.messages-active > .nav .nav-item > .l {
           opacity: 0 !important;
-          visibility: hidden !important;
-          transition: opacity 100ms linear, visibility 0s linear 100ms !important;
           pointer-events: none !important;
         }
 
-        /* New Post uses the same fixed-height button and fixed icon anchor. */
+        /* New Post: fixed circle plus a separate clipped pill layer. */
         .app > .nav #navPost {
           position: relative !important;
           display: block !important;
           width: 100% !important;
           min-width: 0 !important;
           max-width: 100% !important;
-          height: 44px !important;
-          min-height: 44px !important;
-          max-height: 44px !important;
-          flex: 0 0 44px !important;
+          height: 48px !important;
+          min-height: 48px !important;
+          max-height: 48px !important;
+          flex: 0 0 48px !important;
           align-self: stretch !important;
           box-sizing: border-box !important;
           padding: 0 !important;
           margin: 12px 0 0 !important;
+          border: 0 !important;
           border-radius: 999px !important;
+          background: transparent !important;
+          color: #fff !important;
           text-align: left !important;
-          justify-content: flex-start !important;
-          gap: 0 !important;
+          overflow: visible !important;
           transition: none !important;
+          isolation: isolate !important;
+        }
+        .app > .nav #navPost::before,
+        .app > .nav #navPost::after {
+          content: "" !important;
+          position: absolute !important;
+          top: 0 !important;
+          bottom: 0 !important;
+          pointer-events: none !important;
+          background: var(--accent) !important;
+          transition: opacity 100ms linear !important;
+          z-index: -1 !important;
+        }
+        .app > .nav #navPost::before {
+          inset-inline: 0 !important;
+          border-radius: 999px !important;
+          opacity: 1 !important;
+        }
+        .app > .nav #navPost::after {
+          inset-inline-start: 0 !important;
+          width: 48px !important;
+          height: 48px !important;
+          border-radius: 50% !important;
+          opacity: 0 !important;
         }
         .app > .nav #navPost > svg.i {
           position: absolute !important;
           inset-inline-start: 14px !important;
-          top: 50% !important;
+          top: 14px !important;
           display: block !important;
           width: 20px !important;
           height: 20px !important;
           margin: 0 !important;
-          transform: translateY(-50%) !important;
+          transform: none !important;
           transition: none !important;
+          z-index: 1 !important;
         }
         .app > .nav #navPost > .l {
           position: absolute !important;
-          inset-inline-start: 44px !important;
+          inset-inline-start: 56px !important;
           top: 50% !important;
           display: block !important;
           width: max-content !important;
@@ -14740,58 +14731,30 @@
           opacity: 1 !important;
           visibility: visible !important;
           transform: translateY(-50%) !important;
-          transition: opacity 100ms linear 270ms, visibility 0s linear 270ms !important;
+          transition: opacity 100ms linear !important;
+          z-index: 1 !important;
         }
-        .app.messages-active > .nav #navPost {
-          width: 100% !important;
-          min-width: 0 !important;
-          max-width: 100% !important;
-          align-self: stretch !important;
-          justify-content: flex-start !important;
-          padding: 0 !important;
-          border-radius: 999px !important;
+        .app.messages-active > .nav #navPost::before {
+          opacity: 0 !important;
         }
-        .app.messages-active > .nav #navPost > .l {
-          width: max-content !important;
-          max-width: none !important;
-          margin: 0 !important;
+        .app.messages-active > .nav #navPost::after {
+          opacity: 1 !important;
         }
         .app.messages-active > .nav #navPost > .l {
           opacity: 0 !important;
-          visibility: hidden !important;
-          transition: opacity 100ms linear, visibility 0s linear 100ms !important;
           pointer-events: none !important;
         }
 
-        /* Keep the wordmark from wrapping while the rail narrows. */
-        .app > .nav .brand {
-          min-width: 0 !important;
-          justify-content: flex-start !important;
-          padding: 8px 12px 16px !important;
-          overflow: hidden !important;
+        /* Do not animate a second width on the content area. */
+        .app > main {
           transition: none !important;
         }
-        .app.messages-active > .nav .brand {
-          justify-content: flex-start !important;
-          padding: 8px 12px 16px !important;
-          transition: none !important;
-        }
-        .app > .nav .brand .wordmark {
-          display: block !important;
-          width: max-content !important;
-          max-width: none !important;
-          white-space: nowrap !important;
-          opacity: 1 !important;
-          visibility: visible !important;
-          transform: none !important;
-          transition: opacity 100ms linear 270ms, visibility 0s linear 270ms !important;
-        }
-        .app.messages-active > .nav .brand .wordmark {
-          width: max-content !important;
-          max-width: none !important;
+        .app.messages-active > aside[aria-label="Suggestions"] {
           opacity: 0 !important;
+          transform: none !important;
           visibility: hidden !important;
-          transition: opacity 100ms linear, visibility 0s linear 100ms !important;
+          pointer-events: none !important;
+          transition: none !important;
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -14801,8 +14764,9 @@
           .app > .nav .nav-item,
           .app > .nav .nav-item > .l,
           .app > .nav #navPost,
-          .app > .nav #navPost > .l,
-          .app > .nav .brand .wordmark {
+          .app > .nav #navPost::before,
+          .app > .nav #navPost::after,
+          .app > .nav #navPost > .l {
             transition: none !important;
           }
         }
