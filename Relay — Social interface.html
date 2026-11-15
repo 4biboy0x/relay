@@ -13923,6 +13923,24 @@
           box-sizing: border-box;
         }
       }
+
+      @media (min-width: 1200px) {
+        .app.messages-active > .nav .account-trigger {
+          position: relative;
+          display: grid;
+          place-items: center;
+          align-content: center;
+          justify-content: center;
+        }
+        .app.messages-active > .nav .account-trigger #navAvatar {
+          position: absolute;
+          inset: 50% auto auto 50%;
+          align-self: auto;
+          justify-self: auto;
+          margin: 0;
+          transform: translate(-50%, -50%);
+        }
+      }
 </style>
   </head>
   <body>
