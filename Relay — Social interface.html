@@ -24487,7 +24487,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         downloadUrl = "",
         downloadLabel = "media",
         directDownload = false,
-        downloadInMenu = false,
         downloadAll = false,
         showMore = true,
         canEdit = false,
@@ -24502,11 +24501,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const deleteAction = canDelete
           ? `<button type="button" role="menuitem" data-message-menu-action="delete" data-message-id="${esc(messageId)}"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 14h12l1-14M9 7V4h6v3"/></svg><span>Delete message</span></button>`
           : "";
-        const menuDownloadAction = downloadInMenu && downloadUrl
-          ? `<button type="button" role="menuitem" data-message-download="${esc(downloadUrl)}">${ic("download")}<span>Download voice message</span></button>`
-          : "";
         const moreButton = showMore
-          ? `<button class="message-tool-button" type="button" data-message-more aria-expanded="false" aria-haspopup="menu" aria-label="More message actions" title="More">${ic("dots")}</button><div class="message-action-menu" role="menu" hidden>${editAction}${copyAction}${menuDownloadAction}${deleteAction}</div>`
+          ? `<button class="message-tool-button" type="button" data-message-more aria-expanded="false" aria-haspopup="menu" aria-label="More message actions" title="More">${ic("dots")}</button><div class="message-action-menu" role="menu" hidden>${editAction}${copyAction}${deleteAction}</div>`
           : "";
         const downloadButton = downloadAll
           ? `<button class="message-tool-button message-download-all" type="button" data-message-download-all="${esc(messageId)}" aria-label="Download all images" title="Download all images"><svg class="i message-download-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 20h14"/></svg><span class="message-download-spinner" aria-hidden="true"></span></button>`
@@ -24890,11 +24886,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const actions = messageToolsMarkup({
           messageId: message.id,
           copyText: text ? body : "",
-          downloadUrl: audioUrl || (firstImage && !hasMultipleImages ? firstImage.imageUrl : ""),
-          downloadLabel: audioUrl ? "voice message" : firstImage?.isGif ? "GIF" : "image",
-          downloadInMenu: Boolean(audioUrl),
-          directDownload: Boolean(firstImage && !audioUrl && !hasMultipleImages),
-          showMore: Boolean(image) || mine || (!image && !audio) || Boolean(audioUrl),
+          downloadUrl: firstImage && !hasMultipleImages ? firstImage.imageUrl : "",
+          downloadLabel: firstImage?.isGif ? "GIF" : "image",
+          directDownload: Boolean(firstImage && !hasMultipleImages),
+          showMore: Boolean(image) || mine || (!image && !audio),
           canEdit: mine && Boolean(text) && !image && !audio && !sticker,
           canDelete: mine,
         });
