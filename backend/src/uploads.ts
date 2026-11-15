@@ -138,6 +138,7 @@ export const createUploadReadUrl = async (
   storedPath: string,
   viewerId?: string,
   suppliedToken?: unknown,
+  legacyStoredUrl?: string,
 ): Promise<string> => {
   const filename = /^\/uploads\/([0-9a-f-]+\.(?:jpg|jpeg|png|webp|gif|webm|ogg|m4a|mp3|wav|aac|flac|opus))$/i.exec(storedPath)?.[1];
   if (!filename) throw new Error("Invalid generated upload storage path");
@@ -147,6 +148,11 @@ export const createUploadReadUrl = async (
         { mediaUrl: storedPath },
         { audioUrl: storedPath },
         { attachments: { array_contains: [storedPath] } },
+        ...(legacyStoredUrl ? [
+          { mediaUrl: legacyStoredUrl },
+          { audioUrl: legacyStoredUrl },
+          { attachments: { array_contains: [legacyStoredUrl] } },
+        ] : []),
       ],
     },
     select: {
