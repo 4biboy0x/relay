@@ -14427,6 +14427,13 @@
           transform: none !important;
           transition: none !important;
         }
+
+        /* Anchor unread badges to the 22px icon inside its 48px hit area.
+           Keep the badge fully inside the gray nav-item in both rail states. */
+        .app > .nav .nav-item > .nav-icon > .nav-badge {
+          top: 8px !important;
+          inset-inline-end: 8px !important;
+        }
         .app > .nav .nav-item > .l {
           position: relative !important;
           inset: auto !important;
