@@ -13880,6 +13880,48 @@
           bottom: 8px;
         }
       }
+
+      /* Keep the account and theme controls perfectly circular in the collapsed Messages rail. */
+      @media (min-width: 1200px) {
+        .app.messages-active > .nav .nav-foot {
+          width: 100%;
+          grid-template-columns: 44px;
+          justify-content: center;
+          justify-items: center;
+          gap: 8px;
+          padding-inline: 0;
+          box-sizing: border-box;
+        }
+        .app.messages-active > .nav .account-trigger {
+          display: grid;
+          place-items: center;
+          width: 44px;
+          min-width: 44px;
+          max-width: 44px;
+          height: 44px;
+          min-height: 44px;
+          max-height: 44px;
+          flex: 0 0 44px;
+          padding: 0;
+          border-radius: 50%;
+          box-sizing: border-box;
+        }
+        .app.messages-active > .nav .nav-foot #theme {
+          grid-column: 1;
+          grid-row: 2;
+          justify-self: center;
+          display: grid;
+          place-items: center;
+          width: 40px;
+          min-width: 40px;
+          height: 40px;
+          min-height: 40px;
+          padding: 0;
+          aspect-ratio: 1;
+          border-radius: 50%;
+          box-sizing: border-box;
+        }
+      }
 </style>
   </head>
   <body>
