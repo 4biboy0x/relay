@@ -13942,67 +13942,202 @@
         }
       }
 
-      /* Unified, calm motion for the desktop Messages navigation collapse/expand. */
+      /* Slow, stable desktop Messages rail motion: animate the shell, keep control layouts intact. */
       @media (min-width: 1200px) {
-        .app,
+        .app {
+          width: 100%;
+          max-width: 1320px !important;
+          padding-inline: clamp(16px, 1.8vw, 28px) !important;
+          justify-content: center !important;
+          column-gap: clamp(18px, 1.8vw, 24px) !important;
+          transition: grid-template-columns 680ms cubic-bezier(.22, .8, .24, 1);
+          will-change: grid-template-columns;
+        }
+        .app.messages-active {
+          width: 100% !important;
+          max-width: 1320px !important;
+          padding-inline: clamp(16px, 1.8vw, 28px) !important;
+          justify-content: center !important;
+          column-gap: clamp(18px, 1.8vw, 24px) !important;
+          grid-template-columns: 72px minmax(0, 1fr) minmax(0, 0px) !important;
+          transition: grid-template-columns 680ms cubic-bezier(.22, .8, .24, 1);
+        }
         .app > .nav {
+          width: 240px;
+          min-width: 0;
+          max-width: 100%;
+          box-sizing: border-box;
           transition:
-            grid-template-columns 460ms cubic-bezier(.22, 1, .36, 1),
-            width 460ms cubic-bezier(.22, 1, .36, 1),
-            flex-basis 460ms cubic-bezier(.22, 1, .36, 1),
-            padding 460ms cubic-bezier(.22, 1, .36, 1);
+            width 680ms cubic-bezier(.22, .8, .24, 1),
+            padding-inline 620ms cubic-bezier(.22, .8, .24, 1);
         }
-        .app > .nav .brand,
-        .app > .nav .nav-item,
-        .app > .nav #navPost,
-        .app > .nav .nav-foot,
-        .app > .nav .account-trigger,
-        .app > .nav #theme,
-        .app > .nav #navAvatar {
+        .app.messages-active > .nav {
+          width: 72px;
+          padding-inline: 6px;
+        }
+
+        .app > .nav .brand {
+          justify-content: flex-start;
+          padding-inline: 12px;
+          transition: padding-inline 620ms cubic-bezier(.22, .8, .24, 1);
+        }
+        .app.messages-active > .nav .brand {
+          justify-content: center;
+          padding-inline: 0;
+        }
+
+        .app > .nav .nav-item {
+          justify-content: flex-start;
+          gap: 13px;
+          padding-inline: 12px;
           transition:
-            width 460ms cubic-bezier(.22, 1, .36, 1),
-            min-width 460ms cubic-bezier(.22, 1, .36, 1),
-            height 460ms cubic-bezier(.22, 1, .36, 1),
-            padding 460ms cubic-bezier(.22, 1, .36, 1),
-            margin 460ms cubic-bezier(.22, 1, .36, 1),
-            gap 360ms cubic-bezier(.22, 1, .36, 1),
-            border-radius 360ms cubic-bezier(.22, 1, .36, 1),
-            background-color 220ms ease,
-            transform 460ms cubic-bezier(.22, 1, .36, 1);
+            padding-inline 620ms cubic-bezier(.22, .8, .24, 1),
+            gap 620ms cubic-bezier(.22, .8, .24, 1),
+            border-radius 420ms ease;
         }
+        .app.messages-active > .nav .nav-item {
+          justify-content: center;
+          gap: 0;
+          padding-inline: 0;
+        }
+
+        .app > .nav #navPost {
+          width: 100%;
+          min-width: 0;
+          align-self: stretch;
+          justify-content: flex-start;
+          padding-inline: 12px;
+          margin-inline: 0;
+          transition:
+            width 620ms cubic-bezier(.22, .8, .24, 1),
+            min-width 620ms cubic-bezier(.22, .8, .24, 1),
+            padding-inline 620ms cubic-bezier(.22, .8, .24, 1),
+            border-radius 420ms ease;
+        }
+        .app.messages-active > .nav #navPost {
+          width: 44px;
+          min-width: 44px;
+          align-self: center;
+          justify-content: center;
+          padding-inline: 0;
+        }
+
         .app > .nav .brand .wordmark,
         .app > .nav .nav-item .l,
         .app > .nav #navPost .l,
         .app > .nav .nav-foot .who {
+          display: inline-block;
+          max-width: 180px;
+          overflow: hidden;
+          white-space: nowrap;
+          opacity: 1;
+          transform: translateX(0);
           transition:
-            opacity 180ms ease,
-            max-width 360ms cubic-bezier(.22, 1, .36, 1),
-            transform 360ms cubic-bezier(.22, 1, .36, 1);
+            opacity 260ms ease,
+            max-width 620ms cubic-bezier(.22, .8, .24, 1),
+            transform 520ms cubic-bezier(.22, .8, .24, 1);
+          transition-delay: 160ms, 0ms, 160ms;
+          will-change: opacity, max-width, transform;
         }
-        .app.messages-active > .nav .account-trigger {
-          position: relative;
-          display: flex;
+        .app.messages-active > .nav .brand .wordmark,
+        .app.messages-active > .nav .nav-item .l,
+        .app.messages-active > .nav #navPost .l,
+        .app.messages-active > .nav .nav-foot .who {
+          max-width: 0;
+          opacity: 0;
+          transform: translateX(-5px);
+          transition-delay: 0ms;
+          pointer-events: none;
+        }
+
+        /* Keep the footer and account control in the same layout mode in both states. */
+        .app > .nav .nav-foot {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 32px;
+          grid-template-rows: 1fr;
           align-items: center;
-          justify-content: center;
-          gap: 0;
-        }
-        .app.messages-active > .nav .account-trigger #navAvatar {
-          position: relative !important;
-          inset: auto !important;
-          margin: 0 !important;
-          transform: none !important;
-          flex: 0 0 32px;
+          justify-items: stretch;
+          gap: 8px;
+          width: 100%;
+          padding-inline: 12px;
+          box-sizing: border-box;
+          transition:
+            grid-template-columns 620ms cubic-bezier(.22, .8, .24, 1),
+            padding-inline 620ms cubic-bezier(.22, .8, .24, 1),
+            gap 620ms cubic-bezier(.22, .8, .24, 1);
         }
         .app.messages-active > .nav .nav-foot {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
+          grid-template-columns: 44px;
+          grid-template-rows: 44px 40px;
+          justify-items: center;
           justify-content: center;
+          gap: 8px;
+          padding-inline: 0;
         }
-        .app.messages-active > .nav #theme {
+        .app > .nav .account-trigger {
+          display: flex;
+          position: relative;
+          align-items: center;
+          justify-content: flex-start;
+          gap: 10px;
+          width: 100%;
+          min-width: 0;
+          height: 48px;
+          min-height: 48px;
+          padding: 4px 6px;
+          box-sizing: border-box;
+          transition:
+            width 620ms cubic-bezier(.22, .8, .24, 1),
+            height 620ms cubic-bezier(.22, .8, .24, 1),
+            padding 620ms cubic-bezier(.22, .8, .24, 1),
+            border-radius 420ms ease;
+        }
+        .app.messages-active > .nav .account-trigger {
+          grid-column: 1;
+          grid-row: 1;
+          display: flex;
+          width: 44px;
+          min-width: 44px;
+          height: 44px;
+          min-height: 44px;
+          justify-content: center;
+          gap: 0;
+          padding: 0;
+          border-radius: 50%;
+        }
+        .app > .nav .account-trigger #navAvatar {
+          position: relative !important;
+          inset: auto !important;
+          flex: 0 0 32px;
+          margin: 0 !important;
+          transform: none !important;
+        }
+        .app > .nav #theme {
+          grid-column: 2;
+          grid-row: 1;
           display: grid;
           place-items: center;
+          width: 40px;
+          min-width: 40px;
+          height: 40px;
+          min-height: 40px;
+          padding: 0;
+          transition:
+            width 620ms cubic-bezier(.22, .8, .24, 1),
+            height 620ms cubic-bezier(.22, .8, .24, 1),
+            border-radius 420ms ease,
+            background-color 220ms ease;
+        }
+        .app.messages-active > .nav #theme {
+          grid-column: 1;
+          grid-row: 2;
+          justify-self: center;
+          width: 40px;
+          min-width: 40px;
+          height: 40px;
+          min-height: 40px;
           flex: 0 0 40px;
+          border-radius: 50%;
         }
       }
       @media (min-width: 1200px) and (prefers-reduced-motion: reduce) {
@@ -14012,6 +14147,7 @@
         .app.messages-active > .nav #navAvatar {
           transition: none !important;
           animation: none !important;
+          will-change: auto !important;
         }
       }
 </style>
