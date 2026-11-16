@@ -14,9 +14,10 @@ const { forgotPasswordSchema, resetPasswordSchema, otpVerifySchema } = require("
 const { createPasswordResetToken, verifyPasswordResetToken, hashPassword, verifyPassword } = require("./auth");
 
 test("forgotPasswordSchema validates identifiers and emails correctly", () => {
-  assert.equal(forgotPasswordSchema.safeParse({ identifier: "alice" }).success, true);
-  assert.equal(forgotPasswordSchema.safeParse({ identifier: "@alice_123" }).success, true);
+  assert.equal(forgotPasswordSchema.safeParse({ identifier: "user@example.com" }).success, true);
   assert.equal(forgotPasswordSchema.safeParse({ email: "user@example.com" }).success, true);
+  assert.equal(forgotPasswordSchema.safeParse({ identifier: "alice" }).success, false);
+  assert.equal(forgotPasswordSchema.safeParse({ identifier: "@alice_123" }).success, false);
   assert.equal(forgotPasswordSchema.safeParse({ identifier: "   " }).success, false);
   assert.equal(forgotPasswordSchema.safeParse({}).success, false);
 });
