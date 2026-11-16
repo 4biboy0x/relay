@@ -28473,7 +28473,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           && authOtpState.purpose === "signup"
           && authOtpState.timerId
           && authOtpState.timerMs > 0;
-        setAuthMode(false, true);
+        setAuthMode(false);
         showAuth();
         showOtpScreen(email, "signup", `Code sent to ${maskedEmail(email)}.`, undefined, false);
         if (resendTimerActive) return;
@@ -28802,7 +28802,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#feed").innerHTML = "";
         $("#wf").innerHTML = "";
         $("#whoToFollowMore").hidden = true;
-        setAuthMode(false);
+        setAuthMode(false, true);
         showAuth();
       }
       async function signOut() {
@@ -28819,7 +28819,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#feed").innerHTML = "";
         $("#wf").innerHTML = "";
         $("#whoToFollowMore").hidden = true;
-        setAuthMode(false);
+        setAuthMode(false, true);
         showAuth();
       }
       const postEditorDialog = $("#postEditorDialog");
