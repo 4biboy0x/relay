@@ -1513,7 +1513,7 @@ api.delete("/users/:userId/follow", authRequired, asyncRoute(async (req, res) =>
     emitToUser(targetId, "user:follow-state", { userId: req.userId!, followsYou: false });
     const [actorFollowers, actorFollowing, targetFollowers, targetFollowing] = await Promise.all([
       prisma.follow.count({ where: { followedId: req.userId! } }),
-      prisma.follow.count({ where: { followerId: req.userId ?? "__anonymous_viewer__" } }),
+      prisma.follow.count({ where: { followerId: req.userId! } }),
       prisma.follow.count({ where: { followedId: targetId } }),
       prisma.follow.count({ where: { followerId: targetId } }),
     ]);
