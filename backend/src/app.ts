@@ -1386,7 +1386,12 @@ api.get("/users/:id/profile", authOptional, asyncRoute(async (req, res) => {
   if (feedOnly) {
     const profile = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true },
+      select: {
+        ...publicUser,
+        _count: { select: { followers: true, following: true } },
+        followers: { where: { followerId: req.userId ?? "__anonymous_viewer__" }, select: { followerId: true } },
+        following: { where: { followedId: req.userId ?? "__anonymous_viewer__" }, select: { followedId: true } },
+      },
     });
     if (!profile) throw new HttpError(404, "User not found");
     const where: Prisma.PostWhereInput = { authorId: profile.id };
@@ -1396,7 +1401,19 @@ api.get("/users/:id/profile", authOptional, asyncRoute(async (req, res) => {
       where.replyToId = null;
       if (tab === "Media") where.mediaUrl = { not: null };
     }
-    res.json({ posts: await listPosts(req.userId ?? null, page, where) });
+    const postCount = await prisma.post.count({
+      where: { authorId: profile.id, deletedAt: null, replyToId: null },
+    });
+    const { _count, followers, following, ...user } = profile;
+    res.json({
+      user: {
+        ...user,
+        viewerFollows: followers.length > 0,
+        followsYou: following.length > 0,
+        counts: { followers: _count.followers, following: _count.following, posts: postCount },
+      },
+      posts: await listPosts(req.userId ?? null, page, where),
+    });
     return;
   }
   const profile = await prisma.user.findUnique({
@@ -1416,7 +1433,7 @@ api.get("/users/:id/profile", authOptional, asyncRoute(async (req, res) => {
     where.replyToId = null;
     if (tab === "Media") where.mediaUrl = { not: null };
   }
-  const posts = await listPosts(req.userId!, page, where);
+  const posts = await listPosts(req.userId ?? null, page, where);
   const { _count, followers, following, ...user } = profile;
   const postCount = await prisma.post.count({
     where: {
@@ -1649,7 +1666,7 @@ api.get("/posts/:postId/replies", authOptional, asyncRoute(async (req, res) => {
     select: { id: true },
   });
   if (!parent) throw new HttpError(404, "Post not found");
-  res.json(await listPosts(req.userId!, pageSchema.parse(req.query), { replyToId: postId }));
+  res.json(await listPosts(req.userId ?? null, pageSchema.parse(req.query), { replyToId: postId }));
 }));
 
 api.get("/posts/:postId/thread", authOptional, asyncRoute(async (req, res) => {
@@ -1672,7 +1689,7 @@ api.get("/posts/:postId/thread", authOptional, asyncRoute(async (req, res) => {
 
   const records = await prisma.post.findMany({
     where: { id: { in: chain.map(({ id }) => id) }, deletedAt: null },
-    include: postInclude(req.userId!),
+    include: postInclude(req.userId ?? null),
   });
   const byId = new Map(records.map((record) => [record.id, record]));
   const interactions = await interactionCounts(records.map((record) => record.id));
@@ -1712,7 +1729,7 @@ api.post("/posts", authRequired, verifiedEmailRequired, asyncRoute(async (req, r
         mediaCrop: input.mediaCrop === null ? Prisma.DbNull : input.mediaCrop ?? undefined,
         authorId: req.userId!,
       },
-      include: postInclude(req.userId!),
+      include: postInclude(req.userId ?? null),
     });
     await syncHashtags(tx, created.id, input.body);
     if (!input.replyToId) await syncPostTopics(tx, created.id, input.body, selectedTopics);
@@ -1725,7 +1742,7 @@ api.post("/posts", authRequired, verifiedEmailRequired, asyncRoute(async (req, r
     }
     const post = await tx.post.findUniqueOrThrow({
       where: { id: created.id },
-      include: postInclude(req.userId!),
+      include: postInclude(req.userId ?? null),
     });
     const mentionNotifications = await createMentionNotifications(
       tx,
@@ -1770,7 +1787,7 @@ api.patch("/posts/:postId", authRequired, asyncRoute(async (req, res) => {
     if (!existing.replyToId) await syncPostTopics(tx, postId, input.body, selectedTopics);
     const post = await tx.post.findUniqueOrThrow({
       where: { id: postId },
-      include: postInclude(req.userId!),
+      include: postInclude(req.userId ?? null),
     });
     const mentionNotifications = await createMentionNotifications(
       tx,
@@ -2051,7 +2068,7 @@ api.get("/search", authOptional, searchLimiter, asyncRoute(async (req, res) => {
   };
   let posts: Awaited<ReturnType<typeof listPosts>>;
   if (mode === "latest") {
-    posts = await listPosts(req.userId!, page, postWhere);
+    posts = await listPosts(req.userId ?? null, page, postWhere);
   } else {
     if (cursor && cursor.likes === undefined) throw new HttpError(400, "Invalid top search cursor");
     const cursorFilter = cursor
@@ -2091,7 +2108,7 @@ api.get("/search", authOptional, searchLimiter, asyncRoute(async (req, res) => {
     const records = items.length
       ? await prisma.post.findMany({
           where: { id: { in: items.map(({ id }) => id) } },
-          include: postInclude(req.userId!),
+          include: postInclude(req.userId ?? null),
         })
       : [];
     const recordsById = new Map(records.map((record) => [record.id, record]));
