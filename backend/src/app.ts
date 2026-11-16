@@ -1184,7 +1184,7 @@ api.post("/uploads/:kind", authRequired, verifiedEmailRequired, uploadLimiter, i
 api.get("/users/suggestions", authRequired, asyncRoute(async (req, res) => {
   const page = pageSchema.parse(req.query);
   const following = await prisma.follow.findMany({
-    where: { followerId: req.userId ?? "__anonymous_viewer__" },
+    where: { followerId: req.userId! },
     select: { followedId: true },
   });
   const followingIds = following.map((follow) => follow.followedId);
@@ -1220,7 +1220,7 @@ api.get("/users/suggestions", authRequired, asyncRoute(async (req, res) => {
   const records = await prisma.user.findMany({
     where: {
       id: { not: req.userId! },
-      followers: { none: { followerId: req.userId ?? "__anonymous_viewer__" } },
+      followers: { none: { followerId: req.userId! } },
     },
     select: {
       ...publicUser,
@@ -1277,7 +1277,7 @@ api.get("/users/directory", authRequired, searchLimiter, asyncRoute(async (req, 
     select: {
       ...publicUser,
       _count: { select: { followers: true } },
-      followers: { where: { followerId: req.userId ?? "__anonymous_viewer__" }, select: { followerId: true } },
+      followers: { where: { followerId: req.userId! }, select: { followerId: true } },
     },
     orderBy: [{ handle: "asc" }, { id: "asc" }],
     take: 10,
@@ -1479,11 +1479,11 @@ api.get("/users/:handle", authOptional, asyncRoute(async (req, res) => {
 api.put("/users/:userId/follow", authRequired, verifiedEmailRequired, asyncRoute(async (req, res) => {
   const targetId = z.string().cuid().parse(req.params.userId);
   if (targetId === req.userId) throw new HttpError(400, "You cannot follow yourself");
-  const key = { followerId_followedId: { followerId: req.userId ?? "__anonymous_viewer__", followedId: targetId } };
+  const key = { followerId_followedId: { followerId: req.userId!, followedId: targetId } };
   const existing = await prisma.follow.findUnique({ where: key });
   await prisma.follow.upsert({
     where: key,
-    create: { followerId: req.userId ?? "__anonymous_viewer__", followedId: targetId },
+    create: { followerId: req.userId!, followedId: targetId },
     update: {},
   });
   if (!existing) {
@@ -1493,7 +1493,7 @@ api.put("/users/:userId/follow", authRequired, verifiedEmailRequired, asyncRoute
   emitToUser(targetId, "user:follow-state", { userId: req.userId!, followsYou: true });
   const [actorFollowers, actorFollowing, targetFollowers, targetFollowing] = await Promise.all([
     prisma.follow.count({ where: { followedId: req.userId! } }),
-    prisma.follow.count({ where: { followerId: req.userId ?? "__anonymous_viewer__" } }),
+    prisma.follow.count({ where: { followerId: req.userId! } }),
     prisma.follow.count({ where: { followedId: targetId } }),
     prisma.follow.count({ where: { followerId: targetId } }),
   ]);
@@ -1508,7 +1508,7 @@ api.put("/users/:userId/follow", authRequired, verifiedEmailRequired, asyncRoute
 
 api.delete("/users/:userId/follow", authRequired, asyncRoute(async (req, res) => {
   const targetId = z.string().cuid().parse(req.params.userId);
-  const deleted = await prisma.follow.deleteMany({ where: { followerId: req.userId ?? "__anonymous_viewer__", followedId: targetId } });
+  const deleted = await prisma.follow.deleteMany({ where: { followerId: req.userId!, followedId: targetId } });
   if (deleted.count) {
     emitToUser(targetId, "user:follow-state", { userId: req.userId!, followsYou: false });
     const [actorFollowers, actorFollowing, targetFollowers, targetFollowing] = await Promise.all([
@@ -1607,7 +1607,7 @@ api.get("/feed", authOptional, asyncRoute(async (req, res) => {
     return;
   }
   const follows = await prisma.follow.findMany({
-    where: { followerId: req.userId ?? "__anonymous_viewer__" },
+    where: { followerId: req.userId! },
     select: { followedId: true },
   });
   res.json(await listPosts(req.userId ?? null, page, {
@@ -1729,7 +1729,7 @@ api.post("/posts", authRequired, verifiedEmailRequired, asyncRoute(async (req, r
         mediaCrop: input.mediaCrop === null ? Prisma.DbNull : input.mediaCrop ?? undefined,
         authorId: req.userId!,
       },
-      include: postInclude(req.userId ?? null),
+      include: postInclude(req.userId!),
     });
     await syncHashtags(tx, created.id, input.body);
     if (!input.replyToId) await syncPostTopics(tx, created.id, input.body, selectedTopics);
@@ -1742,7 +1742,7 @@ api.post("/posts", authRequired, verifiedEmailRequired, asyncRoute(async (req, r
     }
     const post = await tx.post.findUniqueOrThrow({
       where: { id: created.id },
-      include: postInclude(req.userId ?? null),
+      include: postInclude(req.userId!),
     });
     const mentionNotifications = await createMentionNotifications(
       tx,
@@ -1787,7 +1787,7 @@ api.patch("/posts/:postId", authRequired, asyncRoute(async (req, res) => {
     if (!existing.replyToId) await syncPostTopics(tx, postId, input.body, selectedTopics);
     const post = await tx.post.findUniqueOrThrow({
       where: { id: postId },
-      include: postInclude(req.userId ?? null),
+      include: postInclude(req.userId!),
     });
     const mentionNotifications = await createMentionNotifications(
       tx,
