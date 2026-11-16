@@ -18370,6 +18370,7 @@
       }
       function requireAuth() {
         if (accessToken && currentUser) return true;
+        $("#authSubtitle").textContent = "Sign in when you’re ready to join the conversation.";
         showAuth();
         return false;
       }
@@ -29645,7 +29646,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
 
       function go(v, updateRoute = true, preserveProfile = false, restoreConversationId = "", focusNav = true) {
         const guestPublicViews = ["home", "explore", "reels", "profile", "thread"];
-        if (!currentUser && (!guestPublicViews.includes(v) || (v === "profile" && !viewedProfileId))) {
+        if (!currentUser && (!guestPublicViews.includes(v) || (v === "profile" && (!viewedProfileId || !preserveProfile)))) {
           $("#authSubtitle").textContent = "Sign in to access your messages, notifications, and account.";
           showAuth();
           return;
