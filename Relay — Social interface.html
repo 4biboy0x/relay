@@ -29477,7 +29477,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#authSwitch").textContent = registering ? "Sign in" : "Create an account";
         updateCookieConsentVisibility();
       }
-      setAuthMode(true);
       async function loadSession() {
         const splashStartedAt = performance.now();
         const finishSplash = () => {
@@ -32922,6 +32921,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         updateCookieConsentVisibility();
       });
       initializeCookieConsent();
+      setAuthMode(true);
       loadSession().then(() => {
         if (initialLegalTab) openLegal(initialLegalTab, null, true);
       });
