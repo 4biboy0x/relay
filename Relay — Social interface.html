@@ -4717,19 +4717,19 @@
         to { opacity: 1; }
       }
       #authDialog::backdrop {
-        background: rgba(15, 23, 42, 0.22);
+        background: rgba(0, 0, 0, 0.32);
         -webkit-backdrop-filter: blur(8px);
         backdrop-filter: blur(8px);
         animation: auth-backdrop-in 180ms ease-out;
       }
       @keyframes auth-backdrop-in {
         from {
-          background: rgba(9, 9, 11, 0);
+          background: rgba(0, 0, 0, 0);
           -webkit-backdrop-filter: blur(0);
           backdrop-filter: blur(0);
         }
         to {
-          background: rgba(15, 23, 42, 0.22);
+          background: rgba(0, 0, 0, 0.32);
           -webkit-backdrop-filter: blur(8px);
           backdrop-filter: blur(8px);
         }
@@ -4759,8 +4759,9 @@
         font: inherit;
       }
       #authDialog {
-        --auth-submit-bg: var(--accent);
-        --auth-submit-hover: var(--accent-h);
+        --auth-submit-bg: #292929;
+        --auth-submit-hover: #383838;
+        --auth-submit-text: #fff;
         width: min(400px, calc(100vw - 32px));
         max-width: none;
         max-height: calc(100dvh - 32px);
@@ -4772,19 +4773,22 @@
         box-shadow: 0 8px 24px rgba(9, 9, 11, .10);
       }
       :root[data-theme="dark"] #authDialog {
-        --auth-submit-bg: #555fcf;
-        --auth-submit-hover: #4f59c7;
+        --auth-submit-bg: #e7e7e7;
+        --auth-submit-hover: #fff;
+        --auth-submit-text: #171717;
         box-shadow: 0 8px 32px rgba(0, 0, 0, .45);
       }
       @media (prefers-color-scheme: dark) {
         :root:not([data-theme="light"]) #authDialog {
-          --auth-submit-bg: #555fcf;
-          --auth-submit-hover: #4f59c7;
+          --auth-submit-bg: #e7e7e7;
+          --auth-submit-hover: #fff;
+          --auth-submit-text: #171717;
           box-shadow: 0 8px 32px rgba(0, 0, 0, .45);
         }
       }
+      #authDialog #authSubtitle { display: none; }
       #authDialog .auth-title {
-        margin: 0 0 20px;
+        margin: 0 0 18px;
         text-align: center;
         font-size: 22px;
         font-weight: 600;
@@ -4813,8 +4817,8 @@
       }
       #authDialog input:focus {
         outline: none;
-        border-color: var(--accent);
-        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+        border-color: #777;
+        box-shadow: 0 0 0 3px rgba(120, 120, 120, .14);
       }
       .auth-dialog input:-webkit-autofill,
       .auth-dialog input:-webkit-autofill:hover,
@@ -4835,7 +4839,7 @@
         padding: 0;
         border: 0;
         background: none;
-        color: var(--accent);
+        color: var(--text-2);
         font-size: 13px;
         cursor: pointer;
       }
@@ -4904,7 +4908,7 @@
         padding: 0 16px;
         border-radius: 10px;
         background: var(--auth-submit-bg);
-        color: #fff;
+        color: var(--auth-submit-text);
         font-size: 15px;
         font-weight: 600;
       }
@@ -4927,14 +4931,14 @@
         padding: 0 16px;
         border-radius: 10px;
         background: var(--auth-submit-bg);
-        color: #fff;
+        color: var(--auth-submit-text);
         font-size: 15px;
         font-weight: 600;
       }
       #authDialog #authOtpVerify:hover:not(:disabled) { background: var(--auth-submit-hover); }
       #authDialog #authOtpVerify:disabled { opacity: .55; cursor: not-allowed; }
       .auth-otp-link {
-        color: var(--accent);
+        color: var(--text-2);
         font-size: 13px;
         cursor: pointer;
       }
@@ -4969,7 +4973,7 @@
         padding: 0 16px;
         border-radius: 10px;
         background: var(--auth-submit-bg);
-        color: #fff;
+        color: var(--auth-submit-text);
         font-size: 15px;
         font-weight: 600;
       }
@@ -4986,7 +4990,7 @@
         padding: 0;
         border: 0;
         background: transparent;
-        color: var(--accent);
+        color: var(--text);
         font-size: inherit;
         font-weight: 600;
         cursor: pointer;
@@ -28439,9 +28443,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#authResetPasswordPanel").style.display = "none";
         $("#authForm").style.display = "grid";
         $(".auth-switch-row").style.display = "";
-        $("#signin-title").innerHTML = registering
-          ? 'Create your <span class="wordmark">Relay</span> account'
-          : 'Welcome to <span class="wordmark">Relay</span>';
+        $("#signin-title").textContent = registering ? "Create account" : "Sign in";
         $("#authOtpError").textContent = "";
         $("#authChangeEmailError").textContent = "";
         $("#authForgotError").textContent = "";
@@ -28640,7 +28642,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       let actionDialogState = null;
       const confirmDialogElement = $("#confirmDialog");
       let confirmDialogState = null;
-      let registering = false;
+      let registering = true;
       let showAuthCookieNoticeForCurrentDialog = false;
       function showAuth() {
         closeActionDialog();
@@ -29458,9 +29460,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function setAuthMode(createAccount) {
         registering = createAccount;
         $("#authError").textContent = "";
-        $("#signin-title").innerHTML = registering
-          ? 'Create your <span class="wordmark">Relay</span> account'
-          : 'Welcome to <span class="wordmark">Relay</span>';
+        $("#signin-title").textContent = registering ? "Create account" : "Sign in";
         $("#authNameLabel").hidden = !registering;
         $("#authHandleLabel").hidden = !registering;
         $("#authForgot").hidden = registering;
@@ -32921,6 +32921,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         updateCookieConsentVisibility();
       });
       initializeCookieConsent();
+      setAuthMode(true);
       loadSession().then(() => {
         if (initialLegalTab) openLegal(initialLegalTab, null, true);
       });
