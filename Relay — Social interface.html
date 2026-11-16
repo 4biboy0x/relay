@@ -4637,6 +4637,53 @@
           text-align: center;
         }
       }
+      .guest-welcome {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        margin: 0 0 14px;
+        padding: 17px 18px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--surface);
+      }
+      .guest-welcome[hidden] { display: none; }
+      .guest-welcome-copy { min-width: 0; display: grid; gap: 4px; }
+      .guest-welcome-kicker {
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .12em;
+      }
+      .guest-welcome-copy strong { color: var(--text); font-size: 15px; font-weight: 650; }
+      .guest-welcome-copy p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+      .guest-welcome-action {
+        flex: 0 0 auto;
+        min-height: 36px;
+        padding: 0 15px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--surface-2);
+        color: var(--text);
+        font: inherit;
+        font-size: 12px;
+        font-weight: 650;
+        cursor: pointer;
+        transition: background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
+      }
+      .guest-welcome-action:hover { background: var(--hover); border-color: var(--text-muted); }
+      .guest-welcome-action:active { transform: scale(.98); }
+      @media (max-width: 520px) {
+        .guest-welcome { align-items: flex-start; padding: 15px; }
+        .guest-welcome-action { min-height: 34px; padding-inline: 12px; }
+      }
+      .auth-subtitle {
+        margin: -5px 0 16px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
       .auth-dialog {
         width: max-content;
         max-width: min(420px, calc(100vw - 24px));
@@ -15065,6 +15112,14 @@
             </div>
           </header>
           <div id="homeTimeline" data-transition-content>
+          <section class="guest-welcome" id="guestWelcome" aria-label="Welcome to Relay" hidden>
+            <div class="guest-welcome-copy">
+              <span class="guest-welcome-kicker">WELCOME TO RELAY</span>
+              <strong>Explore freely.</strong>
+              <p>Discover posts, people, and Reels. Sign in only when you’re ready to join in.</p>
+            </div>
+            <button class="guest-welcome-action" id="guestSignIn" type="button">Sign in</button>
+          </section>
           <div id="homeComposerSlot">
           <div class="composer" id="composer">
             <span class="av av-default" id="composerAvatar" aria-hidden="true"><svg class="relay-avatar-mark" viewBox="0 0 40 40"><use href="#default-avatar" /></svg></span>
@@ -16022,6 +16077,7 @@
     </dialog>
     <dialog class="auth-dialog" id="authDialog" role="dialog" aria-modal="true" aria-labelledby="signin-title" tabindex="-1">
       <h2 id="signin-title" class="auth-title">Welcome to <span class="wordmark">Relay</span></h2>
+      <p class="auth-subtitle" id="authSubtitle">Sign in when you’re ready to join the conversation.</p>
       <form id="authForm" novalidate>
         <div class="auth-field" id="authNameLabel" hidden>
           <label for="authName">Display name</label>
@@ -16965,9 +17021,12 @@
         if (response.status === 401 && retry && path !== "/auth/login" && path !== "/auth/register" && path !== "/auth/refresh") {
           const renewed = await refreshSession();
           if (renewed) return api(path, options, false);
+          const hadAuthenticatedUser = Boolean(currentUser);
           clearSession();
-          showAuth();
-          throw new Error("Your session expired. Sign in again.");
+          if (hadAuthenticatedUser) showAuth();
+          throw new Error(hadAuthenticatedUser
+            ? "Your session expired. Sign in again."
+            : "Could not load public content. Please try again.");
         }
         if (!response.ok) {
           let message = response.status >= 500
@@ -18314,6 +18373,7 @@
       }
       function requireAuth() {
         if (accessToken && currentUser) return true;
+        $("#authSubtitle").textContent = "Sign in when you’re ready to join the conversation.";
         showAuth();
         return false;
       }
@@ -18627,6 +18687,11 @@
         }
       }
       function setComposerVisibility(visible) {
+        visible = Boolean(currentUser && visible);
+        const guestWelcome = $("#guestWelcome");
+        if (guestWelcome) guestWelcome.hidden = Boolean(currentUser);
+        const followingTab = document.querySelector('[data-feed="following"]');
+        if (followingTab) followingTab.hidden = !currentUser;
         const slot = $("#homeComposerSlot");
         const composer = $("#composer");
         slot.hidden = !visible;
@@ -19130,9 +19195,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
       }
       async function renderProfile(t = profileTab, append = false) {
-        if (!currentUser) return;
-        const owner = !viewedProfileId || viewedProfileId === currentUser.id;
+        if (!currentUser && !viewedProfileId) return;
+        const owner = Boolean(currentUser && (!viewedProfileId || viewedProfileId === currentUser.id));
         const targetId = owner ? currentUser.id : viewedProfileId;
+        if (!targetId) return;
         if (!owner && t === "Likes") t = "Posts";
         const reelsTab = t === "Reels";
         const generation = ++profileRenderGeneration;
@@ -19532,7 +19598,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           : "";
       }
       async function renderReels(append = false, requestedReelId = "", resumeFallback = false) {
-        if (!currentUser || reelLoading || (append && !reelCursor)) return;
+        if (reelLoading || (append && !reelCursor)) return;
         const generation = append ? reelRenderGeneration : ++reelRenderGeneration;
         reelLoading = true;
         let finishReelSkeleton;
@@ -19720,7 +19786,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
       }
       async function refreshGlobalReels() {
-        if (!currentUser || reelRefreshInFlight || profileScopedReelHandle || /^#\/reel\//.test(location.hash)) return reelRefreshInFlight;
+        if (reelRefreshInFlight || profileScopedReelHandle || /^#\/reel\//.test(location.hash)) return reelRefreshInFlight;
         const feed = $("#reelFeed");
         const activeSlide = activeReelId
           ? $(`.reel-item[data-reel-id="${CSS.escape(activeReelId)}"]`, feed)
@@ -23496,7 +23562,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           toast("That post link is invalid.");
           return;
         }
-        if (!requireAuth()) return;
         const activeView = $$("[data-v]").find((section) => !section.hidden)?.id.slice(2);
         if (activeView === "thread" && updateRoute && threadPostId && threadPostId !== postId) {
           threadHistory.push(threadPostId);
@@ -23621,16 +23686,28 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         delete $("#wf").dataset.loaded;
         const finishSkeleton = showDelayedSkeleton($("#wf"), "person", { count: 3, label: "people" });
         try {
-          const [, suggestions, contacts] = await Promise.all([
-            renderTrending(),
-            api("/users/suggestions?limit=6"),
-            api("/explore?limit=20"),
-          ]);
-          await finishSkeleton();
-          hasMoreSuggestedPeople = !!suggestions.nextCursor;
-          people = contacts.items;
-          renderWhoToFollow(suggestions.items, hasMoreSuggestedPeople, true);
-          renderRecipientOptions();
+          if (currentUser) {
+            const [, suggestions, contacts] = await Promise.all([
+              renderTrending(),
+              api("/users/suggestions?limit=6"),
+              api("/explore?limit=20"),
+            ]);
+            await finishSkeleton();
+            hasMoreSuggestedPeople = !!suggestions.nextCursor;
+            people = contacts.items;
+            renderWhoToFollow(suggestions.items, hasMoreSuggestedPeople, true);
+            renderRecipientOptions();
+          } else {
+            const [, contacts] = await Promise.all([
+              renderTrending(),
+              api("/explore?limit=20"),
+            ]);
+            await finishSkeleton();
+            people = contacts.items;
+            hasMoreSuggestedPeople = false;
+            renderWhoToFollow(contacts.items.slice(0, 6), false, true);
+            $("#whoToFollowMore").hidden = true;
+          }
         } catch (error) {
           await finishSkeleton();
           hasMoreSuggestedPeople = false;
@@ -28542,6 +28619,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           authDialog.close();
           hideOtpScreen();
           updateAccountUI();
+          setComposerVisibility(feedTab === "for-you");
           showEmailVerificationSuccess();
           await Promise.all([renderFeed(), renderSide()]);
           connectRealtime();
@@ -29418,28 +29496,43 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             setTimeout(() => splash.remove(), 150);
           }, delay);
         };
-        if (!accessToken && !(await refreshSession())) {
-          showAuth();
-          finishSplash();
-          return;
+        if (!accessToken) await refreshSession();
+        if (accessToken) {
+          try {
+            currentUser = await api("/users/me", {}, false);
+          } catch {
+            if (await refreshSession()) {
+              try {
+                currentUser = await api("/users/me", {}, false);
+              } catch {
+                clearSession();
+                currentUser = null;
+              }
+            } else {
+              clearSession();
+              currentUser = null;
+            }
+          }
         }
-        try {
-          currentUser = await api("/users/me");
+        if (currentUser) {
           inboxPreferences = readInboxPreferences();
           updateAccountUI();
+          setComposerVisibility(feedTab === "for-you");
           await Promise.all([renderFeed(), renderSide()]);
           connectRealtime();
           renderConversations();
           refreshNotificationBadge();
           startNotificationStream();
-          normalizeClosedReelRoute();
-          routeFromHash();
-          finishSplash();
-        } catch (error) {
-          clearSession();
-          showAuth();
-          finishSplash();
+        } else {
+          currentUser = null;
+          feedTab = "for-you";
+          updateAccountUI();
+          setComposerVisibility(false);
+          await Promise.all([renderFeed(), renderSide()]);
         }
+        normalizeClosedReelRoute();
+        routeFromHash();
+        finishSplash();
       }
       function recordReelAwayState() {
         if ($("#v-reels").hidden) return;
@@ -29564,7 +29657,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }, { capture: true, passive: true });
 
       function go(v, updateRoute = true, preserveProfile = false, restoreConversationId = "", focusNav = true) {
-        if (!requireAuth()) return;
+        const guestPublicViews = ["home", "explore", "reels", "profile", "thread"];
+        if (!currentUser && (!guestPublicViews.includes(v) || (v === "profile" && (!viewedProfileId || !preserveProfile)))) {
+          $("#authSubtitle").textContent = "Sign in to access your messages, notifications, and account.";
+          showAuth();
+          return;
+        }
         const explicitReelId = deepLinkedReelId;
         const currentView = $("[data-v]:not([hidden])")?.id?.replace(/^v-/, "");
         if (currentView !== v && window.matchMedia("(max-width: 767px)").matches) {
@@ -29727,7 +29825,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         window.scrollTo(0, 0);
       }
       function routeFromHash() {
-        if (!accessToken || !currentUser) return;
         const hash = location.hash || "#/home";
         if (hash === "#privacy" || hash === "#terms") return;
         const profileReelMatch = hash.match(/^#\/reel\/([^/?]+)$/);
@@ -31314,6 +31411,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             inboxPreferences = readInboxPreferences();
             authDialog.close();
             updateAccountUI();
+            setComposerVisibility(feedTab === "for-you");
             await Promise.all([renderFeed(), renderSide()]);
             connectRealtime();
             renderConversations();
@@ -32829,6 +32927,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       authDialog.addEventListener("close", () => {
         showAuthCookieNoticeForCurrentDialog = false;
         updateCookieConsentVisibility();
+      });
+      $("#guestSignIn").addEventListener("click", () => {
+        $("#authSubtitle").textContent = "Sign in when you’re ready to join the conversation.";
+        showAuth();
       });
       initializeCookieConsent();
       loadSession().then(() => {
