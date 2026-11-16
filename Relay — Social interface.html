@@ -17021,9 +17021,12 @@
         if (response.status === 401 && retry && path !== "/auth/login" && path !== "/auth/register" && path !== "/auth/refresh") {
           const renewed = await refreshSession();
           if (renewed) return api(path, options, false);
+          const hadAuthenticatedUser = Boolean(currentUser);
           clearSession();
-          showAuth();
-          throw new Error("Your session expired. Sign in again.");
+          if (hadAuthenticatedUser) showAuth();
+          throw new Error(hadAuthenticatedUser
+            ? "Your session expired. Sign in again."
+            : "Could not load public content. Please try again.");
         }
         if (!response.ok) {
           let message = response.status >= 500
