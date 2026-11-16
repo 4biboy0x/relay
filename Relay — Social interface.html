@@ -29495,10 +29495,19 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (!accessToken) await refreshSession();
         if (accessToken) {
           try {
-            currentUser = await api("/users/me");
+            currentUser = await api("/users/me", {}, false);
           } catch {
-            clearSession();
-            currentUser = null;
+            if (await refreshSession()) {
+              try {
+                currentUser = await api("/users/me", {}, false);
+              } catch {
+                clearSession();
+                currentUser = null;
+              }
+            } else {
+              clearSession();
+              currentUser = null;
+            }
           }
         }
         if (currentUser) {
