@@ -28616,6 +28616,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           authDialog.close();
           hideOtpScreen();
           updateAccountUI();
+          setComposerVisibility(feedTab === "for-you");
           showEmailVerificationSuccess();
           await Promise.all([renderFeed(), renderSide()]);
           connectRealtime();
@@ -31407,6 +31408,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             inboxPreferences = readInboxPreferences();
             authDialog.close();
             updateAccountUI();
+            setComposerVisibility(feedTab === "for-you");
             await Promise.all([renderFeed(), renderSide()]);
             connectRealtime();
             renderConversations();
