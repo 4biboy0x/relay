@@ -470,7 +470,7 @@ const notify = async (
   emitToUser(recipientId, "notification:new", notification);
 };
 
-const postInclude = (viewerId: string) => ({
+const postInclude = (viewerId: string | null) => ({
   author: { select: publicUser },
   replyTo: {
     select: {
@@ -481,7 +481,7 @@ const postInclude = (viewerId: string) => ({
     },
   },
   _count: { select: { replies: true } },
-  interactions: { where: { userId: viewerId }, select: { type: true } },
+  interactions: { where: { userId: viewerId ?? "__anonymous_viewer__" }, select: { type: true } },
   hashtags: { include: { hashtag: { select: { tag: true } } } },
   topics: { include: { topic: { select: { slug: true, name: true } } } },
 });
@@ -757,7 +757,7 @@ const getTrendingItems = (): Promise<TrendingItem[]> => {
 };
 
 const listPosts = async (
-  viewerId: string,
+  viewerId: string | null,
   page: z.infer<typeof pageSchema>,
   where: Prisma.PostWhereInput,
 ) => {
@@ -1277,7 +1277,7 @@ api.get("/users/directory", authRequired, searchLimiter, asyncRoute(async (req, 
     select: {
       ...publicUser,
       _count: { select: { followers: true } },
-      followers: { where: { followerId: req.userId! }, select: { followerId: true } },
+      followers: { where: { followerId: req.userId ?? "__anonymous_viewer__" }, select: { followerId: true } },
     },
     orderBy: [{ handle: "asc" }, { id: "asc" }],
     take: 10,
@@ -1378,7 +1378,7 @@ api.get("/places/search", authRequired, placesLimiter, asyncRoute(async (req, re
   res.json({ items: await loadPlaceSearch(query) });
 }));
 
-api.get("/users/:id/profile", authRequired, asyncRoute(async (req, res) => {
+api.get("/users/:id/profile", authOptional, asyncRoute(async (req, res) => {
   const userId = z.string().cuid().parse(req.params.id);
   const page = pageSchema.parse(req.query);
   const tab = z.enum(["Posts", "Replies", "Media"]).default("Posts").parse(req.query.tab);
@@ -1396,7 +1396,7 @@ api.get("/users/:id/profile", authRequired, asyncRoute(async (req, res) => {
       where.replyToId = null;
       if (tab === "Media") where.mediaUrl = { not: null };
     }
-    res.json({ posts: await listPosts(req.userId!, page, where) });
+    res.json({ posts: await listPosts(req.userId ?? null, page, where) });
     return;
   }
   const profile = await prisma.user.findUnique({
@@ -1404,8 +1404,8 @@ api.get("/users/:id/profile", authRequired, asyncRoute(async (req, res) => {
     select: {
       ...publicUser,
       _count: { select: { followers: true, following: true } },
-      followers: { where: { followerId: req.userId! }, select: { followerId: true } },
-      following: { where: { followedId: req.userId! }, select: { followedId: true } },
+      followers: { where: { followerId: req.userId ?? "__anonymous_viewer__" }, select: { followerId: true } },
+      following: { where: { followedId: req.userId ?? "__anonymous_viewer__" }, select: { followedId: true } },
     },
   });
   if (!profile) throw new HttpError(404, "User not found");
@@ -1436,7 +1436,7 @@ api.get("/users/:id/profile", authRequired, asyncRoute(async (req, res) => {
   });
 }));
 
-api.get("/users/:handle", authRequired, asyncRoute(async (req, res) => {
+api.get("/users/:handle", authOptional, asyncRoute(async (req, res) => {
   const handle = z.string().regex(/^[a-zA-Z0-9_]{3,30}$/).parse(req.params.handle).toLowerCase();
   const user = await prisma.user.findUnique({
     where: { handle },
@@ -1444,7 +1444,7 @@ api.get("/users/:handle", authRequired, asyncRoute(async (req, res) => {
       ...publicUser,
       _count: { select: { followers: true, following: true, posts: true } },
       followers: { where: { followerId: req.userId! }, select: { followerId: true } },
-      following: { where: { followedId: req.userId! }, select: { followedId: true } },
+      following: { where: { followedId: req.userId ?? "__anonymous_viewer__" }, select: { followedId: true } },
     },
   });
   if (!user) throw new HttpError(404, "User not found");
@@ -1510,8 +1510,8 @@ api.delete("/users/:userId/follow", authRequired, asyncRoute(async (req, res) =>
   res.status(204).end();
 }));
 
-api.get("/topics", authRequired, asyncRoute(async (req, res) => {
-  const topics = await prisma.topic.findMany({ orderBy: { name: "asc" }, include: { _count: { select: { posts: true, followers: true } }, followers: { where: { userId: req.userId! }, select: { userId: true } } } });
+api.get("/topics", authOptional, asyncRoute(async (req, res) => {
+  const topics = await prisma.topic.findMany({ orderBy: { name: "asc" }, include: { _count: { select: { posts: true, followers: true } }, followers: { where: { userId: req.userId ?? "__anonymous_viewer__" }, select: { userId: true } } } });
   res.json({ items: topics.map(({ _count, followers, ...topic }) => ({ ...topic, postCount: _count.posts, followerCount: _count.followers, following: followers.length > 0 })) });
 }));
 
@@ -1531,15 +1531,15 @@ api.delete("/topics/:slug/follow", authRequired, asyncRoute(async (req, res) => 
   res.status(204).end();
 }));
 
-api.get("/topics/:slug/posts", authRequired, asyncRoute(async (req, res) => {
+api.get("/topics/:slug/posts", authOptional, asyncRoute(async (req, res) => {
   const slug = z.string().regex(/^[a-z0-9-]{2,40}$/).parse(req.params.slug);
   const page = pageSchema.parse(req.query);
   const topic = await prisma.topic.findUnique({ where: { slug }, select: { id: true } });
   if (!topic) throw new HttpError(404, "Topic not found");
-  res.json(await listPosts(req.userId!, page, { replyToId: null, topics: { some: { topicId: topic.id } } }));
+  res.json(await listPosts(req.userId ?? null, page, { replyToId: null, topics: { some: { topicId: topic.id } } }));
 }));
 
-const listForYouPosts = async (viewerId: string, page: z.infer<typeof pageSchema>) => {
+const listForYouPosts = async (viewerId: string | null, page: z.infer<typeof pageSchema>) => {
   const cursor = decodeCursor(page.cursor);
   const cursorMatches = cursor?.topicMatches ?? 0;
   const cursorFilter = cursor
@@ -1582,28 +1582,28 @@ const listForYouPosts = async (viewerId: string, page: z.infer<typeof pageSchema
   };
 };
 
-api.get("/feed", authRequired, asyncRoute(async (req, res) => {
+api.get("/feed", authOptional, asyncRoute(async (req, res) => {
   const page = pageSchema.parse(req.query);
   const feed = z.enum(["for-you", "following"]).default("for-you").parse(req.query.feed);
-  if (feed === "for-you") {
-    res.json(await listForYouPosts(req.userId!, page));
+  if (feed === "for-you" || !req.userId) {
+    res.json(await listForYouPosts(req.userId ?? null, page));
     return;
   }
   const follows = await prisma.follow.findMany({
     where: { followerId: req.userId! },
     select: { followedId: true },
   });
-  res.json(await listPosts(req.userId!, page, {
+  res.json(await listPosts(req.userId ?? null, page, {
     replyToId: null,
     authorId: { in: follows.map((follow) => follow.followedId) },
   }));
 }));
 
-api.get("/posts/:postId", authRequired, asyncRoute(async (req, res) => {
+api.get("/posts/:postId", authOptional, asyncRoute(async (req, res) => {
   const postId = z.string().cuid().parse(req.params.postId);
   const post = await prisma.post.findFirst({
     where: { id: postId, deletedAt: null },
-    include: postInclude(req.userId!),
+    include: postInclude(req.userId ?? null),
   });
   if (!post) throw new HttpError(404, "Post not found");
   const counts = await interactionCounts([post.id]);
@@ -1642,7 +1642,7 @@ api.post("/posts/views", authOptional, viewRequestGuard, viewRateLimiter, asyncR
   res.json({ items: results });
 }));
 
-api.get("/posts/:postId/replies", authRequired, asyncRoute(async (req, res) => {
+api.get("/posts/:postId/replies", authOptional, asyncRoute(async (req, res) => {
   const postId = z.string().cuid().parse(req.params.postId);
   const parent = await prisma.post.findFirst({
     where: { id: postId, deletedAt: null },
@@ -1652,7 +1652,7 @@ api.get("/posts/:postId/replies", authRequired, asyncRoute(async (req, res) => {
   res.json(await listPosts(req.userId!, pageSchema.parse(req.query), { replyToId: postId }));
 }));
 
-api.get("/posts/:postId/thread", authRequired, asyncRoute(async (req, res) => {
+api.get("/posts/:postId/thread", authOptional, asyncRoute(async (req, res) => {
   const postId = z.string().cuid().parse(req.params.postId);
   const page = pageSchema.parse(req.query);
   const chain = await prisma.$queryRaw<Array<{ id: string; parentId: string | null; depth: number }>>(Prisma.sql`
@@ -1688,7 +1688,7 @@ api.get("/posts/:postId/thread", authRequired, asyncRoute(async (req, res) => {
     ancestors,
     ancestorsTruncated: chain[0]?.depth === 20 && Boolean(chain[0].parentId),
     post: postResponse(root, interactions.get(root.id)),
-    replies: await listPosts(req.userId!, page, { replyToId: postId }),
+    replies: await listPosts(req.userId ?? null, page, { replyToId: postId }),
   });
 }));
 
@@ -1886,7 +1886,7 @@ api.delete("/posts/:postId/like", authRequired, setInteraction("LIKE", false));
 api.put("/posts/:postId/repost", authRequired, setInteraction("REPOST", true));
 api.delete("/posts/:postId/repost", authRequired, setInteraction("REPOST", false));
 
-api.get("/users/:handle/posts", authRequired, asyncRoute(async (req, res) => {
+api.get("/users/:handle/posts", authOptional, asyncRoute(async (req, res) => {
   const page = pageSchema.parse(req.query);
   const handle = z.string().regex(/^[a-zA-Z0-9_]{3,30}$/).parse(req.params.handle).toLowerCase();
   const tab = z.enum(["Posts", "Replies", "Media", "Likes"]).default("Posts").parse(req.query.tab);
@@ -1905,10 +1905,10 @@ api.get("/users/:handle/posts", authRequired, asyncRoute(async (req, res) => {
   if (tab === "Likes") {
     where.interactions = { some: { userId: user.id, type: "LIKE" } };
   }
-  res.json(await listPosts(req.userId!, page, where));
+  res.json(await listPosts(req.userId ?? null, page, where));
 }));
 
-api.get("/explore", authRequired, asyncRoute(async (req, res) => {
+api.get("/explore", authOptional, asyncRoute(async (req, res) => {
   const page = pageSchema.parse(req.query);
   const q = z.string().trim().max(100).optional().parse(req.query.q);
   const cursor = decodeCursor(page.cursor);
@@ -1916,7 +1916,7 @@ api.get("/explore", authRequired, asyncRoute(async (req, res) => {
     ? { OR: [{ handle: { contains: q, mode: "insensitive" } }, { displayName: { contains: q, mode: "insensitive" } }] }
     : {};
   const records = await prisma.user.findMany({
-    where: { AND: [where, { id: { not: req.userId! } }, userCursorWhere(cursor)] },
+    where: { AND: [where, ...(req.userId ? [{ id: { not: req.userId } }] : []), userCursorWhere(cursor)] },
     select: {
       ...publicUser,
       _count: { select: { followers: true } },
@@ -1938,7 +1938,7 @@ api.get("/explore", authRequired, asyncRoute(async (req, res) => {
   });
 }));
 
-api.get("/trending", authRequired, asyncRoute(async (_req, res) => {
+api.get("/trending", authOptional, asyncRoute(async (_req, res) => {
   const items = await getTrendingItems();
   res.json({
     items: items.map((item) => ({
@@ -1949,7 +1949,7 @@ api.get("/trending", authRequired, asyncRoute(async (_req, res) => {
   });
 }));
 
-api.get("/search", authRequired, searchLimiter, asyncRoute(async (req, res) => {
+api.get("/search", authOptional, searchLimiter, asyncRoute(async (req, res) => {
   const rawQuery = z.string().trim().min(1).max(100).parse(req.query.q);
   const page = pageSchema.parse(req.query);
   const mode = z.enum(["top", "latest", "people", "hashtags", "users"]).default("top").parse(req.query.mode);
@@ -1985,6 +1985,9 @@ api.get("/search", authRequired, searchLimiter, asyncRoute(async (req, res) => {
   }
   if (mode === "people" || mode === "users") {
     if (cursor && cursor.followers === undefined) throw new HttpError(400, "Invalid people search cursor");
+    const viewerFilter = req.userId
+      ? Prisma.sql`u."id" <> ${req.userId}`
+      : Prisma.sql`TRUE`;
     const cursorFilter = cursor
       ? Prisma.sql`HAVING
           COUNT(f."followerId") < ${cursor.followers!}
@@ -2000,7 +2003,7 @@ api.get("/search", authRequired, searchLimiter, asyncRoute(async (req, res) => {
       SELECT u."id", u."createdAt", COUNT(f."followerId")::int AS "followers"
       FROM "User" AS u
       LEFT JOIN "Follow" AS f ON f."followedId" = u."id"
-      WHERE u."id" <> ${req.userId!}
+      WHERE ${viewerFilter}
         AND (
           u."handle" ILIKE ${searchPattern} ESCAPE E'\\\\'
           OR u."displayName" ILIKE ${searchPattern} ESCAPE E'\\\\'
