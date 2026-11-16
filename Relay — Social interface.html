@@ -14769,6 +14769,35 @@
           }
         }
       }
+
+      /* Give the navigation's New post action a restrained, neutral Relay treatment. */
+      .app > .nav #navPost.btn-primary {
+        background: #202124 !important;
+        color: #fff !important;
+        transition: background-color 160ms ease !important;
+      }
+      .app > .nav #navPost.btn-primary:hover:not(:disabled) {
+        background: #34363a !important;
+      }
+      .app > .nav #navPost.btn-primary:active:not(:disabled) {
+        background: #18191b !important;
+      }
+      @media (min-width: 1200px) {
+        .app > .nav #navPost::before,
+        .app > .nav #navPost::after {
+          background: #202124 !important;
+          transition: background-color 160ms ease, opacity 100ms linear !important;
+        }
+        .app > .nav #navPost:hover::before,
+        .app > .nav #navPost:hover::after {
+          background: #34363a !important;
+        }
+        .app > .nav #navPost:active::before,
+        .app > .nav #navPost:active::after {
+          background: #18191b !important;
+        }
+      }
+
     </style>
   </head>
   <body>
