@@ -28648,7 +28648,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         document.querySelectorAll("video, audio").forEach((media) => media.pause());
         reelManualPlayback = "";
         const activeReelStage = activeReelId
-          ? $("[data-reel-stage="" + CSS.escape(activeReelId) + ""]", $("#reelFeed"))
+          ? $("#reelFeed").querySelector('[data-reel-stage="' + CSS.escape(activeReelId) + '"]')
           : null;
         if (activeReelStage) {
           activeReelStage.classList.add("is-user-paused");
