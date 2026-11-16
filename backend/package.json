@@ -13,6 +13,7 @@
     "start": "node dist/index.js",
     "reel-worker": "tsx src/reel-worker.ts",
     "test:email": "tsx --test src/email.test.ts",
+    "test:security": "tsx --test src/forgot-password.test.ts src/validation.test.ts src/storage-path.test.ts src/media-url.test.ts",
     "test:reels": "tsx --test src/reels.test.ts",
     "test:realtime": "node scripts/realtime-smoke.mjs",
     "db:generate": "prisma generate",
