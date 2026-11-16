@@ -258,29 +258,48 @@ const verifyOneTimePasscode = async (email: string, purpose: "signup" | "reset",
     orderBy: { createdAt: "desc" },
   });
   if (!record) throw new HttpError(401, "Invalid or expired verification code");
-  if (record.expiresAt <= new Date()) {
-    await prisma.authCode.update({ where: { id: record.id }, data: { consumedAt: new Date() } });
+  const now = new Date();
+  if (record.expiresAt <= now) {
+    await prisma.authCode.updateMany({
+      where: { id: record.id, consumedAt: null },
+      data: { consumedAt: now },
+    });
     throw new HttpError(401, "Verification code expired");
   }
   if (record.attempts >= 5) {
-    await prisma.authCode.update({ where: { id: record.id }, data: { consumedAt: new Date() } });
+    await prisma.authCode.updateMany({
+      where: { id: record.id, consumedAt: null },
+      data: { consumedAt: now },
+    });
     throw new HttpError(401, "This verification code has been locked. Please request a new one.");
   }
+
   const valid = safeEqualHex(record.codeHash, hashOtpCode(code));
+  // Compare-and-swap on attempts + consumedAt prevents concurrent requests
+  // from reusing a code or racing past the five-attempt limit.
+  const updated = await prisma.authCode.updateMany({
+    where: {
+      id: record.id,
+      consumedAt: null,
+      expiresAt: { gt: now },
+      attempts: record.attempts,
+    },
+    data: valid
+      ? { consumedAt: now, attempts: { increment: 1 } }
+      : {
+          attempts: { increment: 1 },
+          ...(record.attempts + 1 >= 5 ? { consumedAt: now } : {}),
+        },
+  });
+  if (updated.count !== 1) {
+    throw new HttpError(401, "Invalid or expired verification code");
+  }
   if (!valid) {
-    await prisma.authCode.update({
-      where: { id: record.id },
-      data: { attempts: record.attempts + 1 },
-    });
     if (record.attempts + 1 >= 5) {
-      await prisma.authCode.update({ where: { id: record.id }, data: { consumedAt: new Date() } });
+      throw new HttpError(401, "This verification code has been locked. Please request a new one.");
     }
     throw new HttpError(401, "Invalid verification code");
   }
-  await prisma.authCode.update({
-    where: { id: record.id },
-    data: { consumedAt: new Date(), attempts: record.attempts + 1 },
-  });
   return record;
 };
 
@@ -369,10 +388,8 @@ app.get("/uploads/:filename", asyncRoute(async (req, res) => {
   }
   const url = await createUploadReadUrl(`/uploads/${filename}`, undefined, req.query.token);
   if (url.startsWith("/uploads/")) {
-    if (!req.query.token) {
-      res.sendStatus(404);
-      return;
-    }
+    // createUploadReadUrl has already validated the HMAC capability for
+    // local files; never treat an arbitrary non-empty token as authorization.
     res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     res.setHeader("Cache-Control", "private, max-age=86400, immutable");
     res.sendFile(path.join(uploadDirectory, filename));
@@ -923,36 +940,31 @@ api.post("/auth/resend-otp", asyncRoute(async (req, res) => {
 
 api.post("/auth/forgot-password", asyncRoute(async (req, res) => {
   const input = forgotPasswordSchema.parse(req.body);
-  const rawIdentifier = (input.identifier || input.email || "").trim();
-  const cleanHandle = rawIdentifier.replace(/^@/, "").toLowerCase();
-  const normalizedEmail = normalizeEmail(rawIdentifier);
+  const email = normalizeEmail((input.email || input.identifier || "").trim());
 
-  const user = await prisma.user.findFirst({
-    where: {
-      OR: [
-        { email: normalizedEmail },
-        { handle: cleanHandle },
-      ],
-    },
+  const user = await prisma.user.findUnique({
+    where: { email },
     select: { id: true, email: true },
   });
 
-  if (user && user.email) {
+  if (user) {
     try {
-      await createAuthCode(req, user.id, user.email, "reset");
+      await createAuthCode(req, user.id, email, "reset");
     } catch (error) {
       if (!(error instanceof EmailDeliveryError)) throw error;
     }
   } else {
-    // If account not found, still enforce IP rate limit to prevent brute force enumeration
+    // Apply the same per-address/IP throttle for unknown addresses without
+    // revealing whether an account exists.
     try {
-      enforceOtpRequestLimit(req, normalizedEmail, "reset");
+      enforceOtpRequestLimit(req, email, "reset");
     } catch {}
   }
 
+  // Never return the account's stored email: the caller already supplied the
+  // address, and account existence must not be disclosed by this endpoint.
   res.status(200).json({
     message: "If an account exists, we sent a code to the email on file.",
-    email: user?.email ? user.email : (rawIdentifier.includes("@") ? normalizedEmail : undefined),
   });
 }));
 
