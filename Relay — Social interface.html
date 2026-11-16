@@ -23559,7 +23559,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           toast("That post link is invalid.");
           return;
         }
-        if (!requireAuth()) return;
         const activeView = $$("[data-v]").find((section) => !section.hidden)?.id.slice(2);
         if (activeView === "thread" && updateRoute && threadPostId && threadPostId !== postId) {
           threadHistory.push(threadPostId);
