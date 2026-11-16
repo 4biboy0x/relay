@@ -22336,7 +22336,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const timer = setTimeout(() => {
             reelStageClickTimers.delete(stage);
             if (stage.isConnected) toggleReelPlayback(stage.dataset.reelStage);
-          }, 280);
+          }, 160);
           reelStageClickTimers.set(stage, timer);
         }
       }
