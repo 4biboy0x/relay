@@ -28665,6 +28665,19 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       function updateAccountUI() {
         updateEmailVerificationNotice();
+        const accountTrigger = $("#accountTrigger");
+        const accountMenu = $("#accountMenu");
+        if (!currentUser) {
+          accountMenu.hidden = true;
+          accountTrigger.setAttribute("aria-expanded", "false");
+          accountTrigger.setAttribute("aria-haspopup", "false");
+          accountTrigger.removeAttribute("aria-controls");
+          $("#navProfile")?.setAttribute("aria-expanded", "false");
+          accountMenuAnchor = null;
+        } else {
+          accountTrigger.setAttribute("aria-haspopup", "true");
+          accountTrigger.setAttribute("aria-controls", "accountMenu");
+        }
         $("#navName").textContent = currentUser?.displayName || "Sign in to Relay";
         $("#navHandle").textContent = currentUser ? `@${currentUser.handle}` : "Your account";
         setAvatar($("#navAvatar"), currentUser, "sm");
@@ -28685,6 +28698,22 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function toggleAccountMenu(force, anchor = null) {
         const trigger = $("#accountTrigger");
         const menu = $("#accountMenu");
+
+        // Guests do not have account actions. Treat the account control as a
+        // direct sign-in entry point instead of exposing switch/settings/sign-out.
+        if (!currentUser) {
+          menu.hidden = true;
+          trigger.setAttribute("aria-expanded", "false");
+          trigger.setAttribute("aria-haspopup", "false");
+          trigger.removeAttribute("aria-controls");
+          $("#navProfile")?.setAttribute("aria-expanded", "false");
+          accountMenuAnchor = null;
+          if (force !== false) showAuth();
+          return;
+        }
+
+        trigger.setAttribute("aria-haspopup", "true");
+        trigger.setAttribute("aria-controls", "accountMenu");
         const open = force ?? menu.hidden;
         menu.hidden = !open;
         trigger.setAttribute("aria-expanded", String(open));
