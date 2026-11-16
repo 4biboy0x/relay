@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { messageSchema } from "./validation";
+import { messageSchema, profileSchema, updatePostSchema } from "./validation";
 
 test("message schema accepts text with up to four image attachments", () => {
   const attachments = [
@@ -43,4 +43,27 @@ test("message schema requires stored dimensions to match attachments", () => {
     mediaUrl: "/uploads/legacy.gif",
     mediaDimensions: [{ width: 640, height: 480 }],
   }).success, true);
+});
+
+
+test("profile updates strip unrecognized account and privilege fields", () => {
+  const result = profileSchema.parse({
+    displayName: "Relay user",
+    email: "attacker@example.com",
+    passwordHash: "attacker-controlled",
+    role: "admin",
+    emailVerifiedAt: "2099-01-01T00:00:00.000Z",
+  });
+  assert.deepEqual(result, { displayName: "Relay user" });
+});
+
+test("post updates strip unrecognized ownership and moderation fields", () => {
+  const result = updatePostSchema.parse({
+    body: "Updated post",
+    authorId: "attacker-controlled",
+    deletedAt: null,
+    pinned: true,
+    visibility: "private",
+  });
+  assert.deepEqual(result, { body: "Updated post" });
 });
