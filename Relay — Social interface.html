@@ -28802,7 +28802,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#feed").innerHTML = "";
         $("#wf").innerHTML = "";
         $("#whoToFollowMore").hidden = true;
-        setAuthMode(false);
+        setAuthMode(false, true);
         showAuth();
       }
       async function signOut() {
@@ -28819,7 +28819,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#feed").innerHTML = "";
         $("#wf").innerHTML = "";
         $("#whoToFollowMore").hidden = true;
-        setAuthMode(false);
+        setAuthMode(false, true);
         showAuth();
       }
       const postEditorDialog = $("#postEditorDialog");
@@ -29457,8 +29457,15 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       deviceThemePreference.addEventListener("change", () => {
         if (!document.documentElement.dataset.theme) animateThemeChange(() => {});
       });
-      function setAuthMode(createAccount) {
+      function setAuthMode(createAccount, persistPreference = false) {
         registering = createAccount;
+        if (persistPreference) {
+          try {
+            localStorage.setItem("relay.authMode", registering ? "signup" : "login");
+          } catch (error) {
+            console.warn("Unable to save the authentication mode preference.", error);
+          }
+        }
         $("#authError").textContent = "";
         $("#signin-title").textContent = registering ? "Create account" : "Sign in";
         $("#authNameLabel").hidden = !registering;
@@ -30578,7 +30585,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           return;
         }
         if (e.target.closest("#authSwitch")) {
-          setAuthMode(!registering);
+          setAuthMode(!registering, true);
           focusInput(registering ? $("#authName") : $("#authEmail"), { isTypingMainScreen: false, preventScroll: true });
           return;
         }
@@ -32921,7 +32928,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         updateCookieConsentVisibility();
       });
       initializeCookieConsent();
-      setAuthMode(true);
+      let savedAuthMode = null;
+      try {
+        savedAuthMode = localStorage.getItem("relay.authMode");
+      } catch (error) {
+        console.warn("Unable to restore the authentication mode preference.", error);
+      }
+      setAuthMode(savedAuthMode === "login" ? false : true);
       loadSession().then(() => {
         if (initialLegalTab) openLegal(initialLegalTab, null, true);
       });
