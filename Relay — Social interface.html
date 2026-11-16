@@ -19923,6 +19923,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       const reelPlaybackFeedbackPending = new WeakMap();
       const reelLastTouchTap = new WeakMap();
       const reelLastDoubleTap = new WeakMap();
+      const reelStageClickTimers = new WeakMap();
+      const reelStageClickSuppressedUntil = new WeakMap();
       const reelActionRequests = new WeakSet();
       const reelShareRequests = new Set();
       function clearReelPlaybackFeedback(stage) {
@@ -20012,6 +20014,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const now = performance.now();
         if (now - (reelLastDoubleTap.get(stage) || 0) < 100) return;
         reelLastDoubleTap.set(stage, now);
+        clearTimeout(reelStageClickTimers.get(stage));
+        reelStageClickTimers.delete(stage);
+        reelStageClickSuppressedUntil.set(stage, now + 450);
         const button = stage.closest(".reel-item")?.querySelector('[data-reel-action="like"]');
         if (!button || !requireAuth()) return;
         showReelLikeBurst(stage, clientX, clientY);
@@ -22320,13 +22325,19 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
         const stage = event.target.closest("[data-reel-stage]");
         if (stage && !event.target.closest("button, [data-reel-progress]")) {
+          if (performance.now() < (reelStageClickSuppressedUntil.get(stage) || 0)) return;
           const muteControl = stage.querySelector("[data-reel-mute]");
           if (muteControl) {
             muteControl.classList.add("is-visible");
             clearTimeout(muteControl._reelMuteTimer);
             muteControl._reelMuteTimer = setTimeout(() => muteControl.classList.remove("is-visible"), 1400);
           }
-          toggleReelPlayback(stage.dataset.reelStage);
+          clearTimeout(reelStageClickTimers.get(stage));
+          const timer = setTimeout(() => {
+            reelStageClickTimers.delete(stage);
+            if (stage.isConnected) toggleReelPlayback(stage.dataset.reelStage);
+          }, 280);
+          reelStageClickTimers.set(stage, timer);
         }
       }
       function initializeReels() {
