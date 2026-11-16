@@ -1184,7 +1184,7 @@ api.post("/uploads/:kind", authRequired, verifiedEmailRequired, uploadLimiter, i
 api.get("/users/suggestions", authRequired, asyncRoute(async (req, res) => {
   const page = pageSchema.parse(req.query);
   const following = await prisma.follow.findMany({
-    where: { followerId: req.userId! },
+    where: { followerId: req.userId ?? "__anonymous_viewer__" },
     select: { followedId: true },
   });
   const followingIds = following.map((follow) => follow.followedId);
@@ -1220,7 +1220,7 @@ api.get("/users/suggestions", authRequired, asyncRoute(async (req, res) => {
   const records = await prisma.user.findMany({
     where: {
       id: { not: req.userId! },
-      followers: { none: { followerId: req.userId! } },
+      followers: { none: { followerId: req.userId ?? "__anonymous_viewer__" } },
     },
     select: {
       ...publicUser,
@@ -1460,7 +1460,7 @@ api.get("/users/:handle", authOptional, asyncRoute(async (req, res) => {
     select: {
       ...publicUser,
       _count: { select: { followers: true, following: true, posts: true } },
-      followers: { where: { followerId: req.userId! }, select: { followerId: true } },
+      followers: { where: { followerId: req.userId ?? "__anonymous_viewer__" }, select: { followerId: true } },
       following: { where: { followedId: req.userId ?? "__anonymous_viewer__" }, select: { followedId: true } },
     },
   });
@@ -1479,11 +1479,11 @@ api.get("/users/:handle", authOptional, asyncRoute(async (req, res) => {
 api.put("/users/:userId/follow", authRequired, verifiedEmailRequired, asyncRoute(async (req, res) => {
   const targetId = z.string().cuid().parse(req.params.userId);
   if (targetId === req.userId) throw new HttpError(400, "You cannot follow yourself");
-  const key = { followerId_followedId: { followerId: req.userId!, followedId: targetId } };
+  const key = { followerId_followedId: { followerId: req.userId ?? "__anonymous_viewer__", followedId: targetId } };
   const existing = await prisma.follow.findUnique({ where: key });
   await prisma.follow.upsert({
     where: key,
-    create: { followerId: req.userId!, followedId: targetId },
+    create: { followerId: req.userId ?? "__anonymous_viewer__", followedId: targetId },
     update: {},
   });
   if (!existing) {
@@ -1493,7 +1493,7 @@ api.put("/users/:userId/follow", authRequired, verifiedEmailRequired, asyncRoute
   emitToUser(targetId, "user:follow-state", { userId: req.userId!, followsYou: true });
   const [actorFollowers, actorFollowing, targetFollowers, targetFollowing] = await Promise.all([
     prisma.follow.count({ where: { followedId: req.userId! } }),
-    prisma.follow.count({ where: { followerId: req.userId! } }),
+    prisma.follow.count({ where: { followerId: req.userId ?? "__anonymous_viewer__" } }),
     prisma.follow.count({ where: { followedId: targetId } }),
     prisma.follow.count({ where: { followerId: targetId } }),
   ]);
@@ -1508,12 +1508,12 @@ api.put("/users/:userId/follow", authRequired, verifiedEmailRequired, asyncRoute
 
 api.delete("/users/:userId/follow", authRequired, asyncRoute(async (req, res) => {
   const targetId = z.string().cuid().parse(req.params.userId);
-  const deleted = await prisma.follow.deleteMany({ where: { followerId: req.userId!, followedId: targetId } });
+  const deleted = await prisma.follow.deleteMany({ where: { followerId: req.userId ?? "__anonymous_viewer__", followedId: targetId } });
   if (deleted.count) {
     emitToUser(targetId, "user:follow-state", { userId: req.userId!, followsYou: false });
     const [actorFollowers, actorFollowing, targetFollowers, targetFollowing] = await Promise.all([
       prisma.follow.count({ where: { followedId: req.userId! } }),
-      prisma.follow.count({ where: { followerId: req.userId! } }),
+      prisma.follow.count({ where: { followerId: req.userId ?? "__anonymous_viewer__" } }),
       prisma.follow.count({ where: { followedId: targetId } }),
       prisma.follow.count({ where: { followerId: targetId } }),
     ]);
@@ -1607,7 +1607,7 @@ api.get("/feed", authOptional, asyncRoute(async (req, res) => {
     return;
   }
   const follows = await prisma.follow.findMany({
-    where: { followerId: req.userId! },
+    where: { followerId: req.userId ?? "__anonymous_viewer__" },
     select: { followedId: true },
   });
   res.json(await listPosts(req.userId ?? null, page, {
@@ -1937,7 +1937,7 @@ api.get("/explore", authOptional, asyncRoute(async (req, res) => {
     select: {
       ...publicUser,
       _count: { select: { followers: true } },
-      followers: { where: { followerId: req.userId! }, select: { followerId: true } },
+      followers: { where: { followerId: req.userId ?? "__anonymous_viewer__" }, select: { followerId: true } },
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: page.limit + 1,
@@ -2038,7 +2038,7 @@ api.get("/search", authOptional, searchLimiter, asyncRoute(async (req, res) => {
           select: {
             ...publicUser,
             _count: { select: { followers: true } },
-            followers: { where: { followerId: req.userId! }, select: { followerId: true } },
+            followers: { where: { followerId: req.userId ?? "__anonymous_viewer__" }, select: { followerId: true } },
           },
         })
       : [];
