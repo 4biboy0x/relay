@@ -10151,7 +10151,7 @@
         will-change: opacity, transform;
       }
       .reel-play-overlay [data-indicator="play"] {
-        transform: translateX(1.5px) scale(.68) rotate(18deg);
+        transform: translate(0, 0) scale(.68) rotate(18deg);
       }
       .reel-play-overlay [data-indicator="pause"] {
         transform: translateY(3px) scale(.68) rotate(-14deg);
@@ -10160,9 +10160,6 @@
       .reel-stage.is-feedback-play .reel-play-overlay [data-indicator="play"] {
         opacity: 1;
         transform: translate(0, 0) scale(1) rotate(0);
-      }
-      .reel-stage.is-feedback-play .reel-play-overlay [data-indicator="play"] {
-        transform: translateX(1.5px) scale(1) rotate(0);
       }
       @media (prefers-reduced-motion: reduce) {
         .reel-play-overlay [data-indicator] { transition-duration: .01ms; }
