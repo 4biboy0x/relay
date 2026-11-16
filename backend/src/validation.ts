@@ -50,11 +50,11 @@ export const otpRequestSchema = z.object({
 });
 
 export const forgotPasswordSchema = z.object({
-  identifier: z.string().trim().min(1).max(254).optional(),
-  email: z.string().trim().max(254).optional(),
+  identifier: z.string().trim().email().max(254).optional(),
+  email: z.string().trim().email().max(254).optional(),
   purpose: z.enum(["reset"]).default("reset"),
 }).refine((data) => Boolean(data.identifier || data.email), {
-  message: "Identifier or email is required",
+  message: "A valid email address is required",
 });
 
 export const otpVerifySchema = z.object({
