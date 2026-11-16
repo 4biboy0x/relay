@@ -582,7 +582,7 @@ const setRelation = async (
   const userId = viewerIdFrom(req);
   const result = await prisma.$transaction(async (tx) => {
     const reel = await tx.reel.findFirst({
-      where: { id: reelId, status: ReelStatus.READY, deletedAt: null },
+      where: { id: reelId, status: ReelStatus.READY, publishedAt: { not: null }, deletedAt: null },
       select: { id: true, authorId: true },
     });
     if (!reel) throw new HttpError(404, "Reel not found");
@@ -686,7 +686,7 @@ router.post("/:id/share", authRequired, writeLimiter, asyncRoute(async (req, res
   const userId = viewerIdFrom(req);
   const counts = await prisma.$transaction(async (tx) => {
     const reel = await tx.reel.findFirst({
-      where: { id: reelId, status: ReelStatus.READY, deletedAt: null },
+      where: { id: reelId, status: ReelStatus.READY, publishedAt: { not: null }, deletedAt: null },
       select: { id: true },
     });
     if (!reel) throw new HttpError(404, "Reel not found");
@@ -945,7 +945,7 @@ router.post("/:id/comments", authRequired, verifiedEmailRequired, writeLimiter, 
   if (containsProfanity(input.body)) throw new HttpError(400, "Restricted words not allowed.");
   const result = await prisma.$transaction(async (tx) => {
     const reel = await tx.reel.findFirst({
-      where: { id: reelId, status: ReelStatus.READY, deletedAt: null },
+      where: { id: reelId, status: ReelStatus.READY, publishedAt: { not: null }, deletedAt: null },
       select: { id: true, authorId: true },
     });
     if (!reel) throw new HttpError(404, "Reel not found");
@@ -1172,7 +1172,7 @@ router.post("/:id/report", authRequired, writeLimiter, asyncRoute(async (req, re
   const input = reportSchema.parse(req.body);
   const result = await prisma.$transaction(async (tx) => {
     const reel = await tx.reel.findFirst({
-      where: { id: reelId, status: ReelStatus.READY, deletedAt: null },
+      where: { id: reelId, status: ReelStatus.READY, publishedAt: { not: null }, deletedAt: null },
       select: { id: true },
     });
     if (!reel) throw new HttpError(404, "Reel not found");
