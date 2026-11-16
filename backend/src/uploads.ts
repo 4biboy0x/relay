@@ -167,8 +167,17 @@ export const createUploadReadUrl = async (
       },
     },
   });
-  if (privateMessage && (!viewerId || privateMessage.conversation.members.length === 0)) {
-    return "/uploads/unauthorized";
+  if (privateMessage) {
+    const viewerIsMember = Boolean(viewerId && privateMessage.conversation.members.length > 0);
+    // Local media URLs are bearer capabilities: only a correctly signed,
+    // unexpired token for this exact filename can authorize the anonymous
+    // browser request that follows a member-authorized URL generation.
+    const hasValidLocalToken = !objectStorage
+      && typeof suppliedToken === "string"
+      && verifyLocalUploadToken(filename, suppliedToken);
+    if (!viewerIsMember && !hasValidLocalToken) {
+      throw new HttpError(404, "Media not found");
+    }
   }
   if (!objectStorage) {
     if (typeof suppliedToken === "string") {
