@@ -2212,12 +2212,12 @@
         place-items: center;
         border: 0;
         border-radius: 8px;
-        color: var(--text-2);
-        background: transparent;
+        color: var(--text);
+        background: var(--surface-2);
         cursor: pointer;
       }
       .legal-close:hover,
-      .cookie-settings-close:hover { background: var(--surface-2); }
+      .cookie-settings-close:hover { background: var(--hover); }
       .legal-close svg,
       .cookie-settings-close svg {
         width: 18px;
@@ -8977,7 +8977,7 @@
       .composer-topics-header { display: flex; min-height: 58px; flex: none; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
       .composer-topics-title { margin: 0; font-size: 16px; font-weight: 650; }
       .composer-topics-counter { margin-left: auto; color: var(--text-2); font-size: 12px; font-variant-numeric: tabular-nums; }
-      .composer-topics-done { min-height: 32px; padding: 0 12px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 12px; font-weight: 600; }
+      .composer-topics-done { min-height: 32px; padding: 0 12px; border-radius: 999px; background: var(--accent); color: var(--bg); font-size: 12px; font-weight: 600; }
       .composer-topics-body { min-height: 0; flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
       .composer-topics-body .composer-topic-option { min-height: 34px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-2); font-size: 13px; }
       .composer-topics-body .composer-topic-option[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: #fff; }
@@ -10924,7 +10924,7 @@
         transform: translateY(-50%);
         transition: background-color 160ms ease, color 160ms ease, opacity 160ms ease;
       }
-      .reel-comment-form .btn.is-ready { background: var(--accent); color: #fff; cursor: pointer; }
+      .reel-comment-form .btn.is-ready { background: var(--accent); color: var(--bg); cursor: pointer; }
       .reel-comment-form .btn:disabled { opacity: .55; cursor: not-allowed; }
       .reel-comment-form .btn span { display: none; }
       .reel-comment-form .btn .i { display: block; width: 20px; height: 20px; }
