@@ -17525,7 +17525,7 @@
         $("#cc").className = `count${remaining < 0 ? " over" : remaining < 20 ? " warn" : ""}`;
         $("#cc").hidden = editing ? remaining > 40 : remaining === 280;
         $("#cc").style.color = remaining < 0 ? "var(--like)" : editing ? "var(--text-3)" : remaining <= 40 ? "var(--accent)" : "var(--text-3)";
-        $("#pb").disabled = !$("#ct").value.trim() || remaining < 0 || Boolean(composerUploadPromise)
+        $("#pb").disabled = (!$("#ct").value.trim() && !composerMediaUrl && !composerMediaItems.length) || remaining < 0 || Boolean(composerUploadPromise)
           || (editing && !editChanged);
       }
       function stopPostPlaceholder() {
