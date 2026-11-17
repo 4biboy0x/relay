@@ -94,7 +94,7 @@ export const postSchema = z.object({
 export const updatePostSchema = z.object({
   body: z.string().trim().min(1).max(280),
   mediaUrl: mediaUrlSchema.nullable().optional(),
-  mediaUrls: z.array(mediaUrlSchema).max(4).nullable().optional(),
+  mediaUrls: z.array(mediaUrlSchema).max(4).optional(),
   mediaCrop: mediaCropSchema.nullable().optional(),
   mediaAlt: z.string().transform(strippedControlCharacters).transform((value) => value.slice(0, 1000)).nullable().optional(),
   location: z.string().trim().min(1).max(80).nullable().optional(),
