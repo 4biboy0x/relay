@@ -440,7 +440,10 @@
         background: var(--accent-h);
       }
       .btn-primary:disabled {
-        opacity: 0.4;
+        border-color: var(--border);
+        background: var(--surface-2);
+        color: var(--text-2);
+        opacity: 1;
         cursor: not-allowed;
       }
       .btn-line {
@@ -685,7 +688,7 @@
       }
       .settings-form input:focus { outline: none; border-color: var(--accent); }
       .settings-form .btn { justify-self: start; height: 36px; margin-top: 0; padding: 0 16px; border-radius: 8px; font-size: 14px; font-weight: 600; }
-      .settings-form .btn-primary:disabled { opacity: .4; }
+      .settings-form .btn-primary:disabled { opacity: 1; }
       .settings-password-wrap { position: relative; }
       .settings-password-wrap input { padding-right: 44px; }
       .settings-password-toggle { position: absolute; right: 4px; bottom: 4px; width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--text-3); }
@@ -1212,7 +1215,7 @@
         font-size: 14px;
         font-weight: 600;
       }
-      #v-home #pb:disabled { opacity: .45; }
+      #v-home #pb:disabled { opacity: 1; }
       #v-home .composer { border-bottom: 1px solid var(--border); }
 
       /* Keep the post composer toolbar usable on narrow mobile screens. */
