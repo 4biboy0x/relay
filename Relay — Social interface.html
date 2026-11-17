@@ -46,9 +46,9 @@
         --text: #09090b;
         --text-2: #52525b;
         --text-3: #a1a1aa;
-        --accent: #3b46c4;
-        --accent-h: #323bab;
-        --accent-soft: #eef0fd;
+        --accent: #18181b;
+        --accent-h: #3f3f46;
+        --accent-soft: #f4f4f5;
         --like: #d92d5a;
         --ok: #16794c;
         --shadow:
@@ -85,9 +85,9 @@
           --text: #fafafa;
           --text-2: #a1a1aa;
           --text-3: #71717a;
-          --accent: #7c86f2;
-          --accent-h: #99a1f5;
-          --accent-soft: #171a33;
+          --accent: #f4f4f5;
+          --accent-h: #d4d4d8;
+          --accent-soft: #27272a;
           --like: #f2597f;
           --ok: #4ade80;
           --shadow:
@@ -104,9 +104,9 @@
         --text: #fafafa;
         --text-2: #a1a1aa;
         --text-3: #71717a;
-        --accent: #7c86f2;
-        --accent-h: #99a1f5;
-        --accent-soft: #171a33;
+        --accent: #f4f4f5;
+        --accent-h: #d4d4d8;
+        --accent-soft: #27272a;
         --like: #f2597f;
         --ok: #4ade80;
         --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.35);
@@ -394,7 +394,7 @@
         justify-content: center;
         padding: 0 4px;
         border-radius: 999px;
-        background: #1d9bf0;
+        background: var(--accent);
         color: #fff;
         font-size: 11px;
         font-weight: 700;
@@ -6665,7 +6665,7 @@
         height: 6px;
         transform: translateX(-50%);
         border-radius: 50%;
-        background: #1d9bf0;
+        background: var(--accent);
       }
       :dir(rtl) .unread-count {
         transform: translateX(50%);
@@ -8970,7 +8970,7 @@
       .composer-topics-body .composer-topic-option[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: #fff; }
       .composer-topics-body .composer-topic-option:disabled { opacity: .4; }
       .composer-selected-topics:empty { display: none; }
-      .composer-selected-topic { display: inline-flex; min-height: 24px; align-items: center; gap: 6px; padding: 4px 10px; border: 0; border-radius: 999px; color: #4F46E5; background: rgba(79, 70, 229, 0.08); font-size: 12px; font-weight: 600; line-height: 16px; }
+      .composer-selected-topic { display: inline-flex; min-height: 24px; align-items: center; gap: 6px; padding: 4px 10px; border: 0; border-radius: 999px; color: var(--accent); background: var(--accent-soft); font-size: 12px; font-weight: 600; line-height: 16px; }
       .composer-selected-topic svg { width: 12px; height: 12px; flex: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
       #toggleComposerTopics { color: var(--accent); }
       .composer-topic-option { min-height: 29px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-2); font-size: 12px; }
