@@ -17303,6 +17303,24 @@
           $("#mediaPreviewImage").hidden = false;
         }
       }
+      function setComposerMediaCollection(urls) {
+        const mediaUrls = [...new Set((Array.isArray(urls) ? urls : []).filter((url) => typeof url === "string" && url.trim()))].slice(0, 4);
+        if (!mediaUrls.length) { setComposerMedia(""); return; }
+        setComposerMedia(mediaUrls[0]);
+        composerMediaItems = mediaUrls.map((url) => ({ id: crypto.randomUUID(), file: null, previewUrl: "", url, promise: null }));
+        composerMediaUrl = mediaUrls[0];
+        renderComposerExtraMedia();
+        const hasMedia = true;
+        $(".composer .box").classList.toggle("has-media", hasMedia);
+        $("#attachImage").setAttribute("aria-pressed", "true");
+        $("#mediaPreview").hidden = false;
+        $("#mediaPreviewImage").hidden = false;
+        $("#mediaPreviewImage").src = mediaHref(mediaUrls[0]);
+        $("#mediaPreviewName").textContent = mediaUrls.length > 1 ? `${mediaUrls.length} images attached` : "Attached image";
+        $("#mediaUploadStatus").textContent = "Ready to attach";
+        $("#addMediaDescription").hidden = Boolean(normalizeGiphyGifUrl(mediaUrls[0]));
+        $("#editMedia").hidden = Boolean(normalizeGiphyGifUrl(mediaUrls[0]));
+      }
       function clearComposerLocation() {
         composerLocation = "";
         clearTimeout(locationSearchTimer);
@@ -18927,7 +18945,7 @@
       const post = (p, searchTerm = "") => {
         const mine = currentUser && p.author.id === currentUser.id;
         const postMenu = mine
-          ? `<div class="post-menu-wrap"><button class="icon-btn more" type="button" data-post-menu-toggle aria-label="Post options" aria-haspopup="menu" aria-expanded="false">${ic("dots")}</button><div class="post-menu" role="menu" hidden><button type="button" role="menuitem" data-post-edit data-post-id="${esc(p.id)}" data-post-body="${esc(p.x)}" data-post-media="${esc(p.m || "")}" data-post-crop="${esc(JSON.stringify(postMediaCropFor(p) || null))}" data-post-alt="${esc(postMediaAltFor(p))}" data-post-location="${esc(p.location || "")}" data-post-topics="${esc(JSON.stringify(p.topics || []))}">Edit</button><button type="button" role="menuitem" data-post-delete>Delete</button></div></div>`
+          ? `<div class="post-menu-wrap"><button class="icon-btn more" type="button" data-post-menu-toggle aria-label="Post options" aria-haspopup="menu" aria-expanded="false">${ic("dots")}</button><div class="post-menu" role="menu" hidden><button type="button" role="menuitem" data-post-edit data-post-id="${esc(p.id)}" data-post-body="${esc(p.x)}" data-post-media="${esc(p.m || "")}" data-post-media-urls="${esc(JSON.stringify(p.mediaUrls || (p.m ? [p.m] : [])))}" data-post-crop="${esc(JSON.stringify(postMediaCropFor(p) || null))}" data-post-alt="${esc(postMediaAltFor(p))}" data-post-location="${esc(p.location || "")}" data-post-topics="${esc(JSON.stringify(p.topics || []))}">Edit</button><button type="button" role="menuitem" data-post-delete>Delete</button></div></div>`
           : "";
         const postHeadMarkup = `<div class="p-head"><div class="p-head-text"><b>${profileLink(p.author, p.n)}</b><span class="m"><span class="post-handle">@${esc(p.u)}</span><span class="post-time"> · ${p.t}</span></span></div>${postMenu}</div>`;
         if (p.replyToId) {
@@ -29049,6 +29067,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         composerDraftBeforeEdit = {
           body: $("#ct").value,
           mediaUrl: composerMediaUrl,
+          mediaUrls: composerMediaItems.length ? composerMediaItems.map((item) => item.url).filter(Boolean) : (composerMediaUrl ? [composerMediaUrl] : []),
           location: composerLocation,
           topics: [...selectedPostTopics],
         };
@@ -29057,6 +29076,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         editingPostOriginal = {
           body: data.body || "",
           mediaUrl: data.mediaUrl || "",
+          mediaUrls: Array.isArray(data.mediaUrls) ? [...data.mediaUrls] : (data.mediaUrl ? [data.mediaUrl] : []),
           location: getCompactLocationLabel(data.location || ""),
           topics: [...selectedPostTopics].sort(),
         };
@@ -29065,7 +29085,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#ct").style.height = "auto";
         $("#ct").style.height = `${Math.max(72, $("#ct").scrollHeight)}px`;
         clearComposerMedia();
-        setComposerMedia(data.mediaUrl || "");
+        setComposerMediaCollection(data.mediaUrls?.length ? data.mediaUrls : (data.mediaUrl ? [data.mediaUrl] : []));
         composerMediaCrop = validPostMediaCrop(data.mediaCrop ? JSON.parse(String(data.mediaCrop)) : null);
         composerMediaAlt = stripPostMediaControlCharacters(data.mediaAlt || "");
         if (composerMediaUrl) {
@@ -29100,7 +29120,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#ct").style.height = "auto";
         $("#ct").style.height = `${Math.min(120, Math.max(44, $("#ct").scrollHeight))}px`;
         clearComposerMedia();
-        if (draft?.mediaUrl) setComposerMedia(draft.mediaUrl);
+        if (draft?.mediaUrls?.length) setComposerMediaCollection(draft.mediaUrls);
+        else if (draft?.mediaUrl) setComposerMedia(draft.mediaUrl);
         clearComposerLocation();
         if (draft?.location) setComposerLocation(draft.location);
         setComposerTopics(draft?.topics || []);
@@ -29116,7 +29137,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function postEditorHasChanges() {
         return Boolean(editingPostOriginal
           && ($("#ct").value !== editingPostOriginal.body
-            || composerMediaUrl !== editingPostOriginal.mediaUrl
+            || JSON.stringify(composerMediaItems.length ? composerMediaItems.map((item) => item.url).filter(Boolean) : (composerMediaUrl ? [composerMediaUrl] : [])) !== JSON.stringify(editingPostOriginal.mediaUrls || (editingPostOriginal.mediaUrl ? [editingPostOriginal.mediaUrl] : []))
             || composerLocation !== editingPostOriginal.location
             || JSON.stringify([...selectedPostTopics].sort()) !== JSON.stringify(editingPostOriginal.topics || [])));
       }
@@ -30827,6 +30848,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             postId: editPost.dataset.postId,
             body: editPost.dataset.postBody,
             mediaUrl: editPost.dataset.postMedia,
+            mediaUrls: JSON.parse(editPost.dataset.postMediaUrls || "[]"),
             mediaCrop: editPost.dataset.postCrop === "null" ? null : editPost.dataset.postCrop,
             mediaAlt: editPost.dataset.postAlt,
             location: editPost.dataset.postLocation,
@@ -32381,6 +32403,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 body,
                 topics: selectedPostTopics.length ? selectedPostTopics : undefined,
                 mediaUrl: composerMediaUrl || null,
+                mediaUrls: composerMediaItems.length ? composerMediaItems.map((item) => item.url).filter(Boolean) : (composerMediaUrl ? [composerMediaUrl] : []),
                 mediaCrop: composerMediaUrl ? composerMediaCrop : null,
                 mediaAlt: composerMediaUrl ? composerMediaAlt : null,
                 location: composerLocation || null,
