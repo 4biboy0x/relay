@@ -47,6 +47,7 @@
         --text-2: #52525b;
         --text-3: #a1a1aa;
         --accent: #18181b;
+        --post-link: #0A66C2;
         --accent-contrast: #fff;
         --accent-h: #3f3f46;
         --accent-soft: #f4f4f5;
@@ -90,6 +91,7 @@
           --text-2: #a1a1aa;
           --text-3: #71717a;
           --accent: #f4f4f5;
+          --post-link: #70B5F9;
           --accent-contrast: #18181b;
           --accent-h: #d4d4d8;
           --accent-soft: #27272a;
@@ -113,6 +115,7 @@
         --text-2: #a1a1aa;
         --text-3: #71717a;
         --accent: #f4f4f5;
+        --post-link: #70B5F9;
         --accent-contrast: #18181b;
         --accent-h: #d4d4d8;
         --accent-soft: #27272a;
@@ -3659,17 +3662,20 @@
         color: var(--accent);
         text-decoration: none;
       }
-      .hashtag {
-        display: inline;
-        color: var(--accent);
-        font: inherit;
-        vertical-align: baseline;
-      }
+      .hashtag,
       .mention {
         display: inline;
-        color: var(--accent);
+        color: var(--post-link);
         font: inherit;
         vertical-align: baseline;
+        text-decoration: none;
+      }
+      .hashtag:hover,
+      .mention:hover,
+      .hashtag:focus-visible,
+      .mention:focus-visible {
+        text-decoration: underline;
+        text-underline-offset: 2px;
       }
       .media {
         margin-top: 12px;
