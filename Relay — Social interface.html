@@ -3048,7 +3048,7 @@
         font-weight: 700;
         backdrop-filter: blur(4px);
       }
-      .composer-media-extra{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}.composer-media-extra-item{position:relative;min-width:0;aspect-ratio:1;overflow:hidden;border-radius:12px;background:var(--surface-2)}.composer-media-extra-item img{width:100%;height:100%;object-fit:cover;display:block}.composer-media-extra-item .dismiss-btn{position:absolute;top:6px;right:6px}.media-preview-alt-action {
+      .composer-media-extra{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}.composer-media-extra-item{position:relative;min-width:0;aspect-ratio:1;overflow:hidden;border-radius:12px;background:var(--surface-2)}.composer-media-extra-item img{width:100%;height:100%;object-fit:cover;display:block}.composer-media-extra-item .dismiss-btn{position:absolute;top:6px;inset-inline-end:6px}.composer-media-extra-item .media-preview-edit{top:6px;inset-inline-start:6px;min-height:30px;padding:0 10px;font-size:12px}.composer-media-extra-item .media-preview-edit,.composer-media-extra-item .dismiss-btn{opacity:0;pointer-events:none;transition:opacity .14s ease}.composer-media-extra-item:hover .media-preview-edit,.composer-media-extra-item:hover .dismiss-btn,.composer-media-extra-item:focus-within .media-preview-edit,.composer-media-extra-item:focus-within .dismiss-btn{opacity:1;pointer-events:auto}@media(hover:none){.composer-media-extra-item .media-preview-edit,.composer-media-extra-item .dismiss-btn{opacity:1;pointer-events:auto}}.media-preview-alt-action {
         margin-top: 6px;
         padding: 0;
         color: var(--text-3);
@@ -5208,6 +5208,9 @@
       }
       #postEditorMount #mediaPreview .grow { display: none; }
       .composer #mediaPreview .grow { display: none; }
+      #postEditorMount #editMedia,#postEditorMount #removeMedia,.composer #editMedia,.composer #removeMedia{opacity:0;pointer-events:none;transition:opacity .14s ease}
+      #postEditorMount .media-preview-visual:hover #editMedia,#postEditorMount .media-preview-visual:focus-within #editMedia,#postEditorMount #mediaPreview:hover #removeMedia,#postEditorMount #mediaPreview:focus-within #removeMedia,.composer .media-preview-visual:hover #editMedia,.composer .media-preview-visual:focus-within #editMedia,.composer #mediaPreview:hover #removeMedia,.composer #mediaPreview:focus-within #removeMedia{opacity:1;pointer-events:auto}
+      @media(hover:none){#postEditorMount #editMedia,#postEditorMount #removeMedia,.composer #editMedia,.composer #removeMedia{opacity:1;pointer-events:auto}}
       #postEditorMount #removeMedia {
         position: absolute;
         top: 8px;
@@ -16428,6 +16431,7 @@
       let composerMediaCrop = null;
       let composerMediaAlt = "";
       let composerCropDraft = null;
+      let composerCropIndex = 0;
       let composerCropDrag = null;
       let composerCropNaturalSize = { width: 0, height: 0 };
       const postPlaceholderPhrases = [
@@ -17800,12 +17804,14 @@
       }
       function renderComposerExtraMedia() {
         const grid = $("#mediaPreviewExtra"), extras = composerMediaItems.slice(1);
-        grid.replaceChildren(...extras.map((item) => {
+        grid.replaceChildren(...extras.map((item, extraIndex) => {
+          const index = extraIndex + 1;
           const tile = document.createElement("div"); tile.className = "composer-media-extra-item";
           const image = document.createElement("img"); image.src = item.previewUrl || mediaHref(item.url || ""); image.alt = item.file?.name || "Selected image";
+          const edit = document.createElement("button"); edit.type = "button"; edit.className = "media-preview-edit"; edit.dataset.editComposerMedia = String(index); edit.textContent = "Edit"; edit.setAttribute("aria-label", `Edit image ${index + 1}`);
           const remove = document.createElement("button"); remove.type = "button"; remove.className = "dismiss-btn"; remove.dataset.removeComposerMedia = item.id; remove.setAttribute("aria-label", "Remove image");
           remove.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>';
-          tile.append(image, remove); return tile;
+          tile.append(image, edit, remove); return tile;
         }));
         grid.hidden = !extras.length;
       }
@@ -17910,14 +17916,17 @@
           button.setAttribute("aria-pressed", String(button.dataset.mediaRatio === composerCropDraft.ratio));
         });
       }
-      function openPostMediaCrop(tab = "crop") {
-        if (!composerMediaUrl) return;
-        composerCropDraft = {
-          ...(composerMediaCrop || { ratio: "original", x: .5, y: .5, zoom: 1 }),
-        };
+      function openPostMediaCrop(tab = "crop", mediaIndex = 0) {
+        const item = composerMediaItems[mediaIndex];
+        const mediaUrl = item?.url || (mediaIndex === 0 ? composerMediaUrl : "");
+        if (!mediaUrl) return;
+        composerCropIndex = mediaIndex;
+        const crop = item?.crop || (mediaIndex === 0 ? composerMediaCrop : null);
+        const alt = item?.alt ?? (mediaIndex === 0 ? composerMediaAlt : "");
+        composerCropDraft = { ...(crop || { ratio: "original", x: .5, y: .5, zoom: 1 }) };
         $("#postMediaCropImage").onload = syncPostMediaCropPreview;
-        $("#postMediaCropImage").src = mediaHref(composerMediaUrl);
-        $("#postMediaAltInput").value = composerMediaAlt;
+        $("#postMediaCropImage").src = mediaHref(mediaUrl);
+        $("#postMediaAltInput").value = alt;
         $("#postMediaAltCount").textContent = `${composerMediaAlt.length} / 1000`;
         setPostMediaCropTab(tab);
         $("#postMediaCropDialog").showModal();
@@ -17928,7 +17937,11 @@
         composerCropDrag = null;
         $("#postMediaCropDialog").close();
       }
-      $("#editMedia").addEventListener("click", () => openPostMediaCrop("crop"));
+      $("#editMedia").addEventListener("click", () => openPostMediaCrop("crop", 0));
+      $("#mediaPreviewExtra").addEventListener("click", (event) => {
+        const edit = event.target.closest("[data-edit-composer-media]");
+        if (edit) openPostMediaCrop("crop", Number(edit.dataset.editComposerMedia));
+      });
       $("#addMediaDescription").addEventListener("click", () => openPostMediaCrop("alt"));
       $("#postMediaCropBack").addEventListener("click", closePostMediaCrop);
       $("#postMediaCropDialog").addEventListener("cancel", (event) => {
@@ -17936,8 +17949,13 @@
         closePostMediaCrop();
       });
       $("#postMediaCropSave").addEventListener("click", () => {
-        composerMediaCrop = composerCropDraft ? { ...composerCropDraft } : null;
-        composerMediaAlt = stripPostMediaControlCharacters($("#postMediaAltInput").value);
+        const crop = composerCropDraft ? { ...composerCropDraft } : null;
+        const alt = stripPostMediaControlCharacters($("#postMediaAltInput").value);
+        if (composerMediaItems[composerCropIndex]) {
+          composerMediaItems[composerCropIndex].crop = crop;
+          composerMediaItems[composerCropIndex].alt = alt;
+        }
+        if (composerCropIndex === 0) { composerMediaCrop = crop; composerMediaAlt = alt; }
         $("#postMediaCropDialog").close();
         composerCropDraft = null;
         const altAction = $("#addMediaDescription");
@@ -18945,7 +18963,7 @@
       const post = (p, searchTerm = "") => {
         const mine = currentUser && p.author.id === currentUser.id;
         const postMenu = mine
-          ? `<div class="post-menu-wrap"><button class="icon-btn more" type="button" data-post-menu-toggle aria-label="Post options" aria-haspopup="menu" aria-expanded="false">${ic("dots")}</button><div class="post-menu" role="menu" hidden><button type="button" role="menuitem" data-post-edit data-post-id="${esc(p.id)}" data-post-body="${esc(p.x)}" data-post-media="${esc(p.m || "")}" data-post-media-urls="${esc(JSON.stringify(p.mediaUrls || (p.m ? [p.m] : [])))}" data-post-crop="${esc(JSON.stringify(postMediaCropFor(p) || null))}" data-post-alt="${esc(postMediaAltFor(p))}" data-post-location="${esc(p.location || "")}" data-post-topics="${esc(JSON.stringify(p.topics || []))}">Edit</button><button type="button" role="menuitem" data-post-delete>Delete</button></div></div>`
+          ? `<div class="post-menu-wrap"><button class="icon-btn more" type="button" data-post-menu-toggle aria-label="Post options" aria-haspopup="menu" aria-expanded="false">${ic("dots")}</button><div class="post-menu" role="menu" hidden><button type="button" role="menuitem" data-post-edit data-post-id="${esc(p.id)}" data-post-body="${esc(p.x)}" data-post-media="${esc(p.m || "")}" data-post-media-urls="${esc(JSON.stringify(p.mediaUrls || (p.m ? [p.m] : [])))}" data-post-crop="${esc(JSON.stringify(p.mediaCrop || postMediaCropFor(p) || null))}" data-post-alt="${esc(postMediaAltFor(p))}" data-post-location="${esc(p.location || "")}" data-post-topics="${esc(JSON.stringify(p.topics || []))}">Edit</button><button type="button" role="menuitem" data-post-delete>Delete</button></div></div>`
           : "";
         const postHeadMarkup = `<div class="p-head"><div class="p-head-text"><b>${profileLink(p.author, p.n)}</b><span class="m"><span class="post-handle">@${esc(p.u)}</span><span class="post-time"> · ${p.t}</span></span></div>${postMenu}</div>`;
         if (p.replyToId) {
@@ -29086,8 +29104,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         $("#ct").style.height = `${Math.max(72, $("#ct").scrollHeight)}px`;
         clearComposerMedia();
         setComposerMediaCollection(data.mediaUrls?.length ? data.mediaUrls : (data.mediaUrl ? [data.mediaUrl] : []));
-        composerMediaCrop = validPostMediaCrop(data.mediaCrop ? JSON.parse(String(data.mediaCrop)) : null);
+        const savedMediaCrop = data.mediaCrop ? JSON.parse(String(data.mediaCrop)) : null;
+        const savedCrops = Array.isArray(savedMediaCrop) ? savedMediaCrop : [];
+        composerMediaItems.forEach((item, index) => { item.crop = validPostMediaCrop(savedCrops[index]); item.alt = ""; });
+        composerMediaCrop = validPostMediaCrop(Array.isArray(savedMediaCrop) ? savedCrops[0] : savedMediaCrop);
         composerMediaAlt = stripPostMediaControlCharacters(data.mediaAlt || "");
+        if (composerMediaItems[0]) composerMediaItems[0].alt = composerMediaAlt;
         if (composerMediaUrl) {
           $("#editMedia").hidden = false;
           $("#addMediaDescription").hidden = false;
@@ -32404,7 +32426,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
                 topics: selectedPostTopics.length ? selectedPostTopics : undefined,
                 mediaUrl: composerMediaUrl || null,
                 mediaUrls: composerMediaItems.length ? composerMediaItems.map((item) => item.url).filter(Boolean) : (composerMediaUrl ? [composerMediaUrl] : []),
-                mediaCrop: composerMediaUrl ? composerMediaCrop : null,
+                mediaCrop: composerMediaItems.length ? composerMediaItems.map((item) => item.crop || null) : (composerMediaUrl ? composerMediaCrop : null),
                 mediaAlt: composerMediaUrl ? composerMediaAlt : null,
                 location: composerLocation || null,
               }),
@@ -32442,7 +32464,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const postBody = { body, topics: selectedPostTopics.length ? selectedPostTopics : undefined };
           if (composerMediaUrl) postBody.mediaUrl = composerMediaUrl;
           if (composerMediaItems.length) postBody.mediaUrls = composerMediaItems.map((item) => item.url).filter(Boolean);
-          if (composerMediaUrl && composerMediaCrop) postBody.mediaCrop = composerMediaCrop;
+          if (composerMediaItems.length && composerMediaItems.some((item) => item.crop)) postBody.mediaCrop = composerMediaItems.map((item) => item.crop || null);
+          else if (composerMediaUrl && composerMediaCrop) postBody.mediaCrop = composerMediaCrop;
           if (composerMediaUrl && composerMediaAlt) postBody.mediaAlt = composerMediaAlt;
           if (composerLocation) postBody.location = composerLocation;
           const result = await api("/posts", { method: "POST", body: JSON.stringify(postBody) });
