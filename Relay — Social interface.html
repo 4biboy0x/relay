@@ -47,6 +47,7 @@
         --text-2: #52525b;
         --text-3: #a1a1aa;
         --accent: #18181b;
+        --accent-contrast: #fff;
         --accent-h: #3f3f46;
         --accent-soft: #f4f4f5;
         --switch-off: #e4e4e7;
@@ -89,6 +90,7 @@
           --text-2: #a1a1aa;
           --text-3: #71717a;
           --accent: #f4f4f5;
+          --accent-contrast: #18181b;
           --accent-h: #d4d4d8;
           --accent-soft: #27272a;
           --switch-off: #3f3f46;
@@ -111,6 +113,7 @@
         --text-2: #a1a1aa;
         --text-3: #71717a;
         --accent: #f4f4f5;
+        --accent-contrast: #18181b;
         --accent-h: #d4d4d8;
         --accent-soft: #27272a;
         --switch-off: #3f3f46;
@@ -404,7 +407,7 @@
         padding: 0 4px;
         border-radius: 999px;
         background: var(--accent);
-        color: #fff;
+        color: var(--accent-contrast);
         font-size: 11px;
         font-weight: 700;
         line-height: 16px;
@@ -1395,7 +1398,7 @@
         padding: 0 14px;
         border: 0;
         border-radius: 8px;
-        color: #fff;
+        color: var(--accent-contrast);
         background: var(--accent);
         font: inherit;
         font-size: 14px;
@@ -2377,7 +2380,7 @@
       .legal-footer .btn-primary,
       .cookie-settings-actions .btn-primary {
         border-color: var(--accent);
-        color: #fff;
+        color: var(--accent-contrast);
         background: var(--accent);
       }
       .post-media-crop-save:hover { background: var(--accent-hover, var(--accent)); }
@@ -2950,7 +2953,7 @@
         flex: none;
         border-radius: 50%;
         border: 0;
-        color: #fff;
+        color: var(--accent-contrast);
         font-weight: 700;
         background: var(--accent);
       }
@@ -3163,7 +3166,7 @@
       }
       .profile-crop-save {
         border-color: var(--accent);
-        color: #fff;
+        color: var(--accent-contrast);
         background: var(--accent);
         transition: background 140ms ease, transform 140ms ease;
       }
@@ -5951,7 +5954,7 @@
       .action-dialog.confirmation #actionCancel:hover { background: var(--surface-2); }
       .confirm-dialog .confirm-submit,
       .action-dialog.confirmation #actionSubmit {
-        color: #fff;
+        color: var(--accent-contrast);
         background: var(--accent);
       }
       .confirm-dialog .confirm-submit:hover,
@@ -6957,7 +6960,7 @@
       .message-bubble.mine {
         align-self: flex-end;
         border-radius: 12px 12px 3px 12px;
-        color: #fff;
+        color: var(--accent-contrast);
         background: var(--accent);
       }
       /* Keep every text message uniformly rounded, including consecutive messages. */
@@ -8219,7 +8222,7 @@
         place-items: center;
         padding: 0;
         border-radius: 50%;
-        color: #fff;
+        color: var(--accent-contrast);
         background: var(--accent);
       }
       .message-send-text.is-editing svg {
@@ -8294,7 +8297,7 @@
       #messageRecordingSend {
         width: 36px;
         height: 36px;
-        color: #fff;
+        color: var(--accent-contrast);
         background: var(--accent);
       }
       #messageRecordingSend:hover { background: var(--accent-h); }
@@ -8435,7 +8438,7 @@
         background: var(--surface-2);
       }
       .message-bubble.mine.audio-message {
-        color: #fff;
+        color: var(--accent-contrast);
         background: var(--accent);
       }
       .message-image-item {
@@ -8980,7 +8983,7 @@
       .composer-topics-done { min-height: 32px; padding: 0 12px; border-radius: 999px; background: var(--accent); color: var(--bg); font-size: 12px; font-weight: 600; }
       .composer-topics-body { min-height: 0; flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
       .composer-topics-body .composer-topic-option { min-height: 34px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-2); font-size: 13px; }
-      .composer-topics-body .composer-topic-option[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: #fff; }
+      .composer-topics-body .composer-topic-option[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--accent-contrast); }
       .composer-topics-body .composer-topic-option:disabled { opacity: .4; }
       .composer-selected-topics:empty { display: none; }
       .composer-selected-topic { display: inline-flex; min-height: 24px; align-items: center; gap: 6px; padding: 4px 10px; border: 0; border-radius: 999px; color: var(--accent); background: var(--accent-soft); font-size: 12px; font-weight: 600; line-height: 16px; }
@@ -10779,7 +10782,7 @@
         font-weight: 600;
         cursor: pointer;
       }
-      .reel-comment-editor-actions button[type="submit"] { border-color: var(--accent); background: var(--accent); color: white; }
+      .reel-comment-editor-actions button[type="submit"] { border-color: var(--accent); background: var(--accent); color: var(--accent-contrast); }
       .reel-comment-editor-actions button:disabled { cursor: wait; opacity: .6; }
       .reel-comment-copy strong { font-size: 12px; }
       .reel-comment-copy p { margin: 4px 0 0; color: var(--text-2); font-size: 13px; line-height: 1.45; white-space: pre-wrap; }
@@ -11094,7 +11097,7 @@
           place-items: center;
           border-radius: 50%;
           background: var(--accent);
-          color: #fff;
+          color: var(--accent-contrast);
         }
         .app.reels-active .reels-top #createReelButton:hover { background: var(--accent-h); }
         .app.reels-active .reels-top #createReelButton .i { width: 20px; height: 20px; }
@@ -12055,7 +12058,7 @@
         justify-content: center;
         border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
         border-radius: 50%;
-        color: #fff;
+        color: var(--accent-contrast);
         background: var(--accent);
         box-shadow: 0 8px 24px rgba(9, 9, 11, .2);
         transition: transform 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
@@ -12214,7 +12217,7 @@
         flex: 0 0 56px;
         border: 0;
         border-radius: 50%;
-        color: #fff;
+        color: var(--accent-contrast);
         background: var(--accent);
         box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 28%, rgba(9, 9, 11, .16));
         -webkit-backdrop-filter: none;
