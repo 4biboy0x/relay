@@ -52,8 +52,8 @@ html = html.replace(
 const siteUrl = "https://relay-4vm.pages.dev";
 const socialImageUrl = siteUrl + "/assets/relay-social-preview.svg";
 const socialMetadata = [
-  '<link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg?v=2">
-  <link rel="shortcut icon" href="/favicon.svg?v=2">',
+  '<link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg?v=2">',
+  '<link rel="shortcut icon" href="/favicon.svg?v=2">',
   '<link rel="canonical" href="https://relay-4vm.pages.dev/">',
   '<meta name="description" content="Relay is a modern social platform to share updates, discover content, watch Reels, and connect through real-time messaging.">',
   '<meta property="og:type" content="website">',
