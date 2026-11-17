@@ -14428,9 +14428,12 @@
         }
         .app > .nav .wordmark-mark { opacity: 0 !important; }
         .app.messages-active > .nav .wordmark-full { opacity: 0 !important; }
-        /* Align the expanded Relay wordmark with the left edge of nav row surfaces. */
+        /* Align the first letter of the expanded wordmark with the icon glyphs below. */
         .app:not(.messages-active) > .nav .wordmark-full {
-          transform: translateX(-3px);
+          box-sizing: border-box !important;
+          padding-inline-start: 13px !important;
+          text-align: start !important;
+          transform: none !important;
         }
         .app.messages-active > .nav .wordmark-mark { opacity: 1 !important; }
 
