@@ -7628,6 +7628,11 @@
         box-shadow: var(--shadow, 0 4px 20px rgba(0,0,0,.12));
       }
       .message-action-menu[hidden] { display: none; }
+      @media (min-width: 768px) and (hover: hover) and (pointer: fine) {
+        .message-tools > .message-reaction-add,
+        .message-tools > button[data-message-reply],
+        .message-tools > button[data-message-more] { display: none !important; }
+      }
       .message-action-menu button {
         display: flex;
         width: 100%;
@@ -25505,7 +25510,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           ? `<button type="button" role="menuitem" data-message-menu-action="delete" data-message-id="${esc(messageId)}"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 14h12l1-14M9 7V4h6v3"/></svg><span>Delete message</span></button>`
           : "";
         const moreButton = showMore
-          ? `<button class="message-tool-button" type="button" data-message-more aria-expanded="false" aria-haspopup="menu" aria-label="More message actions" title="More">${ic("dots")}</button><div class="message-action-menu" role="menu" hidden>${editAction}${copyAction}${deleteAction}</div>`
+          ? `<button class="message-tool-button" type="button" data-message-more aria-expanded="false" aria-haspopup="menu" aria-label="More message actions" title="More">${ic("dots")}</button><div class="message-action-menu" role="menu" hidden><button type="button" role="menuitem" data-message-react-open="${esc(messageId)}">${ic("heart-plus")}<span>React</span></button><button type="button" role="menuitem" data-message-reply="${esc(messageId)}">${ic("reply")}<span>Reply</span></button>${editAction}${copyAction}${deleteAction}</div>`
           : "";
         const downloadButton = downloadAll
           ? `<button class="message-tool-button message-download-all" type="button" data-message-download-all="${esc(messageId)}" aria-label="Download all images" title="Download all images"><svg class="i message-download-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 20h14"/></svg><span class="message-download-spinner" aria-hidden="true"></span></button>`
@@ -25645,7 +25650,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         });
         closeAllMessageTools();
       }
-      function positionMessageActionMenu(trigger, menu) {
+      function positionMessageActionMenu(trigger, menu, point = null) {
         const tools = trigger.closest(".message-tools");
         const owner = trigger.closest(".message-row");
         if (!tools || !owner) return;
@@ -25653,18 +25658,20 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         menu._messageTools = tools;
         menu._messageTrigger = trigger;
         trigger._messageActionMenu = menu;
-        menu.dir = getComputedStyle(trigger).direction;
+        menu.dir = getComputedStyle(owner).direction;
         document.body.append(menu);
         menu.hidden = false;
-        const triggerRect = trigger.getBoundingClientRect();
         const menuRect = menu.getBoundingClientRect();
-        const rtl = getComputedStyle(trigger).direction === "rtl";
-        const alignedLeft = rtl ? triggerRect.right - menuRect.width : triggerRect.left;
+        const rtl = getComputedStyle(owner).direction === "rtl";
+        const triggerRect = point ? null : trigger.getBoundingClientRect();
+        const anchorX = Number.isFinite(point?.x) ? point.x : triggerRect.left;
+        const anchorY = Number.isFinite(point?.y) ? point.y : triggerRect.bottom;
+        const alignedLeft = rtl && !point ? anchorX - menuRect.width : anchorX;
         const left = Math.max(8, Math.min(window.innerWidth - menuRect.width - 8, alignedLeft));
-        const above = triggerRect.top - menuRect.height - 8;
-        const top = above >= 8 ? above : Math.min(window.innerHeight - menuRect.height - 8, triggerRect.bottom + 8);
-        menu.style.left = `${left}px`;
-        menu.style.top = `${top}px`;
+        const top = Math.max(8, Math.min(window.innerHeight - menuRect.height - 8,
+          anchorY + menuRect.height + 8 > window.innerHeight ? anchorY - menuRect.height : anchorY));
+        menu.style.left = left + "px";
+        menu.style.top = top + "px";
         owner.classList.add("has-message-popover");
       }
       async function copyMessageText(text) {
@@ -30059,7 +30066,22 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       };
       document.addEventListener("pointerup",finishMessageSwipe,{passive:true});
       document.addEventListener("pointercancel",finishMessageSwipe,{passive:true});
-      document.addEventListener("contextmenu",event=>{const t=event.target instanceof Element?event.target:event.target.parentElement;if(t?.closest(".message-bubble,.message-image-item"))event.preventDefault();});
+      document.addEventListener("contextmenu", (event) => {
+        const target = event.target instanceof Element ? event.target : event.target.parentElement;
+        const messageTarget = target?.closest(".message-bubble, .message-image-item, .message-attachment-group");
+        if (!messageTarget) return;
+        const desktopMouse = matchMedia("(min-width: 768px) and (hover: hover) and (pointer: fine)").matches;
+        if (!desktopMouse) { event.preventDefault(); return; }
+        const owner = messageTarget.closest(".message-row");
+        const messageId = swipeMessageId(messageTarget) || owner?.querySelector("[data-message-id]")?.dataset.messageId || "";
+        const tools = owner?.querySelector(".message-tools");
+        const trigger = tools?.querySelector("[data-message-more]");
+        const menu = tools?.querySelector(".message-action-menu");
+        if (!owner || !messageId || !trigger || !menu) return;
+        event.preventDefault();
+        closeMessageActionMenus();
+        positionMessageActionMenu(trigger, menu, { x: event.clientX, y: event.clientY });
+      }, true);
       document.addEventListener("selectstart",event=>{if(messageSwipeState && event.target instanceof Element && event.target.closest(".message-bubble,.message-image-item"))event.preventDefault();});
       $("#chatLog")?.addEventListener("scroll",()=>{cancelMessageLongPress();if(activeTouchMessageRow)clearActiveTouchMessage();},{passive:true});
       document.addEventListener("pointerdown",event=>{
