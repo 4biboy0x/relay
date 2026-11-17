@@ -6348,10 +6348,9 @@
       }
       @media (min-width: 768px) and (hover: hover) and (pointer: fine) {
         .conversation-more { display: none !important; }
-        .conversation-menu {
-          position: fixed;
-          inset-inline-end: auto;
-          transform-origin: top left;
+        .conversation-actions {
+          width: 32px;
+          height: 32px;
         }
       }
       .conversation-menu > button,
@@ -27032,32 +27031,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         clearTimeout(menu._inboxCloseTimer);
         if (open) {
           menu.hidden = false;
-          if (matchMedia("(min-width: 768px) and (hover: hover) and (pointer: fine)").matches) {
-            const row = container.closest(".conversation-row");
-            const rowRect = row?.getBoundingClientRect();
-            if (rowRect) {
-              menu.dir = getComputedStyle(row).direction;
-              const menuRect = menu.getBoundingClientRect();
-              const rtl = menu.dir === "rtl";
-              const desiredLeft = rtl ? rowRect.left : rowRect.right - menuRect.width;
-              const left = Math.max(8, Math.min(window.innerWidth - menuRect.width - 8, desiredLeft));
-              const below = rowRect.bottom + 4;
-              const top = below + menuRect.height <= window.innerHeight - 8
-                ? below : Math.max(8, rowRect.top - menuRect.height - 4);
-              menu.style.left = left + "px";
-              menu.style.top = top + "px";
-            }
-          } else {
-            menu.style.removeProperty("left");
-            menu.style.removeProperty("top");
-          }
+          menu.style.removeProperty("left");
+          menu.style.removeProperty("top");
           requestAnimationFrame(() => menu.classList.add("is-open"));
           trigger?.setAttribute("aria-expanded", "true");
           return;
         }
         menu.classList.remove("is-open");
-        menu.style.removeProperty("left");
-        menu.style.removeProperty("top");
         trigger?.setAttribute("aria-expanded", "false");
         menu._inboxCloseTimer = window.setTimeout(() => {
           if (!menu.classList.contains("is-open")) menu.hidden = true;
