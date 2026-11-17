@@ -7628,10 +7628,14 @@
         box-shadow: var(--shadow, 0 4px 20px rgba(0,0,0,.12));
       }
       .message-action-menu[hidden] { display: none; }
+      .message-action-menu [data-message-react-open],
+      .message-action-menu [data-message-reply] { display: none; }
       @media (min-width: 768px) and (hover: hover) and (pointer: fine) {
         .message-tools > .message-reaction-add,
         .message-tools > button[data-message-reply],
         .message-tools > button[data-message-more] { display: none !important; }
+        .message-action-menu [data-message-react-open],
+        .message-action-menu [data-message-reply] { display: flex; }
       }
       .message-action-menu button {
         display: flex;
