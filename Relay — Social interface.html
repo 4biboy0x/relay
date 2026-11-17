@@ -7628,6 +7628,15 @@
         box-shadow: var(--shadow, 0 4px 20px rgba(0,0,0,.12));
       }
       .message-action-menu[hidden] { display: none; }
+      .message-action-menu [data-message-react-open],
+      .message-action-menu [data-message-reply] { display: none; }
+      @media (min-width: 768px) and (hover: hover) and (pointer: fine) {
+        .message-tools > .message-reaction-add,
+        .message-tools > button[data-message-reply],
+        .message-tools > button[data-message-more] { display: none !important; }
+        .message-action-menu [data-message-react-open],
+        .message-action-menu [data-message-reply] { display: flex; }
+      }
       .message-action-menu button {
         display: flex;
         width: 100%;
@@ -25504,9 +25513,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const deleteAction = canDelete
           ? `<button type="button" role="menuitem" data-message-menu-action="delete" data-message-id="${esc(messageId)}"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 14h12l1-14M9 7V4h6v3"/></svg><span>Delete message</span></button>`
           : "";
-        const moreButton = showMore
-          ? `<button class="message-tool-button" type="button" data-message-more aria-expanded="false" aria-haspopup="menu" aria-label="More message actions" title="More">${ic("dots")}</button><div class="message-action-menu" role="menu" hidden>${editAction}${copyAction}${deleteAction}</div>`
-          : "";
+        const messageActionMenu = `<div class="message-action-menu" role="menu" hidden><button type="button" role="menuitem" data-message-react-open="${esc(messageId)}">${ic("heart-plus")}<span>React</span></button><button type="button" role="menuitem" data-message-reply="${esc(messageId)}">${ic("reply")}<span>Reply</span></button>${editAction}${copyAction}${deleteAction}</div>`;
+        const moreButton = `<button class="message-tool-button" type="button" data-message-more aria-expanded="false" aria-haspopup="menu" aria-label="More message actions" title="More"${showMore ? "" : " hidden"}>${ic("dots")}</button>${messageActionMenu}`;
         const downloadButton = downloadAll
           ? `<button class="message-tool-button message-download-all" type="button" data-message-download-all="${esc(messageId)}" aria-label="Download all images" title="Download all images"><svg class="i message-download-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 20h14"/></svg><span class="message-download-spinner" aria-hidden="true"></span></button>`
           : (directDownload && downloadUrl)
@@ -25602,7 +25610,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         owner?.classList.remove("has-message-popover");
         activeMessageReactionPicker = null;
       }
-      function openMessageReactionPicker(messageId, trigger, owner, container = document.body) {
+      function openMessageReactionPicker(messageId, trigger, owner, container = document.body, point = null) {
         closeMessageReactionPicker();
         const picker = document.createElement("div");
         picker.className = "message-reaction-picker";
@@ -25612,13 +25620,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           `<button type="button" data-message-react-emoji="${esc(emoji)}" data-message-react-id="${esc(messageId)}" aria-label="React with ${esc(emoji)}">${esc(emoji)}</button>`
         ).join("");
         container.append(picker);
-        const triggerRect = trigger.getBoundingClientRect();
+        const triggerRect = point ? null : trigger.getBoundingClientRect();
         const pickerRect = picker.getBoundingClientRect();
+        const anchorX = Number.isFinite(point?.x) ? point.x : triggerRect.left + triggerRect.width / 2;
+        const anchorY = Number.isFinite(point?.y) ? point.y : triggerRect.top;
         const left = Math.max(8, Math.min(window.innerWidth - pickerRect.width - 8,
-          triggerRect.left + triggerRect.width / 2 - pickerRect.width / 2));
-        const top = triggerRect.top - pickerRect.height - 8 >= 8
-          ? triggerRect.top - pickerRect.height - 8
-          : Math.min(window.innerHeight - pickerRect.height - 8, triggerRect.bottom + 8);
+          anchorX - pickerRect.width / 2));
+        const top = Math.max(8, Math.min(window.innerHeight - pickerRect.height - 8,
+          anchorY - pickerRect.height - 8));
         picker.style.left = `${left}px`;
         picker.style.top = `${Math.max(8, top)}px`;
         owner.classList.add("has-message-popover");
@@ -25632,7 +25641,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const owner = menu._messageRow;
           const trigger = menu._messageTrigger;
           const tools = menu._messageTools;
-          if (tools && menu.parentElement !== tools) tools.append(menu);
+          if (tools && menu.parentElement !== tools && !menu._desktopContextMenu) tools.append(menu);
           menu.removeAttribute("dir");
           menu._messageRow = null;
           menu._messageTools = null;
@@ -25645,7 +25654,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         });
         closeAllMessageTools();
       }
-      function positionMessageActionMenu(trigger, menu) {
+      function positionMessageActionMenu(trigger, menu, point = null) {
         const tools = trigger.closest(".message-tools");
         const owner = trigger.closest(".message-row");
         if (!tools || !owner) return;
@@ -25653,18 +25662,20 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         menu._messageTools = tools;
         menu._messageTrigger = trigger;
         trigger._messageActionMenu = menu;
-        menu.dir = getComputedStyle(trigger).direction;
+        menu.dir = getComputedStyle(owner).direction;
         document.body.append(menu);
         menu.hidden = false;
-        const triggerRect = trigger.getBoundingClientRect();
         const menuRect = menu.getBoundingClientRect();
-        const rtl = getComputedStyle(trigger).direction === "rtl";
-        const alignedLeft = rtl ? triggerRect.right - menuRect.width : triggerRect.left;
+        const rtl = getComputedStyle(owner).direction === "rtl";
+        const triggerRect = point ? null : trigger.getBoundingClientRect();
+        const anchorX = Number.isFinite(point?.x) ? point.x : triggerRect.left;
+        const anchorY = Number.isFinite(point?.y) ? point.y : triggerRect.bottom;
+        const alignedLeft = rtl && !point ? anchorX - menuRect.width : anchorX;
         const left = Math.max(8, Math.min(window.innerWidth - menuRect.width - 8, alignedLeft));
-        const above = triggerRect.top - menuRect.height - 8;
-        const top = above >= 8 ? above : Math.min(window.innerHeight - menuRect.height - 8, triggerRect.bottom + 8);
-        menu.style.left = `${left}px`;
-        menu.style.top = `${top}px`;
+        const top = Math.max(8, Math.min(window.innerHeight - menuRect.height - 8,
+          anchorY + menuRect.height + 8 > window.innerHeight ? anchorY - menuRect.height : anchorY));
+        menu.style.left = left + "px";
+        menu.style.top = top + "px";
         owner.classList.add("has-message-popover");
       }
       async function copyMessageText(text) {
@@ -30059,7 +30070,24 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       };
       document.addEventListener("pointerup",finishMessageSwipe,{passive:true});
       document.addEventListener("pointercancel",finishMessageSwipe,{passive:true});
-      document.addEventListener("contextmenu",event=>{const t=event.target instanceof Element?event.target:event.target.parentElement;if(t?.closest(".message-bubble,.message-image-item"))event.preventDefault();});
+      document.addEventListener("contextmenu", (event) => {
+        const target = event.target instanceof Element ? event.target : event.target.parentElement;
+        const messageTarget = target?.closest(".message-bubble, .message-image-item, .message-attachment-group");
+        if (!messageTarget) return;
+        const desktopMouse = matchMedia("(min-width: 768px) and (hover: hover) and (pointer: fine)").matches;
+        if (!desktopMouse) { event.preventDefault(); return; }
+        const owner = messageTarget.closest(".message-row");
+        const messageId = swipeMessageId(messageTarget) || owner?.querySelector("[data-message-id]")?.dataset.messageId || "";
+        const tools = owner?.querySelector(".message-tools");
+        const trigger = tools?.querySelector("[data-message-more]");
+        const menu = tools?._desktopContextMenu || tools?.querySelector(".message-action-menu");
+        if (!owner || !messageId || !trigger || !menu) return;
+        event.preventDefault();
+        closeMessageActionMenus();
+        menu._desktopContextMenu = true;
+        tools._desktopContextMenu = menu;
+        positionMessageActionMenu(trigger, menu, { x: event.clientX, y: event.clientY });
+      }, true);
       document.addEventListener("selectstart",event=>{if(messageSwipeState && event.target instanceof Element && event.target.closest(".message-bubble,.message-image-item"))event.preventDefault();});
       $("#chatLog")?.addEventListener("scroll",()=>{cancelMessageLongPress();if(activeTouchMessageRow)clearActiveTouchMessage();},{passive:true});
       document.addEventListener("pointerdown",event=>{
@@ -30149,6 +30177,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const directReply = e.target.closest("[data-message-reply]");
         if (directReply) {
           closeMessageBottomSheet();
+          closeMessageActionMenus();
           setMessageReplyTarget(directReply.dataset.messageReply);
           return;
         }
@@ -30162,8 +30191,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const owner = reactionTrigger.closest(".message-row");
           const messageId = reactionTrigger.dataset.messageReactOpen;
           if (owner && messageId) {
+            const fromDesktopContextMenu = Boolean(reactionTrigger.closest(".message-action-menu")?._desktopContextMenu);
+            const point = fromDesktopContextMenu ? { x: e.clientX, y: e.clientY } : null;
             closeMessageActionMenus();
-            openMessageReactionPicker(messageId, reactionTrigger, owner);
+            openMessageReactionPicker(messageId, reactionTrigger, owner, document.body, point);
           }
           return;
         }
