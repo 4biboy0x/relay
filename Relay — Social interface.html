@@ -19132,7 +19132,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const cached = readViewCache(`feed:${feedTab}`);
           if (Array.isArray(cached)) {
             posts = cached.map(normalizePost);
-            $("#feed").innerHTML = posts.map(post).join("")
+            $("#feed").innerHTML = posts.map((item) => post(item)).join("")
               || emptyState("Nothing here yet.", "Posts from your timeline will appear here.");
           }
           finishSkeleton = showDelayedSkeleton($("#feed"), "post");
@@ -19149,7 +19149,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           posts.push(...items);
           if (append) {
             await removeAppendSkeleton?.();
-            $("#feed").insertAdjacentHTML("beforeend", items.map(post).join(""));
+            $("#feed").insertAdjacentHTML("beforeend", items.map((item) => post(item)).join(""));
             const appended = items
               .map((item) => $(`.post[data-id="${CSS.escape(item.id)}"]`, $("#feed")))
               .filter(Boolean);
@@ -19162,7 +19162,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               }, { once: true });
             });
           } else {
-            $("#feed").innerHTML = items.map(post).join("") || emptyState("Nothing here yet.", "Posts from your timeline will appear here.");
+            $("#feed").innerHTML = items.map((item) => post(item)).join("") || emptyState("Nothing here yet.", "Posts from your timeline will appear here.");
           }
           if (!append) writeViewCache(`feed:${feedTab}`, items);
           joinVisiblePostRooms();
@@ -19313,8 +19313,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             }
           } else {
             $("#pf").innerHTML = append
-              ? $("#pf").innerHTML + items.map(post).join("")
-              : items.map(post).join("") || emptyState(`No ${t.toLowerCase()} yet.`, "Posts from this profile will appear here.");
+              ? $("#pf").innerHTML + items.map((item) => post(item)).join("")
+              : items.map((item) => post(item)).join("") || emptyState(`No ${t.toLowerCase()} yet.`, "Posts from this profile will appear here.");
           }
           if (!reelsTab) joinVisiblePostRooms();
           profileCursor = result.nextCursor;
