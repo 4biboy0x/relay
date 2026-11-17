@@ -25607,7 +25607,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         owner?.classList.remove("has-message-popover");
         activeMessageReactionPicker = null;
       }
-      function openMessageReactionPicker(messageId, trigger, owner, container = document.body) {
+      function openMessageReactionPicker(messageId, trigger, owner, container = document.body, point = null) {
         closeMessageReactionPicker();
         const picker = document.createElement("div");
         picker.className = "message-reaction-picker";
@@ -25617,13 +25617,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           `<button type="button" data-message-react-emoji="${esc(emoji)}" data-message-react-id="${esc(messageId)}" aria-label="React with ${esc(emoji)}">${esc(emoji)}</button>`
         ).join("");
         container.append(picker);
-        const triggerRect = trigger.getBoundingClientRect();
+        const triggerRect = point ? null : trigger.getBoundingClientRect();
         const pickerRect = picker.getBoundingClientRect();
+        const anchorX = Number.isFinite(point?.x) ? point.x : triggerRect.left + triggerRect.width / 2;
+        const anchorY = Number.isFinite(point?.y) ? point.y : triggerRect.top;
         const left = Math.max(8, Math.min(window.innerWidth - pickerRect.width - 8,
-          triggerRect.left + triggerRect.width / 2 - pickerRect.width / 2));
-        const top = triggerRect.top - pickerRect.height - 8 >= 8
-          ? triggerRect.top - pickerRect.height - 8
-          : Math.min(window.innerHeight - pickerRect.height - 8, triggerRect.bottom + 8);
+          anchorX - pickerRect.width / 2));
+        const top = Math.max(8, Math.min(window.innerHeight - pickerRect.height - 8,
+          anchorY - pickerRect.height - 8));
         picker.style.left = `${left}px`;
         picker.style.top = `${Math.max(8, top)}px`;
         owner.classList.add("has-message-popover");
@@ -25637,7 +25638,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const owner = menu._messageRow;
           const trigger = menu._messageTrigger;
           const tools = menu._messageTools;
-          if (tools && menu.parentElement !== tools) tools.append(menu);
+          if (tools && menu.parentElement !== tools && !menu._desktopContextMenu) tools.append(menu);
           menu.removeAttribute("dir");
           menu._messageRow = null;
           menu._messageTools = null;
@@ -30076,10 +30077,12 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const messageId = swipeMessageId(messageTarget) || owner?.querySelector("[data-message-id]")?.dataset.messageId || "";
         const tools = owner?.querySelector(".message-tools");
         const trigger = tools?.querySelector("[data-message-more]");
-        const menu = tools?.querySelector(".message-action-menu");
+        const menu = tools?._desktopContextMenu || tools?.querySelector(".message-action-menu");
         if (!owner || !messageId || !trigger || !menu) return;
         event.preventDefault();
         closeMessageActionMenus();
+        menu._desktopContextMenu = true;
+        tools._desktopContextMenu = menu;
         positionMessageActionMenu(trigger, menu, { x: event.clientX, y: event.clientY });
       }, true);
       document.addEventListener("selectstart",event=>{if(messageSwipeState && event.target instanceof Element && event.target.closest(".message-bubble,.message-image-item"))event.preventDefault();});
@@ -30171,6 +30174,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const directReply = e.target.closest("[data-message-reply]");
         if (directReply) {
           closeMessageBottomSheet();
+          closeMessageActionMenus();
           setMessageReplyTarget(directReply.dataset.messageReply);
           return;
         }
@@ -30184,8 +30188,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           const owner = reactionTrigger.closest(".message-row");
           const messageId = reactionTrigger.dataset.messageReactOpen;
           if (owner && messageId) {
+            const fromDesktopContextMenu = Boolean(reactionTrigger.closest(".message-action-menu")?._desktopContextMenu);
+            const point = fromDesktopContextMenu ? { x: e.clientX, y: e.clientY } : null;
             closeMessageActionMenus();
-            openMessageReactionPicker(messageId, reactionTrigger, owner);
+            openMessageReactionPicker(messageId, reactionTrigger, owner, document.body, point);
           }
           return;
         }
