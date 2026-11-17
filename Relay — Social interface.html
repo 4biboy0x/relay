@@ -17926,7 +17926,10 @@
         $("#postMediaAltTab").hidden = mediaIndex > 0;
         if (mediaIndex > 0 && tab === "alt") tab = "crop";
         composerCropDraft = { ...(crop || { ratio: "original", x: .5, y: .5, zoom: 1 }) };
-        $("#postMediaCropImage").onload = syncPostMediaCropPreview;
+        $("#postMediaCropImage").onload = () => {
+          composerCropNaturalSize = { width: $("#postMediaCropImage").naturalWidth, height: $("#postMediaCropImage").naturalHeight };
+          syncPostMediaCropPreview();
+        };
         $("#postMediaCropImage").src = mediaHref(mediaUrl);
         $("#postMediaAltInput").value = alt;
         $("#postMediaAltCount").textContent = `${composerMediaAlt.length} / 1000`;
