@@ -29163,8 +29163,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function postEditorHasChanges() {
         const currentCrops = composerMediaItems.map((item) => item.crop || null);
         const originalCrops = Array.isArray(editingPostOriginal?.mediaCrop)
-          ? editingPostOriginal.mediaCrop
-          : editingPostOriginal?.mediaCrop ? [editingPostOriginal.mediaCrop] : [];
+          ? [...editingPostOriginal.mediaCrop]
+          : [editingPostOriginal?.mediaCrop || null];
+        while (originalCrops.length < currentCrops.length) originalCrops.push(null);
+        originalCrops.length = currentCrops.length;
         return Boolean(editingPostOriginal
           && ($("#ct").value !== editingPostOriginal.body
             || JSON.stringify(composerMediaItems.length ? composerMediaItems.map((item) => item.url).filter(Boolean) : (composerMediaUrl ? [composerMediaUrl] : [])) !== JSON.stringify(editingPostOriginal.mediaUrls || (editingPostOriginal.mediaUrl ? [editingPostOriginal.mediaUrl] : []))
