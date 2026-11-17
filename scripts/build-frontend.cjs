@@ -19,7 +19,7 @@ if (process.env.NETLIFY === "true" && !apiUrl) {
 }
 if (apiUrl) {
   const parsedApiUrl = new URL(apiUrl);
-  if (!["http:", "https:"].includes(parsedApiUrl.protocol) || !parsedApiUrl.pathname.replace(/\\/+$/, "").endsWith("/api")) {
+  if (!["http:", "https:"].includes(parsedApiUrl.protocol) || !parsedApiUrl.pathname.replace(/\/+$/, "").endsWith("/api")) {
     throw new Error("VITE_API_URL must be an http(s) URL ending in /api");
   }
 }
@@ -31,7 +31,7 @@ if (apiUrl) {
   const escapedApiUrl = apiUrl.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
   html = html.replace(
     '<meta name="relay-api-base" content="/api" />',
-    `<meta name="relay-api-base" content="${escapedApiUrl}" />`,
+    '<meta name="relay-api-base" content="' + escapedApiUrl + '" />',
   );
 }
 const escapedGiphyApiKey = giphyApiKey.replace(/[&"<>]/g, (character) => ({
@@ -42,7 +42,7 @@ const escapedGiphyApiKey = giphyApiKey.replace(/[&"<>]/g, (character) => ({
 })[character]);
 html = html.replace(
   '<meta name="relay-giphy-api-key" content="" />',
-  `<meta name="relay-giphy-api-key" content="${escapedGiphyApiKey}" />`,
+  '<meta name="relay-giphy-api-key" content="' + escapedGiphyApiKey + '" />',
 );
 html = html.replace(
   '<meta name="relay-production" content="false" />',
@@ -50,7 +50,7 @@ html = html.replace(
 );
 
 const siteUrl = "https://relay-4vm.pages.dev";
-const socialImageUrl = `${siteUrl}/assets/relay-social-preview.svg`;
+const socialImageUrl = siteUrl + "/assets/relay-social-preview.svg";
 const socialMetadata = [
   '<link rel="icon" type="image/svg+xml" href="/favicon.svg">',
   '<link rel="canonical" href="https://relay-4vm.pages.dev/">',
@@ -60,18 +60,18 @@ const socialMetadata = [
   '<meta property="og:title" content="Relay — Social">',
   '<meta property="og:description" content="A modern space to connect, share, and discover. Explore posts, Reels, profiles, and real-time messaging on Relay.">',
   '<meta property="og:url" content="https://relay-4vm.pages.dev/">',
-  `<meta property="og:image" content="${socialImageUrl}">`,
+  '<meta property="og:image" content="' + socialImageUrl + '">',
   '<meta property="og:image:width" content="1200">',
   '<meta property="og:image:height" content="630">',
   '<meta property="og:image:type" content="image/svg+xml">',
   '<meta name="twitter:card" content="summary_large_image">',
   '<meta name="twitter:title" content="Relay — Social">',
   '<meta name="twitter:description" content="A modern space to connect, share, and discover. Explore posts, Reels, profiles, and real-time messaging on Relay.">',
-  `<meta name="twitter:image" content="${socialImageUrl}">`,
-].join("\\n  ");
-const headMatch = html.match(/<head\\b[^>]*>/i);
+  '<meta name="twitter:image" content="' + socialImageUrl + '">',
+].join("\n  ");
+const headMatch = html.match(/<head\b[^>]*>/i);
 if (!headMatch) throw new Error("Could not inject Relay social metadata: HTML head element was not found");
-html = html.replace(headMatch[0], `${headMatch[0]}\\n  ${socialMetadata}`);
+html = html.replace(headMatch[0], headMatch[0] + "\n  " + socialMetadata);
 
 fs.writeFileSync(stagingHtml, "<!doctype html><html><head><title>Relay</title></head><body></body></html>");
 
