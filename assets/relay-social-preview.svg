@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Relay — Social</title>
+  <desc id="desc">A modern space to connect, share, and discover.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#faf9f6"/>
+      <stop offset="1" stop-color="#eeece7"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f8f7f4"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#242424" flood-opacity=".10"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1040" cy="40" r="330" fill="#e6e3dc" opacity=".55"/>
+  <circle cx="1040" cy="40" r="245" fill="none" stroke="#d8d5ce" stroke-width="1.5"/>
+  <g transform="translate(96 210)" fill="none" stroke="#18181b" stroke-width="9" stroke-linecap="round">
+    <circle cx="42" cy="42" r="29" fill="#18181b" stroke="none"/>
+    <path d="M42 0a42 42 0 0 1 42 42"/>
+    <path d="M42 84A42 42 0 0 1 0 42"/>
+  </g>
+  <text x="205" y="295" fill="#18181b" font-family="Georgia,serif" font-size="116" letter-spacing="-7">Relay</text>
+  <text x="105" y="374" fill="#55534f" font-family="Arial,sans-serif" font-size="29" letter-spacing=".2">A modern space to connect, share, and discover.</text>
+  <g filter="url(#shadow)">
+    <rect x="720" y="145" width="390" height="330" rx="24" fill="url(#card)" stroke="#e4e1da"/>
+    <circle cx="766" cy="191" r="18" fill="#dedbd4"/>
+    <rect x="797" y="180" width="112" height="10" rx="5" fill="#d8d5cf"/>
+    <rect x="797" y="198" width="72" height="7" rx="3.5" fill="#e7e4de"/>
+    <rect x="750" y="232" width="330" height="164" rx="14" fill="#e5e2db"/>
+    <path d="M750 354l70-65 57 42 72-81 131 99v47H750z" fill="#b8b5ad"/>
+    <path d="M750 370l93-65 62 37 75-63 100 75v42H750z" fill="#85837c"/>
+    <path d="M750 383l108-48 72 27 75-38 75 47v25H750z" fill="#55544f"/>
+    <g fill="none" stroke="#45433f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M762 426c-9-12-25-1-13 11l13 12 13-12c12-12-4-23-13-11z"/>
+      <path d="M815 430a10 10 0 1 0 0 20h13l9 7v-11a10 10 0 0 0-22-16z"/>
+      <path d="M882 430h22l-7-7m7 7-7 7M906 448h-22l7-7m-7 7 7 7"/>
+    </g>
+  </g>
+  <g opacity=".72">
+    <rect x="940" y="86" width="184" height="38" rx="19" fill="#fff" stroke="#e5e2dc"/>
+    <circle cx="963" cy="105" r="7" fill="#9c9a93"/>
+    <rect x="979" y="100" width="113" height="9" rx="4.5" fill="#dedbd4"/>
+  </g>
+  <text x="105" y="550" fill="#77746d" font-family="Arial,sans-serif" font-size="17" letter-spacing="2">RELAY · SOCIAL</text>
+</svg>
