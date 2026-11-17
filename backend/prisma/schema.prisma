@@ -71,6 +71,7 @@ model Post {
   authorId      String
   body          String         @db.VarChar(280)
   mediaUrl      String?
+  mediaUrls     String[]       @default([]) @map("media_urls")
   mediaCrop     Json?          @map("media_crop")
   mediaAlt      String?        @map("media_alt") @db.VarChar(1000)
   location      String?        @db.VarChar(80)

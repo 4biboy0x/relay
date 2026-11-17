@@ -330,6 +330,7 @@ const mediaUrlFields = new Set([
   "attachments",
   "imageUrl",
   "mediaUrl",
+  "mediaUrls",
   "posterUrl",
   "thumbnailUrl",
   "url",
@@ -528,6 +529,7 @@ const postResponse = (post: PostRecord, counts: InteractionCounts = { likes: 0, 
   id: post.id,
   body: post.body,
   mediaUrl: post.mediaUrl,
+  mediaUrls: post.mediaUrls?.length ? post.mediaUrls : (post.mediaUrl ? [post.mediaUrl] : []),
   mediaCrop: post.mediaCrop,
   mediaAlt: post.mediaAlt,
   location: post.location,
@@ -1734,6 +1736,7 @@ api.post("/posts", authRequired, verifiedEmailRequired, asyncRoute(async (req, r
     replyRecipientId = parent.authorId;
   }
   const { topics: selectedTopics, ...postInput } = input;
+  if (postInput.mediaUrls?.length) postInput.mediaUrl = postInput.mediaUrls[0];
   const { post, mentionNotifications } = await prisma.$transaction(async (tx) => {
     const created = await tx.post.create({
       data: {

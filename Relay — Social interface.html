@@ -3048,7 +3048,7 @@
         font-weight: 700;
         backdrop-filter: blur(4px);
       }
-      .media-preview-alt-action {
+      .composer-media-extra{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}.composer-media-extra-item{position:relative;min-width:0;aspect-ratio:1;overflow:hidden;border-radius:12px;background:var(--surface-2)}.composer-media-extra-item img{width:100%;height:100%;object-fit:cover;display:block}.composer-media-extra-item .dismiss-btn{position:absolute;top:6px;right:6px}.media-preview-alt-action {
         margin-top: 6px;
         padding: 0;
         color: var(--text-3);
@@ -15120,13 +15120,14 @@
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>
                 </button>
               </div>
+              <div class="composer-media-extra" id="mediaPreviewExtra" hidden></div>
               <button class="media-preview-alt-action" id="addMediaDescription" type="button" hidden>Add description</button>
               <div class="composer-selected-topics" id="composerSelectedTopics" aria-label="Selected topics"></div>
               <div class="c-bar">
                 <button class="icon-btn" id="attachImage" aria-label="Attach image" aria-pressed="false">
                   <svg class="i" aria-hidden="true"><use href="#image" /></svg>
                 </button>
-                <input id="postFileInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden />
+                <input id="postFileInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden />
                 <button class="icon-btn" id="gifButton" type="button" aria-label="Add a GIF" aria-haspopup="dialog" aria-controls="gifPickerDialog" aria-expanded="false">
                   <svg class="i" aria-hidden="true"><use href="#gif" /></svg>
                 </button>
@@ -16416,6 +16417,7 @@
       let profileCropOffset = { x: 0, y: 0 };
       let profileCropDrag = null;
       let composerMediaUrl = "";
+      let composerMediaItems = [];
       let composerLocation = "";
       let composerPreviewUrl = "";
       let composerMediaRemovalAnimation = null;
@@ -17231,6 +17233,9 @@
       }
       function clearComposerMedia() {
         composerUploadGeneration += 1;
+        composerMediaItems.forEach((item) => { if (item.previewUrl) URL.revokeObjectURL(item.previewUrl); });
+        composerMediaItems = [];
+        $("#mediaPreviewExtra").replaceChildren(); $("#mediaPreviewExtra").hidden = true;
         composerMediaUrl = "";
         composerUploadPromise = null;
         composerMediaCrop = null;
@@ -17278,6 +17283,7 @@
       }
       function setComposerMedia(url) {
         cancelComposerMediaRemoval();
+        composerMediaItems = [];
         composerMediaUrl = url || "";
         $("#postFileInput").value = "";
         $("#attachImage").setAttribute("aria-pressed", String(Boolean(composerMediaUrl)));
@@ -17774,50 +17780,51 @@
         input.dispatchEvent(new Event("input", { bubbles: true }));
         input.focus();
       }
-      function selectComposerImage(file) {
-        if (!validImageFile(file)) {
-          toast("Choose a JPEG, PNG, WebP, or GIF image under 5 MB.");
-          return;
+      function renderComposerExtraMedia() {
+        const grid = $("#mediaPreviewExtra"), extras = composerMediaItems.slice(1);
+        grid.replaceChildren(...extras.map((item) => {
+          const tile = document.createElement("div"); tile.className = "composer-media-extra-item";
+          const image = document.createElement("img"); image.src = item.previewUrl || mediaHref(item.url || ""); image.alt = item.file?.name || "Selected image";
+          const remove = document.createElement("button"); remove.type = "button"; remove.className = "dismiss-btn"; remove.dataset.removeComposerMedia = item.id; remove.setAttribute("aria-label", "Remove image");
+          remove.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg>';
+          tile.append(image, remove); return tile;
+        }));
+        grid.hidden = !extras.length;
+      }
+      function removeComposerMediaItem(id) {
+        const index = composerMediaItems.findIndex((item) => item.id === id); if (index < 0) return;
+        const [item] = composerMediaItems.splice(index, 1); if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+        if (index === 0) {
+          composerMediaUrl = composerMediaItems[0]?.url || ""; composerMediaCrop = null; composerMediaAlt = "";
+          if (composerMediaItems[0]) $("#mediaPreviewImage").src = composerMediaItems[0].previewUrl || mediaHref(composerMediaItems[0].url || "");
+          else { $("#mediaPreview").hidden = true; $("#mediaPreviewImage").removeAttribute("src"); }
         }
-        clearComposerMedia();
-        const generation = composerUploadGeneration;
-        $("#mediaPreviewImage").hidden = false;
-        composerPreviewUrl = showLocalPreview(file, $("#mediaPreviewImage"));
-        $("#mediaPreview").hidden = false;
-        $(".composer .box").classList.add("has-media");
-        $("#mediaPreviewName").textContent = file.name;
-        $("#mediaUploadStatus").textContent = "Uploading image…";
-        $("#attachImage").setAttribute("aria-pressed", "true");
-        composerMediaCrop = null;
-        composerMediaAlt = "";
-        $("#addMediaDescription").hidden = true;
-        const naturalPreview = new Image();
-        naturalPreview.onload = () => {
-          if (generation !== composerUploadGeneration) return;
-          composerCropNaturalSize = { width: naturalPreview.naturalWidth, height: naturalPreview.naturalHeight };
-          syncComposerMediaPreview(null);
-          $("#addMediaDescription").hidden = file.type === "image/gif";
-        };
-        naturalPreview.src = composerPreviewUrl;
-        composerUploadPromise = uploadMedia(file, "post").then((result) => {
-          if (generation !== composerUploadGeneration) return;
-          composerMediaUrl = result.url;
-          if (composerPreviewUrl) URL.revokeObjectURL(composerPreviewUrl);
-          composerPreviewUrl = "";
-          $("#mediaPreviewImage").src = mediaHref(result.url);
-          $("#mediaUploadStatus").textContent = "Ready to attach";
-          $("#editMedia").hidden = file.type === "image/gif";
-          $("#addMediaDescription").hidden = file.type === "image/gif";
-        }).catch((error) => {
-          if (generation === composerUploadGeneration) clearComposerMedia();
-          toast(error.message);
-        }).finally(() => {
-          if (generation === composerUploadGeneration) {
-            composerUploadPromise = null;
-            updatePostButton();
-          }
-        });
-        updatePostButton();
+        renderComposerExtraMedia();
+        const hasMedia = Boolean(composerMediaItems.length || composerMediaUrl);
+        $(".composer .box").classList.toggle("has-media", hasMedia); $("#attachImage").setAttribute("aria-pressed", String(hasMedia));
+        $("#addMediaDescription").hidden = !hasMedia; $("#editMedia").hidden = !hasMedia;
+        composerUploadPromise = Promise.all(composerMediaItems.map((entry) => entry.promise).filter(Boolean)); updatePostButton();
+      }
+      function selectComposerImage(file) {
+        if (!validImageFile(file)) { toast("Choose a JPEG, PNG, WebP, or GIF image under 5 MB."); return; }
+        if (composerMediaItems.length >= 4) { toast("You can attach up to 4 images to a post."); return; }
+        const item = { id: crypto.randomUUID(), file, previewUrl: URL.createObjectURL(file), url: "", promise: null };
+        composerMediaItems.push(item);
+        if (composerMediaItems.length === 1) {
+          cancelComposerMediaRemoval(); composerPreviewUrl = item.previewUrl; $("#mediaPreviewImage").src = item.previewUrl;
+          $("#mediaPreviewImage").hidden = false; $("#mediaPreview").hidden = false; $("#mediaPreviewName").textContent = file.name;
+          $("#mediaUploadStatus").textContent = "Uploading image…"; $("#addMediaDescription").hidden = true; $("#editMedia").hidden = true;
+          composerMediaCrop = null; composerMediaAlt = "";
+          const preview = new Image(); preview.onload = () => { if (composerMediaItems[0] !== item) return; composerCropNaturalSize = { width: preview.naturalWidth, height: preview.naturalHeight }; syncComposerMediaPreview(null); $("#addMediaDescription").hidden = file.type === "image/gif"; }; preview.src = item.previewUrl;
+        }
+        $(".composer .box").classList.add("has-media"); $("#attachImage").setAttribute("aria-pressed", "true"); renderComposerExtraMedia();
+        item.promise = uploadMedia(file, "post").then((result) => {
+          if (!composerMediaItems.includes(item)) return; item.url = result.url;
+          if (composerMediaItems[0] === item) { composerMediaUrl = result.url; $("#mediaPreviewImage").src = mediaHref(result.url); $("#mediaUploadStatus").textContent = "Ready to attach"; $("#editMedia").hidden = file.type === "image/gif"; $("#addMediaDescription").hidden = file.type === "image/gif"; }
+          if (item.previewUrl) URL.revokeObjectURL(item.previewUrl); item.previewUrl = ""; renderComposerExtraMedia();
+        }).catch((error) => { if (composerMediaItems.includes(item)) removeComposerMediaItem(item.id); toast(error.message); })
+          .finally(() => { composerUploadPromise = Promise.all(composerMediaItems.map((entry) => entry.promise).filter(Boolean)); updatePostButton(); });
+        composerUploadPromise = Promise.all(composerMediaItems.map((entry) => entry.promise).filter(Boolean)); updatePostButton();
       }
       function stripPostMediaControlCharacters(value) {
         return String(value || "").replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 1000);
@@ -30635,10 +30642,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           $("#postFileInput").click();
           return;
         }
-        if (e.target.closest("#removeMedia")) {
-          clearComposerMedia();
-          return;
-        }
+        const removeComposerMedia = e.target.closest("[data-remove-composer-media]");
+        if (removeComposerMedia) { removeComposerMediaItem(removeComposerMedia.dataset.removeComposerMedia); return; }
+        if (e.target.closest("#removeMedia")) { clearComposerMedia(); return; }
         const topicOpen = e.target.closest("[data-topic-open]");
         if (topicOpen) {
           exploreTab = `topic:${topicOpen.dataset.topicOpen}`;
@@ -31531,10 +31537,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           queueMessageImageFiles(files);
           return;
         }
-        if (e.target.id === "postFileInput") {
-          const file = e.target.files?.[0];
-          if (file) selectComposerImage(file);
-        }
+        if (e.target.id === "postFileInput") { const files = Array.from(e.target.files || []); e.target.value = ""; files.forEach((file) => selectComposerImage(file)); }
         if (e.target.matches("[data-profile-upload]")) selectProfileImage(e.target);
       });
       document.addEventListener("pointerdown", (event) => {
@@ -32411,6 +32414,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (composerPreviewUrl && !composerMediaUrl) throw new Error("Wait for the image upload to finish.");
           const postBody = { body, topics: selectedPostTopics.length ? selectedPostTopics : undefined };
           if (composerMediaUrl) postBody.mediaUrl = composerMediaUrl;
+          if (composerMediaItems.length) postBody.mediaUrls = composerMediaItems.map((item) => item.url).filter(Boolean);
           if (composerMediaUrl && composerMediaCrop) postBody.mediaCrop = composerMediaCrop;
           if (composerMediaUrl && composerMediaAlt) postBody.mediaAlt = composerMediaAlt;
           if (composerLocation) postBody.location = composerLocation;
