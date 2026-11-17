@@ -17823,7 +17823,7 @@
         const index = composerMediaItems.findIndex((item) => item.id === id); if (index < 0) return;
         const [item] = composerMediaItems.splice(index, 1); if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
         if (index === 0) {
-          composerMediaUrl = composerMediaItems[0]?.url || ""; composerMediaCrop = null; composerMediaAlt = "";
+          composerMediaUrl = composerMediaItems[0]?.url || ""; composerMediaCrop = composerMediaItems[0]?.crop || null; composerMediaAlt = composerMediaItems[0]?.alt || "";
           if (composerMediaItems[0]) $("#mediaPreviewImage").src = composerMediaItems[0].previewUrl || mediaHref(composerMediaItems[0].url || "");
           else { $("#mediaPreview").hidden = true; $("#mediaPreviewImage").removeAttribute("src"); }
         }
@@ -17923,6 +17923,8 @@
         composerCropIndex = mediaIndex;
         const crop = item?.crop || (mediaIndex === 0 ? composerMediaCrop : null);
         const alt = item?.alt ?? (mediaIndex === 0 ? composerMediaAlt : "");
+        $("#postMediaAltTab").hidden = mediaIndex > 0;
+        if (mediaIndex > 0 && tab === "alt") tab = "crop";
         composerCropDraft = { ...(crop || { ratio: "original", x: .5, y: .5, zoom: 1 }) };
         $("#postMediaCropImage").onload = syncPostMediaCropPreview;
         $("#postMediaCropImage").src = mediaHref(mediaUrl);
@@ -17933,6 +17935,7 @@
         requestAnimationFrame(syncPostMediaCropPreview);
       }
       function closePostMediaCrop() {
+        $("#postMediaAltTab").hidden = false;
         composerCropDraft = null;
         composerCropDrag = null;
         $("#postMediaCropDialog").close();
