@@ -25509,9 +25509,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const deleteAction = canDelete
           ? `<button type="button" role="menuitem" data-message-menu-action="delete" data-message-id="${esc(messageId)}"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 14h12l1-14M9 7V4h6v3"/></svg><span>Delete message</span></button>`
           : "";
+        const messageActionMenu = `<div class="message-action-menu" role="menu" hidden><button type="button" role="menuitem" data-message-react-open="${esc(messageId)}">${ic("heart-plus")}<span>React</span></button><button type="button" role="menuitem" data-message-reply="${esc(messageId)}">${ic("reply")}<span>Reply</span></button>${editAction}${copyAction}${deleteAction}</div>`;
         const moreButton = showMore
-          ? `<button class="message-tool-button" type="button" data-message-more aria-expanded="false" aria-haspopup="menu" aria-label="More message actions" title="More">${ic("dots")}</button><div class="message-action-menu" role="menu" hidden><button type="button" role="menuitem" data-message-react-open="${esc(messageId)}">${ic("heart-plus")}<span>React</span></button><button type="button" role="menuitem" data-message-reply="${esc(messageId)}">${ic("reply")}<span>Reply</span></button>${editAction}${copyAction}${deleteAction}</div>`
-          : "";
+          ? `<button class="message-tool-button" type="button" data-message-more aria-expanded="false" aria-haspopup="menu" aria-label="More message actions" title="More">${ic("dots")}</button>${messageActionMenu}`
+          : messageActionMenu;
         const downloadButton = downloadAll
           ? `<button class="message-tool-button message-download-all" type="button" data-message-download-all="${esc(messageId)}" aria-label="Download all images" title="Download all images"><svg class="i message-download-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 20h14"/></svg><span class="message-download-spinner" aria-hidden="true"></span></button>`
           : (directDownload && downloadUrl)
