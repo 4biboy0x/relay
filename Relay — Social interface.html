@@ -49,6 +49,9 @@
         --accent: #18181b;
         --accent-h: #3f3f46;
         --accent-soft: #f4f4f5;
+        --switch-off: #e4e4e7;
+        --switch-on: #18181b;
+        --switch-thumb: #fff;
         --like: #d92d5a;
         --ok: #16794c;
         --shadow:
@@ -88,6 +91,9 @@
           --accent: #f4f4f5;
           --accent-h: #d4d4d8;
           --accent-soft: #27272a;
+          --switch-off: #3f3f46;
+          --switch-on: #d4d4d8;
+          --switch-thumb: #18181b;
           --like: #f2597f;
           --ok: #4ade80;
           --shadow:
@@ -107,6 +113,9 @@
         --accent: #f4f4f5;
         --accent-h: #d4d4d8;
         --accent-soft: #27272a;
+        --switch-off: #3f3f46;
+        --switch-on: #d4d4d8;
+        --switch-thumb: #18181b;
         --like: #f2597f;
         --ok: #4ade80;
         --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.35);
@@ -434,7 +443,7 @@
       }
       .btn-primary {
         background: var(--accent);
-        color: #fff;
+        color: var(--bg);
       }
       .btn-primary:hover:not(:disabled) {
         background: var(--accent-h);
@@ -2462,10 +2471,11 @@
         content: "";
         transition: transform 150ms ease;
       }
-      .cookie-switch[aria-checked="true"] { background: var(--accent); }
+      .cookie-switch[aria-checked="true"] { background: var(--switch-on); }
       .cookie-switch[aria-checked="true"]::after { transform: translateX(16px); }
       .cookie-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-      .cookie-switch:disabled { opacity: .6; cursor: not-allowed; }
+      .cookie-switch:disabled { background: var(--switch-off); opacity: 1; cursor: not-allowed; }
+      .cookie-switch:disabled::after { background: var(--text-3); box-shadow: none; }
       .cookie-settings-actions {
         display: flex;
         flex-wrap: wrap;
