@@ -29098,6 +29098,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           body: data.body || "",
           mediaUrl: data.mediaUrl || "",
           mediaUrls: Array.isArray(data.mediaUrls) ? [...data.mediaUrls] : (data.mediaUrl ? [data.mediaUrl] : []),
+          mediaCrop: data.mediaCrop ? JSON.parse(String(data.mediaCrop)) : null,
           location: getCompactLocationLabel(data.location || ""),
           topics: [...selectedPostTopics].sort(),
         };
@@ -29160,9 +29161,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         postEditorReturnFocus = null;
       }
       function postEditorHasChanges() {
+        const currentCrops = composerMediaItems.map((item) => item.crop || null);
+        const originalCrops = Array.isArray(editingPostOriginal?.mediaCrop)
+          ? editingPostOriginal.mediaCrop
+          : editingPostOriginal?.mediaCrop ? [editingPostOriginal.mediaCrop] : [];
         return Boolean(editingPostOriginal
           && ($("#ct").value !== editingPostOriginal.body
             || JSON.stringify(composerMediaItems.length ? composerMediaItems.map((item) => item.url).filter(Boolean) : (composerMediaUrl ? [composerMediaUrl] : [])) !== JSON.stringify(editingPostOriginal.mediaUrls || (editingPostOriginal.mediaUrl ? [editingPostOriginal.mediaUrl] : []))
+            || JSON.stringify(currentCrops) !== JSON.stringify(originalCrops)
             || composerLocation !== editingPostOriginal.location
             || JSON.stringify([...selectedPostTopics].sort()) !== JSON.stringify(editingPostOriginal.topics || [])));
       }
