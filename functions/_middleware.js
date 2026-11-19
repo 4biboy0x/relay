@@ -265,13 +265,15 @@ async function collectPaged(apiBase, endpoint, limit, mapItem) {
 async function sitemapResponse(request, env, kind) {
   return loadCached(SITE_URL + "/__relay-sitemap-cache/" + kind, async () => {
     try {
+      if (kind === "static") {
+        const headers = { "Content-Type": "application/xml; charset=utf-8", "Cache-Control": "public, max-age=300, s-maxage=" + SITEMAP_CACHE_SECONDS + ", stale-while-revalidate=1800" };
+        return new Response(sitemapXml([{ loc: SITE_URL + "/" }]), { status: 200, headers });
+      }
       const shell = await getShell(request, env);
       const apiBase = getApiBase(shell, request, env);
       if (!apiBase) return new Response("Sitemap API configuration is missing", { status: 503 });
       let result;
-      if (kind === "static") {
-        result = { urls: [{ loc: SITE_URL + "/" }], truncated: false };
-      } else if (kind === "topics") {
+      if (kind === "topics") {
         const response = await fetchApiJson(apiBase, "/topics");
         if (!response.data) return new Response("Topic index unavailable", { status: 503 });
         result = { urls: (response.data.items || []).map((topic) => ({ loc: SITE_URL + "/topic/" + encodeURIComponent(topic.slug) })).slice(0, MAX_SITEMAP_URLS), truncated: false };
