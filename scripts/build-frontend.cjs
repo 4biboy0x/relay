@@ -52,15 +52,15 @@ html = html.replace(
 const siteUrl = "https://relay-4vm.pages.dev";
 const socialImageUrl = siteUrl + "/assets/relay-social-preview.png";
 const socialMetadata = [
-  '<link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg?v=7">',
-  '<link rel="shortcut icon" href="/favicon.svg?v=7">',
+  '<link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg?v=6">',
+  '<link rel="shortcut icon" href="/favicon.svg?v=6">',
   '<link rel="canonical" href="https://relay-4vm.pages.dev/">',
   '<meta name="google-site-verification" content="P6oNkhQsOa6wQ6NIsmWm2Hc88RWP6gm8rj-_sWRvHjw">',
   '<meta name="description" content="Relay is a social network where you can edit your posts, pin as many chats as you want, and set a profile banner. Browse without signing up.">',
   '<meta name="theme-color" content="#ffffff">',
   '<meta property="og:type" content="website">',
   '<meta property="og:site_name" content="Relay">',
-  '<meta property="og:title" content="Relay: a social network with Reels, chats and post editing">',
+  '<meta property="og:title" content="Relay">',
   '<meta property="og:description" content="Relay is a social network where you can edit your posts, pin as many chats as you want, and set a profile banner. Browse without signing up.">',
   '<meta property="og:url" content="https://relay-4vm.pages.dev/">',
   '<meta property="og:image" content="' + socialImageUrl + '">',
@@ -69,7 +69,7 @@ const socialMetadata = [
   '<meta property="og:image:type" content="image/png">',
   '<meta property="og:image:alt" content="Relay social preview: Edit posts. Pin unlimited chats. Browse without an account.">',
   '<meta name="twitter:card" content="summary_large_image">',
-  '<meta name="twitter:title" content="Relay: a social network with Reels, chats and post editing">',
+  '<meta name="twitter:title" content="Relay">',
   '<meta name="twitter:description" content="Relay is a social network where you can edit your posts, pin as many chats as you want, and set a profile banner. Browse without signing up.">',
   '<meta name="twitter:image" content="' + socialImageUrl + '">',
   '<meta name="twitter:image:alt" content="Relay social preview: Edit posts. Pin unlimited chats. Browse without an account.">',
