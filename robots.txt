@@ -1,6 +1,5 @@
 User-agent: *
 Allow: /
 Disallow: /api/
-Disallow: /realtime-demo.html
 
 Sitemap: https://relay-4vm.pages.dev/sitemap.xml
