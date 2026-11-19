@@ -19253,6 +19253,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (reelsTab) {
             query.delete("tab");
             if (owner) {
+              // Keep the profile identity in sync even when its header is already cached.
+              viewedProfileHandle = currentUser.handle;
               if (headerNeedsLoad) {
                 profile = await api(`/users/${encodeURIComponent(currentUser.handle)}`);
                 viewedProfileHandle = profile.handle;
@@ -19600,7 +19602,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           : "";
       }
       async function renderReels(append = false, requestedReelId = "", resumeFallback = false) {
-        if (reelLoading || (append && !reelCursor)) return;
+        // A new profile/Reel navigation must supersede an in-flight request; only duplicate
+        // pagination requests should be ignored.
+        if ((append && reelLoading) || (append && !reelCursor)) return;
         const generation = append ? reelRenderGeneration : ++reelRenderGeneration;
         reelLoading = true;
         let finishReelSkeleton;
@@ -19708,7 +19712,9 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           } else {
             const query = new URLSearchParams({ limit: "8" });
             if (append && reelCursor) query.set("cursor", reelCursor);
-            page = await api(`/reels/feed?${query}`);
+            page = profileScopedReelHandle
+              ? await api(`/users/${encodeURIComponent(profileScopedReelHandle)}/reels?${query}`)
+              : await api(`/reels/feed?${query}`);
           }
           if (generation !== reelRenderGeneration) return;
           await finishReelSkeleton?.();
@@ -20344,7 +20350,17 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (!reelId) return;
         captureGlobalReelContext();
         deepLinkedReelId = reelId;
-        profileScopedReelHandle = viewedProfileHandle || "";
+        const nextProfileHandle = viewedProfileHandle || "";
+        if (profileScopedReelHandle !== nextProfileHandle) {
+          // Never let slides or pagination from another profile remain in this player.
+          reelItems = [];
+          reelCursor = null;
+          activeReelId = "";
+          reelWindowStart = -1;
+          reelWindowEnd = -1;
+          $("#reelItems").replaceChildren();
+        }
+        profileScopedReelHandle = nextProfileHandle;
         reelFeedScrollTop = 0;
         const route = `#/reel/${encodeURIComponent(reelId)}`;
         if (location.hash === route) {
