@@ -1,10 +1,5 @@
 User-agent: *
 Allow: /
 Disallow: /api/
-Disallow: /messages
-Disallow: /settings
-Disallow: /login
-Disallow: /notifications
-Disallow: /notifs
 
 Sitemap: https://relay-4vm.pages.dev/sitemap.xml

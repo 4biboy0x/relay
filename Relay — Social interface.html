@@ -21019,7 +21019,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const reel = reelItems.find((item) => item.id === reelId);
         if (!reel || reelShareRequests.has(reelId)) return;
         if (actionButton && (reelActionRequests.has(actionButton) || !requireAuth())) return;
-        const url = new URL(`/reel/${encodeURIComponent(reelId)}`, location.origin);
+        const url = new URL(location.href);
+        url.hash = `#/reels/${encodeURIComponent(reelId)}`;
         reelShareRequests.add(reelId);
         if (actionButton) {
           reelActionRequests.add(actionButton);
@@ -29895,32 +29896,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         window.scrollTo(0, 0);
       }
       function routeFromHash() {
-        const realPath = !location.hash ? location.pathname : "";
-        const publicProfilePath = realPath.match(/^\/@([a-zA-Z0-9_]{3,30})\/?$/);
-        if (publicProfilePath) {
-          const requestedHandle = publicProfilePath[1].toLowerCase();
-          const requestKey = realPath + "|" + requestedHandle;
-          if (window.__relayPublicProfileRequest !== requestKey) {
-            window.__relayPublicProfileRequest = requestKey;
-            void api(`/users/${encodeURIComponent(requestedHandle)}`).then((user) => {
-              if (window.__relayPublicProfileRequest !== requestKey || !user?.id) return;
-              viewedProfileId = user.id;
-              profileTab = "Posts";
-              go("profile", false, true);
-            }).catch(() => {
-              if (window.__relayPublicProfileRequest === requestKey) toast("This profile could not be found.");
-            });
-          }
-          return;
-        }
-        const publicPostPath = realPath.match(/^\/post\/([^/]+)\/?$/);
-        const publicReelPath = realPath.match(/^\/reel\/([0-9a-f-]{36})\/?$/i);
-        const publicTopicPath = realPath.match(/^\/topic\/([a-z0-9-]{2,40})\/?$/);
-        const pathHash = publicPostPath ? `#/posts/${publicPostPath[1]}`
-          : publicReelPath ? `#/reel/${publicReelPath[1]}`
-          : publicTopicPath ? `#/topics/${publicTopicPath[1]}`
-          : "";
-        const hash = location.hash || pathHash || "#/home";
+        const hash = location.hash || "#/home";
         if (hash === "#privacy" || hash === "#terms") return;
         const profileReelMatch = hash.match(/^#\/reel\/([^/?]+)$/);
         if (profileReelMatch) {
@@ -30004,15 +29980,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if ($("#v-profile").hidden || viewedProfileId !== userId) openPublicProfile(userId);
           return;
         }
-        const topicMatch = hash.match(/^#\/topics\/([a-z0-9-]{2,40})$/);
-        if (topicMatch) {
-          const requestedTopic = `topic:${topicMatch[1]}`;
-          const changedTopic = exploreTab !== requestedTopic;
-          exploreTab = requestedTopic;
-          exploreSearchFilter = "Top";
-          if ($("#v-explore").hidden || changedTopic) go("explore", false);
-          return;
-        }
         const route = routePath.split("/")[0] || "home";
         const view = ["home", "explore", "reels", "directory", "messages", "notifs", "profile", "settings", "thread"].includes(route)
           ? route
@@ -30042,9 +30009,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         go(view, false, false, view === "messages" ? routeParams.get("conversation") || "" : "");
       }
       window.addEventListener("hashchange", routeFromHash);
-      window.addEventListener("popstate", () => {
-        if (!location.hash) routeFromHash();
-      });
       $("#messagesLayout").addEventListener("click", async (event) => {
         const actionButton = event.target.closest("[data-inbox-action]");
         if (actionButton) {
@@ -30748,8 +30712,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           exploreSearchFilter = "Top";
           $("#exploreSearch").value = "";
           lastExploreSearch = "";
-          history.pushState(null, "", `/topic/${encodeURIComponent(topicOpen.dataset.topicOpen)}`);
-          go("explore", false);
+          go("explore");
           return;
         }
         if (e.target.closest("[data-topic-back]")) {
@@ -31046,7 +31009,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               toast(error.message);
             });
         } else if (k === "share") {
-          navigator.clipboard.writeText(`${location.origin}/post/${encodeURIComponent(postId)}`)
+          navigator.clipboard.writeText(`${location.origin}${location.pathname}#/posts/${postId}`)
             .then(() => toast("Post link copied"))
             .catch(() => toast("Could not copy the post link"));
         }
