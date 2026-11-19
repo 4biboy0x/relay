@@ -56,6 +56,7 @@ const socialMetadata = [
   '<link rel="shortcut icon" href="/favicon.svg?v=6">',
   '<link rel="canonical" href="https://relay-4vm.pages.dev/">',
   '<meta name="description" content="Relay is a modern social platform to share updates, discover content, watch Reels, and connect through real-time messaging.">',
+  '<meta name="theme-color" content="#ffffff">',
   '<meta property="og:type" content="website">',
   '<meta property="og:site_name" content="Relay">',
   '<meta property="og:title" content="Relay — Social">',
@@ -70,9 +71,31 @@ const socialMetadata = [
   '<meta name="twitter:description" content="A modern space to connect, share, and discover. Explore posts, Reels, profiles, and real-time messaging on Relay.">',
   '<meta name="twitter:image" content="' + socialImageUrl + '">',
 ].join("\n  ");
+const structuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": siteUrl + "/#organization",
+      name: "Relay",
+      url: siteUrl,
+    },
+    {
+      "@type": "WebSite",
+      "@id": siteUrl + "/#website",
+      name: "Relay",
+      url: siteUrl,
+      inLanguage: "en",
+      publisher: { "@id": siteUrl + "/#organization" },
+    },
+  ],
+};
+const structuredDataTag = '<script type="application/ld+json">'
+  + JSON.stringify(structuredData).replace(/</g, "\\u003c")
+  + "</script>";
 const headMatch = html.match(/<head\b[^>]*>/i);
 if (!headMatch) throw new Error("Could not inject Relay social metadata: HTML head element was not found");
-html = html.replace(headMatch[0], headMatch[0] + "\n  " + socialMetadata);
+html = html.replace(headMatch[0], headMatch[0] + "\n  " + socialMetadata + "\n  " + structuredDataTag);
 
 fs.writeFileSync(stagingHtml, "<!doctype html><html><head><title>Relay</title></head><body></body></html>");
 
@@ -88,6 +111,8 @@ if (result.status === 0) {
   fs.copyFileSync(path.join(root, "offline.html"), path.join(root, "dist", "offline.html"));
   fs.copyFileSync(path.join(root, "sw.js"), path.join(root, "dist", "sw.js"));
   fs.copyFileSync(path.join(root, "favicon.svg"), path.join(root, "dist", "favicon.svg"));
+  fs.copyFileSync(path.join(root, "robots.txt"), path.join(root, "dist", "robots.txt"));
+  fs.copyFileSync(path.join(root, "sitemap.xml"), path.join(root, "dist", "sitemap.xml"));
   fs.cpSync(path.join(root, "assets"), path.join(root, "dist", "assets"), { recursive: true });
   fs.rmSync(path.join(root, "dist", ".vite-src"), { recursive: true, force: true });
 }
