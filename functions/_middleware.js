@@ -245,6 +245,7 @@ async function collectPaged(apiBase, endpoint, limit, mapItem) {
   let cursor = "";
   let pages = 0;
   let truncated = false;
+  const deadline = Date.now() + 20000;
   do {
     const query = new URLSearchParams({ limit: String(limit) });
     if (cursor) query.set("cursor", cursor);
@@ -257,8 +258,8 @@ async function collectPaged(apiBase, endpoint, limit, mapItem) {
     }
     cursor = result.data.nextCursor || "";
     pages += 1;
-  } while (cursor && pages < MAX_SITEMAP_PAGES && urls.length < MAX_SITEMAP_URLS);
-  if (cursor && pages >= MAX_SITEMAP_PAGES) truncated = true;
+  } while (cursor && pages < MAX_SITEMAP_PAGES && urls.length < MAX_SITEMAP_URLS && Date.now() < deadline);
+  if (cursor && (pages >= MAX_SITEMAP_PAGES || Date.now() >= deadline)) truncated = true;
   return { urls, truncated };
 }
 async function sitemapResponse(request, env, kind) {
@@ -268,7 +269,9 @@ async function sitemapResponse(request, env, kind) {
       const apiBase = getApiBase(shell, request, env);
       if (!apiBase) return new Response("Sitemap API configuration is missing", { status: 503 });
       let result;
-      if (kind === "topics") {
+      if (kind === "static") {
+        result = { urls: [{ loc: SITE_URL + "/" }], truncated: false };
+      } else if (kind === "topics") {
         const response = await fetchApiJson(apiBase, "/topics");
         if (!response.data) return new Response("Topic index unavailable", { status: 503 });
         result = { urls: (response.data.items || []).map((topic) => ({ loc: SITE_URL + "/topic/" + encodeURIComponent(topic.slug) })).slice(0, MAX_SITEMAP_URLS), truncated: false };
@@ -286,7 +289,7 @@ async function sitemapResponse(request, env, kind) {
   });
 }
 async function sitemapIndex() {
-  const kinds = ["posts", "profiles", "reels", "topics"];
+  const kinds = ["static", "posts", "profiles", "reels", "topics"];
   const body = '<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + kinds.map((kind) => "<sitemap><loc>" + SITE_URL + "/sitemap-" + kind + ".xml</loc></sitemap>").join("") + "</sitemapindex>";
   return new Response(body, { headers: { "Content-Type": "application/xml; charset=utf-8", "Cache-Control": "public, max-age=300, s-maxage=600, stale-while-revalidate=1800" } });
 }
@@ -295,7 +298,7 @@ export async function onRequest(context) {
   if (request.method !== "GET" && request.method !== "HEAD") return next();
   const url = new URL(request.url);
   if (url.pathname === "/sitemap.xml") return sitemapIndex();
-  const sitemapMatch = url.pathname.match(/^\/sitemap-(posts|profiles|reels|topics)\.xml$/);
+  const sitemapMatch = url.pathname.match(/^\/sitemap-(static|posts|profiles|reels|topics)\.xml$/);
   if (sitemapMatch) return sitemapResponse(request, env, sitemapMatch[1]);
   let match = url.pathname.match(/^\/post\/([A-Za-z0-9_-]{8,64})\/?$/);
   if (match) return publicPage(request, env, { type: "post", id: match[1] });
