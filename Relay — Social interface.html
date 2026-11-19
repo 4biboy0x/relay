@@ -19436,8 +19436,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       }
       let reelWindowStart = -1;
       let reelWindowEnd = -1;
-      function renderReelMarkup(append = false, windowOverride = null) {
-        renderReelWindow(!append, windowOverride);
+      function renderReelMarkup(append = false) {
+        renderReelWindow(!append);
       }
       function renderReelWindow(force = false, windowOverride = null) {
         const container = $("#reelItems");
@@ -19580,7 +19580,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           reelResumeSeek = { reelId: saved.activeId, currentTime: saved.currentTime };
         }
         profileScopedReelHandle = "";
-        renderReelMarkup(false, { start: saved.windowStart, end: saved.windowEnd });
+        renderReelWindow(true, { start: saved.windowStart, end: saved.windowEnd });
         positionReelFeedSentinel();
         renderReelFeedState(!reelItems.length
           ? "No reels yet"
