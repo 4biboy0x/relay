@@ -52,8 +52,8 @@ html = html.replace(
 const siteUrl = "https://relay-4vm.pages.dev";
 const socialImageUrl = siteUrl + "/assets/relay-social-preview.png";
 const socialMetadata = [
-  '<link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg?v=6">',
-  '<link rel="shortcut icon" href="/favicon.svg?v=6">',
+  '<link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg?v=7">',
+  '<link rel="shortcut icon" href="/favicon.svg?v=7">',
   '<link rel="canonical" href="https://relay-4vm.pages.dev/">',
   '<meta name="google-site-verification" content="P6oNkhQsOa6wQ6NIsmWm2Hc88RWP6gm8rj-_sWRvHjw">',
   '<meta name="description" content="Relay is a social network where you can edit your posts, pin as many chats as you want, and set a profile banner. Browse without signing up.">',
