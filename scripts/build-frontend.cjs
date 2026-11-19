@@ -96,7 +96,7 @@ const structuredDataTag = '<script type="application/ld+json">'
 const headMatch = html.match(/<head\b[^>]*>/i);
 if (!headMatch) throw new Error("Could not inject Relay social metadata: HTML head element was not found");
 html = html.replace(headMatch[0], headMatch[0] + "\n  " + socialMetadata + "\n  " + structuredDataTag);
-html = html.replace(/<body\\b[^>]*>/i, (bodyTag) => bodyTag + "\\n  <noscript><main><h1>Relay — Social</h1><p>Explore public posts, profiles, Reels, and topics on Relay. JavaScript is required to load live content.</p></main></noscript>");
+html = html.replace(/<body\b[^>]*>/i, (bodyTag) => bodyTag + "\n  <noscript><main><h1>Relay — Social</h1><p>Explore public posts, profiles, Reels, and topics on Relay. JavaScript is required to load live content.</p></main></noscript>");
 
 fs.writeFileSync(stagingHtml, "<!doctype html><html><head><title>Relay</title></head><body></body></html>");
 
