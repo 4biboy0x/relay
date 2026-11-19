@@ -12326,8 +12326,8 @@
         .app.reels-active .reel-virtual-placeholder {
           display: block !important;
           width: 100% !important;
-          height: 100% !important;
-          min-height: 100% !important;
+          height: calc(100dvh - 56px) !important;
+          min-height: calc(100dvh - 56px) !important;
           scroll-snap-align: center !important;
           scroll-snap-stop: always !important;
           background: transparent !important;
@@ -19439,12 +19439,19 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
       function renderReelMarkup(append = false) {
         renderReelWindow(!append);
       }
-      function renderReelWindow(force = false) {
+      function renderReelWindow(force = false, windowOverride = null) {
         const container = $("#reelItems");
         if (!container) return false;
         const activeIndex = Math.max(0, profileReelIndex(activeReelId));
-        const start = Math.max(0, activeIndex - 1);
-        const end = Math.min(reelItems.length, activeIndex + 2);
+        const defaultStart = Math.max(0, activeIndex - 1);
+        const defaultEnd = Math.min(reelItems.length, activeIndex + 2);
+        const restoredStart = Number.isInteger(windowOverride?.start) ? windowOverride.start : -1;
+        const restoredEnd = Number.isInteger(windowOverride?.end) ? windowOverride.end : -1;
+        const hasRestoredWindow = restoredStart >= 0 && restoredEnd > restoredStart
+          && restoredEnd <= reelItems.length
+          && activeIndex >= restoredStart && activeIndex < restoredEnd;
+        const start = hasRestoredWindow ? restoredStart : defaultStart;
+        const end = hasRestoredWindow ? restoredEnd : defaultEnd;
         const existingSlides = $$(".reel-item", container);
         const sameWindow = !force && start === reelWindowStart && end === reelWindowEnd
           && existingSlides.length === end - start
@@ -19573,7 +19580,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           reelResumeSeek = { reelId: saved.activeId, currentTime: saved.currentTime };
         }
         profileScopedReelHandle = "";
-        renderReelMarkup();
+        renderReelWindow(true, { start: saved.windowStart, end: saved.windowEnd });
         positionReelFeedSentinel();
         renderReelFeedState(!reelItems.length
           ? "No reels yet"
