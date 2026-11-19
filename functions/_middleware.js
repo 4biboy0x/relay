@@ -64,7 +64,7 @@ function jsonForScript(value) {
 }
 function getMetaContent(html, name) {
   const escaped = name.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
-  const match = html.match(new RegExp('<meta\\s+name=["\\']' + escaped + '["\\']\\s+content=["\\']([^"\\']*)["\\']', "i"));
+  const match = html.match(new RegExp("<meta\s+name=["']" + escaped + "["']\s+content=["']([^"']*)["']", "i"));
   return match ? match[1] : "";
 }
 async function getShell(request, env) {
@@ -118,7 +118,7 @@ function injectMetadata(shell, page) {
   for (const [attribute, key, value] of meta) {
     if (value == null || value === "") continue;
     const escapedKey = key.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
-    const matcher = new RegExp('<meta\\s+' + attribute + '=["\\']' + escapedKey + '["\\'][^>]*>', "gi");
+    const matcher = new RegExp("<meta\s+" + attribute + "=["']" + escapedKey + "["'][^>]*>", "gi");
     html = setHeadTag(html, matcher, '<meta ' + attribute + '="' + htmlEscape(key) + '" content="' + htmlEscape(value) + '">');
   }
   const graph = [
