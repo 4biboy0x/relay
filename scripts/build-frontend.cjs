@@ -50,7 +50,7 @@ html = html.replace(
 );
 
 const siteUrl = "https://relay-4vm.pages.dev";
-const socialImageUrl = siteUrl + "/assets/relay-social-preview.svg";
+const socialImageUrl = siteUrl + "/assets/relay-social-preview.png";
 const socialMetadata = [
   '<link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg?v=6">',
   '<link rel="shortcut icon" href="/favicon.svg?v=6">',
@@ -65,11 +65,13 @@ const socialMetadata = [
   '<meta property="og:image" content="' + socialImageUrl + '">',
   '<meta property="og:image:width" content="1200">',
   '<meta property="og:image:height" content="630">',
-  '<meta property="og:image:type" content="image/svg+xml">',
+  '<meta property="og:image:type" content="image/png">',
+  '<meta property="og:image:alt" content="Relay — A place to share and connect">',
   '<meta name="twitter:card" content="summary_large_image">',
   '<meta name="twitter:title" content="Relay — Social">',
   '<meta name="twitter:description" content="A modern space to connect, share, and discover. Explore posts, Reels, profiles, and real-time messaging on Relay.">',
   '<meta name="twitter:image" content="' + socialImageUrl + '">',
+  '<meta name="twitter:image:alt" content="Relay — A place to share and connect">',
 ].join("\n  ");
 const structuredData = {
   "@context": "https://schema.org",
@@ -114,6 +116,7 @@ if (result.status === 0) {
   fs.copyFileSync(path.join(root, "favicon.svg"), path.join(root, "dist", "favicon.svg"));
   fs.copyFileSync(path.join(root, "robots.txt"), path.join(root, "dist", "robots.txt"));
   fs.copyFileSync(path.join(root, "sitemap.xml"), path.join(root, "dist", "sitemap.xml"));
+  fs.copyFileSync(path.join(root, "_routes.json"), path.join(root, "dist", "_routes.json"));
   fs.cpSync(path.join(root, "assets"), path.join(root, "dist", "assets"), { recursive: true });
   fs.rmSync(path.join(root, "dist", ".vite-src"), { recursive: true, force: true });
 }
