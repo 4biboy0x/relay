@@ -276,7 +276,11 @@ async function sitemapResponse(request, env, kind) {
       if (kind === "topics") {
         const response = await fetchApiJson(apiBase, "/topics");
         if (!response.data) return new Response("Topic index unavailable", { status: 503 });
-        result = { urls: (response.data.items || []).map((topic) => ({ loc: SITE_URL + "/topic/" + encodeURIComponent(topic.slug) })).slice(0, MAX_SITEMAP_URLS), truncated: false };
+        const topics = response.data.items || [];
+        result = {
+          urls: topics.slice(0, MAX_SITEMAP_URLS).map((topic) => ({ loc: SITE_URL + "/topic/" + encodeURIComponent(topic.slug) })),
+          truncated: topics.length > MAX_SITEMAP_URLS,
+        };
       } else if (kind === "posts") {
         result = await collectPaged(apiBase, "/feed?feed=for-you", 50, (post) => post?.id ? ({ loc: SITE_URL + "/post/" + encodeURIComponent(post.id), lastmod: safeDate(post.updatedAt) }) : null);
       } else if (kind === "profiles") {
