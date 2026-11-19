@@ -50,26 +50,29 @@ html = html.replace(
 );
 
 const siteUrl = "https://relay-4vm.pages.dev";
-const socialImageUrl = siteUrl + "/assets/relay-social-preview.svg";
+const socialImageUrl = siteUrl + "/assets/relay-social-preview.png";
 const socialMetadata = [
   '<link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg?v=6">',
   '<link rel="shortcut icon" href="/favicon.svg?v=6">',
   '<link rel="canonical" href="https://relay-4vm.pages.dev/">',
-  '<meta name="description" content="Relay is a modern social platform to share updates, discover content, watch Reels, and connect through real-time messaging.">',
+  '<meta name="google-site-verification" content="P6oNkhQsOa6wQ6NIsmWm2Hc88RWP6gm8rj-_sWRvHjw">',
+  '<meta name="description" content="Relay is a social network where you can edit your posts, pin as many chats as you want, and set a profile banner. Browse without signing up.">',
   '<meta name="theme-color" content="#ffffff">',
   '<meta property="og:type" content="website">',
   '<meta property="og:site_name" content="Relay">',
-  '<meta property="og:title" content="Relay — Social">',
-  '<meta property="og:description" content="A modern space to connect, share, and discover. Explore posts, Reels, profiles, and real-time messaging on Relay.">',
+  '<meta property="og:title" content="Relay: a social network with Reels, chats and post editing">',
+  '<meta property="og:description" content="Relay is a social network where you can edit your posts, pin as many chats as you want, and set a profile banner. Browse without signing up.">',
   '<meta property="og:url" content="https://relay-4vm.pages.dev/">',
   '<meta property="og:image" content="' + socialImageUrl + '">',
   '<meta property="og:image:width" content="1200">',
   '<meta property="og:image:height" content="630">',
-  '<meta property="og:image:type" content="image/svg+xml">',
+  '<meta property="og:image:type" content="image/png">',
+  '<meta property="og:image:alt" content="Relay social preview: Edit posts. Pin unlimited chats. Browse without an account.">',
   '<meta name="twitter:card" content="summary_large_image">',
-  '<meta name="twitter:title" content="Relay — Social">',
-  '<meta name="twitter:description" content="A modern space to connect, share, and discover. Explore posts, Reels, profiles, and real-time messaging on Relay.">',
+  '<meta name="twitter:title" content="Relay: a social network with Reels, chats and post editing">',
+  '<meta name="twitter:description" content="Relay is a social network where you can edit your posts, pin as many chats as you want, and set a profile banner. Browse without signing up.">',
   '<meta name="twitter:image" content="' + socialImageUrl + '">',
+  '<meta name="twitter:image:alt" content="Relay social preview: Edit posts. Pin unlimited chats. Browse without an account.">',
 ].join("\n  ");
 const structuredData = {
   "@context": "https://schema.org",
@@ -84,6 +87,7 @@ const structuredData = {
       "@type": "WebSite",
       "@id": siteUrl + "/#website",
       name: "Relay",
+      description: "Relay is a social network where you can edit your posts, pin as many chats as you want, and set a profile banner. Browse without signing up.",
       url: siteUrl,
       inLanguage: "en",
       publisher: { "@id": siteUrl + "/#organization" },
@@ -96,7 +100,7 @@ const structuredDataTag = '<script type="application/ld+json">'
 const headMatch = html.match(/<head\b[^>]*>/i);
 if (!headMatch) throw new Error("Could not inject Relay social metadata: HTML head element was not found");
 html = html.replace(headMatch[0], headMatch[0] + "\n  " + socialMetadata + "\n  " + structuredDataTag);
-html = html.replace(/<body\b[^>]*>/i, (bodyTag) => bodyTag + "\n  <noscript><main><h1>Relay — Social</h1><p>Explore public posts, profiles, Reels, and topics on Relay. JavaScript is required to load live content.</p></main></noscript>");
+html = html.replace(/<body\b[^>]*>/i, (bodyTag) => bodyTag + "\n  <noscript><main><h1>Relay</h1><p>Relay is a social network where you can edit your posts, pin as many chats as you want, and set a profile banner. Browse without signing up.</p><p>JavaScript is required to load live content.</p></main></noscript>");
 
 fs.writeFileSync(stagingHtml, "<!doctype html><html><head><title>Relay</title></head><body></body></html>");
 
@@ -115,6 +119,8 @@ if (result.status === 0) {
   fs.copyFileSync(path.join(root, "robots.txt"), path.join(root, "dist", "robots.txt"));
   fs.copyFileSync(path.join(root, "sitemap.xml"), path.join(root, "dist", "sitemap.xml"));
   fs.cpSync(path.join(root, "assets"), path.join(root, "dist", "assets"), { recursive: true });
+  const distSocialImage = path.join(root, "dist", "assets", "relay-social-preview.png");
+  if (!fs.existsSync(distSocialImage)) throw new Error("Social preview PNG was not copied into dist");
   fs.rmSync(path.join(root, "dist", ".vite-src"), { recursive: true, force: true });
 }
 fs.rmSync(stagingDir, { recursive: true, force: true });
