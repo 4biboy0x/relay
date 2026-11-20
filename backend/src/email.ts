@@ -5,6 +5,37 @@ import { config } from "./config";
 
 const REQUEST_TIMEOUT_MS = 10_000;
 
+const safeDiagnosticValue = (value: unknown): string | undefined =>
+  typeof value === "string"
+    ? value.replace(/[^A-Za-z0-9_.:-]/g, "").slice(0, 80) || undefined
+    : undefined;
+
+const getGmailFailureDetails = (error: unknown) => {
+  const root = error && typeof error === "object"
+    ? error as Record<string, unknown>
+    : {};
+  const response = root.response && typeof root.response === "object"
+    ? root.response as Record<string, unknown>
+    : {};
+  const data = response.data && typeof response.data === "object"
+    ? response.data as Record<string, unknown>
+    : {};
+  const apiErrors = Array.isArray(data.errors) ? data.errors : [];
+  const firstApiError = apiErrors[0] && typeof apiErrors[0] === "object"
+    ? apiErrors[0] as Record<string, unknown>
+    : {};
+
+  return {
+    errorName: safeDiagnosticValue(root.name),
+    errorCode: safeDiagnosticValue(root.code),
+    httpStatus: typeof response.status === "number"
+      ? response.status
+      : typeof root.status === "number" ? root.status : undefined,
+    apiError: safeDiagnosticValue(data.error),
+    apiReason: safeDiagnosticValue(firstApiError.reason),
+  };
+};
+
 export class EmailDeliveryError extends Error {
   constructor() {
     super("Email delivery is temporarily unavailable.");
@@ -89,8 +120,10 @@ export const sendOtpEmail = async (
     }, {
       timeout: REQUEST_TIMEOUT_MS,
     });
-  } catch {
-    console.error("Gmail API OTP delivery failed.");
+  } catch (error) {
+    // Log only allowlisted error metadata. Never log the recipient, OTP,
+    // request body, OAuth credentials, access tokens, or raw upstream error.
+    console.error("Gmail API OTP delivery failed.", getGmailFailureDetails(error));
     throw new EmailDeliveryError();
   }
 };
