@@ -15575,14 +15575,6 @@
               class="tab"
               role="tab"
               aria-selected="false"
-              data-pt="Media"
-            >
-              Media
-            </button>
-            <button
-              class="tab"
-              role="tab"
-              aria-selected="false"
               data-pt="Reels"
             >
               Reels
@@ -19236,7 +19228,10 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const owner = Boolean(currentUser && (!viewedProfileId || viewedProfileId === currentUser.id));
         const targetId = owner ? currentUser.id : viewedProfileId;
         if (!targetId) return;
-        if (!owner && t === "Likes") t = "Posts";
+        if (t === "Media" || (!owner && t === "Likes")) t = "Posts";
+        $("[data-pt]").forEach((button) => {
+          button.hidden = button.dataset.pt === "Likes" && !owner;
+        });
         const reelsTab = t === "Reels";
         const generation = ++profileRenderGeneration;
         const headerNeedsLoad = $("#profileBody").dataset.profileUserId !== targetId;
@@ -19253,9 +19248,6 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             $("#profilePageTitle").textContent = owner
               ? currentUser.displayName || "Your profile"
               : "Profile";
-            $$("[data-pt]").forEach((button) => {
-              button.hidden = !owner && button.dataset.pt === "Likes";
-            });
             $("#profileBack").hidden = owner;
             $("#profileSettings").hidden = !owner;
             $("#profileEdit").hidden = !owner;
@@ -30026,8 +30018,13 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           return;
         }
         threadHistory.length = 0;
-        const profileMatch = hash.match(/^#\/users\/([^/]+)$/);
+        const profileMatch = hash.match(/^#\/users\/([^/?]+)(?:\?(.*))?$/);
         if (profileMatch) {
+          const profileQuery = new URLSearchParams(profileMatch[2] || "");
+          const requestedProfileTab = profileQuery.get("tab");
+          profileTab = requestedProfileTab === "Media" ? "Posts"
+            : ["Posts", "Replies", "Reels", "Likes"].includes(requestedProfileTab) ? requestedProfileTab
+              : "Posts";
           const userId = decodeURIComponent(profileMatch[1]);
           if (!$("#v-thread").hidden && hash === threadReturnHash && threadReturnProfileId === userId) {
             viewedProfileId = userId;
