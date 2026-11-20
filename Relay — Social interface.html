@@ -14823,6 +14823,70 @@
       .app > .nav #navPost.btn-primary:active:not(:disabled) {
         background: #18191b !important;
       }
+      /* Dark-mode contrast for the primary post actions and Following tab only. */
+      :root[data-theme="dark"] .tab[data-feed="following"] {
+        color: #C8C8CE !important;
+      }
+      :root[data-theme="dark"] #v-home #pb.btn-primary,
+      :root[data-theme="dark"] .app > .nav #navPost.btn-primary {
+        background: #F4F4F5 !important;
+        color: #18181B !important;
+      }
+      :root[data-theme="dark"] #v-home #pb.btn-primary:hover:not(:disabled),
+      :root[data-theme="dark"] .app > .nav #navPost.btn-primary:hover:not(:disabled) {
+        background: #E4E4E7 !important;
+        color: #18181B !important;
+      }
+      :root[data-theme="dark"] #v-home #pb.btn-primary:active:not(:disabled),
+      :root[data-theme="dark"] .app > .nav #navPost.btn-primary:active:not(:disabled) {
+        background: #D4D4D8 !important;
+        color: #18181B !important;
+      }
+      :root[data-theme="dark"] .app > .nav #navPost::before,
+      :root[data-theme="dark"] .app > .nav #navPost::after {
+        background: #F4F4F5 !important;
+      }
+      :root[data-theme="dark"] .app > .nav #navPost:hover::before,
+      :root[data-theme="dark"] .app > .nav #navPost:hover::after {
+        background: #E4E4E7 !important;
+      }
+      :root[data-theme="dark"] .app > .nav #navPost:active::before,
+      :root[data-theme="dark"] .app > .nav #navPost:active::after {
+        background: #D4D4D8 !important;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]):not([data-theme="dark"]) .tab[data-feed="following"] {
+          color: #C8C8CE !important;
+        }
+        :root:not([data-theme="light"]):not([data-theme="dark"]) #v-home #pb.btn-primary,
+        :root:not([data-theme="light"]):not([data-theme="dark"]) .app > .nav #navPost.btn-primary {
+          background: #F4F4F5 !important;
+          color: #18181B !important;
+        }
+        :root:not([data-theme="light"]):not([data-theme="dark"]) #v-home #pb.btn-primary:hover:not(:disabled),
+        :root:not([data-theme="light"]):not([data-theme="dark"]) .app > .nav #navPost.btn-primary:hover:not(:disabled) {
+          background: #E4E4E7 !important;
+          color: #18181B !important;
+        }
+        :root:not([data-theme="light"]):not([data-theme="dark"]) #v-home #pb.btn-primary:active:not(:disabled),
+        :root:not([data-theme="light"]):not([data-theme="dark"]) .app > .nav #navPost.btn-primary:active:not(:disabled) {
+          background: #D4D4D8 !important;
+          color: #18181B !important;
+        }
+        :root:not([data-theme="light"]):not([data-theme="dark"]) .app > .nav #navPost::before,
+        :root:not([data-theme="light"]):not([data-theme="dark"]) .app > .nav #navPost::after {
+          background: #F4F4F5 !important;
+        }
+        :root:not([data-theme="light"]):not([data-theme="dark"]) .app > .nav #navPost:hover::before,
+        :root:not([data-theme="light"]):not([data-theme="dark"]) .app > .nav #navPost:hover::after {
+          background: #E4E4E7 !important;
+        }
+        :root:not([data-theme="light"]):not([data-theme="dark"]) .app > .nav #navPost:active::before,
+        :root:not([data-theme="light"]):not([data-theme="dark"]) .app > .nav #navPost:active::after {
+          background: #D4D4D8 !important;
+        }
+      }
+
       @media (min-width: 1200px) {
         .app > .nav #navPost::before,
         .app > .nav #navPost::after {
