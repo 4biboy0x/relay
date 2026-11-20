@@ -16650,6 +16650,7 @@
       let bookmarksCursor = null;
       let bookmarksLoading = false;
       let bookmarkedPosts = [];
+      const bookmarkActionRequests = new Set();
       let profileTab = "Posts";
       let viewedProfileId = null;
       let viewedProfileHandle = "";
@@ -31130,6 +31131,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             requireAuth();
             return;
           }
+          if (bookmarkActionRequests.has(postId)) return;
+          bookmarkActionRequests.add(postId);
           const active = a.getAttribute("aria-pressed") === "true";
           const next = !active;
           const cards = $$(`.post[data-id="${CSS.escape(postId)}"]`);
@@ -31163,7 +31166,8 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               updateBookmarkButtons(active);
               if (p) p.bookmarked = active;
               toast(error.message || "Could not update bookmark");
-            });
+            })
+            .finally(() => bookmarkActionRequests.delete(postId));
           return;
         }
         if (k === "like" || k === "repost") {
