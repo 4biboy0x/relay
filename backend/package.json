@@ -15,6 +15,7 @@
     "test:email": "tsx --test src/email.test.ts",
     "test:security": "tsx --test src/forgot-password.test.ts src/validation.test.ts src/storage-path.test.ts",
     "test:reels": "tsx --test src/reels.test.ts",
+    "test:bookmarks": "tsx --test src/post-bookmarks.test.ts",
     "test:realtime": "node scripts/realtime-smoke.mjs",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",

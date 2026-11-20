@@ -36,6 +36,7 @@ model User {
   reelLikes     ReelLike[]
   reelReposts   ReelRepost[]
   reelBookmarks ReelBookmark[]
+  postBookmarks PostBookmark[]
   reelShares    ReelShare[]
   reelComments  ReelComment[]
   reelCommentLikes ReelCommentLike[]
@@ -81,6 +82,7 @@ model Post {
   updatedAt     DateTime       @updatedAt
   deletedAt     DateTime?
   interactions  Interaction[]
+  bookmarks     PostBookmark[]
   notifications Notification[]
   viewRecords   PostView[]
   author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
@@ -94,6 +96,17 @@ model Post {
   @@index([authorId, createdAt(sort: Desc), id(sort: Desc)])
   @@index([replyToId, createdAt(sort: Desc)])
   @@index([body(ops: raw("gin_trgm_ops"))], type: Gin, map: "Post_body_trgm_idx")
+}
+
+model PostBookmark {
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([userId, createdAt(sort: Desc), postId(sort: Desc)])
 }
 
 model PostView {

@@ -412,6 +412,12 @@ const uploadLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 30, standardH
 const searchLimiter = rateLimit({ windowMs: 60 * 1000, limit: 120, standardHeaders: true, legacyHeaders: false });
 const messageLimiter = rateLimit({ windowMs: 60 * 1000, limit: 60, standardHeaders: true, legacyHeaders: false });
 const placesLimiter = rateLimit({ windowMs: 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false });
+const postBookmarkLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 type PostViewResult = { id: string; views: number | null; recorded: boolean };
 async function recordPostView(
@@ -500,6 +506,7 @@ const postInclude = (viewerId: string | null) => ({
   },
   _count: { select: { replies: true } },
   interactions: { where: { userId: viewerId ?? "__anonymous_viewer__" }, select: { type: true } },
+  bookmarks: { where: { userId: viewerId ?? "__anonymous_viewer__" }, select: { postId: true } },
   hashtags: { include: { hashtag: { select: { tag: true } } } },
   topics: { include: { topic: { select: { slug: true, name: true } } } },
 });
@@ -554,6 +561,7 @@ const postResponse = (post: PostRecord, counts: InteractionCounts = { likes: 0, 
   viewer: {
     liked: post.interactions.some((i: { type: InteractionType }) => i.type === "LIKE"),
     reposted: post.interactions.some((i: { type: InteractionType }) => i.type === "REPOST"),
+    bookmarked: post.bookmarks.length > 0,
   },
 });
 
@@ -1917,6 +1925,60 @@ api.put("/posts/:postId/like", authRequired, setInteraction("LIKE", true));
 api.delete("/posts/:postId/like", authRequired, setInteraction("LIKE", false));
 api.put("/posts/:postId/repost", authRequired, setInteraction("REPOST", true));
 api.delete("/posts/:postId/repost", authRequired, setInteraction("REPOST", false));
+
+api.put("/posts/:postId/bookmark", authRequired, postBookmarkLimiter, asyncRoute(async (req, res) => {
+  const postId = z.string().cuid().parse(req.params.postId);
+  const post = await prisma.post.findFirst({
+    where: { id: postId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!post) throw new HttpError(404, "Post not found");
+  await prisma.postBookmark.upsert({
+    where: { userId_postId: { userId: req.userId!, postId } },
+    create: { userId: req.userId!, postId },
+    update: {},
+  });
+  res.status(204).end();
+}));
+
+api.delete("/posts/:postId/bookmark", authRequired, postBookmarkLimiter, asyncRoute(async (req, res) => {
+  const postId = z.string().cuid().parse(req.params.postId);
+  await prisma.postBookmark.deleteMany({ where: { userId: req.userId!, postId } });
+  res.status(204).end();
+}));
+
+api.get("/bookmarks/posts", authRequired, asyncRoute(async (req, res) => {
+  const page = pageSchema.parse(req.query);
+  const cursor = decodeCursor(page.cursor);
+  const cursorFilter: Prisma.PostBookmarkWhereInput = cursor
+    ? {
+        OR: [
+          { createdAt: { lt: new Date(cursor.createdAt) } },
+          { createdAt: new Date(cursor.createdAt), postId: { lt: cursor.id } },
+        ],
+      }
+    : {};
+  // The authenticated subject is the only owner selector; client-supplied userId is ignored.
+  const records = await prisma.postBookmark.findMany({
+    where: {
+      userId: req.userId!,
+      post: { is: { deletedAt: null } },
+      AND: [cursorFilter],
+    },
+    orderBy: [{ createdAt: "desc" }, { postId: "desc" }],
+    take: page.limit + 1,
+    include: { post: { include: postInclude(req.userId!) } },
+  });
+  const hasMore = records.length > page.limit;
+  const items = records.slice(0, page.limit);
+  const postIds = items.map(({ post }) => post.id);
+  const counts = await interactionCounts(postIds);
+  const last = items.at(-1);
+  res.json({
+    items: items.map(({ post }) => postResponse(post, counts.get(post.id))),
+    nextCursor: hasMore && last ? encodeCursor(last.createdAt, last.postId) : null,
+  });
+}));
 
 api.get("/users/:handle/posts", authOptional, asyncRoute(async (req, res) => {
   const page = pageSchema.parse(req.query);
