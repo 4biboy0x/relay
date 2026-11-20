@@ -11,9 +11,9 @@ test("post bookmarks API integration and privacy", { skip: !testDatabaseUrl }, a
   process.env.NODE_ENV = "test";
 
   const [{ app }, { prisma }, { createAccessToken }] = await Promise.all([
-    import("./app"),
-    import("./db"),
-    import("./auth"),
+    import("./app.js"),
+    import("./db.js"),
+    import("./auth.js"),
   ]);
   const server = app.listen(0, "127.0.0.1");
   await new Promise<void>((resolve) => server.once("listening", resolve));
@@ -115,7 +115,7 @@ test("post bookmarks API integration and privacy", { skip: !testDatabaseUrl }, a
     assert.equal(await prisma.postBookmark.count({ where: { userId: userB.id } }), 0);
   } finally {
     if (users.length) await prisma.user.deleteMany({ where: { id: { in: users } } });
-    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    await new Promise<void>((resolve, reject) => server.close((error: Error | undefined) => error ? reject(error) : resolve()));
     await prisma.$disconnect();
   }
 });
