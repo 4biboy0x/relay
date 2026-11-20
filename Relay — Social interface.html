@@ -19229,7 +19229,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         const targetId = owner ? currentUser.id : viewedProfileId;
         if (!targetId) return;
         if (t === "Media" || (!owner && t === "Likes")) t = "Posts";
-        $("[data-pt]").forEach((button) => {
+        $$("[data-pt]").forEach((button) => {
           button.hidden = button.dataset.pt === "Likes" && !owner;
         });
         const reelsTab = t === "Reels";
