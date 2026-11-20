@@ -691,6 +691,12 @@
       .settings-page { max-width: 640px; margin: 0 auto; padding-bottom: 64px; }
       .settings-card { padding: 24px 20px; border-bottom: 1px solid var(--border); }
       .settings-card:last-child { border-bottom: 0; }
+      .settings-link-row {
+        display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px;
+        padding: 0 2px; color: var(--text); text-align: left; font: inherit; font-size: 14px; font-weight: 550;
+      }
+      .settings-link-row:hover { color: var(--text-2); }
+      .settings-link-icon { display: grid; place-items: center; width: 24px; height: 24px; color: var(--text-2); }
       .settings-card-heading { margin-bottom: 16px; }
       .settings-card-heading h2 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -0.01em; }
       .settings-theme-options { display: inline-flex; gap: 0; padding: 3px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); }
@@ -3764,6 +3770,7 @@
       .act[data-a="repost"][aria-pressed="true"] {
         color: var(--ok);
       }
+      .act[data-a="bookmark"][aria-pressed="true"] svg { fill: currentColor; }
       .act[data-a="comment"]:hover {
         color: var(--accent);
       }
@@ -4655,6 +4662,8 @@
         opacity: 1;
         transform: translate(-50%, 0);
       }
+      .toast:has(a) { pointer-events: auto; }
+      .toast a { color: inherit; text-decoration: underline; text-underline-offset: 2px; font-weight: 650; }
       @media (max-width: 640px) {
         .toast {
           bottom: calc(68px + env(safe-area-inset-bottom, 0px));
@@ -13860,6 +13869,7 @@
       @media (max-width: 767px) {
         #feed,
         #exp,
+        #bookmarksList,
         #v-thread {
           padding-bottom: calc(76px + env(safe-area-inset-bottom));
         }
@@ -15398,6 +15408,12 @@
             <h1>Settings</h1>
           </header>
           <div class="settings-page" data-transition-content>
+            <section class="settings-card" aria-label="Saved posts">
+              <button class="settings-link-row" type="button" data-go="bookmarks">
+                <span class="settings-link-icon"><svg class="i" aria-hidden="true"><use href="#bookmark"></use></svg></span>
+                <span>Bookmarks</span>
+              </button>
+            </section>
             <section class="settings-card" aria-labelledby="appearanceTitle">
               <div class="settings-card-heading">
                 <h2 id="appearanceTitle">Appearance</h2>
@@ -15509,6 +15525,17 @@
           </div>
         </section>
 
+        <section id="v-bookmarks" data-v hidden>
+          <header class="top settings-top">
+            <button class="icon-btn" id="bookmarksBack" type="button" aria-label="Back to your profile" title="Back">
+              <svg class="i" aria-hidden="true"><use href="#back" /></svg>
+            </button>
+            <h1>Bookmarks</h1>
+          </header>
+          <div id="bookmarksList" data-transition-content></div>
+          <button class="more-l" id="bookmarksMore" data-more="bookmarks" hidden>Load more</button>
+        </section>
+
         <section id="v-profile" data-v hidden>
           <header class="top">
             <div class="profile-title-row">
@@ -15540,6 +15567,9 @@
               </div>
               <div class="profile-actions">
                 <button class="btn btn-line" id="profileEdit">Edit profile</button>
+                <button class="btn btn-line profile-message-button" id="profileBookmarks" data-go="bookmarks" type="button" aria-label="Bookmarks" title="Bookmarks" hidden>
+                  <svg class="i" aria-hidden="true"><use href="#bookmark"></use></svg>
+                </button>
                 <button class="btn btn-line profile-message-button" id="profileMessage" type="button" aria-label="Message" title="Message" hidden>
                   <svg class="i" aria-hidden="true"><use href="#msg"></use></svg>
                 </button>
@@ -16617,6 +16647,9 @@
       let exploreCursor = null;
       let notificationCursor = null;
       let profileCursor = null;
+      let bookmarksCursor = null;
+      let bookmarksLoading = false;
+      let bookmarkedPosts = [];
       let profileTab = "Posts";
       let viewedProfileId = null;
       let viewedProfileHandle = "";
@@ -18453,6 +18486,7 @@
         r: item.counts.reposts,
         liked: item.viewer.liked,
         rep: item.viewer.reposted,
+        bookmarked: Boolean(item.viewer?.bookmarked),
       });
       const validPostMediaCrop = (crop) => {
         if (!crop || typeof crop !== "object") return null;
@@ -18720,6 +18754,7 @@
           case "notifs": return $("#nl");
           case "settings": return $(".settings-page");
           case "profile": return $("#profileBody");
+          case "bookmarks": return $("#bookmarksList");
           case "thread": return [$("#threadContent"), $("#threadMore")];
           case "directory": return $("#directoryResults");
           default: return null;
@@ -19022,7 +19057,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
 <button class="act" data-a="like" aria-pressed="${!!p.liked}" aria-label="Like, ${p.l || 0} ${(p.l || 0) === 1 ? "like" : "likes"}">${ic("heart")}<span data-count="likes" data-count-value="${Number(p.l) || 0}"${p.l ? "" : " hidden"}>${homeActionCount(p.l)}</span></button>
 <button class="act" data-a="views" aria-label="Views, ${p.views || 0}">${ic("views")}<span data-count="views" data-count-value="${Number(p.views) || 0}">${homeActionCount(p.views)}</span></button>
 </div>
-<div class="post-actions-right"><button class="act" data-a="bookmark" aria-label="Bookmark">${ic("bookmark")}</button><button class="act" data-a="share" aria-label="Share">${ic("share")}</button></div></div>
+<div class="post-actions-right"><button class="act" data-a="bookmark" aria-pressed="${!!p.bookmarked}" aria-label="${p.bookmarked ? "Remove bookmark" : "Bookmark"}" title="${p.bookmarked ? "Remove bookmark" : "Bookmark"}">${ic("bookmark")}</button><button class="act" data-a="share" aria-label="Share">${ic("share")}</button></div></div>
 </div></article>`;
         }
         return `<article class="post" data-id="${esc(p.id)}" data-author-id="${esc(p.author.id)}" tabindex="0"><button class="profile-avatar-link" type="button" data-profile-id="${esc(p.author.id)}" aria-label="View @${esc(p.u)} profile">${avatarMarkup(p.author)}</button><div class="p-body">
@@ -19035,7 +19070,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
 <button class="act" data-a="like" aria-pressed="${!!p.liked}" aria-label="Like, ${p.l || 0} ${(p.l || 0) === 1 ? "like" : "likes"}">${ic("heart")}<span data-count="likes" data-count-value="${Number(p.l) || 0}"${p.l ? "" : " hidden"}>${homeActionCount(p.l)}</span></button>
 <button class="act" data-a="views" aria-label="Views, ${p.views || 0}">${ic("views")}<span data-count="views" data-count-value="${Number(p.views) || 0}">${homeActionCount(p.views)}</span></button>
 </div>
-<div class="post-actions-right"><button class="act" data-a="bookmark" aria-label="Bookmark">${ic("bookmark")}</button><button class="act" data-a="share" aria-label="Share">${ic("share")}</button></div></div>
+<div class="post-actions-right"><button class="act" data-a="bookmark" aria-pressed="${!!p.bookmarked}" aria-label="${p.bookmarked ? "Remove bookmark" : "Bookmark"}" title="${p.bookmarked ? "Remove bookmark" : "Bookmark"}">${ic("bookmark")}</button><button class="act" data-a="share" aria-label="Share">${ic("share")}</button></div></div>
 </div></article>`;
       };
       const postViewTimers = new WeakMap();
@@ -19231,10 +19266,39 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           if (!append && !$("#v-home").hidden) scheduleEmailVerificationNotice();
         }
       }
+      async function renderBookmarks(append = false) {
+        if (!currentUser || bookmarksLoading || (append && !bookmarksCursor)) return;
+        bookmarksLoading = true;
+        if (!append) {
+          bookmarksCursor = null;
+          bookmarkedPosts = [];
+          $("#bookmarksList").innerHTML = emptyState("Loading bookmarks…");
+        }
+        try {
+          const query = new URLSearchParams({ limit: "20" });
+          if (append && bookmarksCursor) query.set("cursor", bookmarksCursor);
+          const result = await api(`/bookmarks/posts?${query}`);
+          const items = result.items.map(normalizePost);
+          bookmarkedPosts.push(...items);
+          $("#bookmarksList").innerHTML = append
+            ? $("#bookmarksList").innerHTML + items.map((item) => post(item)).join("")
+            : items.map((item) => post(item)).join("")
+              || emptyState("Nothing saved yet.", "Tap the bookmark icon on any post to find it here later.");
+          bookmarksCursor = result.nextCursor;
+          $("#bookmarksMore").hidden = !bookmarksCursor;
+          joinVisiblePostRooms();
+        } catch (error) {
+          if (append) toast(error.message || "Could not load more bookmarks");
+          else renderError($("#bookmarksList"), error);
+        } finally {
+          bookmarksLoading = false;
+        }
+      }
       async function renderProfile(t = profileTab, append = false) {
         if (!currentUser && !viewedProfileId) return;
         const owner = Boolean(currentUser && (!viewedProfileId || viewedProfileId === currentUser.id));
         const targetId = owner ? currentUser.id : viewedProfileId;
+        $("#profileBookmarks").hidden = !owner;
         if (!targetId) return;
         if (!owner && t === "Likes") t = "Posts";
         const reelsTab = t === "Reels";
@@ -19259,6 +19323,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
             $("#profileBack").hidden = owner;
             $("#profileSettings").hidden = !owner;
             $("#profileEdit").hidden = !owner;
+            $("#profileBookmarks").hidden = !owner;
             $("#editProfileAvatar").hidden = !owner;
             $("#editProfileBanner").hidden = !owner;
             $("#profileFollow").hidden = owner;
@@ -24353,12 +24418,18 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         }
       }
       let tt;
-      function toast(m) {
+      function toast(m, link = null) {
         const t = $("#toast");
-        t.textContent = m;
+        t.replaceChildren(document.createTextNode(m));
+        if (link?.href && link?.label) {
+          const anchor = document.createElement("a");
+          anchor.href = link.href;
+          anchor.textContent = link.label;
+          t.append(" ", anchor);
+        }
         t.classList.add("on");
         clearTimeout(tt);
-        tt = setTimeout(() => t.classList.remove("on"), 1800);
+        tt = setTimeout(() => t.classList.remove("on"), 2600);
       }
       function setUnreadBadge(element, count, label) {
         const unread = Math.max(0, Number(count) || 0);
@@ -29889,6 +29960,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           } else {
             transitionContent(transitionTargetsForView(v), async () => {
               if (v === "profile") await renderProfile();
+              if (v === "bookmarks") await renderBookmarks();
               if (v === "settings") renderSettingsPage();
               if (v === "notifs") await renderNotifications();
               if (v === "messages") {
@@ -30039,10 +30111,14 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           return;
         }
         const route = routePath.split("/")[0] || "home";
-        const view = ["home", "explore", "reels", "directory", "messages", "notifs", "profile", "settings", "thread"].includes(route)
+        const view = ["home", "explore", "reels", "directory", "messages", "notifs", "profile", "settings", "bookmarks", "thread"].includes(route)
           ? route
           : "home";
         const previousExploreTab = exploreTab;
+        if (view === "bookmarks" && !currentUser) {
+          go("bookmarks", false);
+          return;
+        }
         if (view === "explore" && ["trending", "people", "latest"].includes(requestedExploreTab)) {
           selectExploreTab(requestedExploreTab);
         }
@@ -30674,10 +30750,17 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
         if (more) {
           if (more.dataset.more === "explore") renderExplore($("#exploreSearch").value.trim(), true);
           if (more.dataset.more === "profile") renderProfile(profileTab, true);
+          if (more.dataset.more === "bookmarks") renderBookmarks(true);
           return;
         }
         if (e.target.closest("#accountTrigger")) {
           toggleAccountMenu();
+          return;
+        }
+        if (e.target.closest("#bookmarksBack")) {
+          viewedProfileId = null;
+          profileTab = "Posts";
+          go("profile");
           return;
         }
         if (e.target.closest("#threadBack")) {
@@ -31031,11 +31114,58 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           openReplyComposer(a.closest(".post"));
           return;
         }
+        if (a.dataset.a === "bookmark" && (!currentUser || !accessToken)) {
+          toast("Sign in to save bookmarks.");
+          requireAuth();
+          return;
+        }
         if (!requireAuth()) return;
         const el = a.closest(".post"),
           postId = el.dataset.id,
           p = posts.find((x) => x.id === postId),
           k = a.dataset.a;
+        if (k === "bookmark") {
+          if (!currentUser || !accessToken) {
+            toast("Sign in to save bookmarks.");
+            requireAuth();
+            return;
+          }
+          const active = a.getAttribute("aria-pressed") === "true";
+          const next = !active;
+          const cards = $(`.post[data-id="${CSS.escape(postId)}"]`);
+          const updateBookmarkButtons = (value) => {
+            cards.forEach((card) => {
+              const button = card.querySelector('.act[data-a="bookmark"]');
+              if (!button) return;
+              button.setAttribute("aria-pressed", String(value));
+              button.setAttribute("aria-label", value ? "Remove bookmark" : "Bookmark");
+              button.title = value ? "Remove bookmark" : "Bookmark";
+            });
+          };
+          updateBookmarkButtons(next);
+          if (p) p.bookmarked = next;
+          api(`/posts/${encodeURIComponent(postId)}/bookmark`, { method: next ? "PUT" : "DELETE" })
+            .then(() => {
+              if (next) {
+                toast("Added to Bookmarks", { href: "#/bookmarks", label: "View" });
+              } else {
+                toast("Removed from Bookmarks");
+                if (!$("#v-bookmarks").hidden) {
+                  $('#bookmarksList .post[data-id]').filter((card) => card.dataset.id === postId).forEach((card) => card.remove());
+                  bookmarkedPosts = bookmarkedPosts.filter((item) => item.id !== postId);
+                  if (!bookmarkedPosts.length && !bookmarksCursor) {
+                    $("#bookmarksList").innerHTML = emptyState("Nothing saved yet.", "Tap the bookmark icon on any post to find it here later.");
+                  }
+                }
+              }
+            })
+            .catch((error) => {
+              updateBookmarkButtons(active);
+              if (p) p.bookmarked = active;
+              toast(error.message || "Could not update bookmark");
+            });
+          return;
+        }
         if (k === "like" || k === "repost") {
           const liked = k === "like";
           const active = a.getAttribute("aria-pressed") === "true";
