@@ -64,19 +64,47 @@ test("sends a multipart OTP email through the official Gmail API client", async 
   assert.match(decodeMimeBodies(Buffer.from(requests[1].requestBody!.raw!, "base64url").toString("utf8"))[0], /654321/);
 });
 
-test("rejects Gmail API delivery failures with the standard email error", async () => {
+test("rejects Gmail API delivery failures and logs safe diagnostic metadata", async () => {
+  const logs: unknown[][] = [];
+  const originalConsoleError = console.error;
+  console.error = (...args: unknown[]) => { logs.push(args); };
   google.gmail = (() => ({
     users: {
       messages: {
         send: async () => {
-          throw new Error("upstream failure");
+          throw Object.assign(new Error("sensitive upstream detail"), {
+            code: "EAUTH",
+            response: {
+              status: 403,
+              data: {
+                error: "insufficientPermissions",
+                errors: [{ reason: "insufficientPermissions" }],
+              },
+            },
+          });
         },
       },
     },
   }) as unknown as ReturnType<typeof google.gmail>) as typeof google.gmail;
 
-  await assert.rejects(
-    sendOtpEmail("recipient@example.com", "123456", "signup"),
-    EmailDeliveryError,
-  );
+  try {
+    await assert.rejects(
+      sendOtpEmail("recipient@example.com", "987654", "signup"),
+      EmailDeliveryError,
+    );
+    assert.equal(logs.length, 1);
+    assert.equal(logs[0][0], "Gmail API OTP delivery failed.");
+    assert.deepEqual(logs[0][1], {
+      errorName: "Error",
+      errorCode: "EAUTH",
+      httpStatus: 403,
+      apiError: "insufficientPermissions",
+      apiReason: "insufficientPermissions",
+    });
+    assert.equal(JSON.stringify(logs).includes("987654"), false);
+    assert.equal(JSON.stringify(logs).includes("recipient@example.com"), false);
+    assert.equal(JSON.stringify(logs).includes("sensitive upstream detail"), false);
+  } finally {
+    console.error = originalConsoleError;
+  }
 });
