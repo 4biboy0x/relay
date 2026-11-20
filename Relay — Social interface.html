@@ -85,6 +85,10 @@
           --bg: #09090b;
           --surface: #09090b;
           --surface-2: #18181b;
+          --avatar-placeholder-bg: #1c1c21;
+          --avatar-placeholder-fg: #9a9aa2;
+          --avatar-placeholder-border: rgba(255, 255, 255, 0.06);
+          --avatar-placeholder-border-width: 1px;
           --hover: #101012;
           --border: #27272a;
           --text: #fafafa;
@@ -109,6 +113,10 @@
         --bg: #09090b;
         --surface: #09090b;
         --surface-2: #18181b;
+        --avatar-placeholder-bg: #1c1c21;
+        --avatar-placeholder-fg: #9a9aa2;
+        --avatar-placeholder-border: rgba(255, 255, 255, 0.06);
+        --avatar-placeholder-border-width: 1px;
         --hover: #101012;
         --border: #27272a;
         --text: #fafafa;
@@ -1113,8 +1121,12 @@
         background: transparent;
       }
       .av.av-default {
-        color: var(--text-2);
-        background: var(--surface-2);
+        color: var(--avatar-placeholder-fg, var(--text-2));
+        background: var(--avatar-placeholder-bg, var(--surface-2));
+        border-color: var(--avatar-placeholder-border, var(--border));
+      }
+      .av.av-default.lg {
+        border-width: var(--avatar-placeholder-border-width, 4px);
       }
       .av {
         transition: background-color 220ms ease, color 220ms ease, border-color 220ms ease;
