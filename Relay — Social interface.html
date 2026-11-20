@@ -31132,7 +31132,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
           }
           const active = a.getAttribute("aria-pressed") === "true";
           const next = !active;
-          const cards = $(`.post[data-id="${CSS.escape(postId)}"]`);
+          const cards = $$(`.post[data-id="${CSS.escape(postId)}"]`);
           const updateBookmarkButtons = (value) => {
             cards.forEach((card) => {
               const button = card.querySelector('.act[data-a="bookmark"]');
@@ -31151,7 +31151,7 @@ ${p.location ? `<div class="post-location" title="${esc(p.location)}"><svg class
               } else {
                 toast("Removed from Bookmarks");
                 if (!$("#v-bookmarks").hidden) {
-                  $('.post[data-id]', $("#bookmarksList")).filter((card) => card.dataset.id === postId).forEach((card) => card.remove());
+                  $$('#bookmarksList .post[data-id]').filter((card) => card.dataset.id === postId).forEach((card) => card.remove());
                   bookmarkedPosts = bookmarkedPosts.filter((item) => item.id !== postId);
                   if (!bookmarkedPosts.length && !bookmarksCursor) {
                     $("#bookmarksList").innerHTML = emptyState("Nothing saved yet.", "Tap the bookmark icon on any post to find it here later.");
