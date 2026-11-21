@@ -119,6 +119,7 @@ if (result.status === 0) {
   fs.copyFileSync(path.join(root, "sw.js"), path.join(root, "dist", "sw.js"));
   fs.copyFileSync(path.join(root, "favicon.svg"), path.join(root, "dist", "favicon.svg"));
   fs.copyFileSync(path.join(root, "robots.txt"), path.join(root, "dist", "robots.txt"));
+  fs.copyFileSync(path.join(root, "ads.txt"), path.join(root, "dist", "ads.txt"));
   fs.copyFileSync(path.join(root, "sitemap.xml"), path.join(root, "dist", "sitemap.xml"));
   fs.cpSync(path.join(root, "assets"), path.join(root, "dist", "assets"), { recursive: true });
   const distSocialImage = path.join(root, "dist", "assets", "relay-social-preview.png");
