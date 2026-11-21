@@ -56,6 +56,7 @@ const socialMetadata = [
   '<link rel="shortcut icon" href="/favicon.svg?v=6">',
   '<link rel="canonical" href="https://relay-4vm.pages.dev/">',
   '<meta name="google-site-verification" content="P6oNkhQsOa6wQ6NIsmWm2Hc88RWP6gm8rj-_sWRvHjw">',
+  '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7220770490833426" crossorigin="anonymous"></script>',
   '<meta name="description" content="Relay is a social network where you can edit your posts, pin as many chats as you want, and set a profile banner. Browse without signing up.">',
   '<meta name="theme-color" content="#ffffff">',
   '<meta property="og:type" content="website">',
